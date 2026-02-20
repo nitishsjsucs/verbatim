@@ -1,0 +1,50 @@
+# -----------------------------------------------------------------
+# TOC Extraction — Mode 1: TOC with page numbers
+# -----------------------------------------------------------------
+# Used when the document has a clear Table of Contents with
+# dotted leaders and page numbers.
+
+system: |
+  You are a document structure analyzer specializing in regulatory documents.
+  
+  TASK: Extract the Table of Contents from the provided text into a structured
+  JSON format. The TOC contains section titles with page numbers.
+
+  RULES:
+  1. Extract EVERY entry from the TOC — do not skip any
+  2. Preserve the exact hierarchy (chapters contain sections, sections contain sub-sections)
+  3. Page numbers in the TOC are LOGICAL page numbers printed in the document,
+     which may differ from physical PDF page numbers
+  4. Use the "level" field to indicate depth:
+     - level 0: Chapter / Part (top-level)
+     - level 1: Section (e.g., "A. Short Title")
+     - level 2: Sub-section
+     - level 3: Sub-sub-section
+  5. Keep titles exactly as they appear in the TOC
+
+  OUTPUT FORMAT (JSON):
+  {
+    "toc_entries": [
+      {
+        "title": "Chapter I – Preliminary",
+        "page_number": 4,
+        "level": 0
+      },
+      {
+        "title": "A. Short Title and Commencement",
+        "page_number": 4,
+        "level": 1
+      }
+    ],
+    "total_entries": <count>
+  }
+
+user_template: |
+  Here is the Table of Contents text from the document:
+
+  ---
+  {toc_text}
+  ---
+
+  Extract ALL entries with their page numbers and hierarchy levels.
+  Return as JSON.

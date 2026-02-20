@@ -1,0 +1,246 @@
+{
+  "timestamp": "2026-02-14 05:11:47",
+  "queries": 5,
+  "results": [
+    {
+      "query_id": "Q1",
+      "query_text": "What is the definition of 'Beneficial Owner' under these KYC Directions?",
+      "query_type": "definitional",
+      "v1": {
+        "answer_length": 2812,
+        "verification_status": "partially_verified",
+        "citation_count": 10,
+        "time_seconds": 119.57862114906311,
+        "llm_calls": 2,
+        "total_tokens": 20514
+      },
+      "v2": {
+        "answer_length": 2576,
+        "verification_status": "verified",
+        "citation_count": 2,
+        "time_seconds": 82.00178337097168,
+        "llm_calls": 4,
+        "total_tokens": 28422
+      },
+      "judgment": {
+        "answer_a": {
+          "accuracy": 9,
+          "completeness": 9,
+          "citation_quality": 4,
+          "clarity": 8,
+          "regulatory_precision": 9,
+          "strengths": "Covers all customer types (company, partnership, unincorporated association/BOI, trust) with correct thresholds and includes the senior managing official fallback; largely tracks the regulatory wording on control/controlling ownership interest.",
+          "weaknesses": "Citations are opaque (hash-like tokens) and not traceable to specific clauses/pages; includes an extra operational CDD note beyond the definition requested."
+        },
+        "answer_b": {
+          "accuracy": 9,
+          "completeness": 9,
+          "citation_quality": 8,
+          "clarity": 9,
+          "regulatory_precision": 9,
+          "strengths": "Well-structured and compliance-friendly; mirrors regulatory phrasing and thresholds; provides more traceable references (Definitions section with page pointers).",
+          "weaknesses": "Citations still lack exact clause/sub-clause identifiers (relies on section/page only), which slightly reduces audit-traceability versus precise clause numbering."
+        },
+        "overall_winner": "B",
+        "reasoning": "Both answers are substantively correct and similarly complete, but Answer B is clearer and provides more usable, reader-traceable citations to the Definitions section (with page references), whereas Answer A’s citations are not auditable."
+      }
+    },
+    {
+      "query_id": "Q2",
+      "query_text": "What are the CDD requirements for opening accounts for trusts?",
+      "query_type": "single_hop",
+      "v1": {
+        "answer_length": 3888,
+        "verification_status": "partially_verified",
+        "citation_count": 7,
+        "time_seconds": 174.8711006641388,
+        "llm_calls": 8,
+        "total_tokens": 15602
+      },
+      "v2": {
+        "answer_length": 7490,
+        "verification_status": "partially_verified",
+        "citation_count": 8,
+        "time_seconds": 270.14913725852966,
+        "llm_calls": 5,
+        "total_tokens": 71399
+      },
+      "judgment": {
+        "answer_a": {
+          "accuracy": 8,
+          "completeness": 7,
+          "citation_quality": 4,
+          "clarity": 6,
+          "regulatory_precision": 7,
+          "strengths": "Captures the core trust CDD document set (trust deed/registration/PAN-Form 60, names of key parties, registered office, trustee list) and appropriately links individual CDD (para 23) for BO/authorised persons; also flags trustee/nominee fiduciary checks.",
+          "weaknesses": "Citations are opaque (hash-like IDs) and not traceable to specific clauses/pages; the answer ends with an incomplete sentence; mixes in broader para-23/Aadhaar process detail that is not strictly necessary for the narrow question and may distract from the trust-specific checklist."
+        },
+        "answer_b": {
+          "accuracy": 8,
+          "completeness": 7,
+          "citation_quality": 7,
+          "clarity": 8,
+          "regulatory_precision": 8,
+          "strengths": "Well-structured and audit-friendly: clearly separates CIP trigger, trust entity-document checklist, and para-23 individual-document requirements; includes a precise definition of “certified copy” and provides section/page-style pointers that are easier to follow than opaque IDs.",
+          "weaknesses": "The para-23 section is cut off mid-bullet (incomplete); some general CIP/‘do not open if CDD cannot be applied’ content is helpful context but not strictly asked, and it omits/does not clearly surface fiduciary/nominee trust due-diligence language that Answer A mentions."
+        },
+        "overall_winner": "B",
+        "reasoning": "Both are largely accurate on the trust CDD checklist, but B is more organized and uses more traceable, reader-usable citations and definitions, making it more actionable for compliance review despite the truncation."
+      }
+    },
+    {
+      "query_id": "Q3",
+      "query_text": "How do KYC requirements differ between individual customers and legal entity customers?",
+      "query_type": "multi_hop",
+      "v1": {
+        "answer_length": 6209,
+        "verification_status": "partially_verified",
+        "citation_count": 16,
+        "time_seconds": 203.54082083702087,
+        "llm_calls": 13,
+        "total_tokens": 34239
+      },
+      "v2": {
+        "answer_length": 13513,
+        "verification_status": "partially_verified",
+        "citation_count": 8,
+        "time_seconds": 411.95506620407104,
+        "llm_calls": 8,
+        "total_tokens": 153949
+      },
+      "judgment": {
+        "answer_a": {
+          "accuracy": 7,
+          "completeness": 4,
+          "citation_quality": 4,
+          "clarity": 6,
+          "regulatory_precision": 7,
+          "strengths": "Correctly distinguishes individual CDD (Aadhaar/OVD/CKYCR + PAN/Form 60 and verification modes) from legal-entity CDD (constitution/registration + authorization docs + BO and connected-person CDD).",
+          "weaknesses": "Legal-entity section is truncated and omits key entity-type specifics and BO/control identification details; citations are opaque hash-like references rather than traceable clause/paragraph identifiers."
+        },
+        "answer_b": {
+          "accuracy": 8,
+          "completeness": 6,
+          "citation_quality": 7,
+          "clarity": 7,
+          "regulatory_precision": 8,
+          "strengths": "More traceable references (chapter/page style) and clearer articulation that individual CDD applies both to standalone individuals and natural persons connected to entities (BO/signatory/PoA); uses more precise regulatory phrasing (e.g., Aadhaar not mandatory except Sec. 7 benefit/subsidy use-case).",
+          "weaknesses": "Includes CIP trigger thresholds not directly responsive to the question; legal-entity specifics are not shown in the provided excerpt and the answer appears truncated mid-way, limiting completeness."
+        },
+        "overall_winner": "B",
+        "reasoning": "Both answers are partially incomplete due to truncation, but B is more traceable to the Master Direction and uses more consistently precise regulatory language, while A’s entity section is notably cut off and its citations are not readily auditable."
+      }
+    },
+    {
+      "query_id": "Q4",
+      "query_text": "What are Officially Valid Documents (OVD) accepted for identity verification?",
+      "query_type": "definitional",
+      "v1": {
+        "answer_length": 1153,
+        "verification_status": "partially_verified",
+        "citation_count": 7,
+        "time_seconds": 118.90713310241699,
+        "llm_calls": 19,
+        "total_tokens": 29957
+      },
+      "v2": {
+        "answer_length": 3536,
+        "verification_status": "partially_verified",
+        "citation_count": 3,
+        "time_seconds": 129.25170922279358,
+        "llm_calls": 4,
+        "total_tokens": 30065
+      },
+      "judgment": {
+        "answer_a": {
+          "accuracy": 9,
+          "completeness": 6,
+          "citation_quality": 3,
+          "clarity": 8,
+          "regulatory_precision": 8,
+          "strengths": "Correctly lists the core OVD set used for identity verification and accurately describes acceptance/verification of equivalent e-documents (digital signature verification).",
+          "weaknesses": "Omits RBI’s additional deemed-OVD provisions (address-only when OVD lacks updated address) and certain edge-condition clarifications (e.g., Aadhaar form as issued by UIDAI); citations are opaque hash IDs and not readily traceable to clauses/pages."
+        },
+        "answer_b": {
+          "accuracy": 8,
+          "completeness": 8,
+          "citation_quality": 7,
+          "clarity": 8,
+          "regulatory_precision": 8,
+          "strengths": "Provides the primary OVD list and adds key conditional provisions from the Master Direction (address-only deemed OVDs, foreign national address proof, name change support) with more source-locatable citations (section/page).",
+          "weaknesses": "Includes material beyond the narrow 'identity verification' question (address/name-change/foreign national cases), which may reduce focus; the 'equivalent e-documents' section is truncated mid-sentence, and citations are still not clause-level precise."
+        },
+        "overall_winner": "B",
+        "reasoning": "Both capture the core OVD list, but B is more traceable and incorporates important conditional regulatory nuances commonly applied in KYC practice, despite some over-inclusion and a truncation issue."
+      }
+    },
+    {
+      "query_id": "Q5",
+      "query_text": "What periodic KYC update obligations do Regulated Entities have for different risk categories?",
+      "query_type": "multi_hop",
+      "v1": {
+        "answer_length": 5423,
+        "verification_status": "partially_verified",
+        "citation_count": 11,
+        "time_seconds": 150.2863028049469,
+        "llm_calls": 24,
+        "total_tokens": 23676
+      },
+      "v2": {
+        "answer_length": 7913,
+        "verification_status": "verified",
+        "citation_count": 7,
+        "time_seconds": 289.3431224822998,
+        "llm_calls": 8,
+        "total_tokens": 140790
+      },
+      "judgment": {
+        "answer_a": {
+          "accuracy": 7,
+          "completeness": 7,
+          "citation_quality": 4,
+          "clarity": 6,
+          "regulatory_precision": 6,
+          "strengths": "States the correct minimum periodic KYC updation frequencies by risk category and captures the low-risk individual relaxation/grace period and Board-approved policy requirement.",
+          "weaknesses": "Framed as RBI (Commercial Banks) Directions rather than RE-wide obligations; citations are opaque hash-like references that are not traceable to clauses/sections; response is partially truncated in the operational section, reducing usability."
+        },
+        "answer_b": {
+          "accuracy": 8,
+          "completeness": 8,
+          "citation_quality": 8,
+          "clarity": 8,
+          "regulatory_precision": 8,
+          "strengths": "Clearly sets out risk categories, the minimum periodic updation frequencies (2/8/10 years) and the low-risk individual relaxation, and adds the periodic risk-categorisation review requirement; citations are specific (chapter/section/page) and readily traceable.",
+          "weaknesses": "Still scoped primarily to \"banks\" (though it flags this explicitly), so it may not fully answer RE-wide obligations if the Master Direction imposes parallel requirements on other RE types; the operational section also appears truncated mid-sentence."
+        },
+        "overall_winner": "B",
+        "reasoning": "Both answers capture the core periodic KYC updation timelines, but B is more traceable and audit-ready due to clearer structure and higher-quality citations, and it includes an additional relevant obligation (periodic risk review) while properly caveating scope."
+      }
+    }
+  ],
+  "summary": {
+    "v1_averages": {
+      "accuracy": 8.0,
+      "completeness": 6.6,
+      "citation_quality": 3.8,
+      "clarity": 6.8,
+      "regulatory_precision": 7.4
+    },
+    "v2_averages": {
+      "accuracy": 8.2,
+      "completeness": 7.6,
+      "citation_quality": 7.4,
+      "clarity": 8.0,
+      "regulatory_precision": 8.2
+    },
+    "v1_overall": 6.5200000000000005,
+    "v2_overall": 7.88,
+    "v1_wins": 0,
+    "v2_wins": 5,
+    "ties": 0,
+    "avg_v1_time": 153.43679571151733,
+    "avg_v2_time": 236.54016370773314,
+    "avg_v1_tokens": 24797.6,
+    "avg_v2_tokens": 84925.0
+  }
+}

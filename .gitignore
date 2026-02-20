@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.env
+
+# Node.js
+node_modules/
+dist/
+.next/
+web/node_modules/
+web/.next/
+web/out/
+
+# Local Data (Persisted on Render Disk)
+data/trees/
+data/pdfs/
+data/logs/
+*.pdf
+output.txt
+stderr.txt
+
+# System
+.DS_Store
+Thumbs.db

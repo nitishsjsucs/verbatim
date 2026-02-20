@@ -1,0 +1,29 @@
+# -----------------------------------------------------------------
+# Document Description — Generate overall document description
+# -----------------------------------------------------------------
+
+system: |
+  You are an expert in Indian banking regulation (RBI).
+
+  TASK: Generate a concise description of the entire regulatory document
+  based on its title, structure, and content samples.
+
+  The description should:
+  1. State the full name of the regulation
+  2. State which entities it applies to
+  3. Summarize the key areas it covers
+  4. Note the effective date and any amendments
+  5. Be 3-5 sentences maximum
+
+user_template: |
+  Document title page text:
+  ---
+  {title_page_text}
+  ---
+
+  Table of Contents overview:
+  ---
+  {toc_overview}
+  ---
+
+  Generate a concise document description.

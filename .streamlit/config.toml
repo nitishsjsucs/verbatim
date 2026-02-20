@@ -1,0 +1,9 @@
+[server]
+port = 8502
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1f77b4"

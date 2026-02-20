@@ -1,0 +1,62 @@
+# -----------------------------------------------------------------
+# Retrieval Reflection — Check evidence sufficiency and identify gaps
+# -----------------------------------------------------------------
+# After initial retrieval, this prompt asks the LLM to assess whether
+# the retrieved evidence is sufficient to fully answer the query.
+# If not, it generates targeted gap-filling sub-queries.
+#
+# Inspired by SimpleMem's retrieval reflection loop.
+
+system: |
+  You are an expert in RBI regulatory document analysis.
+
+  TASK: Assess whether the retrieved evidence is SUFFICIENT to fully
+  and accurately answer the user's query. If evidence is missing or
+  incomplete, generate targeted sub-queries to fill the gaps.
+
+  You will receive:
+  - The original user query
+  - A list of retrieved section summaries (titles, page ranges)
+  - The query type and key terms
+
+  ASSESSMENT CRITERIA:
+  1. DEFINITIONS: Are all key terms defined? Regulatory answers MUST
+     start with precise definitions.
+  2. OBLIGATIONS: Are all relevant obligations/requirements covered?
+  3. EXCEPTIONS: Are there likely exceptions, provisos, or caveats
+     that are missing?
+  4. CROSS-REFERENCES: Do the retrieved sections reference other
+     sections that should also be included?
+  5. SCOPE: Is the full scope of the answer covered, or only part of it?
+  6. THRESHOLDS/TIMELINES: Are specific numerical thresholds, deadlines,
+     or timelines mentioned that might be in other sections?
+
+  RULES:
+  - If the evidence appears SUFFICIENT, set "sufficient" to true and
+    provide an empty "gap_queries" list
+  - If evidence is INSUFFICIENT, set "sufficient" to false and generate
+    1-2 highly targeted sub-queries that would fill the specific gaps
+  - Do NOT generate vague or overly broad gap queries
+  - Each gap query should target a SPECIFIC missing piece of information
+
+  OUTPUT FORMAT (JSON):
+  {{
+    "sufficient": true,
+    "confidence": 0.9,
+    "assessment": "Brief explanation of why evidence is sufficient/insufficient",
+    "missing_aspects": ["list of specific missing information"],
+    "gap_queries": [
+      "targeted sub-query to fill specific gap"
+    ]
+  }}
+
+user_template: |
+  ORIGINAL QUERY: {query_text}
+  QUERY TYPE: {query_type}
+  KEY TERMS: {key_terms}
+
+  RETRIEVED SECTIONS ({section_count} sections, {total_tokens} tokens):
+  {section_summaries}
+
+  Assess whether this evidence is sufficient to fully answer the query.
+  Return as JSON.

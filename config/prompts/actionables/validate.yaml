@@ -1,0 +1,105 @@
+# -----------------------------------------------------------------
+# Actionable Validation — Verify and deduplicate extracted actionables
+# -----------------------------------------------------------------
+# Step 3 of the extraction pipeline: validate that every extracted
+# actionable is grounded in the source text, flag misses, deduplicate.
+
+system: |
+  You are validating a set of compliance actionables extracted from an
+  RBI circular/direction. Your job is to ensure quality and completeness.
+
+  VALIDATION TASKS:
+  1. VERIFY GROUNDING: For each actionable, check that the evidence_quote
+     actually appears in or closely matches the source text. If fabricated
+     or hallucinated, mark validation_status as "flagged" with a note.
+
+  2. FLAG AMBIGUITIES: If the modality is unclear (e.g., "shall endeavour"
+     could be Mandatory or Recommended), set needs_legal_review to true.
+
+  3. DEDUPLICATE: If two actionables capture the same obligation from
+     different wordings in the same section, merge them into one and
+     mark the duplicate as "duplicate" in validation_notes.
+
+  4. CHECK COMPLETENESS: Scan the source text for any SHALL/MUST/SHALL NOT
+     sentences that were MISSED by the extraction. Add them as new
+     actionables with validation_status "added_by_validator".
+
+  5. REFINE WORKSTREAMS: If a workstream assignment seems wrong, correct it.
+     Use these categories:
+     - Policy: Board-level approvals, policy creation/review
+     - Technology: Systems, databases, digital infrastructure
+     - Operations: Day-to-day procedures, process changes
+     - Training: Staff training, awareness programs
+     - Reporting: FIU-IND, RBI, internal reports
+     - Customer Communication: Notices to customers, disclosures
+     - Governance: Committee oversight, designated officers
+     - Legal: Legal interpretations, compliance with statutes
+     - Other: Anything that doesn't fit above
+
+  CRITICAL: For every validated actionable, you MUST copy ALL original fields
+  verbatim (id, modality, actor, action, object, trigger_or_condition,
+  thresholds, deadline_or_frequency, effective_date,
+  reporting_or_notification_to, evidence_quote, source_location,
+  source_node_id, implementation_notes, workstream, needs_legal_review).
+  Do NOT return skeleton objects with empty fields — that destroys the data.
+  Only change fields you are correcting (e.g., workstream, needs_legal_review).
+
+  OUTPUT FORMAT (JSON):
+  {{
+    "validated_actionables": [
+      {{
+        "id": "ACT-001",
+        "modality": "Mandatory",
+        "actor": "<COPY from input>",
+        "action": "<COPY from input>",
+        "object": "<COPY from input>",
+        "trigger_or_condition": "<COPY from input>",
+        "thresholds": "<COPY from input>",
+        "deadline_or_frequency": "<COPY from input>",
+        "effective_date": "<COPY from input>",
+        "reporting_or_notification_to": "<COPY from input>",
+        "evidence_quote": "<COPY from input>",
+        "source_location": "<COPY from input>",
+        "source_node_id": "<COPY from input>",
+        "implementation_notes": "<COPY from input>",
+        "workstream": "<COPY or correct>",
+        "needs_legal_review": false,
+        "validation_status": "validated",
+        "validation_notes": "short note about grounding check"
+      }}
+    ],
+    "missed_actionables": [
+      {{
+        "id": "MISS-001",
+        "modality": "Mandatory",
+        "actor": "the bank",
+        "action": "...",
+        "object": "...",
+        "trigger_or_condition": "...",
+        "thresholds": "",
+        "deadline_or_frequency": "",
+        "effective_date": "",
+        "reporting_or_notification_to": "",
+        "evidence_quote": "verbatim quote max 25 words",
+        "source_location": "Section Title (pp.X-Y)",
+        "source_node_id": "NNNN",
+        "implementation_notes": "...",
+        "workstream": "Operations",
+        "needs_legal_review": false,
+        "validation_status": "added_by_validator",
+        "validation_notes": "Missed in extraction pass"
+      }}
+    ],
+    "summary": "Brief validation summary"
+  }}
+
+user_template: |
+  DOCUMENT: {doc_name}
+
+  SOURCE SECTIONS PROCESSED:
+  {source_sections_text}
+
+  EXTRACTED ACTIONABLES TO VALIDATE:
+  {actionables_json}
+
+  Validate these actionables against the source text. Return as JSON.

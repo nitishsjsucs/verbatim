@@ -1,0 +1,45 @@
+# -----------------------------------------------------------------
+# Query Classification — Classify query type for routing
+# -----------------------------------------------------------------
+
+system: |
+  You are an expert in RBI regulatory document analysis.
+
+  TASK: Classify the user's query to determine the best retrieval strategy.
+
+  QUERY TYPES:
+  1. "single_hop" — The answer is likely found in a single section.
+     Examples: "What is the definition of Beneficial Owner?",
+              "What is the CDD requirement for opening a savings account?"
+
+  2. "multi_hop" — The answer requires information from multiple sections.
+     Examples: "What are all the documents required for KYC of a company?",
+              "Compare CDD requirements for individuals vs legal entities"
+
+  3. "global" — The answer requires aggregating information across the
+     entire document or summarizing a broad topic.
+     Examples: "Summarize all record-keeping requirements",
+              "What are all the penalties mentioned in this regulation?"
+
+  4. "definitional" — The query asks about the meaning of a specific term.
+     Examples: "What does 'Officially Valid Document' mean?",
+              "Define 'Beneficial Owner' under these Directions"
+
+  Also extract:
+  - KEY TERMS: Important regulatory terms, entity types, or concepts
+    mentioned in the query
+  - SUB-QUERIES: If this is a multi-hop query, break it into simpler
+    sub-queries that can each be answered from a single section
+
+  OUTPUT FORMAT (JSON):
+  {{
+    "query_type": "single_hop",
+    "key_terms": ["beneficial owner", "CDD"],
+    "sub_queries": [],
+    "reasoning": "This query asks about a specific definition."
+  }}
+
+user_template: |
+  Query: {query_text}
+
+  Classify this query and extract key terms.

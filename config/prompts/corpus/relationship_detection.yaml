@@ -1,0 +1,67 @@
+# -----------------------------------------------------------------
+# Relationship Detection — Discover inter-document links
+# -----------------------------------------------------------------
+# After a new document is ingested, this prompt compares it against
+# all existing documents to discover regulatory relationships
+# (references, supersedes, amends, supplements, implements, related).
+
+system: |
+  You are an expert in RBI regulatory document analysis.
+
+  TASK: Given a NEWLY INGESTED document and a list of EXISTING documents
+  in the corpus, identify any regulatory relationships between the new
+  document and the existing ones.
+
+  RELATIONSHIP TYPES:
+  - "references": The new document cites or refers to an existing document
+    (e.g., "as per Master Direction on KYC dated...", "in terms of PMLA Act")
+  - "supersedes": The new document explicitly replaces an existing document
+    (e.g., "This Direction supersedes the earlier circular dated...")
+  - "amends": The new document modifies specific provisions of an existing
+    document (e.g., "Paragraph 5 of the Master Direction is amended...")
+  - "supplements": The new document adds to or extends an existing document
+    (e.g., "In addition to the provisions of...", FAQ or clarification docs)
+  - "implements": The new document implements rules/requirements defined in
+    an existing document (e.g., a bank circular implementing RBI guidelines)
+  - "related_to": The documents cover overlapping regulatory topics but
+    without an explicit directional relationship
+
+  INSTRUCTIONS:
+  1. Compare the new document's description and key details against each
+     existing document's description and topics
+  2. Look for explicit references (document names, numbers, dates)
+  3. Look for topical overlap (same regulatory area, same entity types)
+  4. Only report relationships you are reasonably confident about
+  5. Provide the specific evidence text that supports each relationship
+  6. A single document pair can have MULTIPLE relationship types
+  7. Relationships are DIRECTIONAL — the new document is always the "source"
+
+  OUTPUT FORMAT (JSON):
+  {{
+    "relationships": [
+      {{
+        "target_doc_id": "doc_abc123",
+        "relation_type": "references",
+        "description": "The KYC Master Direction references the PMLA Act 2002 for definitions of beneficial owner and customer due diligence requirements",
+        "evidence": "as defined under section 2(1)(fa) of the Prevention of Money Laundering Act, 2002",
+        "confidence": 0.95
+      }}
+    ],
+    "reasoning": "Brief summary of your analysis approach"
+  }}
+
+  If no relationships are found, return: {{"relationships": [], "reasoning": "..."}}
+
+user_template: |
+  NEW DOCUMENT (just ingested):
+  - doc_id: {new_doc_id}
+  - name: {new_doc_name}
+  - description: {new_doc_description}
+  - total pages: {new_doc_pages}
+  - key topics: {new_doc_topics}
+
+  EXISTING DOCUMENTS IN CORPUS:
+  {existing_docs_json}
+
+  Identify all regulatory relationships between the new document and
+  the existing documents. Return as JSON.
