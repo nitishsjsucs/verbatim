@@ -24,6 +24,20 @@ export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
     function PdfViewer({ fileUrl, initialPage = 0, className }, ref) {
         const containerRef = React.useRef<HTMLDivElement>(null)
         const defaultLayoutPluginInstance = defaultLayoutPlugin()
+        const [blobUrl, setBlobUrl] = React.useState<string | null>(null)
+
+        React.useEffect(() => {
+            if (!fileUrl) return
+            let objectUrl: string
+            fetch(fileUrl, { headers: { 'ngrok-skip-browser-warning': '1' } })
+                .then(r => r.blob())
+                .then(blob => {
+                    objectUrl = URL.createObjectURL(blob)
+                    setBlobUrl(objectUrl)
+                })
+                .catch(console.error)
+            return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
+        }, [fileUrl])
 
         const rawJumpToPage = defaultLayoutPluginInstance.toolbarPluginInstance
             .pageNavigationPluginInstance.jumpToPage
@@ -75,11 +89,17 @@ export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
             },
         }), [rawJumpToPage])
 
+        if (!blobUrl) return (
+            <div className={className} style={{ height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 13 }}>
+                Loading PDF…
+            </div>
+        )
+
         return (
             <div ref={containerRef} className={className} style={{ height: "100%", width: "100%" }}>
                 <Worker workerUrl={WORKER_URL}>
                     <Viewer
-                        fileUrl={fileUrl}
+                        fileUrl={blobUrl}
                         initialPage={initialPage}
                         defaultScale={SpecialZoomLevel.PageWidth}
                         theme="dark"
