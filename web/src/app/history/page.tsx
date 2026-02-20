@@ -6,6 +6,7 @@ import {
     Loader2, AlertTriangle, Clock, FileText, Library,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Markdown } from "@/components/ui/markdown"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/layout/sidebar"
 import {
@@ -96,9 +97,9 @@ function ConversationCard({
                     </div>
 
                     {conv.last_message_preview && (
-                        <p className="text-xs text-muted-foreground/70 truncate mb-2">
-                            {conv.last_message_preview}
-                        </p>
+                        <div className="text-xs text-muted-foreground/70 line-clamp-2 mb-2 [&_*]:text-xs [&_p]:mb-0 [&_ul]:mb-0 [&_ol]:mb-0 [&_h1]:text-xs [&_h2]:text-xs [&_h3]:text-xs">
+                            <Markdown content={conv.last_message_preview} />
+                        </div>
                     )}
 
                     <div className="flex items-center gap-4 text-[10px] text-muted-foreground/50">
