@@ -17,14 +17,24 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
+function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+    return fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: {
+            'ngrok-skip-browser-warning': '1',
+            ...(options.headers || {}),
+        },
+    });
+}
+
 export async function fetchDocuments(): Promise<DocumentMeta[]> {
-    const res = await fetch(`${API_BASE_URL}/documents`);
+    const res = await apiFetch('/documents');
     if (!res.ok) throw new Error('Failed to fetch documents');
     return res.json();
 }
 
 export async function fetchDocument(id: string): Promise<DocumentDetail> {
-    const res = await fetch(`${API_BASE_URL}/documents/${id}`);
+    const res = await apiFetch(`/documents/${id}`);
     if (!res.ok) throw new Error('Failed to fetch document');
     return res.json();
 }
@@ -33,7 +43,7 @@ export async function ingestDocument(file: File, force: boolean = false): Promis
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch(`${API_BASE_URL}/ingest?force=${force}`, {
+    const res = await apiFetch(`/ingest?force=${force}`, {
         method: 'POST',
         body: formData,
     });
@@ -46,7 +56,7 @@ export async function ingestDocument(file: File, force: boolean = false): Promis
 }
 
 export async function runQuery(req: QueryRequest): Promise<QueryResponse> {
-    const res = await fetch(`${API_BASE_URL}/query`, {
+    const res = await apiFetch(`/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
@@ -60,7 +70,7 @@ export async function runQuery(req: QueryRequest): Promise<QueryResponse> {
 }
 
 export async function submitFeedback(recordId: string, feedback: FeedbackRequest): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/query/${recordId}/feedback`, {
+    const res = await apiFetch(`/query/${recordId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedback),
@@ -72,7 +82,7 @@ export async function submitFeedback(recordId: string, feedback: FeedbackRequest
 }
 
 export async function fetchConfig(): Promise<AppConfig> {
-    const res = await fetch(`${API_BASE_URL}/config`);
+    const res = await apiFetch(`/config`);
     if (!res.ok) throw new Error('Failed to fetch config');
     return res.json();
 }
@@ -82,13 +92,13 @@ export async function fetchConfig(): Promise<AppConfig> {
 // ---------------------------------------------------------------------------
 
 export async function fetchCorpus(): Promise<Corpus> {
-    const res = await fetch(`${API_BASE_URL}/corpus`);
+    const res = await apiFetch(`/corpus`);
     if (!res.ok) throw new Error('Failed to fetch corpus');
     return res.json();
 }
 
 export async function runCorpusQuery(req: CorpusQueryRequest): Promise<CorpusQueryResponse> {
-    const res = await fetch(`${API_BASE_URL}/corpus/query`, {
+    const res = await apiFetch(`/corpus/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
@@ -106,7 +116,7 @@ export async function runCorpusQuery(req: CorpusQueryRequest): Promise<CorpusQue
 // ---------------------------------------------------------------------------
 
 export async function fetchActionables(docId: string): Promise<ActionablesResult> {
-    const res = await fetch(`${API_BASE_URL}/documents/${docId}/actionables`);
+    const res = await apiFetch(`/documents/${docId}/actionables`);
     if (!res.ok) throw new Error('Failed to fetch actionables');
     return res.json();
 }
@@ -146,8 +156,8 @@ export async function extractActionablesStreaming(
     force: boolean = false,
     onProgress?: (event: ExtractionProgressEvent) => void,
 ): Promise<ActionablesResult> {
-    const res = await fetch(
-        `${API_BASE_URL}/documents/${docId}/extract-actionables?force=${force}`,
+    const res = await apiFetch(
+        `/documents/${docId}/extract-actionables?force=${force}`,
         { method: 'POST' },
     );
 
@@ -219,19 +229,19 @@ export async function extractActionables(docId: string, force: boolean = false):
 // ---------------------------------------------------------------------------
 
 export async function fetchConversations(): Promise<ConversationMeta[]> {
-    const res = await fetch(`${API_BASE_URL}/conversations`);
+    const res = await apiFetch(`/conversations`);
     if (!res.ok) throw new Error('Failed to fetch conversations');
     return res.json();
 }
 
 export async function fetchConversationsByDoc(docId: string): Promise<ConversationMeta[]> {
-    const res = await fetch(`${API_BASE_URL}/conversations/by-doc/${docId}`);
+    const res = await apiFetch(`/conversations/by-doc/${docId}`);
     if (!res.ok) throw new Error('Failed to fetch conversations for document');
     return res.json();
 }
 
 export async function fetchConversation(convId: string): Promise<Conversation> {
-    const res = await fetch(`${API_BASE_URL}/conversations/${convId}`);
+    const res = await apiFetch(`/conversations/${convId}`);
     if (!res.ok) throw new Error('Failed to fetch conversation');
     return res.json();
 }
@@ -243,7 +253,7 @@ export async function createConversation(
     title: string = '',
 ): Promise<Conversation> {
     const params = new URLSearchParams({ doc_id: docId, doc_name: docName, conv_type: convType, title });
-    const res = await fetch(`${API_BASE_URL}/conversations?${params}`, {
+    const res = await apiFetch(`/conversations?${params}`, {
         method: 'POST',
     });
     if (!res.ok) throw new Error('Failed to create conversation');
@@ -251,7 +261,7 @@ export async function createConversation(
 }
 
 export async function deleteConversation(convId: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/conversations/${convId}`, {
+    const res = await apiFetch(`/conversations/${convId}`, {
         method: 'DELETE',
     });
     if (!res.ok) {
@@ -261,7 +271,7 @@ export async function deleteConversation(convId: string): Promise<void> {
 }
 
 export async function deleteAllConversations(): Promise<{ count: number }> {
-    const res = await fetch(`${API_BASE_URL}/conversations`, {
+    const res = await apiFetch(`/conversations`, {
         method: 'DELETE',
     });
     if (!res.ok) throw new Error('Failed to delete conversations');
@@ -273,7 +283,7 @@ export async function deleteAllConversations(): Promise<{ count: number }> {
 // ---------------------------------------------------------------------------
 
 export async function fetchStorageStats(): Promise<StorageStats> {
-    const res = await fetch(`${API_BASE_URL}/storage/stats`);
+    const res = await apiFetch(`/storage/stats`);
     if (!res.ok) throw new Error('Failed to fetch storage stats');
     return res.json();
 }
@@ -283,7 +293,7 @@ export async function fetchStorageStats(): Promise<StorageStats> {
 // ---------------------------------------------------------------------------
 
 export async function exportTrainingData(): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/export/training-data`);
+    const res = await apiFetch(`/export/training-data`);
     if (!res.ok) throw new Error('Failed to export training data');
 
     const blob = await res.blob();

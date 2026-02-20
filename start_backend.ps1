@@ -6,7 +6,8 @@ param(
     [string]$NgrokDomain = ""
 )
 
-# ── Load secrets from .env file (never committed to git) ─────────────────────
+# ── Edit these once ──────────────────────────────────────────────────────────
+# ── Load secrets from .env file (gitignored — never committed) ───────────────
 $envFile = Join-Path $PSScriptRoot ".env"
 if (Test-Path $envFile) {
     Get-Content $envFile | ForEach-Object {
@@ -16,10 +17,17 @@ if (Test-Path $envFile) {
     }
     Write-Host ".env loaded" -ForegroundColor DarkGray
 } else {
-    Write-Host "WARNING: No .env file found at $envFile" -ForegroundColor Red
-    Write-Host "Create one based on .env.example" -ForegroundColor Red
+    Write-Host "WARNING: No .env file found. Create one from .env.example" -ForegroundColor Red
 }
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Kill anything already on port 8001
+$existing = Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue
+if ($existing) {
+    Write-Host "Killing existing process on port 8001..." -ForegroundColor Yellow
+    $existing | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+    Start-Sleep -Milliseconds 500
+}
 
 Write-Host "Starting Govinda backend on port 8001..." -ForegroundColor Cyan
 
@@ -28,4 +36,4 @@ if ($NgrokDomain -ne "") {
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "ngrok http --domain=$NgrokDomain 8001"
 }
 
-uvicorn app_backend.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn app_backend.main:app --host 0.0.0.0 --port 8001
