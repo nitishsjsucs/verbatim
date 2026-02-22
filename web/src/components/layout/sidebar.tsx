@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation"
 import { UploadModal } from "@/components/dashboard/upload-modal"
 import { fetchConfig } from "@/lib/api"
 import { AppConfig } from "@/lib/types"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 interface SidebarProps {
     className?: string
@@ -139,8 +140,12 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
 
             {/* Footer / User */}
-            <div className="absolute bottom-4 left-0 right-0 px-3">
+            <div className="absolute bottom-4 left-0 right-0 px-3 space-y-1">
                 <NavItem icon={<Settings className="h-4 w-4" />} label="Settings" collapsed={collapsed} />
+                <div className={cn("flex items-center px-2", collapsed ? "justify-center" : "justify-between")}>
+                    {!collapsed && <span className="text-xs text-sidebar-foreground/50">Theme</span>}
+                    <ThemeToggle />
+                </div>
             </div>
 
         </div>

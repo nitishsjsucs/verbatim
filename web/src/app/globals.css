@@ -49,39 +49,76 @@
 
 :root {
   --radius: 0.375rem;
-  /* Light mode fallbacks (Inverted Linear style or standard light) */
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.145 0 0);
+
+  /* ── Claude Light Mode Palette ──────────────────────────────────────────
+     Crail      #C15F3C  →  primary / accent / ring
+     Cloudy     #B1ADA1  →  muted / border / sidebar-border
+     Pampas     #F4F3EE  →  background / sidebar
+     White      #FFFFFF  →  card / popover / input surfaces
+     Warm brown #2D1F17  →  foreground (text)
+     Mid grey   #6B6560  →  muted-foreground
+     Tint       #F9EDE8  →  secondary / accent hover
+     Soft tan   #E8E4DE  →  border / input stroke
+  ─────────────────────────────────────────────────────────────────────── */
+
+  /* Pampas — warm off-white page background */
+  --background: oklch(0.963 0.006 68);
+  /* Warm dark brown — readable, not harsh black */
+  --foreground: oklch(0.22 0.03 42);
+
+  /* White — elevated card surfaces */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.22 0.03 42);
+
+  /* White — popovers / dropdowns */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.22 0.03 42);
+
+  /* Crail — primary CTA, active states */
+  --primary: oklch(0.56 0.12 38);
+  --primary-foreground: oklch(1 0 0);
+
+  /* Pampas tint — secondary / hover backgrounds */
+  --secondary: oklch(0.975 0.008 68);
+  --secondary-foreground: oklch(0.22 0.03 42);
+
+  /* Cloudy-tinted muted — subtle backgrounds */
+  --muted: oklch(0.955 0.006 60);
+  /* Mid warm grey — secondary text */
+  --muted-foreground: oklch(0.50 0.02 50);
+
+  /* Terracotta tint — hover / accent surfaces */
+  --accent: oklch(0.965 0.018 42);
+  --accent-foreground: oklch(0.56 0.12 38);
+
+  /* Destructive — warm red */
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* Soft tan — borders and input strokes */
+  --border: oklch(0.895 0.012 60);
+  --input: oklch(0.895 0.012 60);
+
+  /* Crail-tinted ring */
+  --ring: oklch(0.56 0.12 38);
+
+  /* Charts — warm terracotta family */
+  --chart-1: oklch(0.56 0.12 38);   /* Crail */
+  --chart-2: oklch(0.68 0.09 55);   /* warm amber */
+  --chart-3: oklch(0.72 0.06 80);   /* warm yellow-green */
+  --chart-4: oklch(0.62 0.10 25);   /* deep terracotta */
+  --chart-5: oklch(0.76 0.07 45);   /* sandy gold */
+
+  /* Sidebar — Pampas background, slightly warmer than page */
+  --sidebar: oklch(0.955 0.008 65);
+  --sidebar-foreground: oklch(0.22 0.03 42);
+  --sidebar-primary: oklch(0.56 0.12 38);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.965 0.018 42);
+  --sidebar-accent-foreground: oklch(0.56 0.12 38);
+  /* Cloudy — sidebar dividers */
+  --sidebar-border: oklch(0.875 0.012 55);
+  --sidebar-ring: oklch(0.56 0.12 38);
 }
 
 .dark {
