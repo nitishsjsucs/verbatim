@@ -120,6 +120,71 @@
   /* Black sidebar dividers */
   --sidebar-border: oklch(0.20 0.01 40);
   --sidebar-ring: oklch(0.13 0.025 40);
+
+
+
+
+
+
+
+  /* Light mode — clean SaaS dashboard (neutral/cool) */
+
+/* Page background — very light gray */
+--background: oklch(0.985 0.003 250);
+/* Foreground — near-black, slightly cool */
+--foreground: oklch(0.155 0.012 255);
+
+/* Cards — pure/near-white */
+--card: oklch(0.998 0.001 250);
+--card-foreground: oklch(0.155 0.012 255);
+
+/* Popovers — same as cards */
+--popover: oklch(0.998 0.001 250);
+--popover-foreground: oklch(0.155 0.012 255);
+
+/* Primary — modern dashboard blue */
+--primary: oklch(0.62 0.16 255);
+--primary-foreground: oklch(0.995 0.002 250);
+
+/* Secondary — light gray hover surface */
+--secondary: oklch(0.965 0.006 250);
+--secondary-foreground: oklch(0.155 0.012 255);
+
+/* Muted — subtle surface + muted text */
+--muted: oklch(0.972 0.004 250);
+--muted-foreground: oklch(0.47 0.02 255);
+
+/* Accent — same family as secondary; accent text uses primary */
+--accent: oklch(0.962 0.007 250);
+--accent-foreground: oklch(0.62 0.16 255);
+
+/* Destructive — clean red */
+--destructive: oklch(0.62 0.22 25);
+--destructive-foreground: oklch(0.995 0.002 250);
+
+/* Borders/inputs — soft gray, not black */
+--border: oklch(0.89 0.008 255);
+--input: oklch(0.89 0.008 255);
+
+/* Focus ring — primary blue */
+--ring: oklch(0.62 0.16 255);
+
+/* Charts — blue forward, then complementary but still “dashboard” */
+--chart-1: oklch(0.62 0.16 255);
+--chart-2: oklch(0.70 0.14 160);
+--chart-3: oklch(0.72 0.15 70);
+--chart-4: oklch(0.63 0.18 20);
+--chart-5: oklch(0.68 0.14 300);
+
+/* Sidebar — slightly darker than page, still light */
+--sidebar: oklch(0.975 0.004 250);
+--sidebar-foreground: oklch(0.155 0.012 255);
+--sidebar-primary: oklch(0.62 0.16 255);
+--sidebar-primary-foreground: oklch(0.995 0.002 250);
+--sidebar-accent: oklch(0.962 0.007 250);
+--sidebar-accent-foreground: oklch(0.62 0.16 255);
+--sidebar-border: oklch(0.89 0.008 255);
+--sidebar-ring: oklch(0.62 0.16 255);
 }
 
 .dark {
