@@ -1,4 +1,5 @@
 # GOVINDA V2
+### File name Govinda coz only god can help this code 😭😭😭 -Nitish, 2026
 
 A **vectorless**, **structure-first** RAG system for analyzing complex regulatory and financial PDF documents using a hierarchical tree structure, multi-hop reasoning, and LLM-powered retrieval.
 
