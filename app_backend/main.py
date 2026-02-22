@@ -53,7 +53,7 @@ _allowed_origins = [o.strip().rstrip("/") for o in os.getenv("ALLOWED_ORIGINS", 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.ngrok-free\.app|.*\.ngrok-free\.dev|.*\.ngrok\.io)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
