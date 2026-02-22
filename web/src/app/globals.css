@@ -62,70 +62,65 @@
      Black      #000000  →  borders, outlines, ring — crisp definition
   ─────────────────────────────────────────────────────────────────────── */
 
-
-
-
-
-
-
   /* Light mode — clean SaaS dashboard (neutral/cool) */
+  /* Purple + White — Light mode */
 
-/* Page background — very light gray */
---background: oklch(0.985 0.003 250);
-/* Foreground — near-black, slightly cool */
---foreground: oklch(0.155 0.012 255);
+  /* White page background (slight lavender tint) */
+  --background: oklch(0.988 0.004 305);
+  /* Near-black text (cool) */
+  --foreground: oklch(0.155 0.012 275);
 
-/* Cards — pure/near-white */
---card: oklch(0.998 0.001 250);
---card-foreground: oklch(0.155 0.012 255);
+  /* Cards — crisp white */
+  --card: oklch(0.998 0.001 305);
+  --card-foreground: oklch(0.155 0.012 275);
 
-/* Popovers — same as cards */
---popover: oklch(0.998 0.001 250);
---popover-foreground: oklch(0.155 0.012 255);
+  /* Popovers */
+  --popover: oklch(0.998 0.001 305);
+  --popover-foreground: oklch(0.155 0.012 275);
 
-/* Primary — modern dashboard blue */
---primary: oklch(0.62 0.16 255);
---primary-foreground: oklch(0.995 0.002 250);
+  /* Primary — rich purple (CTAs, active) */
+  --primary: oklch(0.6 0.2 300);
+  --primary-foreground: oklch(0.995 0.002 305);
 
-/* Secondary — light gray hover surface */
---secondary: oklch(0.965 0.006 250);
---secondary-foreground: oklch(0.155 0.012 255);
+  /* Secondary — light lavender-gray (hover surfaces) */
+  --secondary: oklch(0.965 0.01 305);
+  --secondary-foreground: oklch(0.155 0.012 275);
 
-/* Muted — subtle surface + muted text */
---muted: oklch(0.972 0.004 250);
---muted-foreground: oklch(0.47 0.02 255);
+  /* Muted — subtle surface + muted text */
+  --muted: oklch(0.972 0.007 305);
+  --muted-foreground: oklch(0.48 0.02 280);
 
-/* Accent — same family as secondary; accent text uses primary */
---accent: oklch(0.962 0.007 250);
---accent-foreground: oklch(0.62 0.16 255);
+  /* Accent — same family as secondary; accent text uses purple */
+  --accent: oklch(0.958 0.014 305);
+  --accent-foreground: oklch(0.6 0.2 300);
 
-/* Destructive — clean red */
---destructive: oklch(0.62 0.22 25);
---destructive-foreground: oklch(0.995 0.002 250);
+  /* Destructive — clean red (don’t make it purple) */
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.995 0.002 305);
 
-/* Borders/inputs — soft gray, not black */
---border: oklch(0.89 0.008 255);
---input: oklch(0.89 0.008 255);
+  /* Borders/inputs — soft lavender-gray */
+  --border: oklch(0.9 0.01 300);
+  --input: oklch(0.9 0.01 300);
 
-/* Focus ring — primary blue */
---ring: oklch(0.62 0.16 255);
+  /* Focus ring — purple */
+  --ring: oklch(0.6 0.2 300);
 
-/* Charts — blue forward, then complementary but still “dashboard” */
---chart-1: oklch(0.62 0.16 255);
---chart-2: oklch(0.70 0.14 160);
---chart-3: oklch(0.72 0.15 70);
---chart-4: oklch(0.63 0.18 20);
---chart-5: oklch(0.68 0.14 300);
+  /* Charts — purple-forward set */
+  --chart-1: oklch(0.6 0.2 300);
+  --chart-2: oklch(0.7 0.14 320);
+  --chart-3: oklch(0.74 0.12 280);
+  --chart-4: oklch(0.64 0.18 20);
+  --chart-5: oklch(0.68 0.14 250);
 
-/* Sidebar — slightly darker than page, still light */
---sidebar: oklch(0.975 0.004 250);
---sidebar-foreground: oklch(0.155 0.012 255);
---sidebar-primary: oklch(0.62 0.16 255);
---sidebar-primary-foreground: oklch(0.995 0.002 250);
---sidebar-accent: oklch(0.962 0.007 250);
---sidebar-accent-foreground: oklch(0.62 0.16 255);
---sidebar-border: oklch(0.89 0.008 255);
---sidebar-ring: oklch(0.62 0.16 255);
+  /* Sidebar — slightly deeper than page */
+  --sidebar: oklch(0.975 0.006 305);
+  --sidebar-foreground: oklch(0.155 0.012 275);
+  --sidebar-primary: oklch(0.6 0.2 300);
+  --sidebar-primary-foreground: oklch(0.995 0.002 305);
+  --sidebar-accent: oklch(0.958 0.014 305);
+  --sidebar-accent-foreground: oklch(0.6 0.2 300);
+  --sidebar-border: oklch(0.9 0.01 300);
+  --sidebar-ring: oklch(0.6 0.2 300);
 }
 
 .dark {
@@ -138,28 +133,28 @@
   --popover-foreground: oklch(0.97 0.01 200);
 
   /* Primary Button #E6E6E6 */
-  --primary: oklch(0.92 0 0); 
-  --primary-foreground: oklch(0.13 0.01 240); 
+  --primary: oklch(0.92 0 0);
+  --primary-foreground: oklch(0.13 0.01 240);
 
   /* Secondary #28282C */
   --secondary: oklch(0.24 0.01 270);
   --secondary-foreground: oklch(0.97 0.01 200);
-  
+
   /* Muted Text #8A8F98 */
   --muted: oklch(0.24 0.01 270);
   --muted-foreground: oklch(0.65 0.02 260);
 
   --accent: oklch(0.24 0.01 270);
   --accent-foreground: oklch(0.97 0.01 200);
-  
+
   /* Red #E5484D */
-  --destructive: oklch(0.61 0.23 20); 
+  --destructive: oklch(0.61 0.23 20);
   --destructive-foreground: oklch(0.97 0.01 200);
-  
+
   /* Border #3E3E44 */
   --border: oklch(0.32 0.01 270);
   --input: oklch(0.32 0.01 270);
-  
+
   --ring: oklch(0.65 0.02 260);
 
   /* Charts - preserved from default or updated if needed */
@@ -168,7 +163,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  
+
   /* Sidebar - Linear uses slightly lighter #151718 or transparent */
   --sidebar: oklch(0.14 0.01 240);
   --sidebar-foreground: oklch(0.97 0.01 200);
