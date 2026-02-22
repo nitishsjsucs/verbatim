@@ -115,7 +115,7 @@ export default function ResearchPage() {
                             <div className="flex-1 min-h-0">
                                 <PdfViewer
                                     ref={pdfRef}
-                                    fileUrl={`http://localhost:8001/documents/${pdfDocId}/raw`}
+                                    fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${pdfDocId}/raw`}
                                 />
                             </div>
                         </>
