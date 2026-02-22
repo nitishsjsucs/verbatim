@@ -62,65 +62,6 @@
      Black      #000000  →  borders, outlines, ring — crisp definition
   ─────────────────────────────────────────────────────────────────────── */
 
-  /* Pampas — warm off-white page background */
-  --background: oklch(0.963 0.006 68);
-  /* Near-black warm — deep, readable, not cold */
-  --foreground: oklch(0.13 0.025 40);
-
-  /* White — elevated card surfaces */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.13 0.025 40);
-
-  /* White — popovers / dropdowns */
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.025 40);
-
-  /* Crail — primary CTA, active states */
-  --primary: oklch(0.56 0.12 38);
-  --primary-foreground: oklch(1 0 0);
-
-  /* Warm stone — secondary / hover backgrounds */
-  --secondary: oklch(0.920 0.010 55);
-  --secondary-foreground: oklch(0.13 0.025 40);
-
-  /* Cloudy-tinted muted — subtle backgrounds */
-  --muted: oklch(0.935 0.008 58);
-  /* Mid warm grey — secondary text */
-  --muted-foreground: oklch(0.42 0.02 45);
-
-  /* Warm stone tint — hover / accent surfaces */
-  --accent: oklch(0.920 0.010 55);
-  --accent-foreground: oklch(0.56 0.12 38);
-
-  /* Destructive — warm red */
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(1 0 0);
-
-  /* Black borders — crisp, defined outlines */
-  --border: oklch(0.20 0.01 40);
-  --input: oklch(0.20 0.01 40);
-
-  /* Black ring — strong focus indicator */
-  --ring: oklch(0.13 0.025 40);
-
-  /* Charts — warm terracotta family */
-  --chart-1: oklch(0.56 0.12 38);   /* Crail */
-  --chart-2: oklch(0.68 0.09 55);   /* warm amber */
-  --chart-3: oklch(0.72 0.06 80);   /* warm yellow-green */
-  --chart-4: oklch(0.62 0.10 25);   /* deep terracotta */
-  --chart-5: oklch(0.76 0.07 45);   /* sandy gold */
-
-  /* Sidebar — slightly darker Pampas for depth */
-  --sidebar: oklch(0.940 0.009 62);
-  --sidebar-foreground: oklch(0.13 0.025 40);
-  --sidebar-primary: oklch(0.56 0.12 38);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.920 0.010 55);
-  --sidebar-accent-foreground: oklch(0.56 0.12 38);
-  /* Black sidebar dividers */
-  --sidebar-border: oklch(0.20 0.01 40);
-  --sidebar-ring: oklch(0.13 0.025 40);
-
 
 
 
