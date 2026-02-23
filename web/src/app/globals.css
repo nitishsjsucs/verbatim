@@ -54,59 +54,59 @@
   --header-height: 44px;
   --radius: 0.25rem;          /* 4px — Linear uses 4px control radius */
 
-  /* ── Claude Light Mode Palette ──────────────────────────────────────────
-     Crail      #C15F3C  →  primary / accent
-     Pampas     #F4F3EE  →  page background
-     Warm white #FFFFFF  →  card / popover surfaces
-     Near-black #1C1917  →  foreground (warm, not cold)
-     Mid warm   #57534E  →  muted-foreground
-     Stone 200  #E7E5E4  →  borders (subtle, not black)
-     Stone 100  #F5F4F2  →  sidebar / muted backgrounds
+  /* ── Linear Light Mode Palette ──────────────────────────────────────────
+     #fcfcfc  →  page background (--bg-base-color-light)
+     #f5f5f5  →  sidebar background (--bg-sidebar-light)
+     #e8e8e8  →  selected/hover surface
+     #dcdcdc  →  borders/outlines (--bg-border-color-light ~#e0e0e0)
+     #1f1f1f  →  foreground text + active icons
+     #616163  →  muted/inactive icons (--content-color-light ~#b0b5c0)
+     #6570c8  →  primary (Linear indigo toggle)
   ─────────────────────────────────────────────────────────────────────── */
 
-  --background: oklch(0.963 0.006 68);        /* Pampas #F4F3EE */
-  --foreground: oklch(0.145 0.018 40);        /* Near-black warm #1C1917 */
+  --background: oklch(0.988 0 0);             /* #fcfcfc */
+  --foreground: oklch(0.13 0 0);              /* #1f1f1f */
 
-  --card: oklch(1 0 0);                       /* White */
-  --card-foreground: oklch(0.145 0.018 40);
+  --card: oklch(0.988 0 0);                   /* #fcfcfc — same as bg */
+  --card-foreground: oklch(0.13 0 0);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.018 40);
+  --popover: oklch(1 0 0);                    /* pure white for popovers */
+  --popover-foreground: oklch(0.13 0 0);
 
-  --primary: oklch(0.56 0.12 38);             /* Crail #C15F3C */
+  --primary: oklch(0.48 0.12 270);            /* #6570c8 Linear indigo */
   --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.945 0.007 55);         /* Stone 100 */
-  --secondary-foreground: oklch(0.145 0.018 40);
+  --secondary: oklch(0.91 0 0);              /* #e8e8e8 — selected tab bg */
+  --secondary-foreground: oklch(0.13 0 0);
 
-  --muted: oklch(0.945 0.007 55);             /* Stone 100 */
-  --muted-foreground: oklch(0.44 0.018 45);   /* Mid warm #57534E */
+  --muted: oklch(0.91 0 0);                  /* #e8e8e8 */
+  --muted-foreground: oklch(0.42 0 0);       /* #616163 — inactive icons */
 
-  --accent: oklch(0.930 0.009 55);            /* Stone 150 — hover */
-  --accent-foreground: oklch(0.145 0.018 40);
+  --accent: oklch(0.91 0 0);                 /* #e8e8e8 — hover bg */
+  --accent-foreground: oklch(0.13 0 0);
 
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.878 0.008 55);            /* Stone 200 #E7E5E4 — subtle */
-  --input: oklch(0.878 0.008 55);
-  --ring: oklch(0.56 0.12 38);               /* Crail ring */
+  --border: oklch(0.864 0 0);                /* #dcdcdc — outlines */
+  --input: oklch(0.864 0 0);
+  --ring: oklch(0.48 0.12 270);              /* indigo ring */
 
-  --chart-1: oklch(0.56 0.12 38);
-  --chart-2: oklch(0.68 0.09 55);
-  --chart-3: oklch(0.72 0.06 80);
-  --chart-4: oklch(0.62 0.10 25);
-  --chart-5: oklch(0.76 0.07 45);
+  --chart-1: oklch(0.48 0.12 270);
+  --chart-2: oklch(0.60 0.10 200);
+  --chart-3: oklch(0.65 0.09 150);
+  --chart-4: oklch(0.55 0.13 30);
+  --chart-5: oklch(0.62 0.11 320);
 
-  /* Sidebar — slightly darker than page for visual separation */
-  --sidebar: oklch(0.945 0.007 62);           /* Stone 100 */
-  --sidebar-foreground: oklch(0.145 0.018 40);
-  --sidebar-primary: oklch(0.56 0.12 38);
+  /* Sidebar — #f5f5f5 (--bg-sidebar-light) */
+  --sidebar: oklch(0.961 0 0);               /* #f5f5f5 */
+  --sidebar-foreground: oklch(0.13 0 0);
+  --sidebar-primary: oklch(0.48 0.12 270);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.910 0.010 58);    /* hover bg */
-  --sidebar-accent-foreground: oklch(0.145 0.018 40);
-  --sidebar-border: oklch(0.878 0.008 55);    /* same as --border */
-  --sidebar-ring: oklch(0.56 0.12 38);
+  --sidebar-accent: oklch(0.91 0 0);         /* #e8e8e8 hover */
+  --sidebar-accent-foreground: oklch(0.13 0 0);
+  --sidebar-border: oklch(0.864 0 0);        /* #dcdcdc */
+  --sidebar-ring: oklch(0.48 0.12 270);
 }
 
 .dark {
