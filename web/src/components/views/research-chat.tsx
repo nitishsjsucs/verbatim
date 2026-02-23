@@ -48,7 +48,7 @@ interface ResearchMessage {
 
 interface ResearchChatProps {
     className?: string
-    onCitationClick?: (docId: string, pageNumber: number) => void
+    onCitationClick?: (docId: string, pageNumber: number, docName?: string) => void
 }
 
 // --- Helper sub-components ---
@@ -501,7 +501,7 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
                                                         if (onCitationClick && cite.doc_id) {
                                                             const match = cite.page_range.match(/p\.?\s*(\d+)/)
                                                             if (match) {
-                                                                onCitationClick(cite.doc_id, parseInt(match[1], 10))
+                                                                onCitationClick(cite.doc_id, parseInt(match[1], 10), cite.doc_name)
                                                             }
                                                         }
                                                     }}

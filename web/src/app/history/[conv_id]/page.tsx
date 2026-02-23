@@ -327,7 +327,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
 
                     {/* Right: PDF viewer */}
                     {pdfUrl && (
-                        <div className="flex-1 min-h-0 bg-muted/10">
+                        <div className="flex-1 min-h-0 overflow-hidden">
                             <PdfViewer
                                 ref={pdfRef}
                                 fileUrl={pdfUrl}
@@ -336,10 +336,6 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                         </div>
                     )}
 
-                    {/* Research conversations: no PDF, just full-width chat */}
-                    {isResearch && !pdfUrl && (
-                        <div className="flex-1" />
-                    )}
                 </div>
             </main>
         </div>

@@ -39,14 +39,15 @@ export default function ResearchPage() {
     const [pendingPage, setPendingPage] = React.useState<number | null>(null)
 
     // When citation is clicked in chat, load the document's PDF and jump to page
-    const handleCitationClick = React.useCallback((docId: string, pageNumber: number) => {
+    const handleCitationClick = React.useCallback((docId: string, pageNumber: number, docName?: string) => {
         if (pdfDocId === docId) {
             // Same document — just jump
             pdfRef.current?.jumpToPage(pageNumber - 1)
+            setRightPanel("pdf")
         } else {
             // Different document — load it and queue the page jump
             setPdfDocId(docId)
-            setPdfDocName("")  // Will be filled from citation data
+            setPdfDocName(docName || docId)
             setPendingPage(pageNumber)
             setRightPanel("pdf")
         }
@@ -55,12 +56,19 @@ export default function ResearchPage() {
     // Jump to pending page when PdfViewer mounts with a new doc
     React.useEffect(() => {
         if (pendingPage !== null && pdfDocId) {
-            // Small delay to let the PDF viewer mount
-            const timer = setTimeout(() => {
-                pdfRef.current?.jumpToPage(pendingPage - 1)
-                setPendingPage(null)
-            }, 500)
-            return () => clearTimeout(timer)
+            // Retry jumping until the PDF is ready (blob fetch + render takes time)
+            let attempts = 0
+            const interval = setInterval(() => {
+                attempts++
+                if (pdfRef.current) {
+                    pdfRef.current.jumpToPage(pendingPage - 1)
+                }
+                if (attempts >= 20) {
+                    clearInterval(interval)
+                    setPendingPage(null)
+                }
+            }, 300)
+            return () => clearInterval(interval)
         }
     }, [pendingPage, pdfDocId])
 
@@ -112,7 +120,7 @@ export default function ResearchPage() {
                                 </div>
                             </div>
                             {/* PDF Viewer */}
-                            <div className="flex-1 min-h-0">
+                            <div className="flex-1 min-h-0 overflow-hidden">
                                 <PdfViewer
                                     ref={pdfRef}
                                     fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${pdfDocId}/raw`}
