@@ -85,8 +85,8 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else setOpen(true) }}>
             <DialogTrigger asChild>
                 {children || (
-                    <Button>
-                        <Upload className="mr-2 h-4 w-4" />
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-[12px]">
+                        <Upload className="h-3.5 w-3.5" />
                         New Document
                     </Button>
                 )}
