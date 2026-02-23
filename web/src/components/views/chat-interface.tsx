@@ -144,30 +144,34 @@ function ConversationList({
 
     if (collapsed) {
         return (
-            <div className="w-10 border-r border-border/30 flex flex-col items-center py-3 gap-2 shrink-0">
-                <button
-                    onClick={onToggle}
-                    className="p-1.5 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-muted/30 transition-colors"
-                    title="Show conversations"
-                >
-                    <PanelLeftOpen className="h-4 w-4" />
-                </button>
-                <button
-                    onClick={onNew}
-                    className="p-1.5 text-muted-foreground/60 hover:text-primary rounded-md hover:bg-primary/10 transition-colors"
-                    title="New chat"
-                >
-                    <Plus className="h-4 w-4" />
-                </button>
+            <div className="w-10 border-r border-border flex flex-col items-center shrink-0">
+                <div className="h-11 flex items-center justify-center w-full border-b border-border">
+                    <button
+                        onClick={onToggle}
+                        className="p-1.5 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-muted/30 transition-colors"
+                        title="Show conversations"
+                    >
+                        <PanelLeftOpen className="h-4 w-4" />
+                    </button>
+                </div>
+                <div className="flex flex-col items-center gap-2 py-2">
+                    <button
+                        onClick={onNew}
+                        className="p-1.5 text-muted-foreground/60 hover:text-primary rounded-md hover:bg-primary/10 transition-colors"
+                        title="New chat"
+                    >
+                        <Plus className="h-4 w-4" />
+                    </button>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="w-56 border-r border-border/30 flex flex-col shrink-0 bg-muted/5">
+        <div className="w-56 border-r border-border flex flex-col shrink-0 bg-sidebar">
             {/* Header */}
-            <div className="p-3 border-b border-border/20 flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Conversations</span>
+            <div className="h-11 border-b border-border flex items-center px-3 justify-between shrink-0">
+                <span className="text-[13px] font-medium text-foreground">Conversations</span>
                 <div className="flex items-center gap-1">
                     <button
                         onClick={onNew}
