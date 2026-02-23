@@ -75,89 +75,93 @@ function ConversationCard({
     const updatedDate = conv.updated_at ? new Date(conv.updated_at) : null
 
     return (
-        <div className="border border-border/30 rounded-lg p-4 hover:border-border/60 transition-colors group">
-            <div className="flex items-start justify-between gap-3">
-                <Link href={href} className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                        {isResearch ? (
-                            <Library className="h-4 w-4 text-primary shrink-0" />
-                        ) : (
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                        )}
-                        <h3 className="text-sm font-medium truncate">
-                            {conv.title || conv.doc_name || conv.doc_id}
-                        </h3>
-                        <span className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded shrink-0",
-                            isResearch ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                        )}>
-                            {isResearch ? "Research" : "Document"}
-                        </span>
-                    </div>
+        <div className="group flex items-start gap-3 px-4 py-3 rounded-md border border-border bg-card hover:bg-accent/40 transition-colors">
+            {/* Icon */}
+            <div className="mt-0.5 flex-shrink-0">
+                {isResearch
+                    ? <Library className="h-4 w-4 text-primary" />
+                    : <FileText className="h-4 w-4 text-muted-foreground" />
+                }
+            </div>
 
-                    {conv.last_message_preview && (
-                        <p className="text-xs text-muted-foreground/70 truncate mb-2">
-                            {conv.last_message_preview
-                                .replace(/#{1,6}\s+/g, '')
-                                .replace(/\*\*(.+?)\*\*/g, '$1')
-                                .replace(/\*(.+?)\*/g, '$1')
-                                .replace(/`(.+?)`/g, '$1')
-                                .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-                                .replace(/^[-*+]\s+/gm, '')
-                                .replace(/\n+/g, ' ')
-                                .trim()}
-                        </p>
-                    )}
+            {/* Body */}
+            <Link href={href} className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="text-[13px] font-medium text-foreground truncate">
+                        {conv.title || conv.doc_name || conv.doc_id}
+                    </h3>
+                    <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+                        isResearch
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground"
+                    )}>
+                        {isResearch ? "Research" : "Doc"}
+                    </span>
+                </div>
 
-                    <div className="flex items-center gap-4 text-[10px] text-muted-foreground/50">
+                {conv.last_message_preview && (
+                    <p className="text-[12px] text-muted-foreground truncate mb-1.5">
+                        {conv.last_message_preview
+                            .replace(/#{1,6}\s+/g, '')
+                            .replace(/\*\*(.+?)\*\*/g, '$1')
+                            .replace(/\*(.+?)\*/g, '$1')
+                            .replace(/`(.+?)`/g, '$1')
+                            .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+                            .replace(/^[-*+]\s+/gm, '')
+                            .replace(/\n+/g, ' ')
+                            .trim()}
+                    </p>
+                )}
+
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground/50">
+                    <span className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {conv.message_count}
+                    </span>
+                    {updatedDate && (
                         <span className="flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" />
-                            {conv.message_count} messages
+                            <Clock className="h-3 w-3" />
+                            {updatedDate.toLocaleDateString()} {updatedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        {updatedDate && (
-                            <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {updatedDate.toLocaleDateString()} {updatedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                        )}
-                    </div>
-                </Link>
-
-                {/* Actions */}
-                <div className="shrink-0 flex items-center gap-1">
-                    <Link
-                        href={docHref}
-                        onClick={(e) => e.stopPropagation()}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-primary/60 hover:text-primary px-2 py-1 rounded hover:bg-primary/10"
-                        title={isResearch ? "Open Research" : "Open Document"}
-                    >
-                        Open doc →
-                    </Link>
-                    {confirmDelete ? (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => { onDelete(conv.conv_id); setConfirmDelete(false) }}
-                                className="text-[10px] text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-400/10"
-                            >
-                                Delete
-                            </button>
-                            <button
-                                onClick={() => setConfirmDelete(false)}
-                                className="text-[10px] text-muted-foreground hover:text-foreground px-2 py-1"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => setConfirmDelete(true)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-red-400 p-1"
-                            title="Delete conversation"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </button>
                     )}
                 </div>
+            </Link>
+
+            {/* Actions */}
+            <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link
+                    href={docHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+                    title={isResearch ? "Open Research" : "Open Document"}
+                >
+                    Open →
+                </Link>
+                {confirmDelete ? (
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => { onDelete(conv.conv_id); setConfirmDelete(false) }}
+                            className="text-[11px] text-destructive hover:text-destructive px-2 py-1 rounded bg-destructive/10"
+                        >
+                            Delete
+                        </button>
+                        <button
+                            onClick={() => setConfirmDelete(false)}
+                            className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setConfirmDelete(true)}
+                        className="text-muted-foreground/40 hover:text-destructive p-1 rounded hover:bg-destructive/10 transition-colors"
+                        title="Delete conversation"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                )}
             </div>
         </div>
     )
@@ -233,14 +237,14 @@ export default function HistoryPage() {
 
             <main className="flex-1 flex flex-col min-w-0">
                 {/* Header */}
-                <div className="h-16 border-b border-border/40 flex items-center justify-between px-8 shrink-0 bg-background/80 backdrop-blur-md">
-                    <div>
-                        <h1 className="text-lg font-semibold">Chat History</h1>
-                        <p className="text-xs text-muted-foreground/60">
-                            {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
-                        </p>
-                    </div>
+                <div className="h-11 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
                     <div className="flex items-center gap-3">
+                        <h1 className="text-sm font-semibold">Chat History</h1>
+                        <span className="text-[11px] text-muted-foreground/50 font-medium">
+                            {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
                             size="sm"
@@ -293,8 +297,8 @@ export default function HistoryPage() {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8">
-                    <div className="max-w-3xl mx-auto space-y-6">
+                <div className="flex-1 overflow-y-auto p-6">
+                    <div className="max-w-3xl mx-auto space-y-5">
                         {/* Storage stats */}
                         <StorageBar stats={stats} />
 

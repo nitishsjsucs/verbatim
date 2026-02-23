@@ -40,8 +40,8 @@ export function TreeExplorer({ structure, className, onNodeSelect, selectedNodeI
 
     return (
         <div className={cn("flex flex-col h-full bg-sidebar border-r border-sidebar-border", className)}>
-            <div className="h-14 border-b border-sidebar-border/40 flex items-center px-4 shrink-0">
-                <h3 className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">Structure</h3>
+            <div className="h-11 border-b border-sidebar-border flex items-center px-4 shrink-0">
+                <h3 className="text-[13px] font-medium text-sidebar-foreground">Structure</h3>
             </div>
             {/* Search */}
             <div className="px-3 pt-2 pb-1 shrink-0">

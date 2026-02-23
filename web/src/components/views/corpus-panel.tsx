@@ -104,10 +104,11 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
     return (
         <div className={cn("flex flex-col h-full", className)}>
             {/* Header */}
-            <div className="h-10 border-b border-border/40 flex items-center px-4 shrink-0">
-                <BookOpen className="h-3.5 w-3.5 text-muted-foreground mr-2" />
-                <span className="text-xs font-medium text-muted-foreground">
-                    Corpus: {corpus.documents.length} documents, {corpus.relationships.length} relationships
+            <div className="h-11 border-b border-border flex items-center px-4 shrink-0 gap-2">
+                <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[13px] font-medium text-foreground">Corpus</span>
+                <span className="text-[11px] text-muted-foreground/50 ml-1">
+                    {corpus.documents.length} docs · {corpus.relationships.length} links
                 </span>
             </div>
 

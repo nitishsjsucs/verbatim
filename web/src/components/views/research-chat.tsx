@@ -386,36 +386,36 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
             {/* Main chat area */}
             <div className="flex flex-col flex-1 min-w-0">
             {/* Header */}
-            <div className="h-14 border-b border-border/40 flex items-center px-6 sticky top-0 bg-background/80 backdrop-blur-md z-10 justify-between">
+            <div className="h-11 border-b border-border flex items-center px-4 shrink-0 bg-background justify-between">
                 <div className="flex items-center gap-2">
-                    <Library className="h-4 w-4 text-primary" />
-                    <h2 className="text-sm font-semibold text-foreground">Cross-Document Research</h2>
+                    <Library className="h-3.5 w-3.5 text-primary" />
+                    <h2 className="text-[13px] font-medium text-foreground">Research</h2>
                     {activeConvId && (
-                        <span className="text-[10px] text-muted-foreground/50 font-mono ml-2">
+                        <span className="text-[11px] text-muted-foreground/50 truncate max-w-[200px]">
                             {conversations.find(c => c.conv_id === activeConvId)?.title?.slice(0, 40) || ""}
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={handleNewChat}
-                        className="gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                        className="h-7 gap-1.5 text-[12px] text-muted-foreground hover:text-foreground px-2"
                     >
                         <Plus className="h-3.5 w-3.5" />
-                        New Chat
+                        New
                     </Button>
-                    <div className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
-                        <div className="h-1.5 w-1.5 rounded-full bg-green-500/50 animate-pulse" />
-                        All Documents
+                    <div className="text-[11px] text-muted-foreground/40 flex items-center gap-1.5 pr-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-green-500/60" />
+                        Active
                     </div>
                 </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4" ref={scrollAreaRef}>
-                <div className="space-y-8 max-w-3xl mx-auto py-8">
+                <div className="space-y-6 max-w-3xl mx-auto py-6">
                     {loadingHistory && (
                         <div className="flex items-center justify-center h-[30vh] text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -439,11 +439,11 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
                     {messages.map((msg) => (
                         <div key={msg.id} className={cn("flex gap-5 group", msg.role === "user" ? "flex-row-reverse" : "")}>
                             <Avatar className={cn(
-                                "h-8 w-8 mt-1 border shadow-sm shrink-0",
-                                msg.role === "assistant" ? "bg-background border-border" : "bg-primary border-primary"
+                                "h-7 w-7 mt-1 border shrink-0",
+                                msg.role === "assistant" ? "bg-sidebar border-border" : "bg-primary border-primary"
                             )}>
-                                <AvatarFallback className={msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}>
-                                    {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                                <AvatarFallback className={msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-sidebar text-foreground"}>
+                                    {msg.role === "user" ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                                 </AvatarFallback>
                             </Avatar>
 
@@ -472,10 +472,10 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
 
                                 {/* Answer text */}
                                 <div className={cn(
-                                    "px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm",
+                                    "px-4 py-3 rounded-lg text-[13px] leading-relaxed",
                                     msg.role === "user"
-                                        ? "bg-primary text-primary-foreground rounded-tr-sm whitespace-pre-wrap"
-                                        : "bg-muted/30 border border-border/40 text-foreground rounded-tl-sm"
+                                        ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                                        : "bg-card border border-border text-foreground"
                                 )}>
                                     {msg.role === "assistant" ? <Markdown content={msg.content} /> : msg.content}
                                 </div>
@@ -689,9 +689,9 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
 
                     {loading && (
                         <div className="flex gap-5 animate-pulse">
-                            <Avatar className="h-8 w-8 mt-1 border border-border bg-background">
-                                <AvatarFallback className="bg-background">
-                                    <Bot className="h-4 w-4" />
+                            <Avatar className="h-7 w-7 mt-1 border border-border bg-sidebar">
+                                <AvatarFallback className="bg-sidebar">
+                                    <Bot className="h-3.5 w-3.5" />
                                 </AvatarFallback>
                             </Avatar>
                             <div className="space-y-2.5 w-full max-w-md">
@@ -708,50 +708,41 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-border/40 bg-background/80 backdrop-blur-md sticky bottom-0">
+            <div className="border-t border-border bg-background px-4 py-3">
                 <div className="max-w-3xl mx-auto">
-                    <div className="flex items-center gap-4 mb-2 px-1">
-                        <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none">
-                            <input
-                                type="checkbox"
-                                checked={verify}
-                                onChange={(e) => setVerify(e.target.checked)}
-                                className="rounded border-border h-3 w-3 accent-primary"
-                            />
-                            <ShieldCheck className="h-3 w-3" />
-                            Verify
-                        </label>
-                    </div>
-                    <div className="relative group">
-                        <form onSubmit={handleSubmit} className="relative">
-                            <Input
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                placeholder="Ask a question across all documents..."
-                                className="pr-12 py-6 bg-muted/30 border-muted-foreground/20 focus-visible:bg-background focus-visible:border-primary/30 focus-visible:ring-0 transition-all text-sm shadow-sm"
-                                disabled={loading}
-                            />
-                            <Button
-                                type="submit"
-                                size="icon"
-                                disabled={!input.trim() || loading}
-                                className={cn(
-                                    "absolute right-1.5 top-1.5 h-9 w-9 transition-all",
-                                    input.trim()
-                                        ? "bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
-                                        : "bg-transparent text-muted-foreground hover:bg-muted"
-                                )}
-                            >
-                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                            </Button>
-                        </form>
-                        <div className="flex justify-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-500">
-                            <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1.5">
-                                <Sparkles className="h-3 w-3" />
-                                Cross-document AI research &middot; Check citations
-                            </span>
+                    <form onSubmit={handleSubmit} className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 focus-within:border-primary/50 transition-colors">
+                        <Input
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            placeholder="Ask a question across all documents…"
+                            className="flex-1 border-0 bg-transparent p-0 h-auto text-[13px] focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/40"
+                            disabled={loading}
+                        />
+                        <div className="flex items-center gap-2 border-l border-border pl-2 shrink-0">
+                            <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer select-none" title="Verify answer against sources">
+                                <input
+                                    type="checkbox"
+                                    checked={verify}
+                                    onChange={(e) => setVerify(e.target.checked)}
+                                    className="h-3 w-3 accent-primary"
+                                />
+                                <ShieldCheck className="h-3 w-3" />
+                            </label>
                         </div>
-                    </div>
+                        <Button
+                            type="submit"
+                            size="icon"
+                            disabled={!input.trim() || loading}
+                            className={cn(
+                                "h-7 w-7 shrink-0 transition-all",
+                                input.trim()
+                                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                    : "bg-muted text-muted-foreground/40"
+                            )}
+                        >
+                            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        </Button>
+                    </form>
                 </div>
             </div>
             </div>

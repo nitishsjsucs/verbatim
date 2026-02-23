@@ -82,54 +82,53 @@ export function DocumentList() {
 
     return (
         <>
-        <div className="rounded-md border bg-card">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
             <Table>
                 <TableHeader>
-                    <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="w-[80px] text-right">Pages</TableHead>
-                        <TableHead className="w-[80px] text-right">Nodes</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
+                    <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Nodes</TableHead>
+                        <TableHead className="h-9 w-[44px]"></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {documents.map((doc) => (
-                        <TableRow key={doc.id}>
-                            <TableCell>
+                        <TableRow key={doc.id} className="border-b border-border/60 hover:bg-accent/40 transition-colors group">
+                            <TableCell className="pl-4 py-2.5">
                                 <Link
                                     href={`/documents/${doc.id}`}
-                                    className="flex items-center gap-2 hover:underline decoration-primary/50 underline-offset-4"
+                                    className="flex items-center gap-2 group/link"
                                 >
-                                    <FileText className="h-4 w-4 text-primary shrink-0" />
-                                    <span className="font-medium">{doc.name}</span>
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
+                                    <span className="text-[13px] font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
                                 </Link>
                                 {doc.description && (
                                     <button
-                                        className="text-xs text-muted-foreground truncate block max-w-full pl-6 mt-0.5 text-left hover:text-foreground transition-colors cursor-pointer"
+                                        className="text-[11px] text-muted-foreground/60 truncate block max-w-full pl-[22px] mt-0.5 text-left hover:text-muted-foreground transition-colors cursor-pointer"
                                         title="Click to view full description"
                                         onClick={() => setExpandedDoc(doc)}
                                     >
-                                        {doc.description.replace(/\*\*/g, "").slice(0, 120)}...
+                                        {doc.description.replace(/\*\*/g, "").slice(0, 100)}…
                                     </button>
                                 )}
-                                <span className="text-[10px] font-mono text-muted-foreground/40 pl-6">{doc.id}</span>
                             </TableCell>
-                            <TableCell className="text-right font-mono">{doc.pages}</TableCell>
-                            <TableCell className="text-right font-mono">{doc.nodes}</TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
+                            <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.nodes}</TableCell>
+                            <TableCell className="text-right py-2.5 pr-2">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <Button variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
+                                            <MoreHorizontal className="h-3.5 w-3.5" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem
-                                            className="text-red-600 focus:text-red-600 focus:bg-red-100/10"
+                                            className="text-destructive focus:text-destructive focus:bg-destructive/10 text-[13px]"
                                             onClick={() => handleDelete(doc.id)}
                                         >
-                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <Trash2 className="mr-2 h-3.5 w-3.5" />
                                             Delete
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>

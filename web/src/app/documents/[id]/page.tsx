@@ -111,28 +111,30 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
             <Sidebar />
             <div className="flex flex-1 flex-col overflow-hidden min-w-0">
                 {/* Tab Bar */}
-                <div className="h-11 border-b border-border flex items-center px-2 bg-background/80 backdrop-blur-md flex-shrink-0 gap-1">
-                    <TabButton
-                        active={viewMode === "document"}
-                        onClick={() => setViewMode("document")}
-                        icon={<FileText className="h-3.5 w-3.5" />}
-                        label="Document"
-                    />
-                    <TabButton
-                        active={viewMode === "chat"}
-                        onClick={() => setViewMode("chat")}
-                        icon={<MessageSquare className="h-3.5 w-3.5" />}
-                        label="Chat"
-                    />
-                    <TabButton
-                        active={viewMode === "actionables"}
-                        onClick={() => setViewMode("actionables")}
-                        icon={<Shield className="h-3.5 w-3.5" />}
-                        label="Actionables"
-                    />
+                <div className="h-11 border-b border-border flex items-center px-4 bg-background flex-shrink-0">
+                    <div className="flex items-center gap-0 h-full">
+                        <TabButton
+                            active={viewMode === "document"}
+                            onClick={() => setViewMode("document")}
+                            icon={<FileText className="h-3.5 w-3.5" />}
+                            label="Document"
+                        />
+                        <TabButton
+                            active={viewMode === "chat"}
+                            onClick={() => setViewMode("chat")}
+                            icon={<MessageSquare className="h-3.5 w-3.5" />}
+                            label="Chat"
+                        />
+                        <TabButton
+                            active={viewMode === "actionables"}
+                            onClick={() => setViewMode("actionables")}
+                            icon={<Shield className="h-3.5 w-3.5" />}
+                            label="Actionables"
+                        />
+                    </div>
                     <div className="flex-1" />
-                    <div className="text-xs text-muted-foreground/50 pr-2">
-                        {doc.doc_name} &middot; {doc.total_pages} pages
+                    <div className="text-[11px] text-muted-foreground/40 font-medium truncate max-w-[280px]">
+                        {doc.doc_name} &middot; {doc.total_pages}p
                     </div>
                 </div>
 
@@ -232,10 +234,10 @@ function TabButton({ active, onClick, icon, label }: {
         <button
             onClick={onClick}
             className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                "relative flex items-center gap-1.5 px-3 h-full text-[13px] font-medium transition-colors border-b-2",
                 active
-                    ? "bg-primary/10 text-primary border border-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "text-foreground border-primary"
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"
             )}
         >
             {icon}

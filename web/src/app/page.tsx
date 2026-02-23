@@ -6,17 +6,18 @@ export default function Home() {
   return (
     <div className="flex bg-background h-screen w-full overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="container max-w-5xl mx-auto py-10 px-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">Documents</h1>
-              <p className="text-muted-foreground mt-1">Manage and query your PDF documents.</p>
-            </div>
-            <UploadModal />
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header bar — matches Linear's h-11 chrome */}
+        <div className="h-11 border-b border-border flex items-center justify-between px-6 flex-shrink-0 bg-background">
+          <h1 className="text-sm font-semibold text-foreground">Documents</h1>
+          <UploadModal />
+        </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-4xl mx-auto py-8 px-6">
+            <p className="text-sm text-muted-foreground mb-6">Manage and query your PDF documents.</p>
+            <DocumentList />
           </div>
-
-          <DocumentList />
         </div>
       </main>
     </div>

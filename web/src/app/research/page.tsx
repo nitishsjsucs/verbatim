@@ -80,7 +80,7 @@ export default function ResearchPage() {
             <Sidebar />
             <main className="flex-1 flex overflow-hidden">
                 {/* Left: Research Chat (65%) */}
-                <div className="flex-[65] min-w-0 border-r border-border/40">
+                <div className="flex-[65] min-w-0 border-r border-border">
                     <ResearchChat onCitationClick={handleCitationClick} />
                 </div>
 
@@ -89,25 +89,25 @@ export default function ResearchPage() {
                     {rightPanel === "pdf" && pdfDocId ? (
                         <>
                             {/* PDF Header */}
-                            <div className="h-10 border-b border-border/40 flex items-center px-4 justify-between shrink-0">
+                            <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                                    <span className="text-xs font-medium text-muted-foreground truncate">
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-[12px] font-medium text-foreground truncate">
                                         {pdfDocName || pdfDocId}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => setRightPanel("corpus")}
-                                        className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                                        className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
                                     >
                                         Corpus
                                     </button>
                                     <button
                                         onClick={closePdf}
-                                        className="p-1 hover:bg-muted/50 rounded transition-colors"
+                                        className="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground"
                                     >
-                                        <X className="h-3 w-3 text-muted-foreground" />
+                                        <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             </div>
