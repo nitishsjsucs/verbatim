@@ -49,6 +49,8 @@ class RetrievedSection:
     page_range: str
     source: str = "direct"  # "direct", "sibling", "parent", "cross_ref"
     token_count: int = 0
+    doc_id: str = ""   # Source document ID (populated for corpus sections)
+    doc_name: str = "" # Source document name (populated for corpus sections)
 
 
 @dataclass
@@ -60,6 +62,8 @@ class Citation:
     title: str
     page_range: str
     excerpt: str = ""  # Key excerpt from the cited section
+    doc_id: str = ""   # Source document ID (populated for corpus citations)
+    doc_name: str = "" # Source document name (populated for corpus citations)
 
 
 @dataclass
@@ -239,6 +243,8 @@ class QueryRecord:
                 "title": c.title,
                 "page_range": c.page_range,
                 "excerpt": c.excerpt,
+                "doc_id": c.doc_id,
+                "doc_name": c.doc_name,
             }
             for c in self.citations
         ]

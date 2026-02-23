@@ -883,8 +883,8 @@ def run_corpus_query(request: CorpusQueryRequest):
             {
                 "citation_id": c.citation_id,
                 "node_id": c.node_id,
-                "doc_id": getattr(c, "_doc_id", ""),
-                "doc_name": getattr(c, "_doc_name", ""),
+                "doc_id": c.doc_id,
+                "doc_name": c.doc_name,
                 "title": c.title,
                 "page_range": c.page_range,
                 "excerpt": c.excerpt,

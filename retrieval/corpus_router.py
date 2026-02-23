@@ -135,9 +135,8 @@ class CorpusRouter:
 
                 # Tag each section with its source document
                 for s in sections:
-                    # Store doc info on the section for the synthesis prompt
-                    s._doc_id = doc_id  # type: ignore[attr-defined]
-                    s._doc_name = doc_name  # type: ignore[attr-defined]
+                    s.doc_id = doc_id
+                    s.doc_name = doc_name
 
                 sections_by_doc[doc_id] = sections
                 all_sections.extend(sections)
@@ -305,8 +304,7 @@ class CorpusRouter:
         # Sort: higher confidence first, then original order
         sections_with_priority = []
         for i, s in enumerate(sections):
-            doc_id = getattr(s, "_doc_id", "")
-            conf = doc_confidence.get(doc_id, 0.5)
+            conf = doc_confidence.get(s.doc_id, 0.5)
             sections_with_priority.append((conf, i, s))
 
         sections_with_priority.sort(key=lambda x: (-x[0], x[1]))

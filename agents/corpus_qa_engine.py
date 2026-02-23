@@ -246,8 +246,8 @@ class CorpusQAEngine:
         doc_names: dict[str, str] = {}
 
         for s in sections:
-            doc_id = getattr(s, "_doc_id", "unknown")
-            doc_name = getattr(s, "_doc_name", doc_id)
+            doc_id = s.doc_id or "unknown"
+            doc_name = s.doc_name or doc_id
             if doc_id not in by_doc:
                 by_doc[doc_id] = []
                 doc_names[doc_id] = doc_name
@@ -277,11 +277,9 @@ class CorpusQAEngine:
         # Build a lookup from node_id to (doc_id, doc_name, page_range)
         node_doc_map: dict[str, dict] = {}
         for s in rr.all_sections:
-            doc_id = getattr(s, "_doc_id", "")
-            doc_name = getattr(s, "_doc_name", "")
             node_doc_map[s.node_id] = {
-                "doc_id": doc_id,
-                "doc_name": doc_name,
+                "doc_id": s.doc_id,
+                "doc_name": s.doc_name,
                 "page_range": s.page_range,
             }
 
@@ -301,12 +299,10 @@ class CorpusQAEngine:
                     title=c.get("title", ""),
                     page_range=page_range,
                     excerpt=c.get("excerpt", ""),
-                    # Store doc info as extra attributes
+                    doc_id=doc_id,
+                    doc_name=doc_name,
                 )
             )
-            # Attach doc info to the citation object
-            citations[-1]._doc_id = doc_id  # type: ignore[attr-defined]
-            citations[-1]._doc_name = doc_name  # type: ignore[attr-defined]
 
         return citations
 
