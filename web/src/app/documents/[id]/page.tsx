@@ -11,6 +11,7 @@ import { fetchDocument } from "@/lib/api"
 import { DocumentDetail, TreeNode } from "@/lib/types"
 import { Loader2, AlertCircle, FileText, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // Dynamic import — pdf.js requires browser APIs (no SSR)
 const PdfViewer = dynamic(
@@ -83,23 +84,28 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
 
     if (loading) {
         return (
+            <RoleRedirect>
             <div className="flex h-screen w-full bg-background items-center justify-center text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
                 <span className="animate-pulse">Loading document structure...</span>
             </div>
+            </RoleRedirect>
         )
     }
 
     if (error || !doc) {
         return (
+            <RoleRedirect>
             <div className="flex h-screen w-full bg-background items-center justify-center text-destructive flex-col gap-2">
                 <AlertCircle className="h-8 w-8" />
                 <p className="font-medium">{error || "Document not found"}</p>
             </div>
+            </RoleRedirect>
         )
     }
 
     return (
+        <RoleRedirect>
         <div className="flex bg-background h-screen w-full overflow-hidden">
             <Sidebar />
             <div className="flex flex-1 flex-col overflow-hidden min-w-0">
@@ -188,6 +194,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
                 </div>
             </div>
         </div>
+        </RoleRedirect>
     )
 }
 

@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -457,6 +458,7 @@ export default function DashboardPage() {
     // ─── Render ──────────────────────────────────────────────────────────
 
     return (
+        <RoleRedirect>
         <div className="flex h-screen bg-background">
             <Sidebar />
 
@@ -771,5 +773,6 @@ export default function DashboardPage() {
                 </div>
             </main>
         </div>
+        </RoleRedirect>
     )
 }

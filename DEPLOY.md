@@ -95,46 +95,52 @@ Restart the backend. Done.
 
 ---
 
-## Step 5: Create the First User (Compliance Officer)
+## Step 5: Seed All Accounts (One-Time)
 
-1. Go to `https://your-app.vercel.app/sign-in`
-2. Click **Sign up** and create your account
-3. This creates a `team_member` account by default
-4. **Promote yourself to compliance_officer** — connect to your MongoDB Atlas and run:
+After your first deploy, run this command **once** to create all accounts:
 
-```javascript
-// In MongoDB Atlas → Browse Collections → govinda_auth → user
-// Find your user document and update the role field:
-db.user.updateOne(
-  { email: "your-email@example.com" },
-  { $set: { role: "compliance_officer" } }
-)
+```bash
+curl -X POST https://your-app.vercel.app/api/seed \
+  -H "Content-Type: application/json" \
+  -d '{"secret":"govinda-seed-2024"}'
 ```
 
-Or use **MongoDB Compass** / **Atlas Data Explorer**:
-- Navigate to `govinda_auth` → `user`
-- Find your document
-- Edit the `role` field from `"team_member"` to `"compliance_officer"`
-
-5. Refresh the app — you now see the full compliance officer interface
-
----
-
-## Step 6: Create Team Member Accounts
-
-As a compliance officer, you can create team member accounts. They will:
-- Only see the **Team Board** (Monday.com-style task table)
-- Only see the **Reports** dashboard
-- Be able to update task status and submit evidence files
-- **NOT** see Documents, Research, History, Actionables, or Tracker
-
-To assign a team member to a specific workstream, update their `team` field in MongoDB:
-```javascript
-db.user.updateOne(
-  { email: "team-member@example.com" },
-  { $set: { team: "Policy" } }  // Must match a workstream: Policy, Technology, Operations, etc.
-)
+Or in PowerShell:
+```powershell
+Invoke-RestMethod -Uri "https://your-app.vercel.app/api/seed" -Method POST -ContentType "application/json" -Body '{"secret":"govinda-seed-2024"}'
 ```
+
+This creates **all accounts automatically** with the correct roles and team assignments:
+
+### Pre-Created Accounts
+
+| Email | Password | Role | Team |
+|---|---|---|---|
+| `compliance@regtech.com` | `Compliance2024!` | compliance_officer | — |
+| `arun@regtech.com` | `Policy2024!` | team_member | Policy |
+| `priya@regtech.com` | `Policy2024!` | team_member | Policy |
+| `rahul@regtech.com` | `Technology2024!` | team_member | Technology |
+| `sneha@regtech.com` | `Technology2024!` | team_member | Technology |
+| `vikram@regtech.com` | `Operations2024!` | team_member | Operations |
+| `meera@regtech.com` | `Operations2024!` | team_member | Operations |
+| `anita@regtech.com` | `Training2024!` | team_member | Training |
+| `suresh@regtech.com` | `Reporting2024!` | team_member | Reporting |
+| `kavita@regtech.com` | `CustComm2024!` | team_member | Customer Communication |
+| `rajesh@regtech.com` | `Governance2024!` | team_member | Governance |
+| `deepa@regtech.com` | `Legal2024!` | team_member | Legal |
+
+> **Change passwords after first login!** These are initial defaults.
+
+### What each role sees:
+
+**Compliance Officer** (`compliance@regtech.com`):
+- Ingest, Documents, Research, History, Actionables, Tracker, Team Board, Reports
+- Full access to approve/reject actionables, manage all teams
+
+**Team Members** (everyone else):
+- **Only** see: My Tasks (team board) + Reports
+- Can update task status, add notes, submit evidence files
+- Cannot access Documents, Research, History, Actionables, or Tracker
 
 ---
 

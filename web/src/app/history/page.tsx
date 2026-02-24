@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/layout/sidebar"
+import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     fetchConversations,
     deleteConversation,
@@ -232,6 +233,7 @@ export default function HistoryPage() {
     }
 
     return (
+        <RoleRedirect>
         <div className="flex h-screen bg-background">
             <Sidebar />
 
@@ -348,5 +350,6 @@ export default function HistoryPage() {
                 </div>
             </main>
         </div>
+        </RoleRedirect>
     )
 }

@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/layout/sidebar"
+import { RoleRedirect } from "@/components/auth/role-redirect"
 import { fetchConversation } from "@/lib/api"
 import { Conversation, ConversationMessage, Citation } from "@/lib/types"
 import Link from "next/link"
@@ -249,6 +250,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
     }, [])
 
     return (
+        <RoleRedirect>
         <div className="flex h-screen bg-background">
             <Sidebar />
 
@@ -339,5 +341,6 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                 </div>
             </main>
         </div>
+        </RoleRedirect>
     )
 }

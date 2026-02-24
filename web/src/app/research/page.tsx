@@ -9,6 +9,7 @@ import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 import { Loader2, X, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
+import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // Dynamic import — pdf.js requires browser APIs (no SSR)
 const PdfViewer = dynamic(
@@ -84,54 +85,56 @@ export default function ResearchPage() {
     }, [])
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background">
-            <Sidebar />
-            <main className="flex-1 flex overflow-hidden">
-                {/* Left: Research Chat (65%) */}
-                <div className="flex-[65] min-w-0 border-r border-border">
-                    <ResearchChat onCitationClick={handleCitationClick} />
-                </div>
+        <RoleRedirect>
+            <div className="flex h-screen overflow-hidden bg-background">
+                <Sidebar />
+                <main className="flex-1 flex overflow-hidden">
+                    {/* Left: Research Chat (65%) */}
+                    <div className="flex-[65] min-w-0 border-r border-border">
+                        <ResearchChat onCitationClick={handleCitationClick} />
+                    </div>
 
-                {/* Right: Corpus Panel or PDF Viewer (35%) */}
-                <div className="flex-[35] min-w-0 flex flex-col">
-                    {rightPanel === "pdf" && pdfDocId ? (
-                        <>
-                            {/* PDF Header */}
-                            <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-[12px] font-medium text-foreground truncate">
-                                        {pdfDocName || pdfDocId}
-                                    </span>
+                    {/* Right: Corpus Panel or PDF Viewer (35%) */}
+                    <div className="flex-[35] min-w-0 flex flex-col">
+                        {rightPanel === "pdf" && pdfDocId ? (
+                            <>
+                                {/* PDF Header */}
+                                <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-[12px] font-medium text-foreground truncate">
+                                            {pdfDocName || pdfDocId}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setRightPanel("corpus")}
+                                            className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+                                        >
+                                            Corpus
+                                        </button>
+                                        <button
+                                            onClick={closePdf}
+                                            className="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setRightPanel("corpus")}
-                                        className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
-                                    >
-                                        Corpus
-                                    </button>
-                                    <button
-                                        onClick={closePdf}
-                                        className="p-1.5 hover:bg-muted rounded transition-colors text-muted-foreground hover:text-foreground"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
+                                {/* PDF Viewer */}
+                                <div className="flex-1 min-h-0 overflow-hidden">
+                                    <PdfViewer
+                                        ref={pdfRef}
+                                        fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${pdfDocId}/raw`}
+                                    />
                                 </div>
-                            </div>
-                            {/* PDF Viewer */}
-                            <div className="flex-1 min-h-0 overflow-hidden">
-                                <PdfViewer
-                                    ref={pdfRef}
-                                    fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${pdfDocId}/raw`}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <CorpusPanel onDocumentClick={handleDocumentClick} />
-                    )}
-                </div>
-            </main>
-        </div>
+                            </>
+                        ) : (
+                            <CorpusPanel onDocumentClick={handleDocumentClick} />
+                        )}
+                    </div>
+                </main>
+            </div>
+        </RoleRedirect>
     )
 }

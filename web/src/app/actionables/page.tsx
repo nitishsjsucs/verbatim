@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { RoleRedirect } from "@/components/auth/role-redirect"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
@@ -610,6 +611,7 @@ export default function ActionablesPage() {
     const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
 
     return (
+        <RoleRedirect>
         <div className="flex h-screen bg-background">
             <Sidebar />
 
@@ -840,5 +842,6 @@ export default function ActionablesPage() {
                 </div>
             </main>
         </div>
+        </RoleRedirect>
     )
 }
