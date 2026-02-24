@@ -64,6 +64,38 @@ class TreeStore:
         cursor = self._collection.find({}, {"_id": 1})
         return [doc["_id"] for doc in cursor]
 
+    def list_documents_summary(self) -> List[dict]:
+        """
+        Fetch all documents' summaries in a single batch query (FIX #5).
+        
+        Instead of N+1 queries (list + load for each), use a single find()
+        with projection to get only needed fields.
+        """
+        cursor = self._collection.find(
+            {},
+            {
+                "_id": 1,
+                "doc_id": 1,
+                "doc_name": 1,
+                "doc_description": 1,
+                "total_pages": 1,
+                "node_count": 1,
+            }
+        )
+        
+        docs = []
+        for doc in cursor:
+            docs.append({
+                "id": doc.get("_id", doc.get("doc_id", "")),
+                "name": doc.get("doc_name", ""),
+                "pages": doc.get("total_pages", 0),
+                "nodes": doc.get("node_count", 0),
+                "description": doc.get("doc_description", ""),
+            })
+        
+        logger.info("Fetched summaries for %d documents in single batch query", len(docs))
+        return docs
+
     def delete(self, doc_id: str) -> bool:
         """Delete a tree."""
         result = self._collection.delete_one({"_id": doc_id})

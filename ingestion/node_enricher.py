@@ -44,15 +44,27 @@ class NodeEnricher:
         all_nodes = self._get_enrichable_nodes(tree)
         logger.info("Enriching %d nodes", len(all_nodes))
 
-        # Process in batches of ~5 nodes (to stay within token limits)
-        batch_size = 5
+        # Adaptive batching: larger batches for leaf nodes, smaller for parents
+        # (FIX #7) - increases throughput without exceeding token limits.
+        leaf_batch_size = 15
+        parent_batch_size = 5
         enriched_count = 0
 
-        for i in range(0, len(all_nodes), batch_size):
-            batch = all_nodes[i : i + batch_size]
+        # Separate leaves from parent nodes to use larger batches for leaf nodes
+        leaves = [n for n in all_nodes if not n.children]
+        parents = [n for n in all_nodes if n.children]
+
+        for i in range(0, len(leaves), leaf_batch_size):
+            batch = leaves[i : i + leaf_batch_size]
             self._enrich_batch(batch)
             enriched_count += len(batch)
-            logger.info("Enriched %d/%d nodes", enriched_count, len(all_nodes))
+            logger.info("Enriched %d/%d nodes (leaf batches)", enriched_count, len(all_nodes))
+
+        for i in range(0, len(parents), parent_batch_size):
+            batch = parents[i : i + parent_batch_size]
+            self._enrich_batch(batch)
+            enriched_count += len(batch)
+            logger.info("Enriched %d/%d nodes (parent batches)", enriched_count, len(all_nodes))
 
         return tree
 

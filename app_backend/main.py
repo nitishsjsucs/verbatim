@@ -61,6 +61,65 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
+# Singleton Initialization (FIX #1: Eliminate Dependency Injection)
+# ---------------------------------------------------------------------------
+
+_tree_store: Optional[TreeStore] = None
+_qa_engine: Optional[QAEngine] = None
+_ingestion_pipeline: Optional[IngestionPipeline] = None
+_query_store: Optional[QueryStore] = None
+_corpus_store: Optional[CorpusStore] = None
+_corpus_qa_engine: Optional[CorpusQAEngine] = None
+_actionable_store: Optional[ActionableStore] = None
+_actionable_extractor: Optional[ActionableExtractor] = None
+_conversation_store: Optional[ConversationStore] = None
+
+
+def _init_singletons():
+    """Initialize all singletons once at startup."""
+    global _tree_store, _qa_engine, _ingestion_pipeline, _query_store
+    global _corpus_store, _corpus_qa_engine, _actionable_store
+    global _actionable_extractor, _conversation_store
+    
+    logger.info("Initializing backend singletons...")
+    
+    _tree_store = TreeStore()
+    logger.info("  ✓ TreeStore initialized")
+    
+    _qa_engine = QAEngine()
+    logger.info("  ✓ QAEngine initialized")
+    
+    _ingestion_pipeline = IngestionPipeline()
+    logger.info("  ✓ IngestionPipeline initialized")
+    
+    _query_store = QueryStore()
+    logger.info("  ✓ QueryStore initialized")
+    
+    _corpus_store = CorpusStore()
+    logger.info("  ✓ CorpusStore initialized")
+    
+    _corpus_qa_engine = CorpusQAEngine()
+    logger.info("  ✓ CorpusQAEngine initialized")
+    
+    _actionable_store = ActionableStore()
+    logger.info("  ✓ ActionableStore initialized")
+    
+    _actionable_extractor = ActionableExtractor()
+    logger.info("  ✓ ActionableExtractor initialized")
+    
+    _conversation_store = ConversationStore()
+    logger.info("  ✓ ConversationStore initialized")
+    
+    logger.info("All singletons initialized successfully")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize all singletons on app startup."""
+    _init_singletons()
+
+
+# ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 class IngestResponse(BaseModel):
@@ -185,40 +244,40 @@ class CorpusQueryResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
-def get_tree_store():
-    return TreeStore()
+def get_tree_store() -> TreeStore:
+    return _tree_store
 
 
-def get_qa_engine():
-    return QAEngine()
+def get_qa_engine() -> QAEngine:
+    return _qa_engine
 
 
-def get_ingestion_pipeline():
-    return IngestionPipeline()
+def get_ingestion_pipeline() -> IngestionPipeline:
+    return _ingestion_pipeline
 
 
-def get_query_store():
-    return QueryStore()
+def get_query_store() -> QueryStore:
+    return _query_store
 
 
-def get_corpus_store():
-    return CorpusStore()
+def get_corpus_store() -> CorpusStore:
+    return _corpus_store
 
 
-def get_corpus_qa_engine():
-    return CorpusQAEngine()
+def get_corpus_qa_engine() -> CorpusQAEngine:
+    return _corpus_qa_engine
 
 
-def get_actionable_store():
-    return ActionableStore()
+def get_actionable_store() -> ActionableStore:
+    return _actionable_store
 
 
-def get_actionable_extractor():
-    return ActionableExtractor()
+def get_actionable_extractor() -> ActionableExtractor:
+    return _actionable_extractor
 
 
-def get_conversation_store():
-    return ConversationStore()
+def get_conversation_store() -> ConversationStore:
+    return _conversation_store
 
 
 # ---------------------------------------------------------------------------
@@ -287,23 +346,9 @@ def health_check():
 
 @app.get("/documents")
 def list_documents():
-    """List all indexed documents."""
+    """List all indexed documents (batch loaded for efficiency - FIX #5)."""
     store = get_tree_store()
-    doc_ids = store.list_trees()
-    docs = []
-    for doc_id in doc_ids:
-        tree = store.load(doc_id)
-        if tree:
-            docs.append(
-                {
-                    "id": tree.doc_id,
-                    "name": tree.doc_name,
-                    "pages": tree.total_pages,
-                    "nodes": tree.node_count,
-                    "description": tree.doc_description,
-                }
-            )
-    return docs
+    return store.list_documents_summary()
 
 
 @app.get("/documents/{doc_id}")

@@ -35,7 +35,13 @@ class MongoManager:
                     tlsAllowInvalidCertificates=False,
                 )
             else:
-                self._client = MongoClient(mongo_uri)
+                # Configure connection pool size for better concurrency (FIX #6)
+                pool_opts = {
+                    "maxPoolSize": int(os.getenv("MONGO_MAX_POOL", "50")),
+                    "minPoolSize": int(os.getenv("MONGO_MIN_POOL", "5")),
+                    "connectTimeoutMS": int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "10000")),
+                }
+                self._client = MongoClient(mongo_uri, **pool_opts)
 
             self._db = self._client[db_name]
             self._fs = gridfs.GridFS(self._db)

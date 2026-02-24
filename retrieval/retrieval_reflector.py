@@ -20,6 +20,7 @@ from config.prompt_loader import load_prompt, format_prompt
 from models.document import DocumentTree
 from models.query import Query, QueryType, RetrievedSection
 from utils.llm_client import LLMClient
+from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,25 @@ class RetrievalReflector:
                 "Tokens: %d",
                 len(sections),
                 initial_token_count,
+            )
+            return sections
+
+        # Early-skip heuristic: if we already have many sections or tokens,
+        # reflection is unlikely to add value and is expensive.
+        settings = get_settings()
+        if (
+            initial_section_count >= settings.retrieval.reflection_skip_section_threshold
+            or initial_token_count >= settings.retrieval.reflection_skip_token_threshold
+        ):
+            logger.info(
+                "Skipping reflection — evidence abundant (sections=%d, tokens=%d)",
+                initial_section_count,
+                initial_token_count,
+            )
+            logger.info(
+                "[Reflection Contribution] SKIPPED — abundant evidence; thresholds: sections>=%d tokens>=%d",
+                settings.retrieval.reflection_skip_section_threshold,
+                settings.retrieval.reflection_skip_token_threshold,
             )
             return sections
 

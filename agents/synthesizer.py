@@ -44,6 +44,7 @@ class Synthesizer:
         self,
         query: Query,
         sections: list[RetrievedSection],
+        verify: bool = False,
     ) -> Answer:
         """
         Synthesize an answer from retrieved sections.
@@ -74,6 +75,18 @@ class Synthesizer:
             query_type=query.query_type.value,
             retrieved_text=retrieved_text,
         )
+
+        # If verification is requested, append lightweight verification instructions
+        # so the LLM returns verification_status and verification_notes alongside
+        # the synthesized answer. This removes the need for a separate verifier
+        # LLM call in many cases (FIX #4).
+        if verify:
+            user_msg += (
+                "\n\n[VERIFY] In addition to the answer, produce a JSON field\n"
+                "named 'verification_status' with one of: verified, partially_verified, unverified,\n"
+                "and a 'verification_notes' string listing any issues or supporting evidence.\n"
+                "Keep notes concise (max 300 characters)."
+            )
 
         start = time.time()
 
@@ -179,6 +192,15 @@ class Synthesizer:
                 query_type=query.query_type,
                 retrieved_sections=sections,
             )
+
+            # Parse verification fields if present in the result
+            ver_status = result.get("verification_status")
+            ver_notes = result.get("verification_notes")
+            if ver_status:
+                answer.verified = ver_status == "verified"
+                answer.verification_status = ver_status
+            if ver_notes:
+                answer.verification_notes = ver_notes
 
             logger.info(
                 "Synthesis complete: %d citations, %d inferred points, %.1fs",

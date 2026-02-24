@@ -95,6 +95,9 @@ class RetrievalConfig(BaseSettings):
 
     # Token budget for retrieved text passed to synthesis
     retrieval_token_budget: int = Field(default=100000, alias="RETRIEVAL_TOKEN_BUDGET")
+    # Reflection heuristics: skip reflection when we already have abundant evidence
+    reflection_skip_section_threshold: int = Field(default=6, alias="REFLECTION_SKIP_SECTION_THRESHOLD")
+    reflection_skip_token_threshold: int = Field(default=50000, alias="REFLECTION_SKIP_TOKEN_THRESHOLD")
 
 
 class StorageConfig(BaseSettings):

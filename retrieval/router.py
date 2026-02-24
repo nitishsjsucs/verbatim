@@ -33,6 +33,7 @@ from retrieval.definition_injector import DefinitionInjector
 from retrieval.locator import Locator
 from retrieval.query_classifier import QueryClassifier
 from retrieval.query_expander import QueryExpander
+from models.query import QueryType
 from retrieval.reader import Reader
 from utils.llm_client import LLMClient
 from utils.text_utils import estimate_tokens
@@ -87,14 +88,20 @@ class StructuralRouter:
         )
 
         # Step 2: Expand query (multi-query generation for broad queries)
+        # Only expand for multi-hop or global queries — skip for single-hop/definitional
         logger.info("[Retrieval 2/6] Expanding query...")
         t0 = time.time()
-        expanded_queries = self._expander.expand(query)
-        expand_time = time.time() - t0
-        if expanded_queries:
-            logger.info("  -> %d expanded queries generated (%.1fs)", len(expanded_queries), expand_time)
+        if query.query_type in (QueryType.SINGLE_HOP, QueryType.DEFINITIONAL):
+            expanded_queries = []
+            expand_time = 0.0
+            logger.info("  -> Expansion skipped for query type: %s", query.query_type.value)
         else:
-            logger.info("  -> No expansion (query type: %s) (%.1fs)", query.query_type.value, expand_time)
+            expanded_queries = self._expander.expand(query)
+            expand_time = time.time() - t0
+            if expanded_queries:
+                logger.info("  -> %d expanded queries generated (%.1fs)", len(expanded_queries), expand_time)
+            else:
+                logger.info("  -> No expansion (query type: %s) (%.1fs)", query.query_type.value, expand_time)
 
         # Step 3: Locate relevant nodes (original + expanded queries)
         logger.info("[Retrieval 3/6] Locating relevant nodes...")

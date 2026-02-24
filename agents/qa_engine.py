@@ -185,7 +185,8 @@ class QAEngine:
             )
         else:
             logger.info("[QA 4/6] Synthesizing answer...")
-            answer = self._synthesizer.synthesize(query, sections)
+            # Request synthesis and optional verification in a single LLM call
+            answer = self._synthesizer.synthesize(query, sections, verify=verify)
         timings["4_synthesis"] = time.time() - t0
         logger.info("  -> Synthesis complete (%.1fs)", timings["4_synthesis"])
 
@@ -194,11 +195,14 @@ class QAEngine:
         answer.retrieved_sections = sections
         answer.routing_log = rr.routing_log
 
-        # Step 5: Verify
+        # Step 5: Verification
+        # If verification wasn't included in synthesis, fall back to explicit verifier
         t0 = time.time()
-        if verify:
-            logger.info("[QA 5/6] Verifying answer...")
+        if verify and not answer.verification_status:
+            logger.info("[QA 5/6] Verification not present in synthesis — running verifier...")
             answer = self._verifier.verify(answer, query_text=query_text)
+        elif verify and answer.verification_status:
+            logger.info("[QA 5/6] Verification provided inline by synthesizer")
         else:
             logger.info("[QA 5/6] Skipping verification")
             answer.verification_status = "skipped"
