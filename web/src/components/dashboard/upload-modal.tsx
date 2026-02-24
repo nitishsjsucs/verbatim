@@ -83,14 +83,14 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
 
     return (
         <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else setOpen(true) }}>
-            {/* <DialogTrigger asChild>
+            <DialogTrigger asChild>
                 {children || (
                     <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-[12px]">
                         <Upload className="h-3.5 w-3.5" />
                         New Document
                     </Button>
                 )}
-            </DialogTrigger> */}
+            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{result ? "Ingestion Complete" : "Upload Document"}</DialogTitle>
