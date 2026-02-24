@@ -70,34 +70,6 @@ export function Sidebar({ className }: SidebarProps) {
 
             {/* ── Navigation ── */}
             <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
-                <NavItem
-                    href="/"
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Documents"
-                    active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
-                    collapsed={collapsed}
-                />
-                <NavItem
-                    href="/research"
-                    icon={<BookOpen className="h-4 w-4" />}
-                    label="Research"
-                    active={pathname === "/research"}
-                    collapsed={collapsed}
-                />
-                <NavItem
-                    href="/history"
-                    icon={<History className="h-4 w-4" />}
-                    label="History"
-                    active={pathname === "/history"}
-                    collapsed={collapsed}
-                />
-                <NavItem
-                    href="/actionables"
-                    icon={<Shield className="h-4 w-4" />}
-                    label="Actionables"
-                    active={pathname === "/actionables"}
-                    collapsed={collapsed}
-                />
                 {mounted ? (
                     <UploadModal>
                         <NavItem
@@ -113,7 +85,47 @@ export function Sidebar({ className }: SidebarProps) {
                         collapsed={collapsed}
                     />
                 )}
+                <NavItem
+                    href="/"
+                    icon={<FileText className="h-4 w-4" />}
+                    label="Documents"
+                    active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
+                    collapsed={collapsed}
+                />
 
+                <div className="my-2 border-t border-sidebar-border/50" />
+
+                <NavItem
+                    href="/research"
+                    icon={<BookOpen className="h-4 w-4" />}
+                    label="Research"
+                    active={pathname === "/research"}
+                    collapsed={collapsed}
+                />
+                <NavItem
+                    href="/history"
+                    icon={<History className="h-4 w-4" />}
+                    label="History"
+                    active={pathname === "/history"}
+                    collapsed={collapsed}
+                />
+
+                                <div className="my-2 border-t border-sidebar-border/50" />
+
+                <NavItem
+                    href="/actionables"
+                    icon={<Shield className="h-4 w-4" />}
+                    label="Actionables"
+                    active={pathname === "/actionables"}
+                    collapsed={collapsed}
+                />
+                
+
+                
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="flex-shrink-0 border-t border-sidebar-border px-2 py-2 space-y-0.5">
                 {/* ── Config section ── */}
                 {!collapsed && config && (
                     <div className="pt-4">
@@ -127,10 +139,6 @@ export function Sidebar({ className }: SidebarProps) {
                         </div>
                     </div>
                 )}
-            </div>
-
-            {/* ── Footer ── */}
-            <div className="flex-shrink-0 border-t border-sidebar-border px-2 py-2 space-y-0.5">
                 <NavItem
                     icon={<Settings className="h-4 w-4" />}
                     label="Settings"
