@@ -51,11 +51,11 @@ export function Sidebar({ className }: SidebarProps) {
       >
         {!collapsed && (
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-5 w-5 rounded bg-primary flex items-center justify-center flex-shrink-0">
+            {/* <div className="h-5 w-5 rounded bg-primary flex items-center justify-center flex-shrink-0">
               <span className="text-[10px] font-bold text-primary-foreground leading-none">
                 O.O
               </span>
-            </div>
+            </div> */}
             <span className="text-sm font-semibold text-sidebar-foreground truncate">
               RegTECH_pre_pilot
             </span>
