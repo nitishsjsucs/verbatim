@@ -70,75 +70,70 @@ export function Sidebar({ className }: SidebarProps) {
 
             {/* ── Navigation ── */}
             <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
+            {/* Section 1: Ingest + Documents */}
+            <div className="text-purple-500">
                 {mounted ? (
-                    <UploadModal>
-                        <NavItem
-                            icon={<UploadCloud className="h-4 w-4" />}
-                            label="Ingest"
-                            collapsed={collapsed}
-                        />
-                    </UploadModal>
-                ) : (
+                <UploadModal>
                     <NavItem
-                        icon={<UploadCloud className="h-4 w-4" />}
-                        label="Ingest"
-                        collapsed={collapsed}
+                    icon={<UploadCloud className="h-4 w-4 text-current" />}
+                    label="Ingest"
+                    collapsed={collapsed}
                     />
+                </UploadModal>
+                ) : (
+                <NavItem
+                    icon={<UploadCloud className="h-4 w-4 text-current" />}
+                    label="Ingest"
+                    collapsed={collapsed}
+                />
                 )}
-                <NavItem
-                    href="/"
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Documents"
-                    active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
-                    collapsed={collapsed}
-                />
-
-                <div className="my-2 border-t border-sidebar-border/50" />
 
                 <NavItem
-                    href="/research"
-                    icon={<BookOpen className="h-4 w-4" />}
-                    label="Research"
-                    active={pathname === "/research"}
-                    collapsed={collapsed}
+                href="/"
+                icon={<FileText className="h-4 w-4 text-current" />}
+                label="Documents"
+                active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
+                collapsed={collapsed}
+                />
+            </div>
+
+            <div className="my-2 border-t border-sidebar-border/50" />
+
+            {/* Section 2: Research + History */}
+            <div className="text-emerald-500">
+                <NavItem
+                href="/research"
+                icon={<BookOpen className="h-4 w-4 text-current" />}
+                label="Research"
+                active={pathname === "/research"}
+                collapsed={collapsed}
                 />
                 <NavItem
-                    href="/history"
-                    icon={<History className="h-4 w-4" />}
-                    label="History"
-                    active={pathname === "/history"}
-                    collapsed={collapsed}
+                href="/history"
+                icon={<History className="h-4 w-4 text-current" />}
+                label="History"
+                active={pathname === "/history"}
+                collapsed={collapsed}
                 />
+            </div>
 
-                                <div className="my-2 border-t border-sidebar-border/50" />
+            <div className="my-2 border-t border-sidebar-border/50" />
 
+            {/* Section 3: Actionables */}
+            <div className="text-amber-500">
                 <NavItem
-                    href="/actionables"
-                    icon={<Shield className="h-4 w-4" />}
-                    label="Actionables"
-                    active={pathname === "/actionables"}
-                    collapsed={collapsed}
+                href="/actionables"
+                icon={<Shield className="h-4 w-4 text-current" />}
+                label="Actionables"
+                active={pathname === "/actionables"}
+                collapsed={collapsed}
                 />
-                
+            </div>
 
-                
+            <div className="my-2 border-t border-sidebar-border/50" />
             </div>
 
             {/* ── Footer ── */}
-            <div className="flex-shrink-0 border-t border-sidebar-border px-2 py-2 space-y-0.5">
-                {/* ── Config section ── */}
-                {!collapsed && config && (
-                    <div className="pt-4">
-                        <p className="px-2 mb-1 text-[10px] font-medium uppercase tracking-widest text-sidebar-foreground/30 select-none">
-                            Config
-                        </p>
-                        <div className="space-y-0.5">
-                            <ConfigItem label="Model" value={config.model} />
-                            <ConfigItem label="Pro" value={config.model_pro} />
-                            <ConfigItem label="Nodes" value={String(config.max_located_nodes)} />
-                        </div>
-                    </div>
-                )}
                 <NavItem
                     icon={<Settings className="h-4 w-4" />}
                     label="Settings"
