@@ -78,18 +78,20 @@ export function Sidebar({ className }: SidebarProps) {
       {/* ── Navigation ── */}
       <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
         {/* Section 1: Ingest + Documents */}
-        <div className="text-purple-500">
+        <div>
           {mounted ? (
             <UploadModal>
               <NavItem
-                icon={<UploadCloud className="h-4 w-4 text-current" />}
+                icon={<UploadCloud className="h-4 w-4" />}
+                iconClassName="text-purple-500"
                 label="Ingest"
                 collapsed={collapsed}
               />
             </UploadModal>
           ) : (
             <NavItem
-              icon={<UploadCloud className="h-4 w-4 text-current" />}
+              icon={<UploadCloud className="h-4 w-4" />}
+              iconClassName="text-purple-500"
               label="Ingest"
               collapsed={collapsed}
             />
@@ -97,7 +99,8 @@ export function Sidebar({ className }: SidebarProps) {
 
           <NavItem
             href="/"
-            icon={<FileText className="h-4 w-4 text-current" />}
+            icon={<FileText className="h-4 w-4" />}
+            iconClassName="text-purple-500"
             label="Documents"
             active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
             collapsed={collapsed}
@@ -107,17 +110,19 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="my-2 border-t border-sidebar-border/50" />
 
         {/* Section 2: Research + History */}
-        <div className="text-emerald-500">
+        <div>
           <NavItem
             href="/research"
-            icon={<BookOpen className="h-4 w-4 text-current" />}
+            icon={<BookOpen className="h-4 w-4" />}
+            iconClassName="text-emerald-500"
             label="Research"
             active={pathname === "/research"}
             collapsed={collapsed}
           />
           <NavItem
             href="/history"
-            icon={<History className="h-4 w-4 text-current" />}
+            icon={<History className="h-4 w-4" />}
+            iconClassName="text-emerald-500"
             label="History"
             active={pathname === "/history"}
             collapsed={collapsed}
@@ -127,10 +132,11 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="my-2 border-t border-sidebar-border/50" />
 
         {/* Section 3: Actionables */}
-        <div className="text-amber-500">
+        <div>
           <NavItem
             href="/actionables"
-            icon={<Shield className="h-4 w-4 text-current" />}
+            icon={<Shield className="h-4 w-4" />}
+            iconClassName="text-amber-500"
             label="Actionables"
             active={pathname === "/actionables"}
             collapsed={collapsed}
@@ -143,6 +149,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* ── Footer ── */}
       <NavItem
         icon={<Settings className="h-4 w-4" />}
+        iconClassName="text-sidebar-foreground/50"
         label="Settings"
         collapsed={collapsed}
       />
@@ -169,32 +176,47 @@ type NavItemProps = {
   label: string
   active?: boolean
   collapsed?: boolean
+  iconClassName?: string
 } & (
   | ({ href: string } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">)
   | ({ href?: undefined } & React.ButtonHTMLAttributes<HTMLButtonElement>)
 )
 
 const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
-  ({ icon, label, active, collapsed, className, href, ...props }, ref) => {
+  (
+    { icon, label, active, collapsed, className, href, iconClassName, ...props },
+    ref
+  ) => {
     const content = (
       <>
         <span
           className={cn(
             "flex-shrink-0 transition-colors",
-            active ? "text-sidebar-foreground" : "text-sidebar-foreground/50"
+            iconClassName,
+            active ? "opacity-100" : "opacity-80 group-hover:opacity-100"
           )}
         >
           {icon}
         </span>
-        {!collapsed && <span className="ml-2 truncate text-[13px]">{label}</span>}
+
+        {!collapsed && (
+          <span
+            className={cn(
+              "ml-2 truncate text-[13px] transition-colors",
+              active
+                ? "text-sidebar-foreground"
+                : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+            )}
+          >
+            {label}
+          </span>
+        )}
       </>
     )
 
     const commonClasses = cn(
-      "w-full flex items-center rounded px-2 h-8 font-medium transition-colors",
-      active
-        ? "bg-sidebar-accent text-sidebar-foreground"
-        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
+      "group w-full flex items-center rounded px-2 h-8 font-medium transition-colors",
+      active ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/70",
       collapsed && "justify-center",
       className
     )
