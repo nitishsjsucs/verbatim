@@ -10,6 +10,10 @@ import {
   BookOpen,
   History,
   Shield,
+  LayoutDashboard,
+  BarChart3,
+  ClipboardList,
+  LogOut,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -18,6 +22,8 @@ import { UploadModal } from "@/components/dashboard/upload-modal"
 import { fetchConfig } from "@/lib/api"
 import { AppConfig } from "@/lib/types"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { useSession, signOut } from "@/lib/auth-client"
+import { getUserRole } from "@/components/auth/auth-guard"
 
 interface SidebarProps {
   className?: string
@@ -28,6 +34,9 @@ export function Sidebar({ className }: SidebarProps) {
   const [mounted, setMounted] = React.useState(false)
   const pathname = usePathname()
   const [_config, setConfig] = React.useState<AppConfig | null>(null)
+  const { data: session } = useSession()
+  const role = getUserRole(session)
+  const isOfficer = role === "compliance_officer" || role === "admin"
 
   React.useEffect(() => {
     setMounted(true)
@@ -51,11 +60,6 @@ export function Sidebar({ className }: SidebarProps) {
       >
         {!collapsed && (
           <div className="flex items-center gap-2 min-w-0">
-            {/* <div className="h-5 w-5 rounded bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-[10px] font-bold text-primary-foreground leading-none">
-                O.O
-              </span>
-            </div> */}
             <span className="text-sm font-semibold text-sidebar-foreground truncate">
               RegTECH_pre_pilot
             </span>
@@ -77,76 +81,150 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* ── Navigation ── */}
       <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
-        {/* Section 1: Ingest + Documents */}
-        <div>
-          {mounted ? (
-            <UploadModal>
+
+        {/* ─── Compliance Officer: full nav ─── */}
+        {isOfficer && (
+          <>
+            {/* Section 1: Ingest + Documents */}
+            <div>
+              {mounted ? (
+                <UploadModal>
+                  <NavItem
+                    icon={<UploadCloud className="h-4 w-4" />}
+                    iconClassName="text-purple-500"
+                    label="Ingest"
+                    collapsed={collapsed}
+                  />
+                </UploadModal>
+              ) : (
+                <NavItem
+                  icon={<UploadCloud className="h-4 w-4" />}
+                  iconClassName="text-purple-500"
+                  label="Ingest"
+                  collapsed={collapsed}
+                />
+              )}
+
               <NavItem
-                icon={<UploadCloud className="h-4 w-4" />}
+                href="/"
+                icon={<FileText className="h-4 w-4" />}
                 iconClassName="text-purple-500"
-                label="Ingest"
+                label="Documents"
+                active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
                 collapsed={collapsed}
               />
-            </UploadModal>
-          ) : (
-            <NavItem
-              icon={<UploadCloud className="h-4 w-4" />}
-              iconClassName="text-purple-500"
-              label="Ingest"
-              collapsed={collapsed}
-            />
-          )}
+            </div>
 
-          <NavItem
-            href="/"
-            icon={<FileText className="h-4 w-4" />}
-            iconClassName="text-purple-500"
-            label="Documents"
-            active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
-            collapsed={collapsed}
-          />
-        </div>
+            <div className="my-2 border-t border-sidebar-border/50" />
 
-        <div className="my-2 border-t border-sidebar-border/50" />
+            {/* Section 2: Research + History */}
+            <div>
+              <NavItem
+                href="/research"
+                icon={<BookOpen className="h-4 w-4" />}
+                iconClassName="text-emerald-500"
+                label="Research"
+                active={pathname === "/research"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/history"
+                icon={<History className="h-4 w-4" />}
+                iconClassName="text-emerald-500"
+                label="History"
+                active={pathname === "/history"}
+                collapsed={collapsed}
+              />
+            </div>
 
-        {/* Section 2: Research + History */}
-        <div>
-          <NavItem
-            href="/research"
-            icon={<BookOpen className="h-4 w-4" />}
-            iconClassName="text-emerald-500"
-            label="Research"
-            active={pathname === "/research"}
-            collapsed={collapsed}
-          />
-          <NavItem
-            href="/history"
-            icon={<History className="h-4 w-4" />}
-            iconClassName="text-emerald-500"
-            label="History"
-            active={pathname === "/history"}
-            collapsed={collapsed}
-          />
-        </div>
+            <div className="my-2 border-t border-sidebar-border/50" />
 
-        <div className="my-2 border-t border-sidebar-border/50" />
+            {/* Section 3: Actionables + Dashboards */}
+            <div>
+              <NavItem
+                href="/actionables"
+                icon={<Shield className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="Actionables"
+                active={pathname === "/actionables"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/dashboard"
+                icon={<LayoutDashboard className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="Tracker"
+                active={pathname === "/dashboard"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/team-board"
+                icon={<ClipboardList className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="Team Board"
+                active={pathname === "/team-board"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/reports"
+                icon={<BarChart3 className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="Reports"
+                active={pathname === "/reports"}
+                collapsed={collapsed}
+              />
+            </div>
 
-        {/* Section 3: Actionables */}
-        <div>
-          <NavItem
-            href="/actionables"
-            icon={<Shield className="h-4 w-4" />}
-            iconClassName="text-amber-500"
-            label="Actionables"
-            active={pathname === "/actionables"}
-            collapsed={collapsed}
-          />
-        </div>
+            <div className="my-2 border-t border-sidebar-border/50" />
+          </>
+        )}
 
-        <div className="my-2 border-t border-sidebar-border/50" />
+        {/* ─── Team Member: limited nav ─── */}
+        {!isOfficer && (
+          <>
+            <div>
+              <NavItem
+                href="/team-board"
+                icon={<ClipboardList className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="My Tasks"
+                active={pathname === "/team-board"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/reports"
+                icon={<BarChart3 className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="Reports"
+                active={pathname === "/reports"}
+                collapsed={collapsed}
+              />
+            </div>
+
+            <div className="my-2 border-t border-sidebar-border/50" />
+          </>
+        )}
       </div>
 
       {/* ── Footer ── */}
+      {session && (
+        <div className={cn("px-2 py-1", collapsed && "px-1")}>
+          {!collapsed && session.user && (
+            <div className="px-2 py-1.5 mb-1">
+              <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
+              <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
+            </div>
+          )}
+          <NavItem
+            icon={<LogOut className="h-4 w-4" />}
+            iconClassName="text-sidebar-foreground/50"
+            label="Sign Out"
+            collapsed={collapsed}
+            onClick={() => signOut().then(() => window.location.href = "/sign-in")}
+          />
+        </div>
+      )}
+
       <NavItem
         icon={<Settings className="h-4 w-4" />}
         iconClassName="text-sidebar-foreground/50"

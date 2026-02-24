@@ -74,6 +74,14 @@ const APPROVAL_CONFIG: Record<string, { color: string; bg: string; label: string
     rejected: { color: "text-red-400", bg: "bg-red-400/10", label: "Rejected" },
 }
 
+/** Safely convert any value to a renderable string (fixes React error #31 for object fields) */
+function safeStr(v: unknown): string {
+    if (v === null || v === undefined) return ""
+    if (typeof v === "string") return v
+    if (typeof v === "number" || typeof v === "boolean") return String(v)
+    try { return JSON.stringify(v) } catch { return String(v) }
+}
+
 // --- Types ---
 
 interface DocActionables {
@@ -86,13 +94,14 @@ type ViewTab = "all" | "by-team"
 
 // --- Editable Field Component ---
 
-function EditableField({ label, value, onSave, type = "text", options }: {
+function EditableField({ label, value: rawValue, onSave, type = "text", options }: {
     label: string
-    value: string
+    value: unknown
     onSave: (val: string) => void
     type?: "text" | "textarea" | "select"
     options?: string[]
 }) {
+    const value = safeStr(rawValue)
     const [editing, setEditing] = React.useState(false)
     const [draft, setDraft] = React.useState(value)
     const inputRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null)
@@ -240,9 +249,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     {/* Action summary */}
                     <div className="flex-1 min-w-0">
                         <p className="text-xs text-foreground/90 leading-relaxed truncate">
-                            <span className="font-medium">{item.actor}</span>
-                            {" "}{item.action}
-                            {item.object && <span className="text-muted-foreground"> — {item.object}</span>}
+                            <span className="font-medium">{safeStr(item.actor)}</span>
+                            {" "}{safeStr(item.action)}
+                            {item.object && <span className="text-muted-foreground"> — {safeStr(item.object)}</span>}
                         </p>
                     </div>
                 </button>

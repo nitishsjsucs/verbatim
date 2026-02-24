@@ -271,6 +271,13 @@ export interface ActionableItem {
     validation_notes: string;
     approval_status: "pending" | "approved" | "rejected";
     is_manual: boolean;
+    // Monday.com board fields (populated after approval)
+    task_status?: "todo" | "working_on_it" | "stuck" | "done";
+    priority?: "low" | "medium" | "high" | "critical";
+    due_date?: string;
+    notes?: string;
+    evidence_files?: { name: string; url: string; uploaded_at: string }[];
+    assigned_to?: string;
 }
 
 export interface ActionablesResult {
