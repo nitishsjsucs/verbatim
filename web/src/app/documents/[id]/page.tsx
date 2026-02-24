@@ -5,12 +5,11 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { ChatInterface } from "@/components/views/chat-interface"
 import { TreeExplorer } from "@/components/views/tree-explorer"
 import { NodeDetailPanel } from "@/components/views/node-detail-panel"
-import { ActionablesPanel } from "@/components/views/actionables-panel"
 import dynamic from "next/dynamic"
 import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 import { fetchDocument } from "@/lib/api"
 import { DocumentDetail, TreeNode } from "@/lib/types"
-import { Loader2, AlertCircle, FileText, MessageSquare, Shield } from "lucide-react"
+import { Loader2, AlertCircle, FileText, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // Dynamic import — pdf.js requires browser APIs (no SSR)
@@ -38,7 +37,7 @@ function findNodeById(nodes: TreeNode[], nodeId: string): TreeNode | undefined {
     return undefined
 }
 
-type ViewMode = "document" | "chat" | "actionables"
+type ViewMode = "document" | "chat"
 
 export default function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = React.use(params)
@@ -75,12 +74,6 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
     }, [])
 
     const handleCitationClick = React.useCallback((pageNumber: number) => {
-        if (pdfRef.current && pageNumber >= 1) {
-            pdfRef.current.jumpToPage(pageNumber - 1)
-        }
-    }, [])
-
-    const handleActionableSourceClick = React.useCallback((_nodeId: string, pageNumber: number) => {
         if (pdfRef.current && pageNumber >= 1) {
             pdfRef.current.jumpToPage(pageNumber - 1)
         }
@@ -124,12 +117,6 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
                             onClick={() => setViewMode("chat")}
                             icon={<MessageSquare className="h-3.5 w-3.5" />}
                             label="Chat"
-                        />
-                        <TabButton
-                            active={viewMode === "actionables"}
-                            onClick={() => setViewMode("actionables")}
-                            icon={<Shield className="h-3.5 w-3.5" />}
-                            label="Actionables"
                         />
                     </div>
                     <div className="flex-1" />
@@ -181,7 +168,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
                                 />
                             </div>
                         </>
-                    ) : viewMode === "chat" ? (
+                    ) : (
                         /* ===== CHAT VIEW: Chat 60% + PDF 40% ===== */
                         <>
                             {/* Chat Interface (left side — 60%) */}
@@ -191,25 +178,6 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
 
                             {/* PDF Viewer (right side — 40%) */}
                             <div className="w-[40%] min-w-0 h-full">
-                                <PdfViewer
-                                    ref={pdfRef}
-                                    fileUrl={pdfUrl}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        /* ===== ACTIONABLES VIEW: Actionables 55% + PDF 45% ===== */
-                        <>
-                            {/* Actionables Panel (left side — 55%) */}
-                            <div className="w-[55%] min-w-[300px] h-full border-r border-border bg-background overflow-hidden">
-                                <ActionablesPanel
-                                    docId={id}
-                                    onSourceClick={handleActionableSourceClick}
-                                />
-                            </div>
-
-                            {/* PDF Viewer (right side — 45%) */}
-                            <div className="w-[45%] min-w-0 h-full">
                                 <PdfViewer
                                     ref={pdfRef}
                                     fileUrl={pdfUrl}

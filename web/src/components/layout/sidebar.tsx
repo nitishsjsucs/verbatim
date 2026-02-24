@@ -10,6 +10,7 @@ import {
     PanelLeftOpen,
     BookOpen,
     History,
+    Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -88,6 +89,13 @@ export function Sidebar({ className }: SidebarProps) {
                     icon={<History className="h-4 w-4" />}
                     label="History"
                     active={pathname === "/history"}
+                    collapsed={collapsed}
+                />
+                <NavItem
+                    href="/actionables"
+                    icon={<Shield className="h-4 w-4" />}
+                    label="Actionables"
+                    active={pathname === "/actionables"}
                     collapsed={collapsed}
                 />
                 {mounted ? (

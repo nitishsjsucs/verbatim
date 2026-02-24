@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Body
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -772,6 +772,175 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Actionable CRUD Endpoints (for the standalone Actionables page)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/actionables")
+def list_all_actionables():
+    """List actionables across ALL documents."""
+    store = get_actionable_store()
+    db = store._collection
+    results = []
+    for raw in db.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        raw.pop("_id", None)
+        raw["doc_id"] = doc_id
+        results.append(raw)
+    return results
+
+
+@app.put("/documents/{doc_id}/actionables/{item_id}")
+def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
+    """Update a single actionable item's fields (edit, approve, reject)."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    # Find the item
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    # Update allowed fields
+    editable_fields = [
+        "modality", "actor", "action", "object", "trigger_or_condition",
+        "thresholds", "deadline_or_frequency", "effective_date",
+        "reporting_or_notification_to", "evidence_quote", "source_location",
+        "implementation_notes", "workstream", "needs_legal_review",
+        "approval_status", "validation_notes",
+    ]
+    for field_name in editable_fields:
+        if field_name in body:
+            val = body[field_name]
+            if field_name == "modality":
+                from models.actionable import Modality
+                try:
+                    val = Modality(val)
+                except ValueError:
+                    continue
+            elif field_name == "workstream":
+                from models.actionable import Workstream
+                try:
+                    val = Workstream(val)
+                except ValueError:
+                    continue
+            setattr(target, field_name, val)
+
+    result.compute_stats()
+    store.save(result)
+    return target.to_dict()
+
+
+@app.post("/documents/{doc_id}/actionables")
+def create_manual_actionable(doc_id: str, body: dict = Body(...)):
+    """Create a manually-added actionable for a document."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+
+    if not result:
+        # Create a new result container if none exists
+        tree_store = get_tree_store()
+        tree = tree_store.load(doc_id)
+        doc_name = tree.doc_name if tree else doc_id
+        from models.actionable import ActionablesResult as AR
+        result = AR(doc_id=doc_id, doc_name=doc_name)
+
+    # Generate next ID
+    existing_ids = [a.id for a in result.actionables]
+    max_num = 0
+    for aid in existing_ids:
+        try:
+            num = int(aid.replace("ACT-", "").replace("MAN-", ""))
+            max_num = max(max_num, num)
+        except ValueError:
+            pass
+    new_id = f"MAN-{max_num + 1:03d}"
+
+    from models.actionable import ActionableItem as AI, Modality, Workstream
+
+    modality_str = body.get("modality", "Mandatory")
+    try:
+        modality = Modality(modality_str)
+    except ValueError:
+        modality = Modality.MANDATORY
+
+    workstream_str = body.get("workstream", "Other")
+    try:
+        workstream = Workstream(workstream_str)
+    except ValueError:
+        workstream = Workstream.OTHER
+
+    item = AI(
+        id=new_id,
+        modality=modality,
+        actor=body.get("actor", ""),
+        action=body.get("action", ""),
+        object=body.get("object", ""),
+        trigger_or_condition=body.get("trigger_or_condition", ""),
+        thresholds=body.get("thresholds", ""),
+        deadline_or_frequency=body.get("deadline_or_frequency", ""),
+        effective_date=body.get("effective_date", ""),
+        reporting_or_notification_to=body.get("reporting_or_notification_to", ""),
+        evidence_quote=body.get("evidence_quote", ""),
+        source_location=body.get("source_location", ""),
+        source_node_id=body.get("source_node_id", ""),
+        implementation_notes=body.get("implementation_notes", ""),
+        workstream=workstream,
+        needs_legal_review=body.get("needs_legal_review", False),
+        validation_status="manual",
+        approval_status="pending",
+        is_manual=True,
+    )
+
+    result.actionables.append(item)
+    result.compute_stats()
+    store.save(result)
+    return item.to_dict()
+
+
+@app.get("/actionables/approved-by-team")
+def get_approved_by_team():
+    """Get all approved actionables grouped by workstream (team)."""
+    store = get_actionable_store()
+    db = store._collection
+    teams: dict[str, list] = {}
+    for raw in db.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        doc_name = raw.get("doc_name", doc_id)
+        for a in raw.get("actionables", []):
+            if a.get("approval_status") == "approved":
+                a["doc_id"] = doc_id
+                a["doc_name"] = doc_name
+                ws = a.get("workstream", "Other")
+                if ws not in teams:
+                    teams[ws] = []
+                teams[ws].append(a)
+    return teams
+
+
+@app.delete("/documents/{doc_id}/actionables/{item_id}")
+def delete_actionable(doc_id: str, item_id: str):
+    """Delete a single actionable item."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found")
+    original_len = len(result.actionables)
+    result.actionables = [a for a in result.actionables if a.id != item_id]
+    if len(result.actionables) == original_len:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+    result.compute_stats()
+    store.save(result)
+    return {"deleted": item_id}
 
 
 # ---------------------------------------------------------------------------

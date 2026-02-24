@@ -269,6 +269,8 @@ export interface ActionableItem {
     needs_legal_review: boolean;
     validation_status: string;
     validation_notes: string;
+    approval_status: "pending" | "approved" | "rejected";
+    is_manual: boolean;
 }
 
 export interface ActionablesResult {

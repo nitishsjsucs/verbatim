@@ -1,0 +1,835 @@
+"use client"
+
+import * as React from "react"
+import { Sidebar } from "@/components/layout/sidebar"
+import dynamic from "next/dynamic"
+import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
+import {
+    fetchAllActionables,
+    updateActionable,
+    createManualActionable,
+    deleteActionable as deleteActionableApi,
+} from "@/lib/api"
+import {
+    ActionableItem,
+    ActionablesResult,
+    ActionableModality,
+    ActionableWorkstream,
+} from "@/lib/types"
+import {
+    Shield, ShieldAlert, ShieldCheck, ShieldQuestion,
+    Check, X, Loader2, Plus, FileText, Search,
+    ChevronDown, ChevronRight, AlertTriangle, Pencil,
+    Trash2, Users, Filter, Save,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+
+const PdfViewer = dynamic(
+    () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-full w-full text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Loading PDF viewer...
+            </div>
+        ),
+    }
+)
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+
+// --- Constants ---
+
+const MODALITY_OPTIONS: ActionableModality[] = ["Mandatory", "Prohibited", "Permitted", "Recommended"]
+const WORKSTREAM_OPTIONS: ActionableWorkstream[] = [
+    "Policy", "Technology", "Operations", "Training",
+    "Reporting", "Customer Communication", "Governance", "Legal", "Other",
+]
+
+const MODALITY_CONFIG: Record<ActionableModality, { color: string; bg: string; icon: React.ReactNode }> = {
+    Mandatory: { color: "text-red-400", bg: "bg-red-400/10", icon: <Shield className="h-3 w-3" /> },
+    Prohibited: { color: "text-orange-400", bg: "bg-orange-400/10", icon: <ShieldAlert className="h-3 w-3" /> },
+    Permitted: { color: "text-green-400", bg: "bg-green-400/10", icon: <ShieldCheck className="h-3 w-3" /> },
+    Recommended: { color: "text-blue-400", bg: "bg-blue-400/10", icon: <ShieldQuestion className="h-3 w-3" /> },
+}
+
+const WORKSTREAM_COLORS: Record<string, string> = {
+    Policy: "bg-purple-400/15 text-purple-400",
+    Technology: "bg-cyan-400/15 text-cyan-400",
+    Operations: "bg-amber-400/15 text-amber-400",
+    Training: "bg-pink-400/15 text-pink-400",
+    Reporting: "bg-emerald-400/15 text-emerald-400",
+    "Customer Communication": "bg-sky-400/15 text-sky-400",
+    Governance: "bg-indigo-400/15 text-indigo-400",
+    Legal: "bg-rose-400/15 text-rose-400",
+    Other: "bg-muted text-muted-foreground",
+}
+
+const APPROVAL_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
+    pending: { color: "text-muted-foreground", bg: "bg-muted", label: "Pending" },
+    approved: { color: "text-green-400", bg: "bg-green-400/10", label: "Approved" },
+    rejected: { color: "text-red-400", bg: "bg-red-400/10", label: "Rejected" },
+}
+
+// --- Types ---
+
+interface DocActionables {
+    doc_id: string
+    doc_name: string
+    actionables: ActionableItem[]
+}
+
+type ViewTab = "all" | "by-team"
+
+// --- Editable Field Component ---
+
+function EditableField({ label, value, onSave, type = "text", options }: {
+    label: string
+    value: string
+    onSave: (val: string) => void
+    type?: "text" | "textarea" | "select"
+    options?: string[]
+}) {
+    const [editing, setEditing] = React.useState(false)
+    const [draft, setDraft] = React.useState(value)
+    const inputRef = React.useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null)
+
+    React.useEffect(() => { setDraft(value) }, [value])
+    React.useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
+
+    const commit = () => {
+        if (draft !== value) onSave(draft)
+        setEditing(false)
+    }
+
+    if (!editing) {
+        return (
+            <div className="group/field">
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+                <button
+                    onClick={() => setEditing(true)}
+                    className="text-xs text-foreground/80 hover:text-foreground w-full text-left flex items-center gap-1 min-h-[20px]"
+                >
+                    <span className={cn("flex-1", !value && "text-muted-foreground/40 italic")}>
+                        {value || "Click to add..."}
+                    </span>
+                    <Pencil className="h-2.5 w-2.5 text-muted-foreground/30 opacity-0 group-hover/field:opacity-100 transition-opacity shrink-0" />
+                </button>
+            </div>
+        )
+    }
+
+    if (type === "select" && options) {
+        return (
+            <div>
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+                <select
+                    ref={inputRef as React.RefObject<HTMLSelectElement>}
+                    value={draft}
+                    onChange={e => { setDraft(e.target.value); }}
+                    onBlur={commit}
+                    className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground"
+                >
+                    {options.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+            </div>
+        )
+    }
+
+    if (type === "textarea") {
+        return (
+            <div>
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+                <textarea
+                    ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onBlur={commit}
+                    onKeyDown={e => { if (e.key === "Escape") { setDraft(value); setEditing(false) } }}
+                    rows={2}
+                    className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
+                />
+            </div>
+        )
+    }
+
+    return (
+        <div>
+            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+            <input
+                ref={inputRef as React.RefObject<HTMLInputElement>}
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onBlur={commit}
+                onKeyDown={e => {
+                    if (e.key === "Enter") commit()
+                    if (e.key === "Escape") { setDraft(value); setEditing(false) }
+                }}
+                className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground"
+            />
+        </div>
+    )
+}
+
+// --- Actionable Card ---
+
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect }: {
+    item: ActionableItem
+    docId: string
+    docName: string
+    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
+    onDelete: (docId: string, itemId: string) => Promise<void>
+    onSourceClick: (docId: string, pageNumber: number) => void
+    isSelected: boolean
+    onSelect: () => void
+}) {
+    const [expanded, setExpanded] = React.useState(false)
+    const [saving, setSaving] = React.useState(false)
+    const cfg = MODALITY_CONFIG[item.modality] || MODALITY_CONFIG.Mandatory
+    const approvalCfg = APPROVAL_CONFIG[item.approval_status] || APPROVAL_CONFIG.pending
+
+    const handleFieldSave = async (field: string, value: unknown) => {
+        setSaving(true)
+        try {
+            await onUpdate(docId, item.id, { [field]: value })
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleApprove = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        await onUpdate(docId, item.id, { approval_status: "approved" })
+    }
+
+    const handleReject = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        await onUpdate(docId, item.id, { approval_status: "rejected" })
+    }
+
+    const handleSourceClick = () => {
+        const match = item.source_location.match(/p\.?\s*(\d+)/)
+        if (match) {
+            onSourceClick(docId, parseInt(match[1], 10))
+        }
+    }
+
+    return (
+        <div
+            className={cn(
+                "border rounded-lg overflow-hidden transition-all",
+                isSelected ? "border-primary/50 ring-1 ring-primary/20" : "border-border/30",
+                item.approval_status === "approved" && "border-green-500/20",
+                item.approval_status === "rejected" && "border-red-500/20 opacity-60",
+            )}
+        >
+            {/* Header row */}
+            <div className="flex items-center gap-1.5 px-3 py-2 hover:bg-muted/20 transition-colors">
+                <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
+                    {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
+
+                    {/* Modality badge */}
+                    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", cfg.color, cfg.bg)}>
+                        {cfg.icon}
+                        {item.modality}
+                    </span>
+
+                    {/* Action summary */}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs text-foreground/90 leading-relaxed truncate">
+                            <span className="font-medium">{item.actor}</span>
+                            {" "}{item.action}
+                            {item.object && <span className="text-muted-foreground"> — {item.object}</span>}
+                        </p>
+                    </div>
+                </button>
+
+                {/* Approval buttons */}
+                <div className="flex items-center gap-1 shrink-0">
+                    {item.approval_status === "pending" ? (
+                        <>
+                            <button
+                                onClick={handleApprove}
+                                className="p-1 rounded hover:bg-green-400/10 text-muted-foreground/40 hover:text-green-400 transition-colors"
+                                title="Approve"
+                            >
+                                <Check className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                                onClick={handleReject}
+                                className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors"
+                                title="Reject"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        </>
+                    ) : (
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-medium", approvalCfg.color, approvalCfg.bg)}>
+                            {approvalCfg.label}
+                        </span>
+                    )}
+
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium ml-1", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
+                        {item.workstream}
+                    </span>
+                </div>
+            </div>
+
+            {/* Expanded editable details */}
+            {expanded && (
+                <div className="px-3 pb-3 space-y-3 border-t border-border/20 pt-2.5">
+                    {saving && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-primary">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+                        </div>
+                    )}
+
+                    {/* Core fields */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                        <EditableField label="Actor" value={item.actor} onSave={v => handleFieldSave("actor", v)} />
+                        <EditableField label="Action" value={item.action} onSave={v => handleFieldSave("action", v)} />
+                        <EditableField label="Object" value={item.object} onSave={v => handleFieldSave("object", v)} />
+                        <EditableField label="Modality" value={item.modality} onSave={v => handleFieldSave("modality", v)} type="select" options={MODALITY_OPTIONS} />
+                        <EditableField label="Workstream" value={item.workstream} onSave={v => handleFieldSave("workstream", v)} type="select" options={WORKSTREAM_OPTIONS} />
+                        <EditableField label="Condition" value={item.trigger_or_condition} onSave={v => handleFieldSave("trigger_or_condition", v)} />
+                        <EditableField label="Thresholds" value={item.thresholds} onSave={v => handleFieldSave("thresholds", v)} />
+                        <EditableField label="Deadline / Frequency" value={item.deadline_or_frequency} onSave={v => handleFieldSave("deadline_or_frequency", v)} />
+                        <EditableField label="Effective Date" value={item.effective_date} onSave={v => handleFieldSave("effective_date", v)} />
+                        <EditableField label="Report To" value={item.reporting_or_notification_to} onSave={v => handleFieldSave("reporting_or_notification_to", v)} />
+                    </div>
+
+                    {/* Evidence */}
+                    <EditableField label="Evidence Quote" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+                    <EditableField label="Implementation Notes" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
+
+                    {/* Legal review toggle */}
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={item.needs_legal_review}
+                            onChange={e => handleFieldSave("needs_legal_review", e.target.checked)}
+                            className="rounded border-border h-3.5 w-3.5 accent-primary"
+                        />
+                        Needs legal review
+                        {item.needs_legal_review && <AlertTriangle className="h-3 w-3 text-amber-400" />}
+                    </label>
+
+                    {/* Footer: source + actions */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/10">
+                        <div className="flex items-center gap-3">
+                            <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {item.source_location || "No source"}
+                            </button>
+                            <span className="text-[10px] text-muted-foreground/40">{docName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-muted-foreground/40">{item.id}</span>
+                            {item.approval_status === "pending" && (
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={handleApprove}
+                                        className="text-[10px] px-2 py-0.5 rounded bg-green-400/10 text-green-400 hover:bg-green-400/20 transition-colors"
+                                    >
+                                        Approve
+                                    </button>
+                                    <button
+                                        onClick={handleReject}
+                                        className="text-[10px] px-2 py-0.5 rounded bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => onDelete(docId, item.id)}
+                                className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/30 hover:text-red-400 transition-colors"
+                                title="Delete"
+                            >
+                                <Trash2 className="h-3 w-3" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// --- Create Actionable Form ---
+
+function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
+    docId: string
+    docName: string
+    onCreated: () => void
+    onCancel: () => void
+}) {
+    const [creating, setCreating] = React.useState(false)
+    const [form, setForm] = React.useState({
+        actor: "",
+        action: "",
+        object: "",
+        modality: "Mandatory" as ActionableModality,
+        workstream: "Other" as ActionableWorkstream,
+        trigger_or_condition: "",
+        thresholds: "",
+        deadline_or_frequency: "",
+        effective_date: "",
+        reporting_or_notification_to: "",
+        evidence_quote: "",
+        implementation_notes: "",
+    })
+
+    const handleSubmit = async () => {
+        if (!form.actor || !form.action) {
+            toast.error("Actor and Action are required")
+            return
+        }
+        setCreating(true)
+        try {
+            await createManualActionable(docId, form)
+            toast.success("Actionable created")
+            onCreated()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to create")
+        } finally {
+            setCreating(false)
+        }
+    }
+
+    return (
+        <div className="border border-primary/30 rounded-lg p-4 space-y-3 bg-primary/5">
+            <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5 text-primary" />
+                    New Actionable — {docName}
+                </h3>
+                <button onClick={onCancel} className="p-1 rounded hover:bg-muted text-muted-foreground">
+                    <X className="h-3.5 w-3.5" />
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Actor *</label>
+                    <input value={form.actor} onChange={e => setForm(f => ({ ...f, actor: e.target.value }))} placeholder="e.g. The Bank" className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Action *</label>
+                    <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="e.g. shall verify" className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Object</label>
+                    <input value={form.object} onChange={e => setForm(f => ({ ...f, object: e.target.value }))} placeholder="e.g. customer identity" className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Modality</label>
+                    <select value={form.modality} onChange={e => setForm(f => ({ ...f, modality: e.target.value as ActionableModality }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
+                        {MODALITY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Workstream</label>
+                    <select value={form.workstream} onChange={e => setForm(f => ({ ...f, workstream: e.target.value as ActionableWorkstream }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
+                        {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Deadline / Frequency</label>
+                    <input value={form.deadline_or_frequency} onChange={e => setForm(f => ({ ...f, deadline_or_frequency: e.target.value }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                </div>
+            </div>
+
+            <div>
+                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Implementation Notes</label>
+                <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+                <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 text-[12px]">Cancel</Button>
+                <Button size="sm" onClick={handleSubmit} disabled={creating} className="h-7 text-[12px] gap-1.5">
+                    {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Create
+                </Button>
+            </div>
+        </div>
+    )
+}
+
+// --- Main Page ---
+
+export default function ActionablesPage() {
+    const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [viewTab, setViewTab] = React.useState<ViewTab>("all")
+
+    // Filters
+    const [docFilter, setDocFilter] = React.useState<string>("all")
+    const [modalityFilter, setModalityFilter] = React.useState<string>("all")
+    const [approvalFilter, setApprovalFilter] = React.useState<string>("all")
+    const [searchQuery, setSearchQuery] = React.useState("")
+
+    // PDF state
+    const [pdfDocId, setPdfDocId] = React.useState<string | null>(null)
+    const [pdfDocName, setPdfDocName] = React.useState<string>("")
+    const pdfRef = React.useRef<PdfViewerHandle>(null)
+
+    // Selection
+    const [selectedItemKey, setSelectedItemKey] = React.useState<string | null>(null)
+
+    // Create form
+    const [showCreateForm, setShowCreateForm] = React.useState(false)
+
+    const loadAll = React.useCallback(async () => {
+        try {
+            setLoading(true)
+            const results = await fetchAllActionables()
+            const docs: DocActionables[] = results
+                .filter((r: ActionablesResult) => r.actionables && r.actionables.length > 0)
+                .map((r: ActionablesResult) => ({
+                    doc_id: r.doc_id,
+                    doc_name: r.doc_name || r.doc_id,
+                    actionables: r.actionables,
+                }))
+            setAllDocs(docs)
+
+            // Auto-select first doc for PDF if none selected
+            if (!pdfDocId && docs.length > 0) {
+                setPdfDocId(docs[0].doc_id)
+                setPdfDocName(docs[0].doc_name)
+            }
+        } catch {
+            toast.error("Failed to load actionables")
+        } finally {
+            setLoading(false)
+        }
+    }, [pdfDocId])
+
+    React.useEffect(() => { loadAll() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
+        try {
+            const updated = await updateActionable(docId, itemId, updates)
+            setAllDocs(prev => prev.map(d => {
+                if (d.doc_id !== docId) return d
+                return {
+                    ...d,
+                    actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a),
+                }
+            }))
+            toast.success("Updated")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Update failed")
+        }
+    }, [])
+
+    const handleDelete = React.useCallback(async (docId: string, itemId: string) => {
+        try {
+            await deleteActionableApi(docId, itemId)
+            setAllDocs(prev => prev.map(d => {
+                if (d.doc_id !== docId) return d
+                return { ...d, actionables: d.actionables.filter(a => a.id !== itemId) }
+            }))
+            toast.success("Deleted")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Delete failed")
+        }
+    }, [])
+
+    const handleSourceClick = React.useCallback((docId: string, pageNumber: number) => {
+        if (pdfDocId !== docId) {
+            setPdfDocId(docId)
+            const doc = allDocs.find(d => d.doc_id === docId)
+            setPdfDocName(doc?.doc_name || docId)
+            // Wait for PDF to load then jump
+            setTimeout(() => {
+                pdfRef.current?.jumpToPage(pageNumber - 1)
+            }, 800)
+        } else {
+            pdfRef.current?.jumpToPage(pageNumber - 1)
+        }
+    }, [pdfDocId, allDocs])
+
+    // Flatten all actionables with doc info for filtering
+    const allItems = React.useMemo(() => {
+        const items: { item: ActionableItem; docId: string; docName: string }[] = []
+        for (const doc of allDocs) {
+            for (const item of doc.actionables) {
+                items.push({ item, docId: doc.doc_id, docName: doc.doc_name })
+            }
+        }
+        return items
+    }, [allDocs])
+
+    const filtered = React.useMemo(() => {
+        return allItems.filter(({ item, docId }) => {
+            if (docFilter !== "all" && docId !== docFilter) return false
+            if (modalityFilter !== "all" && item.modality !== modalityFilter) return false
+            if (approvalFilter !== "all" && item.approval_status !== approvalFilter) return false
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase()
+                const searchable = `${item.actor} ${item.action} ${item.object} ${item.evidence_quote} ${item.implementation_notes}`.toLowerCase()
+                if (!searchable.includes(q)) return false
+            }
+            return true
+        })
+    }, [allItems, docFilter, modalityFilter, approvalFilter, searchQuery])
+
+    // Group by team for the "by-team" view
+    const byTeam = React.useMemo(() => {
+        const teams: Record<string, { item: ActionableItem; docId: string; docName: string }[]> = {}
+        for (const entry of filtered) {
+            const ws = entry.item.workstream || "Other"
+            if (!teams[ws]) teams[ws] = []
+            teams[ws].push(entry)
+        }
+        return teams
+    }, [filtered])
+
+    // Stats
+    const stats = React.useMemo(() => {
+        const total = allItems.length
+        const approved = allItems.filter(e => e.item.approval_status === "approved").length
+        const rejected = allItems.filter(e => e.item.approval_status === "rejected").length
+        const pending = total - approved - rejected
+        return { total, approved, rejected, pending }
+    }, [allItems])
+
+    const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
+
+    return (
+        <div className="flex h-screen bg-background">
+            <Sidebar />
+
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                {/* Header */}
+                <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-primary" />
+                            Actionables
+                        </h1>
+                        <div className="flex items-center gap-1 ml-2">
+                            <button
+                                onClick={() => setViewTab("all")}
+                                className={cn(
+                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
+                                    viewTab === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => setViewTab("by-team")}
+                                className={cn(
+                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+                                    viewTab === "by-team" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Users className="h-3 w-3" />
+                                By Team
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {/* Stats pills */}
+                        <div className="flex items-center gap-2 text-[10px]">
+                            <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
+                            <span className="px-2 py-0.5 rounded bg-green-400/10 text-green-400 font-mono">{stats.approved} approved</span>
+                            <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground/60 font-mono">{stats.pending} pending</span>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 px-2.5 text-[12px]"
+                            onClick={() => setShowCreateForm(true)}
+                            disabled={allDocs.length === 0}
+                        >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Body: split pane */}
+                <div className="flex-1 flex min-h-0">
+                    {/* Left: Actionables list */}
+                    <div className="w-[55%] min-w-[400px] border-r border-border flex flex-col min-h-0">
+                        {/* Filters bar */}
+                        <div className="shrink-0 border-b border-border/40 px-4 py-2.5 flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-2 top-[7px] h-3.5 w-3.5 text-muted-foreground" />
+                                <input
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="Search actionables..."
+                                    className="w-full bg-muted/30 text-xs rounded-md pl-7 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
+                                />
+                            </div>
+                            <select
+                                value={docFilter}
+                                onChange={e => setDocFilter(e.target.value)}
+                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground max-w-[140px]"
+                            >
+                                <option value="all">All documents</option>
+                                {allDocs.map(d => (
+                                    <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={modalityFilter}
+                                onChange={e => setModalityFilter(e.target.value)}
+                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                            >
+                                <option value="all">All types</option>
+                                {MODALITY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                            <select
+                                value={approvalFilter}
+                                onChange={e => setApprovalFilter(e.target.value)}
+                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                            >
+                                <option value="all">All status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {loading && (
+                                <div className="flex items-center justify-center py-20 text-muted-foreground">
+                                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                    <span className="text-sm">Loading actionables...</span>
+                                </div>
+                            )}
+
+                            {!loading && allDocs.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-20 text-center">
+                                    <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                                        <Shield className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="text-sm font-medium mb-1">No actionables yet</h3>
+                                    <p className="text-xs text-muted-foreground/60 max-w-sm">
+                                        Extract actionables from a document first, or add them manually.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Create form */}
+                            {showCreateForm && allDocs.length > 0 && (
+                                <CreateActionableForm
+                                    docId={docFilter !== "all" ? docFilter : allDocs[0].doc_id}
+                                    docName={docFilter !== "all" ? (allDocs.find(d => d.doc_id === docFilter)?.doc_name || "") : allDocs[0].doc_name}
+                                    onCreated={() => { setShowCreateForm(false); loadAll() }}
+                                    onCancel={() => setShowCreateForm(false)}
+                                />
+                            )}
+
+                            {!loading && viewTab === "all" && filtered.map(({ item, docId, docName }) => (
+                                <ActionableCard
+                                    key={`${docId}-${item.id}`}
+                                    item={item}
+                                    docId={docId}
+                                    docName={docName}
+                                    onUpdate={handleUpdate}
+                                    onDelete={handleDelete}
+                                    onSourceClick={handleSourceClick}
+                                    isSelected={selectedItemKey === `${docId}-${item.id}`}
+                                    onSelect={() => {
+                                        setSelectedItemKey(`${docId}-${item.id}`)
+                                        // Auto-switch PDF to this doc
+                                        if (pdfDocId !== docId) {
+                                            setPdfDocId(docId)
+                                            setPdfDocName(docName)
+                                        }
+                                    }}
+                                />
+                            ))}
+
+                            {!loading && viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => (
+                                <div key={team} className="space-y-1.5">
+                                    <div className="flex items-center gap-2 pt-2 pb-1">
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
+                                            {team}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
+                                        <div className="h-px bg-border/30 flex-1" />
+                                    </div>
+                                    {entries.map(({ item, docId, docName }) => (
+                                        <ActionableCard
+                                            key={`${docId}-${item.id}`}
+                                            item={item}
+                                            docId={docId}
+                                            docName={docName}
+                                            onUpdate={handleUpdate}
+                                            onDelete={handleDelete}
+                                            onSourceClick={handleSourceClick}
+                                            isSelected={selectedItemKey === `${docId}-${item.id}`}
+                                            onSelect={() => {
+                                                setSelectedItemKey(`${docId}-${item.id}`)
+                                                if (pdfDocId !== docId) {
+                                                    setPdfDocId(docId)
+                                                    setPdfDocName(docName)
+                                                }
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            ))}
+
+                            {!loading && filtered.length === 0 && allDocs.length > 0 && (
+                                <div className="text-center text-sm text-muted-foreground/60 py-12">
+                                    No actionables match the current filters
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Right: PDF viewer */}
+                    <div className="flex-1 min-w-0 flex flex-col min-h-0">
+                        {/* PDF header */}
+                        {pdfUrl && (
+                            <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-[12px] font-medium text-foreground truncate">
+                                        {pdfDocName || pdfDocId}
+                                    </span>
+                                </div>
+                                {allDocs.length > 1 && (
+                                    <select
+                                        value={pdfDocId || ""}
+                                        onChange={e => {
+                                            setPdfDocId(e.target.value)
+                                            const doc = allDocs.find(d => d.doc_id === e.target.value)
+                                            setPdfDocName(doc?.doc_name || e.target.value)
+                                        }}
+                                        className="bg-muted/30 text-[11px] rounded px-2 py-1 border border-transparent focus:border-border focus:outline-none text-foreground max-w-[180px]"
+                                    >
+                                        {allDocs.map(d => (
+                                            <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        )}
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            {pdfUrl ? (
+                                <PdfViewer ref={pdfRef} fileUrl={pdfUrl} className="h-full w-full" />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground/40 text-sm">
+                                    No document selected
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    )
+}

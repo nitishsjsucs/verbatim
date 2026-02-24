@@ -61,6 +61,8 @@ class ActionableItem:
     needs_legal_review: bool = False  # Ambiguous items flagged
     validation_status: str = "pending"  # pending, validated, flagged
     validation_notes: str = ""  # Notes from validation pass
+    approval_status: str = "pending"  # pending, approved, rejected
+    is_manual: bool = False  # True if manually created by user
 
     def to_dict(self) -> dict:
         return {
@@ -82,6 +84,8 @@ class ActionableItem:
             "needs_legal_review": self.needs_legal_review,
             "validation_status": self.validation_status,
             "validation_notes": self.validation_notes,
+            "approval_status": self.approval_status,
+            "is_manual": self.is_manual,
         }
 
     @classmethod
@@ -117,6 +121,8 @@ class ActionableItem:
             needs_legal_review=data.get("needs_legal_review", False),
             validation_status=data.get("validation_status", "pending"),
             validation_notes=data.get("validation_notes", ""),
+            approval_status=data.get("approval_status", "pending"),
+            is_manual=data.get("is_manual", False),
         )
 
 

@@ -10,6 +10,7 @@ import {
     CorpusQueryRequest,
     CorpusQueryResponse,
     ActionablesResult,
+    ActionableItem,
     Conversation,
     ConversationMeta,
     StorageStats,
@@ -222,6 +223,65 @@ export async function extractActionablesStreaming(
  */
 export async function extractActionables(docId: string, force: boolean = false): Promise<ActionablesResult> {
     return extractActionablesStreaming(docId, force);
+}
+
+// ---------------------------------------------------------------------------
+// Actionables CRUD API (standalone page)
+// ---------------------------------------------------------------------------
+
+export async function fetchAllActionables(): Promise<ActionablesResult[]> {
+    const res = await apiFetch('/actionables');
+    if (!res.ok) throw new Error('Failed to fetch all actionables');
+    return res.json();
+}
+
+export async function updateActionable(
+    docId: string,
+    itemId: string,
+    updates: Record<string, unknown>,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to update actionable');
+    }
+    return res.json();
+}
+
+export async function createManualActionable(
+    docId: string,
+    data: Record<string, unknown>,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/documents/${docId}/actionables`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to create actionable');
+    }
+    return res.json();
+}
+
+export async function deleteActionable(docId: string, itemId: string): Promise<void> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to delete actionable');
+    }
+}
+
+export async function fetchApprovedByTeam(): Promise<Record<string, ActionableItem[]>> {
+    const res = await apiFetch('/actionables/approved-by-team');
+    if (!res.ok) throw new Error('Failed to fetch approved actionables');
+    return res.json();
 }
 
 // ---------------------------------------------------------------------------
