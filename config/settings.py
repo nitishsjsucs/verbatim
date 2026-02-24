@@ -134,8 +134,6 @@ class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="", env_file=str(PROJECT_ROOT / ".env"), extra="ignore"
     )
-
-    streamlit_port: int = 8502  # Different port from V1 (8501)
     log_level: str = "INFO"
 
 
