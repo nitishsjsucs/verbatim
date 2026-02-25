@@ -2,7 +2,6 @@
 
 import { Sidebar } from "@/components/layout/sidebar"
 import { DocumentList } from "@/components/dashboard/document-list"
-import { UploadModal } from "@/components/dashboard/upload-modal"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 
 export default function Home() {
@@ -14,7 +13,6 @@ export default function Home() {
           {/* Header bar — matches Linear's h-11 chrome */}
           <div className="h-11 border-b border-border flex items-center justify-between px-6 flex-shrink-0 bg-background">
             <h1 className="text-sm font-semibold text-foreground">Documents</h1>
-            <UploadModal />
           </div>
           {/* Content */}
           <div className="flex-1 overflow-y-auto">

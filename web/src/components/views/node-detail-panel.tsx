@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import {
-    X, FileText, Hash, BookOpen, Link2, Table2, Tag, ChevronRight, Maximize2
+    X, FileText, Hash, BookOpen, Link2, Table2, Tag, ChevronRight, ChevronDown, Maximize2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -40,13 +40,6 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                 {/* Content */}
                 <ScrollArea className="flex-1">
                     <div className="p-4 space-y-4">
-                        {/* Metadata */}
-                        <div className="grid grid-cols-3 gap-2">
-                            <MetaItem label="Pages" value={node.start_page === node.end_page ? `p.${node.start_page}` : `pp.${node.start_page}-${node.end_page}`} />
-                            <MetaItem label="Level" value={String(node.level)} />
-                            <MetaItem label="Tokens" value={node.token_count.toLocaleString()} />
-                        </div>
-
                         {/* 1. Description FIRST */}
                         {node.description && (
                             <DetailSection title="Description" icon={<FileText className="h-3.5 w-3.5" />}>
@@ -72,9 +65,9 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                             </DetailSection>
                         )}
 
-                        {/* 3. Topics */}
+                        {/* 3. Topics — collapsible */}
                         {node.topics && node.topics.length > 0 && (
-                            <DetailSection title="Topics" icon={<Tag className="h-3.5 w-3.5" />}>
+                            <CollapsibleSection title={`Topics (${node.topics.length})`} icon={<Tag className="h-3.5 w-3.5" />}>
                                 <div className="flex flex-wrap gap-1.5">
                                     {node.topics.map((topic, i) => (
                                         <span key={i} className="px-2 py-0.5 text-xs rounded-md bg-primary/10 text-primary">
@@ -82,7 +75,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                         </span>
                                     ))}
                                 </div>
-                            </DetailSection>
+                            </CollapsibleSection>
                         )}
 
                         {/* 4. Children */}
@@ -120,9 +113,9 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                             </DetailSection>
                         )}
 
-                        {/* 6. Cross-references */}
+                        {/* 6. Cross-references — collapsible */}
                         {node.cross_references && node.cross_references.length > 0 && (
-                            <DetailSection title={`Cross-References (${node.cross_references.length})`} icon={<Link2 className="h-3.5 w-3.5" />}>
+                            <CollapsibleSection title={`Cross-References (${node.cross_references.length})`} icon={<Link2 className="h-3.5 w-3.5" />}>
                                 <div className="space-y-1">
                                     {node.cross_references.map((cr, i) => (
                                         <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
@@ -134,16 +127,16 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                         </div>
                                     ))}
                                 </div>
-                            </DetailSection>
+                            </CollapsibleSection>
                         )}
 
-                        {/* 7. Full text (truncated) */}
+                        {/* 7. Full text (truncated) — collapsible */}
                         {node.text && (
-                            <DetailSection title="Full Text" icon={<FileText className="h-3.5 w-3.5" />}>
+                            <CollapsibleSection title="Full Text" icon={<FileText className="h-3.5 w-3.5" />}>
                                 <pre className="text-xs text-muted-foreground/70 whitespace-pre-wrap font-sans leading-relaxed max-h-60 overflow-y-auto">
                                     {node.text.length > 5000 ? node.text.slice(0, 5000) + "\n\n... [truncated]" : node.text}
                                 </pre>
-                            </DetailSection>
+                            </CollapsibleSection>
                         )}
                     </div>
                 </ScrollArea>
@@ -190,15 +183,6 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
     )
 }
 
-function MetaItem({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="bg-sidebar-accent/30 rounded-md p-2 text-center">
-            <p className="text-[10px] text-muted-foreground/60">{label}</p>
-            <p className="text-xs font-medium font-mono text-sidebar-foreground">{value}</p>
-        </div>
-    )
-}
-
 function DetailSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
     return (
         <div>
@@ -207,6 +191,20 @@ function DetailSection({ title, icon, children }: { title: string; icon: React.R
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">{title}</h4>
             </div>
             {children}
+        </div>
+    )
+}
+
+function CollapsibleSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+    const [open, setOpen] = React.useState(false)
+    return (
+        <div>
+            <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 w-full text-left group">
+                {open ? <ChevronDown className="h-3 w-3 text-muted-foreground/50" /> : <ChevronRight className="h-3 w-3 text-muted-foreground/50" />}
+                <span className="text-muted-foreground/50">{icon}</span>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 group-hover:text-muted-foreground transition-colors">{title}</h4>
+            </button>
+            {open && <div className="mt-2 ml-5">{children}</div>}
         </div>
     )
 }

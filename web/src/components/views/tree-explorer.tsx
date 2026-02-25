@@ -103,7 +103,7 @@ interface TreeItemProps {
 }
 
 function TreeItem({ node, level = 0, onSelect, selectedId, defaultExpanded }: TreeItemProps) {
-    const [expanded, setExpanded] = React.useState(defaultExpanded || level < 1)
+    const [expanded, setExpanded] = React.useState(defaultExpanded || false)
     const hasChildren = node.children && node.children.length > 0
     const Icon = getNodeIcon(node.node_type)
     const isSelected = selectedId === node.node_id

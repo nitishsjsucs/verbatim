@@ -12,6 +12,7 @@ import { DocumentDetail, TreeNode } from "@/lib/types"
 import { Loader2, AlertCircle, FileText, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
+import { useSearchParams } from "next/navigation"
 
 // Dynamic import — pdf.js requires browser APIs (no SSR)
 const PdfViewer = dynamic(
@@ -47,7 +48,9 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>()
-    const [viewMode, setViewMode] = React.useState<ViewMode>("document")
+    const searchParams = useSearchParams()
+    const initialTab = searchParams.get("tab") === "chat" ? "chat" : "document"
+    const [viewMode, setViewMode] = React.useState<ViewMode>(initialTab)
 
     // Ref to control PDF viewer — no state updates, no re-render loops
     const pdfRef = React.useRef<PdfViewerHandle>(null)

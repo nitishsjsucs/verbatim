@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { FileText, MoreHorizontal, Trash2, X } from "lucide-react"
+import { FileText, MoreHorizontal, Trash2, X, MessageSquare } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -116,6 +116,14 @@ export function DocumentList() {
                             <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
                             <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.nodes}</TableCell>
                             <TableCell className="text-right py-2.5 pr-2">
+                                <div className="flex items-center justify-end gap-1">
+                                <Link
+                                    href={`/documents/${doc.id}?tab=chat`}
+                                    className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                    title="Chat with document"
+                                >
+                                    <MessageSquare className="h-3.5 w-3.5" />
+                                </Link>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -133,6 +141,7 @@ export function DocumentList() {
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
+                                </div>
                             </TableCell>
                         </TableRow>
                     ))}

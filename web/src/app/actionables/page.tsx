@@ -78,14 +78,27 @@ function safeStr(v: unknown): string {
     try { return JSON.stringify(v) } catch { return String(v) }
 }
 
+// --- Normalize legacy modality values to new risk levels ---
+
+function normalizeRisk(modality: string): string {
+    const map: Record<string, string> = {
+        "Mandatory": "High Risk",
+        "Prohibited": "High Risk",
+        "Recommended": "Medium Risk",
+        "Permitted": "Low Risk",
+    }
+    return map[modality] || (RISK_CONFIG[modality] ? modality : "Medium Risk")
+}
+
 // --- Risk Icon (just ! with color) ---
 
 function RiskIcon({ modality, className }: { modality: string; className?: string }) {
-    const cfg = RISK_CONFIG[modality] || RISK_CONFIG["Medium Risk"]
+    const risk = normalizeRisk(modality)
+    const cfg = RISK_CONFIG[risk] || RISK_CONFIG["Medium Risk"]
     return (
         <span
             className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.color, className)}
-            title={modality}
+            title={risk}
         >
             !
         </span>
@@ -100,7 +113,7 @@ interface DocActionables {
     actionables: ActionableItem[]
 }
 
-type ViewTab = "all" | "by-team" | "publish"
+type ViewTab = "all" | "by-team"
 
 // --- Editable Field Component ---
 
@@ -348,21 +361,56 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <EditableField label="Team" value={item.workstream} onSave={v => handleFieldSave("workstream", v)} type="select" options={WORKSTREAM_OPTIONS} />
+                        {/* Team — styled pill selector */}
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Team</p>
+                            <select
+                                value={item.workstream}
+                                onChange={e => handleFieldSave("workstream", e.target.value)}
+                                className={cn(
+                                    "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
+                                    WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground"
+                                )}
+                            >
+                                {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                        </div>
                         <EditableField label="Risk Level" value={item.modality} onSave={v => handleFieldSave("modality", v)} type="select" options={RISK_OPTIONS} />
                     </div>
 
-                    {/* Deadline (only in publish tab) */}
+                    {/* Deadline (only in publish tab) — separate date + time */}
                     {isPublishTab && (
                         <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
-                            <input
-                                type="datetime-local"
-                                value={deadlineDraft}
-                                onChange={e => setDeadlineDraft(e.target.value)}
-                                onBlur={() => { if (deadlineDraft !== (item.deadline || "")) handleFieldSave("deadline", deadlineDraft) }}
-                                className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground"
-                            />
+                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Deadline</p>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Calendar className="absolute left-2 top-[7px] h-3.5 w-3.5 text-muted-foreground/50" />
+                                    <input
+                                        type="date"
+                                        value={deadlineDraft ? deadlineDraft.split("T")[0] : ""}
+                                        onChange={e => {
+                                            const time = deadlineDraft?.split("T")[1] || "23:59"
+                                            const val = e.target.value ? `${e.target.value}T${time}` : ""
+                                            setDeadlineDraft(val)
+                                        }}
+                                        onBlur={() => { if (deadlineDraft !== (item.deadline || "")) handleFieldSave("deadline", deadlineDraft) }}
+                                        className="w-full bg-muted/40 text-xs rounded-md pl-7 pr-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                    />
+                                </div>
+                                <div className="relative w-28">
+                                    <Clock className="absolute left-2 top-[7px] h-3.5 w-3.5 text-muted-foreground/50" />
+                                    <input
+                                        type="time"
+                                        value={deadlineDraft ? (deadlineDraft.split("T")[1] || "") : ""}
+                                        onChange={e => {
+                                            const date = deadlineDraft?.split("T")[0] || ""
+                                            if (date) setDeadlineDraft(`${date}T${e.target.value}`)
+                                        }}
+                                        onBlur={() => { if (deadlineDraft !== (item.deadline || "")) handleFieldSave("deadline", deadlineDraft) }}
+                                        className="w-full bg-muted/40 text-xs rounded-md pl-7 pr-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -501,6 +549,14 @@ export default function ActionablesPage() {
     // Create form
     const [showCreateForm, setShowCreateForm] = React.useState(false)
 
+    // Publish section
+    const [showPublish, setShowPublish] = React.useState(false)
+    const [commonDeadline, setCommonDeadline] = React.useState("")
+    const [commonDeadlineTime, setCommonDeadlineTime] = React.useState("")
+
+    // Collapsed teams for by-team view
+    const [collapsedTeams, setCollapsedTeams] = React.useState<Set<string>>(new Set())
+
     const loadAll = React.useCallback(async () => {
         try {
             setLoading(true)
@@ -578,15 +634,11 @@ export default function ActionablesPage() {
         return items
     }, [allDocs])
 
-    // Filter based on current tab
+    // Filter based on current tab (all / by-team only)
     const filtered = React.useMemo(() => {
         return allItems.filter(({ item, docId }) => {
-            // Publish tab: only approved items
-            if (viewTab === "publish") {
-                if (item.approval_status !== "approved") return false
-            }
             if (docFilter !== "all" && docId !== docFilter) return false
-            if (riskFilter !== "all" && item.modality !== riskFilter) return false
+            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)}`.toLowerCase()
@@ -594,7 +646,12 @@ export default function ActionablesPage() {
             }
             return true
         })
-    }, [allItems, viewTab, docFilter, riskFilter, searchQuery])
+    }, [allItems, docFilter, riskFilter, searchQuery])
+
+    // Publish queue: approved but NOT yet published
+    const publishQueue = React.useMemo(() => {
+        return allItems.filter(({ item }) => item.approval_status === "approved" && !item.published_at)
+    }, [allItems])
 
     // Group by team for the "by-team" view
     const byTeam = React.useMemo(() => {
@@ -619,6 +676,38 @@ export default function ActionablesPage() {
 
     const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
 
+    // Handlers for bulk actions
+    const handleApproveAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
+        const pending = items.filter(e => e.item.approval_status === "pending")
+        if (pending.length === 0) { toast.info("No pending items to approve"); return }
+        for (const { item, docId } of pending) {
+            await handleUpdate(docId, item.id, { approval_status: "approved" })
+        }
+        toast.success(`Approved ${pending.length} actionables`)
+    }, [handleUpdate])
+
+    const handlePublishAll = React.useCallback(async () => {
+        if (publishQueue.length === 0) { toast.info("No items to publish"); return }
+        const dl = commonDeadline ? (commonDeadlineTime ? `${commonDeadline}T${commonDeadlineTime}` : `${commonDeadline}T23:59`) : ""
+        if (!dl) { toast.error("Set a common deadline first"); return }
+        for (const { item, docId } of publishQueue) {
+            await handleUpdate(docId, item.id, {
+                published_at: new Date().toISOString(),
+                deadline: dl,
+                task_status: "assigned",
+            })
+        }
+        toast.success(`Published ${publishQueue.length} actionables to tracker`)
+    }, [publishQueue, commonDeadline, commonDeadlineTime, handleUpdate])
+
+    const toggleTeam = (team: string) => {
+        setCollapsedTeams(prev => {
+            const next = new Set(prev)
+            if (next.has(team)) next.delete(team); else next.add(team)
+            return next
+        })
+    }
+
     return (
         <RoleRedirect>
         <div className="flex h-screen bg-background">
@@ -634,33 +723,33 @@ export default function ActionablesPage() {
                         </h1>
                         <div className="flex items-center gap-1 ml-2">
                             <button
-                                onClick={() => setViewTab("all")}
+                                onClick={() => { setViewTab("all"); setShowPublish(false) }}
                                 className={cn(
                                     "px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
-                                    viewTab === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                    viewTab === "all" && !showPublish ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 All
                             </button>
                             <button
-                                onClick={() => setViewTab("by-team")}
+                                onClick={() => { setViewTab("by-team"); setShowPublish(false) }}
                                 className={cn(
                                     "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
-                                    viewTab === "by-team" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                    viewTab === "by-team" && !showPublish ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <Users className="h-3 w-3" />
                                 By Team
                             </button>
                             <button
-                                onClick={() => setViewTab("publish")}
+                                onClick={() => setShowPublish(true)}
                                 className={cn(
                                     "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
-                                    viewTab === "publish" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                    showPublish ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <Send className="h-3 w-3" />
-                                Publish
+                                Publish ({publishQueue.length})
                             </button>
                         </div>
                     </div>
@@ -686,8 +775,96 @@ export default function ActionablesPage() {
 
                 {/* Body: split pane */}
                 <div className="flex-1 flex min-h-0">
-                    {/* Left: Actionables list */}
+                    {/* Left: Actionables list OR Publish section */}
                     <div className="w-[55%] min-w-[400px] border-r border-border flex flex-col min-h-0">
+
+                        {/* ═══════ PUBLISH SECTION ═══════ */}
+                        {showPublish ? (
+                            <div className="flex-1 flex flex-col min-h-0">
+                                {/* Publish header with common deadline */}
+                                <div className="shrink-0 border-b border-border/40 px-4 py-3 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Send className="h-4 w-4 text-primary" />
+                                            <h2 className="text-sm font-semibold">Publish to Tracker</h2>
+                                            <span className="text-[10px] text-muted-foreground/60 font-mono">{publishQueue.length} items</span>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            className="h-7 gap-1.5 px-3 text-[12px]"
+                                            onClick={handlePublishAll}
+                                            disabled={publishQueue.length === 0}
+                                        >
+                                            <Send className="h-3 w-3" />
+                                            Publish All
+                                        </Button>
+                                    </div>
+
+                                    <div className="text-[10px] text-muted-foreground/60 bg-blue-500/5 border border-blue-500/10 rounded px-3 py-2 flex items-center gap-2">
+                                        <Calendar className="h-3 w-3 text-blue-400" />
+                                        Set deadlines and publish approved actionables to the tracker. Published items will be assigned to teams.
+                                    </div>
+
+                                    {/* Common deadline */}
+                                    <div className="flex items-center gap-3 bg-muted/20 rounded-lg p-3">
+                                        <div className="flex-1">
+                                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Common Deadline (applies to all on Publish All)</p>
+                                            <div className="flex items-center gap-2">
+                                                <div className="relative flex-1">
+                                                    <Calendar className="absolute left-2 top-[7px] h-3.5 w-3.5 text-muted-foreground/50" />
+                                                    <input
+                                                        type="date"
+                                                        value={commonDeadline}
+                                                        onChange={e => setCommonDeadline(e.target.value)}
+                                                        className="w-full bg-background text-xs rounded-md pl-7 pr-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                                    />
+                                                </div>
+                                                <div className="relative w-28">
+                                                    <Clock className="absolute left-2 top-[7px] h-3.5 w-3.5 text-muted-foreground/50" />
+                                                    <input
+                                                        type="time"
+                                                        value={commonDeadlineTime}
+                                                        onChange={e => setCommonDeadlineTime(e.target.value)}
+                                                        className="w-full bg-background text-xs rounded-md pl-7 pr-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Publish items list */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                                    {publishQueue.length === 0 && (
+                                        <div className="text-center text-sm text-muted-foreground/60 py-12">
+                                            No approved actionables to publish. Approve items first from the All or By Team tabs.
+                                        </div>
+                                    )}
+                                    {publishQueue.map(({ item, docId, docName }) => (
+                                        <ActionableCard
+                                            key={`pub-${docId}-${item.id}`}
+                                            item={item}
+                                            docId={docId}
+                                            docName={docName}
+                                            onUpdate={handleUpdate}
+                                            onDelete={handleDelete}
+                                            onSourceClick={handleSourceClick}
+                                            isSelected={selectedItemKey === `${docId}-${item.id}`}
+                                            onSelect={() => {
+                                                setSelectedItemKey(`${docId}-${item.id}`)
+                                                if (pdfDocId !== docId) {
+                                                    setPdfDocId(docId)
+                                                    setPdfDocName(docName)
+                                                }
+                                            }}
+                                            isPublishTab
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                        /* ═══════ ACTIONABLES LIST (All / By Team) ═══════ */
+                        <>
                         {/* Filters bar */}
                         <div className="shrink-0 border-b border-border/40 px-4 py-2.5 flex items-center gap-2">
                             <div className="relative flex-1">
@@ -717,6 +894,18 @@ export default function ActionablesPage() {
                                 <option value="all">All risk</option>
                                 {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                             </select>
+                            {/* Approve All button */}
+                            {viewTab === "all" && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 gap-1 px-2 text-[11px] text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                                    onClick={() => handleApproveAll(filtered)}
+                                >
+                                    <Check className="h-3 w-3" />
+                                    Approve All
+                                </Button>
+                            )}
                         </div>
 
                         {/* Content */}
@@ -749,15 +938,8 @@ export default function ActionablesPage() {
                                 />
                             )}
 
-                            {/* Publish tab info */}
-                            {viewTab === "publish" && !loading && filtered.length > 0 && (
-                                <div className="text-[10px] text-muted-foreground/60 bg-blue-500/5 border border-blue-500/10 rounded px-3 py-2 flex items-center gap-2 mb-2">
-                                    <Calendar className="h-3 w-3 text-blue-400" />
-                                    Set deadlines and publish approved actionables to the tracker. Published items will be assigned to teams.
-                                </div>
-                            )}
-
-                            {!loading && (viewTab === "all" || viewTab === "publish") && filtered.map(({ item, docId, docName }) => (
+                            {/* All tab */}
+                            {!loading && viewTab === "all" && filtered.map(({ item, docId, docName }) => (
                                 <ActionableCard
                                     key={`${docId}-${item.id}`}
                                     item={item}
@@ -774,47 +956,65 @@ export default function ActionablesPage() {
                                             setPdfDocName(docName)
                                         }
                                     }}
-                                    isPublishTab={viewTab === "publish"}
                                 />
                             ))}
 
-                            {!loading && viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => (
-                                <div key={team} className="space-y-1.5">
-                                    <div className="flex items-center gap-2 pt-2 pb-1">
-                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
-                                            {team}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
-                                        <div className="h-px bg-border/30 flex-1" />
+                            {/* By Team tab — collapsible teams with Approve All per team */}
+                            {!loading && viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
+                                const isCollapsed = collapsedTeams.has(team)
+                                return (
+                                    <div key={team} className="space-y-1.5">
+                                        <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
+                                            {isCollapsed
+                                                ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            }
+                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
+                                                {team}
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
+                                            <div className="h-px bg-border/30 flex-1" />
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10"
+                                                onClick={(e) => { e.stopPropagation(); handleApproveAll(entries) }}
+                                            >
+                                                <Check className="h-2.5 w-2.5" />
+                                                Approve All
+                                            </Button>
+                                        </div>
+                                        {!isCollapsed && entries.map(({ item, docId, docName }) => (
+                                            <ActionableCard
+                                                key={`${docId}-${item.id}`}
+                                                item={item}
+                                                docId={docId}
+                                                docName={docName}
+                                                onUpdate={handleUpdate}
+                                                onDelete={handleDelete}
+                                                onSourceClick={handleSourceClick}
+                                                isSelected={selectedItemKey === `${docId}-${item.id}`}
+                                                onSelect={() => {
+                                                    setSelectedItemKey(`${docId}-${item.id}`)
+                                                    if (pdfDocId !== docId) {
+                                                        setPdfDocId(docId)
+                                                        setPdfDocName(docName)
+                                                    }
+                                                }}
+                                            />
+                                        ))}
                                     </div>
-                                    {entries.map(({ item, docId, docName }) => (
-                                        <ActionableCard
-                                            key={`${docId}-${item.id}`}
-                                            item={item}
-                                            docId={docId}
-                                            docName={docName}
-                                            onUpdate={handleUpdate}
-                                            onDelete={handleDelete}
-                                            onSourceClick={handleSourceClick}
-                                            isSelected={selectedItemKey === `${docId}-${item.id}`}
-                                            onSelect={() => {
-                                                setSelectedItemKey(`${docId}-${item.id}`)
-                                                if (pdfDocId !== docId) {
-                                                    setPdfDocId(docId)
-                                                    setPdfDocName(docName)
-                                                }
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            ))}
+                                )
+                            })}
 
                             {!loading && filtered.length === 0 && allDocs.length > 0 && (
                                 <div className="text-center text-sm text-muted-foreground/60 py-12">
-                                    {viewTab === "publish" ? "No approved actionables to publish" : "No actionables match the current filters"}
+                                    No actionables match the current filters
                                 </div>
                             )}
                         </div>
+                        </>
+                        )}
                     </div>
 
                     {/* Right: PDF viewer */}

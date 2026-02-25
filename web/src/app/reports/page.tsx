@@ -8,7 +8,7 @@ import { fetchAllActionables } from "@/lib/api"
 import { ActionableItem, ActionablesResult, TaskStatus } from "@/lib/types"
 import {
     LayoutDashboard, Loader2, Search, Filter,
-    Users, MoreHorizontal, Download,
+    Users, MoreHorizontal, Download, AlertTriangle, Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -22,6 +22,16 @@ function safeStr(v: unknown): string {
     try { return JSON.stringify(v) } catch { return String(v) }
 }
 
+function normalizeRisk(modality: string): string {
+    const map: Record<string, string> = {
+        "Mandatory": "High Risk",
+        "Prohibited": "High Risk",
+        "Recommended": "Medium Risk",
+        "Permitted": "Low Risk",
+    }
+    return map[modality] || (["High Risk", "Medium Risk", "Low Risk"].includes(modality) ? modality : "Medium Risk")
+}
+
 const STATUS_LABELS: Record<TaskStatus, string> = {
     assigned: "Assigned",
     in_progress: "In Progress",
@@ -31,20 +41,33 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 }
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-    assigned: "#94a3b8",    // slate
-    in_progress: "#f59e0b", // amber
-    review: "#3b82f6",      // blue
-    completed: "#22c55e",   // green
-    reworking: "#f97316",   // orange
+    assigned: "#94a3b8",
+    in_progress: "#f59e0b",
+    review: "#3b82f6",
+    completed: "#22c55e",
+    reworking: "#f97316",
+}
+
+const RISK_COLORS: Record<string, string> = {
+    "High Risk": "#ef4444",
+    "Medium Risk": "#eab308",
+    "Low Risk": "#22c55e",
 }
 
 const PIE_COLORS = ["#94a3b8", "#f59e0b", "#3b82f6", "#22c55e", "#f97316"]
+const RISK_PIE_COLORS = ["#ef4444", "#eab308", "#22c55e"]
+
+const WORKSTREAM_BAR_COLORS = [
+    "#8b5cf6", "#06b6d4", "#3b82f6", "#ec4899",
+    "#6366f1", "#0ea5e9", "#7c3aed", "#d946ef", "#71717a",
+]
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
-function KpiCard({ title, value, filterActive, onClick }: {
+function KpiCard({ title, value, color, filterActive, onClick }: {
     title: string
     value: number
+    color?: string
     filterActive?: boolean
     onClick?: () => void
 }) {
@@ -52,18 +75,12 @@ function KpiCard({ title, value, filterActive, onClick }: {
         <button
             onClick={onClick}
             className={cn(
-                "flex-1 min-w-[160px] bg-card border border-border rounded-lg p-5 text-left transition-all hover:shadow-md",
+                "flex-1 min-w-[130px] bg-card border border-border rounded-lg p-4 text-left transition-all hover:shadow-md",
                 filterActive && "ring-2 ring-primary"
             )}
         >
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium text-foreground">{title}</h3>
-                <div className="flex items-center gap-1">
-                    <Filter className="h-3 w-3 text-muted-foreground/40" />
-                    <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground/40" />
-                </div>
-            </div>
-            <p className="text-4xl font-bold text-foreground">{value}</p>
+            <h3 className="text-[11px] font-medium text-muted-foreground mb-2">{title}</h3>
+            <p className="text-3xl font-bold" style={{ color: color || "var(--foreground)" }}>{value}</p>
         </button>
     )
 }
@@ -92,7 +109,6 @@ function PieChart({ data }: { data: { label: string; value: number; color: strin
 
     const describeArc = (cx: number, cy: number, r: number, start: number, end: number) => {
         if (end - start >= 360) {
-            // Full circle — draw two half arcs
             const mid = start + 180
             const s1 = polarToCartesian(cx, cy, r, start)
             const m1 = polarToCartesian(cx, cy, r, mid)
@@ -107,7 +123,7 @@ function PieChart({ data }: { data: { label: string; value: number; color: strin
 
     return (
         <div className="flex items-center gap-6">
-            <svg viewBox="0 0 200 200" className="w-44 h-44 shrink-0">
+            <svg viewBox="0 0 200 200" className="w-40 h-40 shrink-0">
                 {slices.map((s, i) => (
                     <path
                         key={i}
@@ -118,11 +134,12 @@ function PieChart({ data }: { data: { label: string; value: number; color: strin
                     />
                 ))}
             </svg>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
                 {slices.map((s, i) => (
                     <div key={i} className="flex items-center gap-2">
                         <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                        <span className="text-xs text-foreground">{s.label}: {s.pct}%</span>
+                        <span className="text-xs text-foreground">{s.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{s.value} ({s.pct}%)</span>
                     </div>
                 ))}
             </div>
@@ -144,7 +161,6 @@ function BarChart({ data }: { data: { label: string; value: number; color: strin
     return (
         <div className="w-full overflow-x-auto">
             <svg viewBox={`0 0 ${Math.max(chartWidth, 300)} ${chartHeight + 30}`} className="w-full h-48">
-                {/* Y-axis lines */}
                 {Array.from({ length: ySteps + 1 }).map((_, i) => {
                     const y = chartHeight - (i / ySteps) * chartHeight
                     const val = ((i / ySteps) * yMax).toFixed(yMax >= 5 ? 0 : 1)
@@ -155,35 +171,15 @@ function BarChart({ data }: { data: { label: string; value: number; color: strin
                         </g>
                     )
                 })}
-                {/* Bars */}
                 {data.map((d, i) => {
                     const barHeight = (d.value / yMax) * chartHeight
                     const x = gap + i * (barWidth + gap) + 30
                     const y = chartHeight - barHeight
                     return (
                         <g key={i}>
-                            <rect
-                                x={x}
-                                y={y}
-                                width={barWidth}
-                                height={Math.max(barHeight, 1)}
-                                fill={d.color}
-                                rx={3}
-                            />
-                            <text
-                                x={x + barWidth / 2}
-                                y={y - 4}
-                                textAnchor="middle"
-                                className="text-[9px] fill-foreground font-medium"
-                            >
-                                {d.value}
-                            </text>
-                            <text
-                                x={x + barWidth / 2}
-                                y={chartHeight + 14}
-                                textAnchor="middle"
-                                className="text-[8px] fill-muted-foreground/60"
-                            >
+                            <rect x={x} y={y} width={barWidth} height={Math.max(barHeight, 1)} fill={d.color} rx={3} />
+                            <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="text-[9px] fill-foreground font-medium">{d.value}</text>
+                            <text x={x + barWidth / 2} y={chartHeight + 14} textAnchor="middle" className="text-[8px] fill-muted-foreground/60">
                                 {d.label.length > 10 ? d.label.slice(0, 9) + "…" : d.label}
                             </text>
                         </g>
@@ -199,9 +195,9 @@ function BarChart({ data }: { data: { label: string; value: number; color: strin
 function ReportsContent() {
     const { data: session } = useSession()
     const role = getUserRole(session)
-    const isComplianceOfficer = role === "compliance_officer" || role === "admin"
 
     const [allItems, setAllItems] = React.useState<ActionableItem[]>([])
+    const [allActionables, setAllActionables] = React.useState<ActionableItem[]>([])
     const [loading, setLoading] = React.useState(true)
     const [statusFilter, setStatusFilter] = React.useState<TaskStatus | "all">("all")
 
@@ -209,14 +205,17 @@ function ReportsContent() {
         try {
             setLoading(true)
             const results = await fetchAllActionables()
-            const items: ActionableItem[] = []
+            const published: ActionableItem[] = []
+            const all: ActionableItem[] = []
             for (const r of results) {
                 if (!r.actionables) continue
                 for (const a of r.actionables) {
-                    if (a.published_at) items.push(a)
+                    all.push(a)
+                    if (a.published_at) published.push(a)
                 }
             }
-            setAllItems(items)
+            setAllItems(published)
+            setAllActionables(all)
         } catch {
             toast.error("Failed to load data")
         } finally {
@@ -228,26 +227,39 @@ function ReportsContent() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const items = statusFilter === "all" ? allItems : allItems.filter(a => (a.task_status || "assigned") === statusFilter)
         const total = allItems.length
+        const totalActionables = allActionables.length
+        const approved = allActionables.filter(a => a.approval_status === "approved").length
+        const pending = allActionables.filter(a => a.approval_status === "pending").length
+        const published = allItems.length
+
         const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, review: 0, completed: 0, reworking: 0 }
         for (const a of allItems) {
             const s = (a.task_status || "assigned") as TaskStatus
             byStatus[s] = (byStatus[s] || 0) + 1
         }
 
-        // By owner (actor)
-        const byOwner: Record<string, number> = {}
-        for (const a of items) {
-            const owner = safeStr(a.actor) || "Unassigned"
-            byOwner[owner] = (byOwner[owner] || 0) + 1
+        const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
+        for (const a of allItems) {
+            const risk = normalizeRisk(a.modality)
+            byRisk[risk] = (byRisk[risk] || 0) + 1
         }
 
-        return { total, byStatus, byOwner, filteredCount: items.length }
-    }, [allItems, statusFilter])
+        const byWorkstream: Record<string, { total: number; done: number }> = {}
+        for (const a of allItems) {
+            const team = safeStr(a.workstream) || "Other"
+            if (!byWorkstream[team]) byWorkstream[team] = { total: 0, done: 0 }
+            byWorkstream[team].total++
+            if (a.task_status === "completed") byWorkstream[team].done++
+        }
 
-    // Pie chart data
-    const pieData = React.useMemo(() => {
+        const completionRate = total > 0 ? ((byStatus.completed / total) * 100).toFixed(1) : "0"
+
+        return { total, totalActionables, approved, pending, published, byStatus, byRisk, byWorkstream, completionRate }
+    }, [allItems, allActionables])
+
+    // Pie chart data — by status
+    const statusPieData = React.useMemo(() => {
         const statuses: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
         return statuses.map((s, i) => ({
             label: STATUS_LABELS[s],
@@ -256,16 +268,26 @@ function ReportsContent() {
         }))
     }, [stats.byStatus])
 
-    // Bar chart data (by owner)
-    const barData = React.useMemo(() => {
-        const entries = Object.entries(stats.byOwner).sort((a, b) => b[1] - a[1]).slice(0, 10)
-        const colors = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8", "#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8"]
-        return entries.map(([label, value], i) => ({
-            label,
-            value,
-            color: colors[i % colors.length],
+    // Pie chart data — by risk
+    const riskPieData = React.useMemo(() => {
+        const risks = ["High Risk", "Medium Risk", "Low Risk"]
+        return risks.map((r, i) => ({
+            label: r,
+            value: stats.byRisk[r],
+            color: RISK_PIE_COLORS[i],
         }))
-    }, [stats.byOwner])
+    }, [stats.byRisk])
+
+    // Bar chart data — by workstream
+    const workstreamBarData = React.useMemo(() => {
+        return Object.entries(stats.byWorkstream)
+            .sort((a, b) => b[1].total - a[1].total)
+            .map(([label, { total }], i) => ({
+                label,
+                value: total,
+                color: WORKSTREAM_BAR_COLORS[i % WORKSTREAM_BAR_COLORS.length],
+            }))
+    }, [stats.byWorkstream])
 
     return (
         <div className="flex h-screen bg-background">
@@ -274,37 +296,12 @@ function ReportsContent() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* ── Top bar ── */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-sm font-semibold text-foreground">
-                            Dashboard and reporting
-                        </h1>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
-                            <Download className="h-3 w-3" /> Export
-                        </button>
-                    </div>
-                </div>
-
-                {/* ── Toolbar ── */}
-                <div className="shrink-0 border-b border-border/40 px-5 py-2 flex items-center gap-2">
-                    <div className="bg-primary/10 text-primary text-[11px] font-medium px-3 py-1 rounded-md">
-                        + Add widget
-                    </div>
-                    <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-                        1 connected board
-                    </span>
-                    <div className="flex-1" />
-                    <div className="relative max-w-xs">
-                        <Search className="absolute left-2.5 top-[6px] h-3 w-3 text-muted-foreground/40" />
-                        <input placeholder="Type to filter" className="bg-muted/20 text-xs rounded-md pl-7 pr-3 py-1 border border-transparent focus:border-border focus:outline-none w-40" />
-                    </div>
+                    <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4 text-primary" />
+                        Reports & Analytics
+                    </h1>
                     <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
-                        <Users className="h-3 w-3" /> People
-                    </button>
-                    <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
-                        <Filter className="h-3 w-3" /> Filter
+                        <Download className="h-3 w-3" /> Export
                     </button>
                 </div>
 
@@ -319,99 +316,181 @@ function ReportsContent() {
 
                     {!loading && (
                         <>
-                            {/* ── KPI Cards row ── */}
-                            <div className="flex gap-4 flex-wrap">
-                                <KpiCard
-                                    title="All Tasks"
-                                    value={stats.total}
-                                    filterActive={statusFilter === "all"}
-                                    onClick={() => setStatusFilter("all")}
-                                />
-                                <KpiCard
-                                    title="In Progress"
-                                    value={stats.byStatus.in_progress}
-                                    filterActive={statusFilter === "in_progress"}
-                                    onClick={() => setStatusFilter("in_progress")}
-                                />
-                                <KpiCard
-                                    title="Completed"
-                                    value={stats.byStatus.completed}
-                                    filterActive={statusFilter === "completed"}
-                                    onClick={() => setStatusFilter("completed")}
-                                />
-                                <KpiCard
-                                    title="Reworking"
-                                    value={stats.byStatus.reworking}
-                                    filterActive={statusFilter === "reworking"}
-                                    onClick={() => setStatusFilter("reworking")}
-                                />
+                            {/* ── Overview KPIs ── */}
+                            <div>
+                                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Overview</h2>
+                                <div className="flex gap-3 flex-wrap">
+                                    <KpiCard title="Total Actionables" value={stats.totalActionables} />
+                                    <KpiCard title="Approved" value={stats.approved} color="#22c55e" />
+                                    <KpiCard title="Pending Review" value={stats.pending} color="#94a3b8" />
+                                    <KpiCard title="Published to Tracker" value={stats.published} color="#3b82f6" />
+                                    <KpiCard title="Completion Rate" value={Number(stats.completionRate)} color="#22c55e" />
+                                </div>
+                            </div>
+
+                            {/* ── Status KPIs — clickable filter ── */}
+                            <div>
+                                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tasks by Status (Published)</h2>
+                                <div className="flex gap-3 flex-wrap">
+                                    <KpiCard
+                                        title="All Published"
+                                        value={stats.total}
+                                        filterActive={statusFilter === "all"}
+                                        onClick={() => setStatusFilter("all")}
+                                    />
+                                    <KpiCard
+                                        title="Assigned"
+                                        value={stats.byStatus.assigned}
+                                        color={STATUS_COLORS.assigned}
+                                        filterActive={statusFilter === "assigned"}
+                                        onClick={() => setStatusFilter("assigned")}
+                                    />
+                                    <KpiCard
+                                        title="In Progress"
+                                        value={stats.byStatus.in_progress}
+                                        color={STATUS_COLORS.in_progress}
+                                        filterActive={statusFilter === "in_progress"}
+                                        onClick={() => setStatusFilter("in_progress")}
+                                    />
+                                    <KpiCard
+                                        title="Under Review"
+                                        value={stats.byStatus.review}
+                                        color={STATUS_COLORS.review}
+                                        filterActive={statusFilter === "review"}
+                                        onClick={() => setStatusFilter("review")}
+                                    />
+                                    <KpiCard
+                                        title="Completed"
+                                        value={stats.byStatus.completed}
+                                        color={STATUS_COLORS.completed}
+                                        filterActive={statusFilter === "completed"}
+                                        onClick={() => setStatusFilter("completed")}
+                                    />
+                                    <KpiCard
+                                        title="Reworking"
+                                        value={stats.byStatus.reworking}
+                                        color={STATUS_COLORS.reworking}
+                                        filterActive={statusFilter === "reworking"}
+                                        onClick={() => setStatusFilter("reworking")}
+                                    />
+                                </div>
                             </div>
 
                             {/* ── Charts row ── */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {/* Pie chart: Tasks by status */}
                                 <div className="bg-card border border-border rounded-lg p-5">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-sm font-medium text-foreground">Tasks by status</h3>
-                                        <div className="flex items-center gap-1">
-                                            <Filter className="h-3 w-3 text-muted-foreground/40" />
-                                            <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground/40" />
-                                        </div>
-                                    </div>
-                                    <PieChart data={pieData} />
+                                    <h3 className="text-sm font-medium text-foreground mb-4">Tasks by Status</h3>
+                                    <PieChart data={statusPieData} />
                                 </div>
 
-                                {/* Bar chart: Tasks by owner */}
+                                {/* Pie chart: Tasks by risk */}
                                 <div className="bg-card border border-border rounded-lg p-5">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-sm font-medium text-foreground">Tasks by owner</h3>
-                                        <div className="flex items-center gap-1">
-                                            <Filter className="h-3 w-3 text-muted-foreground/40" />
-                                            <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground/40" />
-                                        </div>
-                                    </div>
-                                    {barData.length > 0 ? (
-                                        <BarChart data={barData} />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-40 text-muted-foreground/40 text-sm">
-                                            No data to display
+                                    <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+                                        Tasks by Risk Level
+                                    </h3>
+                                    <PieChart data={riskPieData} />
+                                </div>
+                            </div>
+
+                            {/* ── Bar chart: by workstream ── */}
+                            <div className="bg-card border border-border rounded-lg p-5">
+                                <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                    Tasks by Team / Workstream
+                                </h3>
+                                {workstreamBarData.length > 0 ? (
+                                    <BarChart data={workstreamBarData} />
+                                ) : (
+                                    <div className="flex items-center justify-center h-40 text-muted-foreground/40 text-sm">No data</div>
+                                )}
+                            </div>
+
+                            {/* ── Progress by team ── */}
+                            <div className="bg-card border border-border rounded-lg p-5">
+                                <h3 className="text-sm font-medium text-foreground mb-4">Completion Progress by Team</h3>
+                                <div className="space-y-3">
+                                    {Object.entries(stats.byWorkstream)
+                                        .sort((a, b) => b[1].total - a[1].total)
+                                        .map(([team, { total, done }]) => (
+                                            <div key={team} className="flex items-center gap-3">
+                                                <span className="text-xs text-foreground w-44 truncate font-medium">{team}</span>
+                                                <div className="flex-1 h-2 rounded-full bg-muted/30 overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-emerald-500 rounded-full transition-all"
+                                                        style={{ width: `${(done / (total || 1)) * 100}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground font-mono w-20 text-right">
+                                                    {done}/{total} ({total > 0 ? ((done / total) * 100).toFixed(0) : 0}%)
+                                                </span>
+                                            </div>
+                                        ))}
+                                    {Object.keys(stats.byWorkstream).length === 0 && (
+                                        <div className="text-sm text-muted-foreground/40 text-center py-8">
+                                            No published tasks yet
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* ── Breakdown by workstream ── */}
+                            {/* ── Risk breakdown by team ── */}
                             <div className="bg-card border border-border rounded-lg p-5">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-sm font-medium text-foreground">Tasks by team / workstream</h3>
-                                    <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground/40" />
-                                </div>
-                                <div className="space-y-2">
+                                <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                    <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                                    Risk Distribution by Team
+                                </h3>
+                                <div className="space-y-3">
                                     {(() => {
-                                        const byTeam: Record<string, { total: number; done: number }> = {}
+                                        const teamRisk: Record<string, Record<string, number>> = {}
                                         for (const a of allItems) {
                                             const team = safeStr(a.workstream) || "Other"
-                                            if (!byTeam[team]) byTeam[team] = { total: 0, done: 0 }
-                                            byTeam[team].total++
-                                            if (a.task_status === "completed") byTeam[team].done++
+                                            const risk = normalizeRisk(a.modality)
+                                            if (!teamRisk[team]) teamRisk[team] = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
+                                            teamRisk[team][risk]++
                                         }
-                                        return Object.entries(byTeam)
-                                            .sort((a, b) => b[1].total - a[1].total)
-                                            .map(([team, { total, done }]) => (
-                                                <div key={team} className="flex items-center gap-3">
-                                                    <span className="text-xs text-foreground w-40 truncate">{team}</span>
-                                                    <div className="flex-1 h-2 rounded-full bg-muted/30 overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-emerald-500 rounded-full transition-all"
-                                                            style={{ width: `${(done / (total || 1)) * 100}%` }}
-                                                        />
+                                        return Object.entries(teamRisk)
+                                            .sort((a, b) => {
+                                                const aTotal = Object.values(a[1]).reduce((s, v) => s + v, 0)
+                                                const bTotal = Object.values(b[1]).reduce((s, v) => s + v, 0)
+                                                return bTotal - aTotal
+                                            })
+                                            .map(([team, risks]) => {
+                                                const total = Object.values(risks).reduce((s, v) => s + v, 0)
+                                                return (
+                                                    <div key={team} className="flex items-center gap-3">
+                                                        <span className="text-xs text-foreground w-44 truncate font-medium">{team}</span>
+                                                        <div className="flex-1 h-3 rounded-full overflow-hidden flex bg-muted/30">
+                                                            {["High Risk", "Medium Risk", "Low Risk"].map(r => {
+                                                                const pct = total > 0 ? (risks[r] / total) * 100 : 0
+                                                                if (pct === 0) return null
+                                                                return (
+                                                                    <div
+                                                                        key={r}
+                                                                        className="h-full transition-all"
+                                                                        style={{ width: `${pct}%`, backgroundColor: RISK_COLORS[r] }}
+                                                                        title={`${r}: ${risks[r]}`}
+                                                                    />
+                                                                )
+                                                            })}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 shrink-0 w-28">
+                                                            <span className="text-[9px] font-mono text-red-500">{risks["High Risk"]}</span>
+                                                            <span className="text-[9px] text-muted-foreground/30">/</span>
+                                                            <span className="text-[9px] font-mono text-yellow-500">{risks["Medium Risk"]}</span>
+                                                            <span className="text-[9px] text-muted-foreground/30">/</span>
+                                                            <span className="text-[9px] font-mono text-emerald-500">{risks["Low Risk"]}</span>
+                                                        </div>
                                                     </div>
-                                                    <span className="text-[10px] text-muted-foreground font-mono w-16 text-right">
-                                                        {done}/{total}
-                                                    </span>
-                                                </div>
-                                            ))
+                                                )
+                                            })
                                     })()}
+                                    {allItems.length === 0 && (
+                                        <div className="text-sm text-muted-foreground/40 text-center py-8">
+                                            No published tasks yet
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </>

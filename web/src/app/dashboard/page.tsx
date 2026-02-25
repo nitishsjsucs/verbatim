@@ -37,6 +37,16 @@ function safeStr(v: unknown): string {
     try { return JSON.stringify(v) } catch { return String(v) }
 }
 
+function normalizeRisk(modality: string): string {
+    const map: Record<string, string> = {
+        "Mandatory": "High Risk",
+        "Prohibited": "High Risk",
+        "Recommended": "Medium Risk",
+        "Permitted": "Low Risk",
+    }
+    return map[modality] || (RISK_STYLES[modality] ? modality : "Medium Risk")
+}
+
 // ─── Color configs ───────────────────────────────────────────────────────────
 
 const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: string }> = {
@@ -78,9 +88,10 @@ interface FlatRow {
 // ─── Risk Icon ───────────────────────────────────────────────────────────────
 
 function RiskIcon({ modality }: { modality: string }) {
-    const cfg = RISK_STYLES[modality] || RISK_STYLES["Medium Risk"]
+    const risk = normalizeRisk(modality)
+    const cfg = RISK_STYLES[risk] || RISK_STYLES["Medium Risk"]
     return (
-        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.text)} title={modality}>
+        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.text)} title={risk}>
             !
         </span>
     )
@@ -188,7 +199,7 @@ export default function DashboardPage() {
     const filtered = React.useMemo(() => {
         return allRows.filter(({ item }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
-            if (riskFilter !== "all" && item.modality !== riskFilter) return false
+            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)}`.toLowerCase()
@@ -221,9 +232,9 @@ export default function DashboardPage() {
         const reworking = allRows.filter(r => r.item.task_status === "reworking").length
         const review = allRows.filter(r => r.item.task_status === "review").length
         const assigned = allRows.filter(r => !r.item.task_status || r.item.task_status === "assigned").length
-        const highRisk = allRows.filter(r => r.item.modality === "High Risk").length
-        const midRisk = allRows.filter(r => r.item.modality === "Medium Risk").length
-        const lowRisk = allRows.filter(r => r.item.modality === "Low Risk").length
+        const highRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "High Risk").length
+        const midRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Medium Risk").length
+        const lowRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Low Risk").length
         return { total, completed, inProgress, reworking, review, assigned, highRisk, midRisk, lowRisk }
     }, [allRows])
 
@@ -273,6 +284,14 @@ export default function DashboardPage() {
                         <div className="text-center">
                             <p className="text-lg font-bold text-orange-400">{stats.reworking}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-blue-400">{stats.review}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
                         </div>
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">

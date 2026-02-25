@@ -15,10 +15,20 @@ import {
 
 // --- Color/icon config ---
 
-const MODALITY_CONFIG: Record<ActionableModality, { color: string; bg: string; icon: React.ReactNode }> = {
+const MODALITY_CONFIG: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
     "High Risk": { color: "text-red-500", bg: "bg-red-500/15", icon: <Shield className="h-3 w-3" /> },
     "Medium Risk": { color: "text-yellow-500", bg: "bg-yellow-500/15", icon: <Shield className="h-3 w-3" /> },
     "Low Risk": { color: "text-emerald-500", bg: "bg-emerald-500/15", icon: <Shield className="h-3 w-3" /> },
+}
+
+function normalizeRisk(modality: string): string {
+    const map: Record<string, string> = {
+        "Mandatory": "High Risk",
+        "Prohibited": "High Risk",
+        "Recommended": "Medium Risk",
+        "Permitted": "Low Risk",
+    }
+    return map[modality] || (MODALITY_CONFIG[modality] ? modality : "Medium Risk")
 }
 
 const WORKSTREAM_COLORS: Record<string, string> = {
@@ -47,7 +57,8 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 function ModalityBar({ modality, count, total }: { modality: string; count: number; total: number }) {
     const pct = total > 0 ? (count / total) * 100 : 0
-    const cfg = MODALITY_CONFIG[modality as ActionableModality] || MODALITY_CONFIG["Medium Risk"]
+    const normalized = normalizeRisk(modality)
+    const cfg = MODALITY_CONFIG[normalized] || MODALITY_CONFIG["Medium Risk"]
     return (
         <div className="flex items-center gap-2 text-xs">
             <span className={cn("w-24 flex items-center gap-1.5", cfg.color)}>
@@ -67,7 +78,8 @@ function ActionableCard({ item, onSourceClick }: {
     onSourceClick?: (nodeId: string, pageNumber: number) => void
 }) {
     const [expanded, setExpanded] = React.useState(false)
-    const cfg = MODALITY_CONFIG[item.modality] || MODALITY_CONFIG["Medium Risk"]
+    const risk = normalizeRisk(item.modality)
+    const cfg = MODALITY_CONFIG[risk] || MODALITY_CONFIG["Medium Risk"]
 
     // Parse page number from source_location
     const handleSourceClick = () => {
@@ -334,7 +346,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
     const filtered = React.useMemo(() => {
         if (!result?.actionables) return []
         return result.actionables.filter(a => {
-            if (modalityFilter !== "all" && a.modality !== modalityFilter) return false
+            if (modalityFilter !== "all" && normalizeRisk(a.modality) !== modalityFilter) return false
             if (workstreamFilter !== "all" && a.workstream !== workstreamFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()

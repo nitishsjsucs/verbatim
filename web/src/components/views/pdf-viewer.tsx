@@ -39,6 +39,16 @@ export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
             return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
         }, [fileUrl])
 
+        const [pdfTheme, setPdfTheme] = React.useState<"dark" | "light">("dark")
+
+        React.useEffect(() => {
+            const check = () => setPdfTheme(document.documentElement.classList.contains("dark") ? "dark" : "light")
+            check()
+            const observer = new MutationObserver(check)
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
+            return () => observer.disconnect()
+        }, [])
+
         const rawJumpToPage = defaultLayoutPluginInstance.toolbarPluginInstance
             .pageNavigationPluginInstance.jumpToPage
 
@@ -102,7 +112,7 @@ export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
                         fileUrl={blobUrl}
                         initialPage={initialPage}
                         defaultScale={SpecialZoomLevel.PageWidth}
-                        theme="dark"
+                        theme={pdfTheme}
                         plugins={[defaultLayoutPluginInstance]}
                     />
                 </Worker>
