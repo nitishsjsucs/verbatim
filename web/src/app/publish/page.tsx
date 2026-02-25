@@ -414,17 +414,18 @@ export default function PublishPage() {
                                     <Save className="h-3 w-3" />
                                     {commonDeadlineSaved ? "Saved" : "Save"}
                                 </button>
+                                <Button
+                                    size="sm"
+                                    className="h-8 gap-1.5 px-3 text-[12px]"
+                                    onClick={handlePublishAll}
+                                    disabled={publishQueue.length === 0}
+                                >
+                                    <Send className="h-3 w-3" />
+                                    Publish All ({publishQueue.length})
+                                </Button>
                             </div>
                         </div>
-                        <Button
-                            size="sm"
-                            className="h-8 gap-1.5 px-3 text-[12px]"
-                            onClick={handlePublishAll}
-                            disabled={publishQueue.length === 0}
-                        >
-                            <Send className="h-3 w-3" />
-                            Publish All ({publishQueue.length})
-                        </Button>
+                        
                     </div>
 
                     {/* Search */}
