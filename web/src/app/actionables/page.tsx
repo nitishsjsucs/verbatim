@@ -17,10 +17,11 @@ import {
     ActionableWorkstream,
 } from "@/lib/types"
 import {
-    Shield, ShieldAlert, ShieldCheck, ShieldQuestion,
+    Shield, AlertTriangle,
     Check, X, Loader2, Plus, FileText, Search,
-    ChevronDown, ChevronRight, AlertTriangle, Pencil,
-    Trash2, Users, Filter, Save,
+    ChevronDown, ChevronRight, Pencil,
+    Trash2, Users, Save, Undo2,
+    Calendar, Clock, Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -44,43 +45,51 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
 
 // --- Constants ---
 
-const MODALITY_OPTIONS: ActionableModality[] = ["Mandatory", "Prohibited", "Permitted", "Recommended"]
+const RISK_OPTIONS: ActionableModality[] = ["High Risk", "Medium Risk", "Low Risk"]
 const WORKSTREAM_OPTIONS: ActionableWorkstream[] = [
     "Policy", "Technology", "Operations", "Training",
     "Reporting", "Customer Communication", "Governance", "Legal", "Other",
 ]
 
-const MODALITY_CONFIG: Record<ActionableModality, { color: string; bg: string; icon: React.ReactNode }> = {
-    Mandatory: { color: "text-red-400", bg: "bg-red-400/10", icon: <Shield className="h-3 w-3" /> },
-    Prohibited: { color: "text-orange-400", bg: "bg-orange-400/10", icon: <ShieldAlert className="h-3 w-3" /> },
-    Permitted: { color: "text-green-400", bg: "bg-green-400/10", icon: <ShieldCheck className="h-3 w-3" /> },
-    Recommended: { color: "text-blue-400", bg: "bg-blue-400/10", icon: <ShieldQuestion className="h-3 w-3" /> },
+const RISK_CONFIG: Record<string, { color: string; bg: string }> = {
+    "High Risk":   { color: "text-red-500",    bg: "bg-red-500/15" },
+    "Medium Risk": { color: "text-yellow-500",  bg: "bg-yellow-500/15" },
+    "Low Risk":    { color: "text-emerald-500", bg: "bg-emerald-500/15" },
 }
 
+// Team tag colors that do NOT use red/yellow/green
 const WORKSTREAM_COLORS: Record<string, string> = {
     Policy: "bg-purple-400/15 text-purple-400",
     Technology: "bg-cyan-400/15 text-cyan-400",
-    Operations: "bg-amber-400/15 text-amber-400",
+    Operations: "bg-blue-400/15 text-blue-400",
     Training: "bg-pink-400/15 text-pink-400",
-    Reporting: "bg-emerald-400/15 text-emerald-400",
+    Reporting: "bg-indigo-400/15 text-indigo-400",
     "Customer Communication": "bg-sky-400/15 text-sky-400",
-    Governance: "bg-indigo-400/15 text-indigo-400",
-    Legal: "bg-rose-400/15 text-rose-400",
+    Governance: "bg-violet-400/15 text-violet-400",
+    Legal: "bg-fuchsia-400/15 text-fuchsia-400",
     Other: "bg-muted text-muted-foreground",
 }
 
-const APPROVAL_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-    pending: { color: "text-muted-foreground", bg: "bg-muted", label: "Pending" },
-    approved: { color: "text-green-400", bg: "bg-green-400/10", label: "Approved" },
-    rejected: { color: "text-red-400", bg: "bg-red-400/10", label: "Rejected" },
-}
-
-/** Safely convert any value to a renderable string (fixes React error #31 for object fields) */
+/** Safely convert any value to a renderable string */
 function safeStr(v: unknown): string {
     if (v === null || v === undefined) return ""
     if (typeof v === "string") return v
     if (typeof v === "number" || typeof v === "boolean") return String(v)
     try { return JSON.stringify(v) } catch { return String(v) }
+}
+
+// --- Risk Icon (just ! with color) ---
+
+function RiskIcon({ modality, className }: { modality: string; className?: string }) {
+    const cfg = RISK_CONFIG[modality] || RISK_CONFIG["Medium Risk"]
+    return (
+        <span
+            className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.color, className)}
+            title={modality}
+        >
+            !
+        </span>
+    )
 }
 
 // --- Types ---
@@ -91,7 +100,7 @@ interface DocActionables {
     actionables: ActionableItem[]
 }
 
-type ViewTab = "all" | "by-team"
+type ViewTab = "all" | "by-team" | "publish"
 
 // --- Editable Field Component ---
 
@@ -159,7 +168,7 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
                     onChange={e => setDraft(e.target.value)}
                     onBlur={commit}
                     onKeyDown={e => { if (e.key === "Escape") { setDraft(value); setEditing(false) } }}
-                    rows={2}
+                    rows={3}
                     className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
                 />
             </div>
@@ -186,7 +195,7 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
 
 // --- Actionable Card ---
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isPublishTab }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -195,11 +204,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     onSourceClick: (docId: string, pageNumber: number) => void
     isSelected: boolean
     onSelect: () => void
+    isPublishTab?: boolean
 }) {
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
-    const cfg = MODALITY_CONFIG[item.modality] || MODALITY_CONFIG.Mandatory
-    const approvalCfg = APPROVAL_CONFIG[item.approval_status] || APPROVAL_CONFIG.pending
+    const [deadlineDraft, setDeadlineDraft] = React.useState(item.deadline || "")
 
     const handleFieldSave = async (field: string, value: unknown) => {
         setSaving(true)
@@ -220,8 +229,27 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         await onUpdate(docId, item.id, { approval_status: "rejected" })
     }
 
+    const handleRevert = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        await onUpdate(docId, item.id, { approval_status: "pending", published_at: "" })
+    }
+
+    const handlePublish = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!deadlineDraft) {
+            toast.error("Set a deadline before publishing")
+            return
+        }
+        await onUpdate(docId, item.id, {
+            published_at: new Date().toISOString(),
+            deadline: deadlineDraft,
+            task_status: "assigned",
+        })
+        toast.success("Published to tracker")
+    }
+
     const handleSourceClick = () => {
-        const match = item.source_location.match(/p\.?\s*(\d+)/)
+        const match = item.source_location?.match(/p\.?\s*(\d+)/)
         if (match) {
             onSourceClick(docId, parseInt(match[1], 10))
         }
@@ -232,63 +260,82 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             className={cn(
                 "border rounded-lg overflow-hidden transition-all",
                 isSelected ? "border-primary/50 ring-1 ring-primary/20" : "border-border/30",
-                item.approval_status === "approved" && "border-green-500/20",
+                item.approval_status === "approved" && !isPublishTab && "border-emerald-500/20",
                 item.approval_status === "rejected" && "border-red-500/20 opacity-60",
             )}
         >
-            {/* Header row */}
+            {/* Header row: Team → Risk → Text → Buttons */}
             <div className="flex items-center gap-1.5 px-3 py-2 hover:bg-muted/20 transition-colors">
-                <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-1.5 flex-1 min-w-0 text-left">
+                <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
-                    {/* Modality badge */}
-                    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", cfg.color, cfg.bg)}>
-                        {cfg.icon}
-                        {item.modality}
+                    {/* Team tag */}
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
+                        {item.workstream}
                     </span>
 
-                    {/* Action summary */}
+                    {/* Risk icon */}
+                    <RiskIcon modality={item.modality} />
+
+                    {/* Actionable text */}
                     <div className="flex-1 min-w-0">
                         <p className="text-xs text-foreground/90 leading-relaxed truncate">
-                            <span className="font-medium">{safeStr(item.actor)}</span>
-                            {" "}{safeStr(item.action)}
-                            {item.object && <span className="text-muted-foreground"> — {safeStr(item.object)}</span>}
+                            {safeStr(item.action)}
                         </p>
                     </div>
                 </button>
 
-                {/* Approval buttons */}
+                {/* Right-side buttons */}
                 <div className="flex items-center gap-1 shrink-0">
-                    {item.approval_status === "pending" ? (
+                    {!isPublishTab && item.approval_status === "pending" && (
                         <>
-                            <button
-                                onClick={handleApprove}
-                                className="p-1 rounded hover:bg-green-400/10 text-muted-foreground/40 hover:text-green-400 transition-colors"
-                                title="Approve"
-                            >
+                            <button onClick={handleApprove} className="p-1 rounded hover:bg-emerald-400/10 text-muted-foreground/40 hover:text-emerald-400 transition-colors" title="Approve">
                                 <Check className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                                onClick={handleReject}
-                                className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors"
-                                title="Reject"
-                            >
+                            <button onClick={handleReject} className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors" title="Reject">
                                 <X className="h-3.5 w-3.5" />
                             </button>
                         </>
-                    ) : (
-                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-medium", approvalCfg.color, approvalCfg.bg)}>
-                            {approvalCfg.label}
+                    )}
+                    {!isPublishTab && item.approval_status === "approved" && (
+                        <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Revert to pending">
+                            <Undo2 className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    {!isPublishTab && item.approval_status === "rejected" && (
+                        <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Revert to pending">
+                            <Undo2 className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    {!isPublishTab && (
+                        <span className={cn(
+                            "text-[9px] px-1.5 py-0.5 rounded font-medium ml-1",
+                            item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
+                            item.approval_status === "rejected" ? "text-red-400 bg-red-400/10" :
+                            "text-muted-foreground bg-muted"
+                        )}>
+                            {item.approval_status === "approved" ? "Approved" : item.approval_status === "rejected" ? "Rejected" : "Pending"}
                         </span>
                     )}
-
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium ml-1", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
-                        {item.workstream}
-                    </span>
+                    {isPublishTab && (
+                        <>
+                            <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Send back to pending">
+                                <Undo2 className="h-3.5 w-3.5" />
+                            </button>
+                            {item.published_at ? (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded font-medium text-blue-400 bg-blue-400/10 ml-1">Published</span>
+                            ) : (
+                                <button onClick={handlePublish} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors ml-1 font-medium" title="Publish to tracker">
+                                    <Send className="h-3 w-3" />
+                                    Publish
+                                </button>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
 
-            {/* Expanded editable details */}
+            {/* Expanded details: Implementation, Evidence, Team (all editable) */}
             {expanded && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border/20 pt-2.5">
                     {saving && (
@@ -297,35 +344,27 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </div>
                     )}
 
-                    {/* Core fields */}
+                    <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
+                    <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        <EditableField label="Actor" value={item.actor} onSave={v => handleFieldSave("actor", v)} />
-                        <EditableField label="Action" value={item.action} onSave={v => handleFieldSave("action", v)} />
-                        <EditableField label="Object" value={item.object} onSave={v => handleFieldSave("object", v)} />
-                        <EditableField label="Modality" value={item.modality} onSave={v => handleFieldSave("modality", v)} type="select" options={MODALITY_OPTIONS} />
-                        <EditableField label="Workstream" value={item.workstream} onSave={v => handleFieldSave("workstream", v)} type="select" options={WORKSTREAM_OPTIONS} />
-                        <EditableField label="Condition" value={item.trigger_or_condition} onSave={v => handleFieldSave("trigger_or_condition", v)} />
-                        <EditableField label="Thresholds" value={item.thresholds} onSave={v => handleFieldSave("thresholds", v)} />
-                        <EditableField label="Deadline / Frequency" value={item.deadline_or_frequency} onSave={v => handleFieldSave("deadline_or_frequency", v)} />
-                        <EditableField label="Effective Date" value={item.effective_date} onSave={v => handleFieldSave("effective_date", v)} />
-                        <EditableField label="Report To" value={item.reporting_or_notification_to} onSave={v => handleFieldSave("reporting_or_notification_to", v)} />
+                        <EditableField label="Team" value={item.workstream} onSave={v => handleFieldSave("workstream", v)} type="select" options={WORKSTREAM_OPTIONS} />
+                        <EditableField label="Risk Level" value={item.modality} onSave={v => handleFieldSave("modality", v)} type="select" options={RISK_OPTIONS} />
                     </div>
 
-                    {/* Evidence */}
-                    <EditableField label="Evidence Quote" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
-                    <EditableField label="Implementation Notes" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
-
-                    {/* Legal review toggle */}
-                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={item.needs_legal_review}
-                            onChange={e => handleFieldSave("needs_legal_review", e.target.checked)}
-                            className="rounded border-border h-3.5 w-3.5 accent-primary"
-                        />
-                        Needs legal review
-                        {item.needs_legal_review && <AlertTriangle className="h-3 w-3 text-amber-400" />}
-                    </label>
+                    {/* Deadline (only in publish tab) */}
+                    {isPublishTab && (
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
+                            <input
+                                type="datetime-local"
+                                value={deadlineDraft}
+                                onChange={e => setDeadlineDraft(e.target.value)}
+                                onBlur={() => { if (deadlineDraft !== (item.deadline || "")) handleFieldSave("deadline", deadlineDraft) }}
+                                className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground"
+                            />
+                        </div>
+                    )}
 
                     {/* Footer: source + actions */}
                     <div className="flex items-center justify-between pt-2 border-t border-border/10">
@@ -337,23 +376,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <span className="text-[10px] text-muted-foreground/40">{docName}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono text-muted-foreground/40">{item.id}</span>
-                            {item.approval_status === "pending" && (
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={handleApprove}
-                                        className="text-[10px] px-2 py-0.5 rounded bg-green-400/10 text-green-400 hover:bg-green-400/20 transition-colors"
-                                    >
-                                        Approve
-                                    </button>
-                                    <button
-                                        onClick={handleReject}
-                                        className="text-[10px] px-2 py-0.5 rounded bg-red-400/10 text-red-400 hover:bg-red-400/20 transition-colors"
-                                    >
-                                        Reject
-                                    </button>
-                                </div>
-                            )}
                             <button
                                 onClick={() => onDelete(docId, item.id)}
                                 className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/30 hover:text-red-400 transition-colors"
@@ -379,23 +401,16 @@ function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
 }) {
     const [creating, setCreating] = React.useState(false)
     const [form, setForm] = React.useState({
-        actor: "",
         action: "",
-        object: "",
-        modality: "Mandatory" as ActionableModality,
+        modality: "High Risk" as ActionableModality,
         workstream: "Other" as ActionableWorkstream,
-        trigger_or_condition: "",
-        thresholds: "",
-        deadline_or_frequency: "",
-        effective_date: "",
-        reporting_or_notification_to: "",
-        evidence_quote: "",
         implementation_notes: "",
+        evidence_quote: "",
     })
 
     const handleSubmit = async () => {
-        if (!form.actor || !form.action) {
-            toast.error("Actor and Action are required")
+        if (!form.action) {
+            toast.error("Actionable text is required")
             return
         }
         setCreating(true)
@@ -422,40 +437,34 @@ function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
                 </button>
             </div>
 
+            <div>
+                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Actionable *</label>
+                <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="Describe the actionable..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Actor *</label>
-                    <input value={form.actor} onChange={e => setForm(f => ({ ...f, actor: e.target.value }))} placeholder="e.g. The Bank" className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
-                </div>
-                <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Action *</label>
-                    <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="e.g. shall verify" className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
-                </div>
-                <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Object</label>
-                    <input value={form.object} onChange={e => setForm(f => ({ ...f, object: e.target.value }))} placeholder="e.g. customer identity" className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
-                </div>
-                <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Modality</label>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Risk Level</label>
                     <select value={form.modality} onChange={e => setForm(f => ({ ...f, modality: e.target.value as ActionableModality }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
-                        {MODALITY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Workstream</label>
+                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Team</label>
                     <select value={form.workstream} onChange={e => setForm(f => ({ ...f, workstream: e.target.value as ActionableWorkstream }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
                         {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 </div>
-                <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Deadline / Frequency</label>
-                    <input value={form.deadline_or_frequency} onChange={e => setForm(f => ({ ...f, deadline_or_frequency: e.target.value }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
-                </div>
             </div>
 
             <div>
-                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Implementation Notes</label>
-                <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
+                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Implementation Details</label>
+                <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={3} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
+            </div>
+
+            <div>
+                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Evidence</label>
+                <textarea value={form.evidence_quote} onChange={e => setForm(f => ({ ...f, evidence_quote: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
@@ -478,8 +487,7 @@ export default function ActionablesPage() {
 
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")
-    const [modalityFilter, setModalityFilter] = React.useState<string>("all")
-    const [approvalFilter, setApprovalFilter] = React.useState<string>("all")
+    const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [searchQuery, setSearchQuery] = React.useState("")
 
     // PDF state
@@ -506,7 +514,6 @@ export default function ActionablesPage() {
                 }))
             setAllDocs(docs)
 
-            // Auto-select first doc for PDF if none selected
             if (!pdfDocId && docs.length > 0) {
                 setPdfDocId(docs[0].doc_id)
                 setPdfDocName(docs[0].doc_name)
@@ -554,16 +561,13 @@ export default function ActionablesPage() {
             setPdfDocId(docId)
             const doc = allDocs.find(d => d.doc_id === docId)
             setPdfDocName(doc?.doc_name || docId)
-            // Wait for PDF to load then jump
-            setTimeout(() => {
-                pdfRef.current?.jumpToPage(pageNumber - 1)
-            }, 800)
+            setTimeout(() => { pdfRef.current?.jumpToPage(pageNumber - 1) }, 800)
         } else {
             pdfRef.current?.jumpToPage(pageNumber - 1)
         }
     }, [pdfDocId, allDocs])
 
-    // Flatten all actionables with doc info for filtering
+    // Flatten all actionables with doc info
     const allItems = React.useMemo(() => {
         const items: { item: ActionableItem; docId: string; docName: string }[] = []
         for (const doc of allDocs) {
@@ -574,19 +578,23 @@ export default function ActionablesPage() {
         return items
     }, [allDocs])
 
+    // Filter based on current tab
     const filtered = React.useMemo(() => {
         return allItems.filter(({ item, docId }) => {
+            // Publish tab: only approved items
+            if (viewTab === "publish") {
+                if (item.approval_status !== "approved") return false
+            }
             if (docFilter !== "all" && docId !== docFilter) return false
-            if (modalityFilter !== "all" && item.modality !== modalityFilter) return false
-            if (approvalFilter !== "all" && item.approval_status !== approvalFilter) return false
+            if (riskFilter !== "all" && item.modality !== riskFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                const searchable = `${item.actor} ${item.action} ${item.object} ${item.evidence_quote} ${item.implementation_notes}`.toLowerCase()
+                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)}`.toLowerCase()
                 if (!searchable.includes(q)) return false
             }
             return true
         })
-    }, [allItems, docFilter, modalityFilter, approvalFilter, searchQuery])
+    }, [allItems, viewTab, docFilter, riskFilter, searchQuery])
 
     // Group by team for the "by-team" view
     const byTeam = React.useMemo(() => {
@@ -605,7 +613,8 @@ export default function ActionablesPage() {
         const approved = allItems.filter(e => e.item.approval_status === "approved").length
         const rejected = allItems.filter(e => e.item.approval_status === "rejected").length
         const pending = total - approved - rejected
-        return { total, approved, rejected, pending }
+        const published = allItems.filter(e => !!e.item.published_at).length
+        return { total, approved, rejected, pending, published }
     }, [allItems])
 
     const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
@@ -643,13 +652,23 @@ export default function ActionablesPage() {
                                 <Users className="h-3 w-3" />
                                 By Team
                             </button>
+                            <button
+                                onClick={() => setViewTab("publish")}
+                                className={cn(
+                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+                                    viewTab === "publish" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Send className="h-3 w-3" />
+                                Publish
+                            </button>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* Stats pills */}
                         <div className="flex items-center gap-2 text-[10px]">
                             <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
-                            <span className="px-2 py-0.5 rounded bg-green-400/10 text-green-400 font-mono">{stats.approved} approved</span>
+                            <span className="px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-mono">{stats.approved} approved</span>
+                            <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} published</span>
                             <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground/60 font-mono">{stats.pending} pending</span>
                         </div>
                         <Button
@@ -691,22 +710,12 @@ export default function ActionablesPage() {
                                 ))}
                             </select>
                             <select
-                                value={modalityFilter}
-                                onChange={e => setModalityFilter(e.target.value)}
+                                value={riskFilter}
+                                onChange={e => setRiskFilter(e.target.value)}
                                 className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
                             >
-                                <option value="all">All types</option>
-                                {MODALITY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                            <select
-                                value={approvalFilter}
-                                onChange={e => setApprovalFilter(e.target.value)}
-                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
-                            >
-                                <option value="all">All status</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
+                                <option value="all">All risk</option>
+                                {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                             </select>
                         </div>
 
@@ -731,7 +740,6 @@ export default function ActionablesPage() {
                                 </div>
                             )}
 
-                            {/* Create form */}
                             {showCreateForm && allDocs.length > 0 && (
                                 <CreateActionableForm
                                     docId={docFilter !== "all" ? docFilter : allDocs[0].doc_id}
@@ -741,7 +749,15 @@ export default function ActionablesPage() {
                                 />
                             )}
 
-                            {!loading && viewTab === "all" && filtered.map(({ item, docId, docName }) => (
+                            {/* Publish tab info */}
+                            {viewTab === "publish" && !loading && filtered.length > 0 && (
+                                <div className="text-[10px] text-muted-foreground/60 bg-blue-500/5 border border-blue-500/10 rounded px-3 py-2 flex items-center gap-2 mb-2">
+                                    <Calendar className="h-3 w-3 text-blue-400" />
+                                    Set deadlines and publish approved actionables to the tracker. Published items will be assigned to teams.
+                                </div>
+                            )}
+
+                            {!loading && (viewTab === "all" || viewTab === "publish") && filtered.map(({ item, docId, docName }) => (
                                 <ActionableCard
                                     key={`${docId}-${item.id}`}
                                     item={item}
@@ -753,12 +769,12 @@ export default function ActionablesPage() {
                                     isSelected={selectedItemKey === `${docId}-${item.id}`}
                                     onSelect={() => {
                                         setSelectedItemKey(`${docId}-${item.id}`)
-                                        // Auto-switch PDF to this doc
                                         if (pdfDocId !== docId) {
                                             setPdfDocId(docId)
                                             setPdfDocName(docName)
                                         }
                                     }}
+                                    isPublishTab={viewTab === "publish"}
                                 />
                             ))}
 
@@ -795,7 +811,7 @@ export default function ActionablesPage() {
 
                             {!loading && filtered.length === 0 && allDocs.length > 0 && (
                                 <div className="text-center text-sm text-muted-foreground/60 py-12">
-                                    No actionables match the current filters
+                                    {viewTab === "publish" ? "No approved actionables to publish" : "No actionables match the current filters"}
                                 </div>
                             )}
                         </div>
@@ -803,7 +819,6 @@ export default function ActionablesPage() {
 
                     {/* Right: PDF viewer */}
                     <div className="flex-1 min-w-0 flex flex-col min-h-0">
-                        {/* PDF header */}
                         {pdfUrl && (
                             <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
                                 <div className="flex items-center gap-2 min-w-0">

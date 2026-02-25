@@ -53,6 +53,7 @@ export const auth = betterAuth({
     trustedOrigins: [
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://govinda-is-my-god.vercel.app",
         process.env.NEXT_PUBLIC_APP_URL || "",
     ].filter(Boolean),
 })

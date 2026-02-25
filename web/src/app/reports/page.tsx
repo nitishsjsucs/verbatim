@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { AuthGuard, getUserRole } from "@/components/auth/auth-guard"
 import { useSession } from "@/lib/auth-client"
 import { fetchAllActionables } from "@/lib/api"
-import { ActionableItem, ActionablesResult } from "@/lib/types"
+import { ActionableItem, ActionablesResult, TaskStatus } from "@/lib/types"
 import {
     LayoutDashboard, Loader2, Search, Filter,
     Users, MoreHorizontal, Download,
@@ -22,23 +22,23 @@ function safeStr(v: unknown): string {
     try { return JSON.stringify(v) } catch { return String(v) }
 }
 
-type TaskStatus = "todo" | "working_on_it" | "stuck" | "done"
-
 const STATUS_LABELS: Record<TaskStatus, string> = {
-    todo: "To-Do",
-    working_on_it: "In progress",
-    stuck: "Stuck",
-    done: "Done",
+    assigned: "Assigned",
+    in_progress: "In Progress",
+    review: "Under Review",
+    completed: "Completed",
+    reworking: "Reworking",
 }
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-    todo: "#94a3b8",       // slate
-    working_on_it: "#f59e0b", // amber
-    stuck: "#ef4444",      // red
-    done: "#22c55e",       // green
+    assigned: "#94a3b8",    // slate
+    in_progress: "#f59e0b", // amber
+    review: "#3b82f6",      // blue
+    completed: "#22c55e",   // green
+    reworking: "#f97316",   // orange
 }
 
-const PIE_COLORS = ["#f59e0b", "#22c55e", "#ef4444", "#94a3b8"]
+const PIE_COLORS = ["#94a3b8", "#f59e0b", "#3b82f6", "#22c55e", "#f97316"]
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
@@ -213,7 +213,7 @@ function ReportsContent() {
             for (const r of results) {
                 if (!r.actionables) continue
                 for (const a of r.actionables) {
-                    if (a.approval_status === "approved") items.push(a)
+                    if (a.published_at) items.push(a)
                 }
             }
             setAllItems(items)
@@ -228,11 +228,11 @@ function ReportsContent() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const items = statusFilter === "all" ? allItems : allItems.filter(a => (a.task_status || "todo") === statusFilter)
+        const items = statusFilter === "all" ? allItems : allItems.filter(a => (a.task_status || "assigned") === statusFilter)
         const total = allItems.length
-        const byStatus: Record<TaskStatus, number> = { todo: 0, working_on_it: 0, stuck: 0, done: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, review: 0, completed: 0, reworking: 0 }
         for (const a of allItems) {
-            const s = (a.task_status || "todo") as TaskStatus
+            const s = (a.task_status || "assigned") as TaskStatus
             byStatus[s] = (byStatus[s] || 0) + 1
         }
 
@@ -248,7 +248,7 @@ function ReportsContent() {
 
     // Pie chart data
     const pieData = React.useMemo(() => {
-        const statuses: TaskStatus[] = ["working_on_it", "done", "stuck", "todo"]
+        const statuses: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
         return statuses.map((s, i) => ({
             label: STATUS_LABELS[s],
             value: stats.byStatus[s],
@@ -328,22 +328,22 @@ function ReportsContent() {
                                     onClick={() => setStatusFilter("all")}
                                 />
                                 <KpiCard
-                                    title="In progress"
-                                    value={stats.byStatus.working_on_it}
-                                    filterActive={statusFilter === "working_on_it"}
-                                    onClick={() => setStatusFilter("working_on_it")}
+                                    title="In Progress"
+                                    value={stats.byStatus.in_progress}
+                                    filterActive={statusFilter === "in_progress"}
+                                    onClick={() => setStatusFilter("in_progress")}
                                 />
                                 <KpiCard
-                                    title="Stuck"
-                                    value={stats.byStatus.stuck}
-                                    filterActive={statusFilter === "stuck"}
-                                    onClick={() => setStatusFilter("stuck")}
+                                    title="Completed"
+                                    value={stats.byStatus.completed}
+                                    filterActive={statusFilter === "completed"}
+                                    onClick={() => setStatusFilter("completed")}
                                 />
                                 <KpiCard
-                                    title="Done"
-                                    value={stats.byStatus.done}
-                                    filterActive={statusFilter === "done"}
-                                    onClick={() => setStatusFilter("done")}
+                                    title="Reworking"
+                                    value={stats.byStatus.reworking}
+                                    filterActive={statusFilter === "reworking"}
+                                    onClick={() => setStatusFilter("reworking")}
                                 />
                             </div>
 
@@ -393,7 +393,7 @@ function ReportsContent() {
                                             const team = safeStr(a.workstream) || "Other"
                                             if (!byTeam[team]) byTeam[team] = { total: 0, done: 0 }
                                             byTeam[team].total++
-                                            if (a.task_status === "done") byTeam[team].done++
+                                            if (a.task_status === "completed") byTeam[team].done++
                                         }
                                         return Object.entries(byTeam)
                                             .sort((a, b) => b[1].total - a[1].total)

@@ -237,7 +237,7 @@ export interface CorpusQueryResponse {
 // Actionables Types
 // ---------------------------------------------------------------------------
 
-export type ActionableModality = "Mandatory" | "Prohibited" | "Permitted" | "Recommended";
+export type ActionableModality = "High Risk" | "Medium Risk" | "Low Risk";
 
 export type ActionableWorkstream =
     | "Policy"
@@ -250,33 +250,41 @@ export type ActionableWorkstream =
     | "Legal"
     | "Other";
 
+export type TaskStatus = "assigned" | "in_progress" | "review" | "completed" | "reworking";
+
 export interface ActionableItem {
     id: string;
     modality: ActionableModality;
-    actor: string;
     action: string;
-    object: string;
-    trigger_or_condition: string;
-    thresholds: string;
-    deadline_or_frequency: string;
-    effective_date: string;
-    reporting_or_notification_to: string;
+    implementation_notes: string;
     evidence_quote: string;
     source_location: string;
     source_node_id: string;
-    implementation_notes: string;
     workstream: ActionableWorkstream;
-    needs_legal_review: boolean;
-    validation_status: string;
-    validation_notes: string;
     approval_status: "pending" | "approved" | "rejected";
     is_manual: boolean;
-    // Monday.com board fields (populated after approval)
-    task_status?: "todo" | "working_on_it" | "stuck" | "done";
+    // Publish fields (set when compliance officer publishes from Publish tab)
+    published_at?: string;
+    deadline?: string;           // ISO datetime for deadline
+    // Task lifecycle fields (populated after publish)
+    task_status?: TaskStatus;
+    completion_date?: string;    // ISO datetime when task is completed
+    reviewer_comments?: string;  // Comments from compliance officer on rejection/rework
+    evidence_files?: { name: string; url: string; uploaded_at: string }[];
+    // Legacy fields kept for backward compat with existing data
+    actor?: string;
+    object?: string;
+    trigger_or_condition?: string;
+    thresholds?: string;
+    deadline_or_frequency?: string;
+    effective_date?: string;
+    reporting_or_notification_to?: string;
+    needs_legal_review?: boolean;
+    validation_status?: string;
+    validation_notes?: string;
     priority?: "low" | "medium" | "high" | "critical";
     due_date?: string;
     notes?: string;
-    evidence_files?: { name: string; url: string; uploaded_at: string }[];
     assigned_to?: string;
 }
 

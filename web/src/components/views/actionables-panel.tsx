@@ -16,21 +16,20 @@ import {
 // --- Color/icon config ---
 
 const MODALITY_CONFIG: Record<ActionableModality, { color: string; bg: string; icon: React.ReactNode }> = {
-    Mandatory: { color: "text-red-400", bg: "bg-red-400/10", icon: <Shield className="h-3 w-3" /> },
-    Prohibited: { color: "text-orange-400", bg: "bg-orange-400/10", icon: <ShieldAlert className="h-3 w-3" /> },
-    Permitted: { color: "text-green-400", bg: "bg-green-400/10", icon: <ShieldCheck className="h-3 w-3" /> },
-    Recommended: { color: "text-blue-400", bg: "bg-blue-400/10", icon: <ShieldQuestion className="h-3 w-3" /> },
+    "High Risk": { color: "text-red-500", bg: "bg-red-500/15", icon: <Shield className="h-3 w-3" /> },
+    "Medium Risk": { color: "text-yellow-500", bg: "bg-yellow-500/15", icon: <Shield className="h-3 w-3" /> },
+    "Low Risk": { color: "text-emerald-500", bg: "bg-emerald-500/15", icon: <Shield className="h-3 w-3" /> },
 }
 
 const WORKSTREAM_COLORS: Record<string, string> = {
     Policy: "bg-purple-400/15 text-purple-400",
     Technology: "bg-cyan-400/15 text-cyan-400",
-    Operations: "bg-amber-400/15 text-amber-400",
+    Operations: "bg-blue-400/15 text-blue-400",
     Training: "bg-pink-400/15 text-pink-400",
-    Reporting: "bg-emerald-400/15 text-emerald-400",
+    Reporting: "bg-indigo-400/15 text-indigo-400",
     "Customer Communication": "bg-sky-400/15 text-sky-400",
-    Governance: "bg-indigo-400/15 text-indigo-400",
-    Legal: "bg-rose-400/15 text-rose-400",
+    Governance: "bg-violet-400/15 text-violet-400",
+    Legal: "bg-fuchsia-400/15 text-fuchsia-400",
     Other: "bg-muted text-muted-foreground",
 }
 
@@ -48,7 +47,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 function ModalityBar({ modality, count, total }: { modality: string; count: number; total: number }) {
     const pct = total > 0 ? (count / total) * 100 : 0
-    const cfg = MODALITY_CONFIG[modality as ActionableModality] || MODALITY_CONFIG.Mandatory
+    const cfg = MODALITY_CONFIG[modality as ActionableModality] || MODALITY_CONFIG["Medium Risk"]
     return (
         <div className="flex items-center gap-2 text-xs">
             <span className={cn("w-24 flex items-center gap-1.5", cfg.color)}>
@@ -68,7 +67,7 @@ function ActionableCard({ item, onSourceClick }: {
     onSourceClick?: (nodeId: string, pageNumber: number) => void
 }) {
     const [expanded, setExpanded] = React.useState(false)
-    const cfg = MODALITY_CONFIG[item.modality] || MODALITY_CONFIG.Mandatory
+    const cfg = MODALITY_CONFIG[item.modality] || MODALITY_CONFIG["Medium Risk"]
 
     // Parse page number from source_location
     const handleSourceClick = () => {
@@ -520,11 +519,10 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                         onChange={e => setModalityFilter(e.target.value as ActionableModality | "all")}
                         className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
                     >
-                        <option value="all">All modalities</option>
-                        <option value="Mandatory">Mandatory</option>
-                        <option value="Prohibited">Prohibited</option>
-                        <option value="Permitted">Permitted</option>
-                        <option value="Recommended">Recommended</option>
+                        <option value="all">All risk levels</option>
+                        <option value="High Risk">High Risk</option>
+                        <option value="Medium Risk">Medium Risk</option>
+                        <option value="Low Risk">Low Risk</option>
                     </select>
                     <select
                         value={workstreamFilter}

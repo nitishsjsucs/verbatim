@@ -1,19 +1,19 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/layout/sidebar"
 import { AuthGuard, getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { useSession } from "@/lib/auth-client"
 import {
-    fetchApprovedByTeam,
-    updateActionable,
     fetchAllActionables,
+    updateActionable,
 } from "@/lib/api"
-import { ActionableItem, ActionablesResult } from "@/lib/types"
+import { ActionableItem, ActionablesResult, TaskStatus } from "@/lib/types"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
-    Plus, MoreHorizontal, Upload, FileText,
-    Users, AlertCircle, Paperclip,
+    FileText, Paperclip, Calendar, CheckCircle2,
+    ArrowRight, RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -27,179 +27,35 @@ function safeStr(v: unknown): string {
     try { return JSON.stringify(v) } catch { return String(v) }
 }
 
-type TaskStatus = "todo" | "working_on_it" | "stuck" | "done"
-type Priority = "low" | "medium" | "high" | "critical"
-
-const STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: string }> = {
-    todo: { label: "", bg: "bg-transparent", text: "text-muted-foreground/40" },
-    working_on_it: { label: "Working on it", bg: "bg-amber-500", text: "text-white" },
-    done: { label: "Done", bg: "bg-emerald-500", text: "text-white" },
-    stuck: { label: "Stuck", bg: "bg-red-500", text: "text-white" },
+const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: string }> = {
+    assigned:    { label: "Assigned",    bg: "bg-slate-500",   text: "text-white" },
+    in_progress: { label: "In Progress", bg: "bg-amber-500",   text: "text-white" },
+    review:      { label: "Under Review", bg: "bg-blue-500",   text: "text-white" },
+    completed:   { label: "Completed",   bg: "bg-emerald-500", text: "text-white" },
+    reworking:   { label: "Reworking",   bg: "bg-orange-500",  text: "text-white" },
 }
 
-const PRIORITY_CONFIG: Record<Priority, { label: string; bg: string; text: string }> = {
-    low: { label: "Low", bg: "bg-sky-500/20", text: "text-sky-400" },
-    medium: { label: "Medium", bg: "bg-violet-500/20", text: "text-violet-400" },
-    high: { label: "High", bg: "bg-orange-500/20", text: "text-orange-400" },
-    critical: { label: "Critical", bg: "bg-red-500/20", text: "text-red-400" },
+const RISK_STYLES: Record<string, { bg: string; text: string }> = {
+    "High Risk":   { bg: "bg-red-500/15",    text: "text-red-500" },
+    "Medium Risk": { bg: "bg-yellow-500/15",  text: "text-yellow-500" },
+    "Low Risk":    { bg: "bg-emerald-500/15", text: "text-emerald-500" },
 }
 
-const ALL_STATUSES: TaskStatus[] = ["todo", "working_on_it", "stuck", "done"]
-const ALL_PRIORITIES: Priority[] = ["low", "medium", "high", "critical"]
+function formatDate(iso: string | undefined): string {
+    if (!iso) return "—"
+    try {
+        return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    } catch { return iso }
+}
 
-// ─── Dropdown cell ───────────────────────────────────────────────────────────
+// ─── Risk Icon ───────────────────────────────────────────────────────────────
 
-function DropdownCell<T extends string>({
-    value,
-    options,
-    config,
-    onSave,
-    placeholder,
-}: {
-    value: T | undefined
-    options: T[]
-    config: Record<T, { label: string; bg: string; text: string }>
-    onSave: (v: T) => void
-    placeholder?: string
-}) {
-    const [open, setOpen] = React.useState(false)
-    const ref = React.useRef<HTMLDivElement>(null)
-    const current = value && config[value] ? config[value] : null
-
-    React.useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-        }
-        if (open) document.addEventListener("mousedown", handler)
-        return () => document.removeEventListener("mousedown", handler)
-    }, [open])
-
+function RiskIcon({ modality }: { modality: string }) {
+    const cfg = RISK_STYLES[modality] || RISK_STYLES["Medium Risk"]
     return (
-        <div ref={ref} className="relative h-full flex items-center">
-            <button
-                onClick={() => setOpen(!open)}
-                className={cn(
-                    "w-full h-[32px] flex items-center justify-center text-[11px] font-medium rounded-sm transition-colors",
-                    current ? cn(current.bg, current.text) : "text-muted-foreground/30 hover:bg-muted/30"
-                )}
-            >
-                {current?.label || placeholder || "—"}
-            </button>
-            {open && (
-                <div className="absolute z-50 top-full mt-1 left-0 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
-                    {options.map(opt => {
-                        const c = config[opt]
-                        return (
-                            <button
-                                key={opt}
-                                onClick={() => { onSave(opt); setOpen(false) }}
-                                className={cn(
-                                    "w-full flex items-center gap-2 px-3 py-1.5 text-[11px] hover:bg-muted/50 transition-colors",
-                                    value === opt && "bg-muted/30"
-                                )}
-                            >
-                                <span className={cn("h-2.5 w-6 rounded-sm", c.bg)} />
-                                <span className="text-foreground">{c.label || "(none)"}</span>
-                            </button>
-                        )
-                    })}
-                </div>
-            )}
-        </div>
-    )
-}
-
-// ─── Inline editable text cell ───────────────────────────────────────────────
-
-function TextCell({ value, onSave, placeholder, className }: {
-    value: string
-    onSave: (v: string) => void
-    placeholder?: string
-    className?: string
-}) {
-    const [editing, setEditing] = React.useState(false)
-    const [draft, setDraft] = React.useState(value)
-    const ref = React.useRef<HTMLInputElement>(null)
-
-    React.useEffect(() => { setDraft(value) }, [value])
-    React.useEffect(() => { if (editing) ref.current?.focus() }, [editing])
-
-    const commit = () => {
-        if (draft !== value) onSave(draft)
-        setEditing(false)
-    }
-
-    if (editing) {
-        return (
-            <input
-                ref={ref}
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                onBlur={commit}
-                onKeyDown={e => {
-                    if (e.key === "Enter") commit()
-                    if (e.key === "Escape") { setDraft(value); setEditing(false) }
-                }}
-                className={cn("bg-muted/40 text-xs rounded px-2 py-1 border border-primary/40 focus:outline-none w-full", className)}
-            />
-        )
-    }
-
-    return (
-        <button
-            onClick={() => setEditing(true)}
-            className={cn(
-                "text-xs text-left truncate w-full px-2 py-1 rounded hover:bg-muted/20 transition-colors",
-                !value && "text-muted-foreground/30 italic",
-                className
-            )}
-        >
-            {value || placeholder || "—"}
-        </button>
-    )
-}
-
-// ─── Date cell ───────────────────────────────────────────────────────────────
-
-function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-    const inputRef = React.useRef<HTMLInputElement>(null)
-
-    const formatted = React.useMemo(() => {
-        if (!value) return ""
-        try {
-            const d = new Date(value)
-            return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-        } catch { return value }
-    }, [value])
-
-    const borderColor = React.useMemo(() => {
-        if (!value) return ""
-        try {
-            const d = new Date(value)
-            const now = new Date()
-            const diff = d.getTime() - now.getTime()
-            if (diff < 0) return "text-red-400"
-            if (diff < 3 * 24 * 60 * 60 * 1000) return "text-amber-400"
-            return "text-muted-foreground"
-        } catch { return "" }
-    }, [value])
-
-    return (
-        <div className="relative h-full flex items-center">
-            <button
-                onClick={() => inputRef.current?.showPicker()}
-                className={cn("text-[11px] px-2 py-1 rounded hover:bg-muted/20 transition-colors w-full text-center", borderColor || "text-muted-foreground/30")}
-            >
-                {formatted || "—"}
-            </button>
-            <input
-                ref={inputRef}
-                type="date"
-                value={value || ""}
-                onChange={e => onSave(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-            />
-        </div>
+        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.text)} title={modality}>
+            !
+        </span>
     )
 }
 
@@ -210,11 +66,12 @@ function FilesCell({ files, onUpload }: {
     onUpload: (file: File) => void
 }) {
     const inputRef = React.useRef<HTMLInputElement>(null)
-
     return (
         <div className="flex items-center gap-1 h-full px-1">
-            {files.length > 0 && (
-                <span className="text-[10px] text-muted-foreground font-mono">{files.length} file{files.length > 1 ? "s" : ""}</span>
+            {files.length > 0 ? (
+                <span className="text-[10px] text-foreground/70 font-mono">{files.length} file{files.length > 1 ? "s" : ""}</span>
+            ) : (
+                <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
             )}
             <button
                 onClick={() => inputRef.current?.click()}
@@ -223,36 +80,26 @@ function FilesCell({ files, onUpload }: {
             >
                 <Paperclip className="h-3 w-3" />
             </button>
-            <input
-                ref={inputRef}
-                type="file"
-                className="hidden"
-                onChange={e => {
-                    const f = e.target.files?.[0]
-                    if (f) onUpload(f)
-                    e.target.value = ""
-                }}
-            />
+            <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = "" }} />
         </div>
     )
 }
 
-// ─── Summary footer bar ──────────────────────────────────────────────────────
+// ─── Status summary bar ──────────────────────────────────────────────────────
 
 function StatusSummaryBar({ items }: { items: { item: ActionableItem }[] }) {
     const counts: Record<string, number> = {}
-    for (const { item: it } of items) {
-        const s = it.task_status || "todo"
+    for (const { item } of items) {
+        const s = item.task_status || "assigned"
         counts[s] = (counts[s] || 0) + 1
     }
     const total = items.length || 1
-
     return (
         <div className="flex h-2 rounded-full overflow-hidden bg-muted/30 w-48">
-            {(["working_on_it", "done", "stuck", "todo"] as TaskStatus[]).map(s => {
+            {(["in_progress", "review", "completed", "reworking", "assigned"] as TaskStatus[]).map(s => {
                 const pct = ((counts[s] || 0) / total) * 100
                 if (pct === 0) return null
-                return <div key={s} className={cn(STATUS_CONFIG[s].bg, "transition-all")} style={{ width: `${pct}%` }} />
+                return <div key={s} className={cn(TASK_STATUS_CONFIG[s].bg, "transition-all")} style={{ width: `${pct}%` }} />
             })}
         </div>
     )
@@ -261,10 +108,18 @@ function StatusSummaryBar({ items }: { items: { item: ActionableItem }[] }) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 function TeamBoardContent() {
+    const router = useRouter()
     const { data: session } = useSession()
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
     const isComplianceOfficer = role === "compliance_officer" || role === "admin"
+
+    // Redirect compliance officers away from team board
+    React.useEffect(() => {
+        if (isComplianceOfficer) {
+            router.replace("/dashboard")
+        }
+    }, [isComplianceOfficer, router])
 
     const [allItems, setAllItems] = React.useState<{ item: ActionableItem; docId: string; docName: string }[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -274,33 +129,26 @@ function TeamBoardContent() {
     const loadData = React.useCallback(async () => {
         try {
             setLoading(true)
-            if (isComplianceOfficer) {
-                // Compliance officer sees all approved actionables across all teams
-                const results = await fetchAllActionables()
-                const items: { item: ActionableItem; docId: string; docName: string }[] = []
-                for (const r of results) {
-                    if (!r.actionables) continue
-                    for (const a of r.actionables) {
-                        if (a.approval_status === "approved") {
-                            items.push({ item: a, docId: r.doc_id, docName: r.doc_name || r.doc_id })
-                        }
+            // Team member sees only published actionables for their team
+            const results = await fetchAllActionables()
+            const items: { item: ActionableItem; docId: string; docName: string }[] = []
+            for (const r of results) {
+                if (!r.actionables) continue
+                for (const a of r.actionables) {
+                    if (a.published_at && a.workstream === userTeam) {
+                        items.push({ item: a, docId: r.doc_id, docName: r.doc_name || r.doc_id })
                     }
                 }
-                setAllItems(items)
-            } else {
-                // Team member sees only their team's approved actionables
-                const byTeam = await fetchApprovedByTeam()
-                const teamItems = byTeam[userTeam] || []
-                setAllItems(teamItems.map(a => ({ item: a, docId: "", docName: "" })))
             }
+            setAllItems(items)
         } catch {
             toast.error("Failed to load tasks")
         } finally {
             setLoading(false)
         }
-    }, [isComplianceOfficer, userTeam])
+    }, [userTeam])
 
-    React.useEffect(() => { loadData() }, [loadData])
+    React.useEffect(() => { if (!isComplianceOfficer) loadData() }, [loadData, isComplianceOfficer])
 
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
@@ -312,7 +160,6 @@ function TeamBoardContent() {
     }, [])
 
     const handleEvidenceUpload = React.useCallback(async (docId: string, itemId: string, file: File) => {
-        // For now, create a placeholder entry. In production you'd upload to GridFS/S3 first.
         const entry = { name: file.name, url: URL.createObjectURL(file), uploaded_at: new Date().toISOString() }
         const item = allItems.find(e => e.item.id === itemId)
         const existing = item?.item.evidence_files || []
@@ -320,18 +167,37 @@ function TeamBoardContent() {
         toast.success(`Evidence "${file.name}" uploaded`)
     }, [allItems, handleUpdate])
 
+    // Status transition handler for team members
+    const handleStatusTransition = React.useCallback(async (docId: string, item: ActionableItem) => {
+        const currentStatus = item.task_status || "assigned"
+        let nextStatus: TaskStatus | null = null
+
+        // Team member allowed transitions:
+        // assigned → in_progress
+        // in_progress → review (submit for review)
+        // reworking → review (re-submit after rework)
+        if (currentStatus === "assigned") nextStatus = "in_progress"
+        else if (currentStatus === "in_progress") nextStatus = "review"
+        else if (currentStatus === "reworking") nextStatus = "review"
+
+        if (nextStatus) {
+            await handleUpdate(docId, item.id, { task_status: nextStatus })
+            toast.success(`Task moved to ${TASK_STATUS_CONFIG[nextStatus].label}`)
+        }
+    }, [handleUpdate])
+
     // Filter
     const filtered = React.useMemo(() => {
         if (!searchQuery) return allItems
         const q = searchQuery.toLowerCase()
         return allItems.filter(({ item }) =>
-            `${safeStr(item.action)} ${safeStr(item.actor)} ${safeStr(item.object)} ${safeStr(item.notes)}`.toLowerCase().includes(q)
+            `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)}`.toLowerCase().includes(q)
         )
     }, [allItems, searchQuery])
 
-    // Group: To-Do (not done) and Completed (done)
-    const todoItems = React.useMemo(() => filtered.filter(e => e.item.task_status !== "done"), [filtered])
-    const completedItems = React.useMemo(() => filtered.filter(e => e.item.task_status === "done"), [filtered])
+    // Group: Active (not completed) and Completed
+    const activeItems = React.useMemo(() => filtered.filter(e => e.item.task_status !== "completed"), [filtered])
+    const completedItems = React.useMemo(() => filtered.filter(e => e.item.task_status === "completed"), [filtered])
 
     const toggleGroup = (g: string) => {
         setCollapsedGroups(prev => {
@@ -341,115 +207,108 @@ function TeamBoardContent() {
         })
     }
 
-    // Column widths matching Monday.com layout
-    const gridCols = "40px minmax(200px,3fr) 90px 110px 110px 100px 120px minmax(100px,1fr) 70px"
+    if (isComplianceOfficer) {
+        return (
+            <div className="flex h-screen bg-background items-center justify-center text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Redirecting...
+            </div>
+        )
+    }
+
+    // Grid columns: Risk | Actionable | Status | Deadline | Evidence | Action
+    const gridCols = "36px minmax(200px,3fr) 110px 100px 80px 90px"
 
     const renderHeader = () => (
-        <div
-            className="grid border-b border-border/30 bg-muted/10 sticky top-0 z-10"
-            style={{ gridTemplateColumns: gridCols }}
-        >
-            <div className="py-2 px-1" /> {/* checkbox */}
+        <div className="grid border-b border-border/30 bg-muted/10 sticky top-0 z-10" style={{ gridTemplateColumns: gridCols }}>
+            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Risk</div>
             <div className="py-2 px-2 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Task</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Owner</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center flex items-center justify-center gap-1">
-                Status <AlertCircle className="h-2.5 w-2.5 text-muted-foreground/30" />
-            </div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center flex items-center justify-center gap-1">
-                Due date <AlertCircle className="h-2.5 w-2.5 text-muted-foreground/30" />
-            </div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Priority</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Notes</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Evidence</div>
-            <div className="py-2 px-1" /> {/* files count */}
+            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Status</div>
+            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Deadline</div>
+            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Evidence</div>
+            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Action</div>
         </div>
     )
 
-    const renderRow = ({ item, docId }: { item: ActionableItem; docId: string; docName: string }) => (
-        <div
-            key={`${docId}-${item.id}`}
-            className="grid border-b border-border/10 items-center hover:bg-muted/5 transition-colors group/row"
-            style={{ gridTemplateColumns: gridCols }}
-        >
-            {/* Checkbox */}
-            <div className="flex items-center justify-center py-1.5">
-                <input type="checkbox" className="rounded border-border h-3 w-3 accent-primary" />
-            </div>
+    const renderRow = ({ item, docId, docName }: { item: ActionableItem; docId: string; docName: string }) => {
+        const taskStatus = item.task_status || "assigned"
+        const statusCfg = TASK_STATUS_CONFIG[taskStatus] || TASK_STATUS_CONFIG.assigned
+        const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
+        const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking"
 
-            {/* Task (action + object) */}
-            <div className="py-1.5 px-2 min-w-0">
-                <TextCell
-                    value={`${safeStr(item.action)}${item.object ? " — " + safeStr(item.object) : ""}`}
-                    onSave={v => handleUpdate(docId, item.id, { action: v })}
-                    className="font-medium text-foreground"
-                />
-                <span className="text-[9px] text-muted-foreground/40 block px-2 truncate">
-                    {safeStr(item.workstream)}
-                </span>
-            </div>
+        return (
+            <div
+                key={`${docId}-${item.id}`}
+                className={cn(
+                    "grid border-b border-border/10 items-center hover:bg-muted/5 transition-colors",
+                    taskStatus === "completed" && "opacity-60"
+                )}
+                style={{ gridTemplateColumns: gridCols }}
+            >
+                {/* Risk icon */}
+                <div className="py-2 flex justify-center">
+                    <RiskIcon modality={item.modality} />
+                </div>
 
-            {/* Owner */}
-            <div className="py-1.5 px-1 text-center">
-                <div className="flex items-center justify-center">
-                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold text-muted-foreground" title={safeStr(item.actor)}>
-                        {safeStr(item.actor).slice(0, 2).toUpperCase() || "?"}
-                    </div>
+                {/* Task text (read-only) */}
+                <div className="py-2 px-2 min-w-0">
+                    <p className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</p>
+                    {item.implementation_notes && (
+                        <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{safeStr(item.implementation_notes)}</p>
+                    )}
+                </div>
+
+                {/* Status badge */}
+                <div className="py-2 px-1 text-center">
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusCfg.bg, statusCfg.text)}>
+                        {statusCfg.label}
+                    </span>
+                </div>
+
+                {/* Deadline (read-only) */}
+                <div className="py-2 px-1 text-center">
+                    <span className={cn("text-[10px] flex items-center justify-center gap-1", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
+                        <Calendar className="h-2.5 w-2.5" />
+                        {formatDate(item.deadline)}
+                    </span>
+                </div>
+
+                {/* Evidence */}
+                <div className="py-2 px-1">
+                    <FilesCell
+                        files={item.evidence_files || []}
+                        onUpload={f => handleEvidenceUpload(docId, item.id, f)}
+                    />
+                </div>
+
+                {/* Action button */}
+                <div className="py-2 px-1 text-center">
+                    {canAdvance && (
+                        <button
+                            onClick={() => handleStatusTransition(docId, item)}
+                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
+                            title={
+                                taskStatus === "assigned" ? "Start working" :
+                                taskStatus === "in_progress" ? "Submit for review" :
+                                "Re-submit for review"
+                            }
+                        >
+                            {taskStatus === "assigned" && <><ArrowRight className="h-2.5 w-2.5" /> Start</>}
+                            {taskStatus === "in_progress" && <><CheckCircle2 className="h-2.5 w-2.5" /> Submit</>}
+                            {taskStatus === "reworking" && <><RotateCcw className="h-2.5 w-2.5" /> Resubmit</>}
+                        </button>
+                    )}
+                    {taskStatus === "review" && (
+                        <span className="text-[10px] text-blue-400 italic">Awaiting review</span>
+                    )}
+                    {taskStatus === "completed" && (
+                        <span className="text-[10px] text-emerald-400 flex items-center justify-center gap-1">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Done
+                        </span>
+                    )}
                 </div>
             </div>
-
-            {/* Status */}
-            <div className="py-1.5 px-1">
-                <DropdownCell
-                    value={item.task_status || "todo"}
-                    options={ALL_STATUSES}
-                    config={STATUS_CONFIG}
-                    onSave={v => handleUpdate(docId, item.id, { task_status: v })}
-                />
-            </div>
-
-            {/* Due date */}
-            <div className="py-1.5 px-1">
-                <DateCell
-                    value={item.due_date || ""}
-                    onSave={v => handleUpdate(docId, item.id, { due_date: v })}
-                />
-            </div>
-
-            {/* Priority */}
-            <div className="py-1.5 px-1">
-                <DropdownCell
-                    value={item.priority || "medium"}
-                    options={ALL_PRIORITIES}
-                    config={PRIORITY_CONFIG}
-                    onSave={v => handleUpdate(docId, item.id, { priority: v })}
-                />
-            </div>
-
-            {/* Notes */}
-            <div className="py-1.5 px-1 min-w-0">
-                <TextCell
-                    value={safeStr(item.notes)}
-                    onSave={v => handleUpdate(docId, item.id, { notes: v })}
-                    placeholder="Add notes..."
-                />
-            </div>
-
-            {/* Evidence */}
-            <div className="py-1.5 px-1 min-w-0">
-                <FilesCell
-                    files={item.evidence_files || []}
-                    onUpload={f => handleEvidenceUpload(docId, item.id, f)}
-                />
-            </div>
-
-            {/* Files count */}
-            <div className="py-1.5 px-1 text-center">
-                <span className="text-[10px] text-muted-foreground/40 font-mono">
-                    {(item.evidence_files || []).length > 0 ? `${(item.evidence_files || []).length} files` : ""}
-                </span>
-            </div>
-        </div>
-    )
+        )
+    }
 
     return (
         <div className="flex h-screen bg-background">
@@ -458,12 +317,9 @@ function TeamBoardContent() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* ── Top bar ── */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-sm font-semibold text-foreground">
-                            main table
-                        </h1>
-                        <span className="text-[10px] text-muted-foreground/40">Main table</span>
-                    </div>
+                    <h1 className="text-sm font-semibold text-foreground">
+                        My Tasks — {userTeam || "Team"}
+                    </h1>
                 </div>
 
                 {/* ── Toolbar ── */}
@@ -473,22 +329,10 @@ function TeamBoardContent() {
                         <input
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search..."
+                            placeholder="Search tasks..."
                             className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
                         />
                     </div>
-                    <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted/30 transition-colors">
-                        <Users className="h-3 w-3" /> Person
-                    </button>
-                    <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted/30 transition-colors">
-                        Filter
-                    </button>
-                    <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted/30 transition-colors">
-                        Sort
-                    </button>
-                    <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted/30 transition-colors">
-                        Group by
-                    </button>
                 </div>
 
                 {/* ── Board content ── */}
@@ -507,42 +351,31 @@ function TeamBoardContent() {
                             </div>
                             <h3 className="text-sm font-medium mb-1">No tasks yet</h3>
                             <p className="text-xs text-muted-foreground/60 max-w-sm">
-                                {isComplianceOfficer
-                                    ? "Approve actionables to see them appear here as tasks."
-                                    : "No approved tasks for your team yet. Contact the compliance officer."
-                                }
+                                No published tasks for your team yet. Contact the compliance officer.
                             </p>
                         </div>
                     )}
 
-                    {!loading && todoItems.length > 0 && (
+                    {!loading && activeItems.length > 0 && (
                         <div className="mb-2">
-                            {/* Group header: To-Do */}
                             <button
-                                onClick={() => toggleGroup("todo")}
+                                onClick={() => toggleGroup("active")}
                                 className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/5 transition-colors"
                             >
-                                <span className="text-[10px] text-muted-foreground/40">...</span>
-                                {collapsedGroups.has("todo")
+                                {collapsedGroups.has("active")
                                     ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                                     : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                                 }
-                                <span className="text-sm font-semibold text-violet-400">To-Do</span>
-                                <span className="text-[10px] text-muted-foreground/50 font-mono">{todoItems.length} Tasks</span>
+                                <span className="text-sm font-semibold text-violet-400">Active</span>
+                                <span className="text-[10px] text-muted-foreground/50 font-mono">{activeItems.length} Tasks</span>
                             </button>
 
-                            {!collapsedGroups.has("todo") && (
+                            {!collapsedGroups.has("active") && (
                                 <>
                                     {renderHeader()}
-                                    {todoItems.map(renderRow)}
-                                    {/* Add task row */}
-                                    <div className="flex items-center gap-2 px-5 py-2 text-[11px] text-muted-foreground/40 hover:text-muted-foreground cursor-pointer hover:bg-muted/5 transition-colors border-b border-border/10">
-                                        <Plus className="h-3 w-3" />
-                                        <span>Add task</span>
-                                    </div>
-                                    {/* Summary footer */}
+                                    {activeItems.map(renderRow)}
                                     <div className="px-5 py-2 border-b border-border/20">
-                                        <StatusSummaryBar items={todoItems} />
+                                        <StatusSummaryBar items={activeItems} />
                                     </div>
                                 </>
                             )}
@@ -551,12 +384,10 @@ function TeamBoardContent() {
 
                     {!loading && completedItems.length > 0 && (
                         <div className="mb-2">
-                            {/* Group header: Completed */}
                             <button
                                 onClick={() => toggleGroup("completed")}
                                 className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/5 transition-colors"
                             >
-                                <span className="text-[10px] text-muted-foreground/40">...</span>
                                 {collapsedGroups.has("completed")
                                     ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                                     : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -569,23 +400,8 @@ function TeamBoardContent() {
                                 <>
                                     {renderHeader()}
                                     {completedItems.map(renderRow)}
-                                    {/* Add task row */}
-                                    <div className="flex items-center gap-2 px-5 py-2 text-[11px] text-muted-foreground/40 hover:text-muted-foreground cursor-pointer hover:bg-muted/5 transition-colors border-b border-border/10">
-                                        <Plus className="h-3 w-3" />
-                                        <span>Add task</span>
-                                    </div>
                                 </>
                             )}
-                        </div>
-                    )}
-
-                    {/* Add new group */}
-                    {!loading && allItems.length > 0 && (
-                        <div className="px-4 py-3">
-                            <button className="flex items-center gap-1.5 text-[11px] text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-                                <Plus className="h-3 w-3" />
-                                Add new group
-                            </button>
                         </div>
                     )}
                 </div>

@@ -158,14 +158,6 @@ export function Sidebar({ className }: SidebarProps) {
                 collapsed={collapsed}
               />
               <NavItem
-                href="/team-board"
-                icon={<ClipboardList className="h-4 w-4" />}
-                iconClassName="text-amber-500"
-                label="Team Board"
-                active={pathname === "/team-board"}
-                collapsed={collapsed}
-              />
-              <NavItem
                 href="/reports"
                 icon={<BarChart3 className="h-4 w-4" />}
                 iconClassName="text-amber-500"
