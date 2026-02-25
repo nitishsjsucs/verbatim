@@ -90,7 +90,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
             <RoleRedirect>
             <div className="flex h-screen w-full bg-background items-center justify-center text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                <span className="animate-pulse">Loading document structure...</span>
+                <span className="animate-pulse">Loading...</span>
             </div>
             </RoleRedirect>
         )
