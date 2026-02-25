@@ -15,12 +15,12 @@ export default function Home() {
             <h1 className="text-sm font-semibold text-foreground">Documents Library</h1>
           </div>
           {/* Content */}
-          {/* <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             <div className="max-w-4xl mx-auto py-8 px-6">
-              <p className="text-sm text-muted-foreground mb-6">Manage and query your PDF documents.</p>
+              {/* <p className="text-sm text-muted-foreground mb-6">Manage and query your PDF documents.</p> */}
               <DocumentList />
             </div>
-          </div> */}
+          </div>
         </main>
       </div>
     </RoleRedirect>
