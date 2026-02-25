@@ -271,6 +271,7 @@ export interface ActionableItem {
     completion_date?: string;    // ISO datetime when task is completed
     reviewer_comments?: string;  // Comments from compliance officer on rejection/rework
     evidence_files?: { name: string; url: string; uploaded_at: string }[];
+    comments?: ActionableComment[];  // Thread of comments between team & compliance officer
     // Legacy fields kept for backward compat with existing data
     actor?: string;
     object?: string;
@@ -286,6 +287,14 @@ export interface ActionableItem {
     due_date?: string;
     notes?: string;
     assigned_to?: string;
+}
+
+export interface ActionableComment {
+    id: string;
+    author: string;
+    role: "compliance_officer" | "team_member";
+    text: string;
+    timestamp: string;  // ISO datetime
 }
 
 export interface ActionablesResult {

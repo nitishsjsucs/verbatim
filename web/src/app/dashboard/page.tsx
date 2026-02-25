@@ -11,12 +11,16 @@ import {
     ActionablesResult,
     ActionableWorkstream,
     TaskStatus,
+    ActionableComment,
 } from "@/lib/types"
+import { CommentThread } from "@/components/shared/comment-thread"
+import { useSession } from "@/lib/auth-client"
 import {
     LayoutDashboard, ChevronDown, ChevronRight,
     Loader2, Search, AlertTriangle,
     Paperclip, Calendar, Save, ExternalLink,
-    Download, FileText, X,
+    Download, FileText, X, CheckCircle2,
+    XCircle, MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -143,12 +147,16 @@ function formatDateTime(iso: string | undefined): string {
 // ─── Main Tracker Page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+    const { data: session } = useSession()
     const [allDocs, setAllDocs] = React.useState<{ doc_id: string; doc_name: string; actionables: ActionableItem[] }[]>([])
     const [loading, setLoading] = React.useState(true)
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
     const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
+    const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
+
+    const userName = session?.user?.name || "Compliance Officer"
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -182,6 +190,18 @@ export default function DashboardPage() {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }
     }, [])
+
+    const handleAddComment = React.useCallback(async (docId: string, item: ActionableItem, text: string) => {
+        const newComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "compliance_officer",
+            text,
+            timestamp: new Date().toISOString(),
+        }
+        const existing = item.comments || []
+        await handleUpdate(docId, item.id, { comments: [...existing, newComment] })
+    }, [userName, handleUpdate])
 
     // Only show PUBLISHED actionables
     const allRows: FlatRow[] = React.useMemo(() => {
@@ -247,8 +267,8 @@ export default function DashboardPage() {
         })
     }
 
-    // Grid columns: Team | Risk | Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion
-    const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 90px"
+    // Grid columns: Team | Risk | Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Actions
+    const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 90px 90px"
 
     // ─── Render ──────────────────────────────────────────────────────────
 
@@ -407,6 +427,7 @@ export default function DashboardPage() {
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
                                 )}
 
@@ -415,73 +436,125 @@ export default function DashboardPage() {
                                     const rowKey = `${docId}-${item.id}`
                                     const taskStatus = item.task_status || "assigned"
                                     const statusStyle = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
+                                    const isExpanded = expandedRow === rowKey
+                                    const commentCount = (item.comments || []).length
 
                                     return (
-                                        <div
-                                            key={rowKey}
-                                            className={cn(
-                                                "grid gap-0 border-b border-border/10 items-center hover:bg-muted/10 transition-colors px-3",
-                                                taskStatus === "completed" && "opacity-70"
+                                        <div key={rowKey} className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70")}>
+                                            <div
+                                                className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
+                                                style={{ gridTemplateColumns: gridCols }}
+                                                onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
+                                            >
+                                                {/* Team */}
+                                                <div className="py-1.5 px-1">
+                                                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
+                                                        {item.workstream}
+                                                    </span>
+                                                </div>
+
+                                                {/* Risk icon */}
+                                                <div className="py-1.5 flex justify-center">
+                                                    <RiskIcon modality={item.modality} />
+                                                </div>
+
+                                                {/* Actionable text (read-only) */}
+                                                <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
+                                                    {isExpanded
+                                                        ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
+                                                        : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                                                    <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
+                                                    {commentCount > 0 && (
+                                                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
+                                                            <MessageSquare className="h-2.5 w-2.5" />{commentCount}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Status (read-only) */}
+                                                <div className="py-1.5 px-1 text-center">
+                                                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
+                                                        {statusStyle.label}
+                                                    </span>
+                                                </div>
+
+                                                {/* Deadline date (editable) */}
+                                                <div className="py-1.5 px-1 text-center relative" onClick={e => e.stopPropagation()}>
+                                                    <DeadlineCell
+                                                        value={item.deadline || ""}
+                                                        onSave={v => handleUpdate(docId, item.id, { deadline: v })}
+                                                    />
+                                                </div>
+
+                                                {/* Deadline time (from same field) */}
+                                                <div className="py-1.5 px-1 text-center">
+                                                    <span className="text-[10px] text-muted-foreground/60">
+                                                        {formatTime(item.deadline)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Evidence (clickable popover — only visible after review submission) */}
+                                                <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
+                                                    <EvidencePopover files={item.evidence_files || []} taskStatus={taskStatus} />
+                                                </div>
+
+                                                {/* Published date */}
+                                                <div className="py-1.5 px-1 text-center">
+                                                    <span className="text-[10px] text-muted-foreground/60">
+                                                        {formatDate(item.published_at)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Completion date */}
+                                                <div className="py-1.5 px-1 text-center">
+                                                    <span className="text-[10px] text-muted-foreground/60">
+                                                        {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
+                                                    </span>
+                                                </div>
+
+                                                {/* Actions (approve/reject for compliance officer) */}
+                                                <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                                                    {taskStatus === "review" && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
+                                                                className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                title="Approve — mark as completed"
+                                                            >
+                                                                <CheckCircle2 className="h-2.5 w-2.5" /> Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleUpdate(docId, item.id, { task_status: "reworking" })}
+                                                                className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                title="Reject — send back for rework"
+                                                            >
+                                                                <XCircle className="h-2.5 w-2.5" /> Reject
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {taskStatus === "completed" && (
+                                                        <span className="text-[9px] text-emerald-400 italic">Approved</span>
+                                                    )}
+                                                    {taskStatus === "reworking" && (
+                                                        <span className="text-[9px] text-orange-400 italic">Reworking</span>
+                                                    )}
+                                                    {(taskStatus === "assigned" || taskStatus === "in_progress") && (
+                                                        <span className="text-[9px] text-muted-foreground/30">—</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded: Comment thread */}
+                                            {isExpanded && (
+                                                <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
+                                                    <CommentThread
+                                                        comments={item.comments || []}
+                                                        currentUser={userName}
+                                                        currentRole="compliance_officer"
+                                                        onAddComment={async (text) => handleAddComment(docId, item, text)}
+                                                    />
+                                                </div>
                                             )}
-                                            style={{ gridTemplateColumns: gridCols }}
-                                        >
-                                            {/* Team */}
-                                            <div className="py-1.5 px-1">
-                                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
-                                                    {item.workstream}
-                                                </span>
-                                            </div>
-
-                                            {/* Risk icon */}
-                                            <div className="py-1.5 flex justify-center">
-                                                <RiskIcon modality={item.modality} />
-                                            </div>
-
-                                            {/* Actionable text (read-only) */}
-                                            <div className="py-1.5 px-2 min-w-0">
-                                                <span className="text-xs text-foreground/90 truncate block">{safeStr(item.action)}</span>
-                                            </div>
-
-                                            {/* Status (read-only) */}
-                                            <div className="py-1.5 px-1 text-center">
-                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
-                                                    {statusStyle.label}
-                                                </span>
-                                            </div>
-
-                                            {/* Deadline date (editable) */}
-                                            <div className="py-1.5 px-1 text-center relative">
-                                                <DeadlineCell
-                                                    value={item.deadline || ""}
-                                                    onSave={v => handleUpdate(docId, item.id, { deadline: v })}
-                                                />
-                                            </div>
-
-                                            {/* Deadline time (from same field) */}
-                                            <div className="py-1.5 px-1 text-center">
-                                                <span className="text-[10px] text-muted-foreground/60">
-                                                    {formatTime(item.deadline)}
-                                                </span>
-                                            </div>
-
-                                            {/* Evidence (clickable popover) */}
-                                            <div className="py-1.5 px-1 flex justify-center">
-                                                <EvidencePopover files={item.evidence_files || []} />
-                                            </div>
-
-                                            {/* Published date */}
-                                            <div className="py-1.5 px-1 text-center">
-                                                <span className="text-[10px] text-muted-foreground/60">
-                                                    {formatDate(item.published_at)}
-                                                </span>
-                                            </div>
-
-                                            {/* Completion date */}
-                                            <div className="py-1.5 px-1 text-center">
-                                                <span className="text-[10px] text-muted-foreground/60">
-                                                    {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
-                                                </span>
-                                            </div>
                                         </div>
                                     )
                                 })}
@@ -503,7 +576,10 @@ export default function DashboardPage() {
 
 // ─── Evidence popover (compliance officer can view/download evidence) ────────
 
-function EvidencePopover({ files }: { files: { name: string; url: string; uploaded_at: string }[] }) {
+function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
+    // Evidence only visible once the team member submits for review
+    const reviewedStatuses = ["review", "completed", "reworking"]
+    const canView = taskStatus ? reviewedStatuses.includes(taskStatus) : true
     const [open, setOpen] = React.useState(false)
     const popoverRef = React.useRef<HTMLDivElement>(null)
 
@@ -519,6 +595,14 @@ function EvidencePopover({ files }: { files: { name: string; url: string; upload
 
     if (files.length === 0) {
         return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
+    }
+
+    if (!canView) {
+        return (
+            <span className="text-[10px] text-muted-foreground/30 italic flex items-center gap-1" title="Evidence visible after team submits for review">
+                <Paperclip className="h-2.5 w-2.5" /> pending
+            </span>
+        )
     }
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"

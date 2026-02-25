@@ -168,4 +168,45 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* ─── Fix <select> and <option> contrast in both modes ─────────── */
+  select {
+    color-scheme: light dark;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  select option {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  .dark select {
+    color-scheme: dark;
+  }
+  .dark select option {
+    background-color: oklch(0.14 0.01 240);
+    color: oklch(0.97 0.01 200);
+  }
+
+  /* ─── Fix date/time/datetime-local inputs for both modes ───────── */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    color-scheme: light;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark input[type="datetime-local"] {
+    color-scheme: dark;
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  /* Calendar picker icon visibility in dark mode */
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator,
+  .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
 }

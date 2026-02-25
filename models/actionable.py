@@ -72,6 +72,7 @@ class ActionableItem:
     completion_date: str = ""  # ISO timestamp when completed
     reviewer_comments: str = ""  # Comments from reviewer or team member
     evidence_files: list = field(default_factory=list)  # List of {name, url, uploaded_at}
+    comments: list = field(default_factory=list)  # List of {id, author, role, text, timestamp}
 
     def to_dict(self) -> dict:
         return {
@@ -101,6 +102,7 @@ class ActionableItem:
             "completion_date": self.completion_date,
             "reviewer_comments": self.reviewer_comments,
             "evidence_files": self.evidence_files,
+            "comments": self.comments,
         }
 
     @classmethod
@@ -144,6 +146,7 @@ class ActionableItem:
             completion_date=data.get("completion_date", ""),
             reviewer_comments=data.get("reviewer_comments", ""),
             evidence_files=data.get("evidence_files", []),
+            comments=data.get("comments", []),
         )
 
 

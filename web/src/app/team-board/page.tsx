@@ -10,7 +10,8 @@ import {
     updateActionable,
     uploadEvidence,
 } from "@/lib/api"
-import { ActionableItem, ActionablesResult, TaskStatus } from "@/lib/types"
+import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment } from "@/lib/types"
+import { CommentThread } from "@/components/shared/comment-thread"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
     FileText, Paperclip, Calendar, CheckCircle2,
@@ -63,20 +64,17 @@ function RiskIcon({ modality }: { modality: string }) {
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
-function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition }: {
+function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, userName }: {
     entry: { item: ActionableItem; docId: string; docName: string }
     gridCols: string
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
     onUpload: (docId: string, itemId: string, file: File) => void
     onStatusTransition: (docId: string, item: ActionableItem) => void
+    userName: string
 }) {
     const { item, docId, docName } = entry
     const [expanded, setExpanded] = React.useState(false)
-    const [comment, setComment] = React.useState(item.reviewer_comments || "")
-    const [savingComment, setSavingComment] = React.useState(false)
     const inputRef = React.useRef<HTMLInputElement>(null)
-
-    const commentDirty = comment !== (item.reviewer_comments || "")
 
     const taskStatus = (item.task_status || "assigned") as TaskStatus
     const statusCfg = TASK_STATUS_CONFIG[taskStatus] || TASK_STATUS_CONFIG.assigned
@@ -84,14 +82,16 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition }: {
     const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking"
     const files = item.evidence_files || []
 
-    const handleSaveComment = async () => {
-        setSavingComment(true)
-        try {
-            await onUpdate(docId, item.id, { reviewer_comments: comment })
-            toast.success("Comment saved")
-        } finally {
-            setSavingComment(false)
+    const handleAddComment = async (text: string) => {
+        const newComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "team_member",
+            text,
+            timestamp: new Date().toISOString(),
         }
+        const existing = item.comments || []
+        await onUpdate(docId, item.id, { comments: [...existing, newComment] })
     }
 
     const handleDeleteFile = async (idx: number) => {
@@ -245,32 +245,13 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition }: {
                         )}
                     </div>
 
-                    {/* Comments */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/50" />
-                            <span className="text-xs font-semibold text-foreground/80">Comments / Notes</span>
-                        </div>
-                        <textarea
-                            value={comment}
-                            onChange={e => setComment(e.target.value)}
-                            placeholder="Add your comments, notes, or questions here..."
-                            rows={3}
-                            className="w-full bg-background text-xs rounded-lg px-3 py-2.5 border border-border/50 focus:border-primary focus:outline-none text-foreground placeholder:text-muted-foreground/30 resize-y min-h-[72px]"
-                        />
-                        {commentDirty && (
-                            <div className="flex justify-end mt-2">
-                                <button
-                                    onClick={handleSaveComment}
-                                    disabled={savingComment}
-                                    className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 font-medium transition-colors"
-                                >
-                                    {savingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                    Save Comment
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    {/* Comment thread */}
+                    <CommentThread
+                        comments={item.comments || []}
+                        currentUser={userName}
+                        currentRole="team_member"
+                        onAddComment={handleAddComment}
+                    />
 
                     {/* Source info */}
                     <div className="text-[10px] text-muted-foreground/30 pt-2 border-t border-border/10">
@@ -310,6 +291,7 @@ function TeamBoardContent() {
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
     const isComplianceOfficer = role === "compliance_officer" || role === "admin"
+    const userName = session?.user?.name || "Team Member"
 
     // Redirect compliance officers away from team board
     React.useEffect(() => {
@@ -439,6 +421,7 @@ function TeamBoardContent() {
             onUpdate={handleUpdate}
             onUpload={handleEvidenceUpload}
             onStatusTransition={handleStatusTransition}
+            userName={userName}
         />
     )
 
