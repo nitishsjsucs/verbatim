@@ -13,7 +13,8 @@ import { ActionableItem, ActionablesResult, TaskStatus } from "@/lib/types"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
     FileText, Paperclip, Calendar, CheckCircle2,
-    ArrowRight, RotateCcw,
+    ArrowRight, RotateCcw, Trash2, Save,
+    MessageSquare, ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -59,28 +60,189 @@ function RiskIcon({ modality }: { modality: string }) {
     )
 }
 
-// ─── Files cell ──────────────────────────────────────────────────────────────
+// ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
-function FilesCell({ files, onUpload }: {
-    files: { name: string; url: string; uploaded_at: string }[]
-    onUpload: (file: File) => void
+function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition }: {
+    entry: { item: ActionableItem; docId: string; docName: string }
+    gridCols: string
+    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
+    onUpload: (docId: string, itemId: string, file: File) => void
+    onStatusTransition: (docId: string, item: ActionableItem) => void
 }) {
+    const { item, docId, docName } = entry
+    const [expanded, setExpanded] = React.useState(false)
+    const [comment, setComment] = React.useState(item.reviewer_comments || "")
+    const [savingComment, setSavingComment] = React.useState(false)
     const inputRef = React.useRef<HTMLInputElement>(null)
+
+    const commentDirty = comment !== (item.reviewer_comments || "")
+
+    const taskStatus = (item.task_status || "assigned") as TaskStatus
+    const statusCfg = TASK_STATUS_CONFIG[taskStatus] || TASK_STATUS_CONFIG.assigned
+    const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
+    const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking"
+    const files = item.evidence_files || []
+
+    const handleSaveComment = async () => {
+        setSavingComment(true)
+        try {
+            await onUpdate(docId, item.id, { reviewer_comments: comment })
+            toast.success("Comment saved")
+        } finally {
+            setSavingComment(false)
+        }
+    }
+
+    const handleDeleteFile = async (idx: number) => {
+        const updated = [...files]
+        updated.splice(idx, 1)
+        await onUpdate(docId, item.id, { evidence_files: updated })
+        toast.success("File removed")
+    }
+
     return (
-        <div className="flex items-center gap-1 h-full px-1">
-            {files.length > 0 ? (
-                <span className="text-[10px] text-foreground/70 font-mono">{files.length} file{files.length > 1 ? "s" : ""}</span>
-            ) : (
-                <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
-            )}
-            <button
-                onClick={() => inputRef.current?.click()}
-                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-foreground transition-colors"
-                title="Upload evidence"
+        <div className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-60")}>
+            {/* Main row */}
+            <div
+                className="grid items-center hover:bg-muted/5 transition-colors cursor-pointer"
+                style={{ gridTemplateColumns: gridCols }}
+                onClick={() => setExpanded(!expanded)}
             >
-                <Paperclip className="h-3 w-3" />
-            </button>
-            <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = "" }} />
+                <div className="py-2 flex justify-center">
+                    <RiskIcon modality={item.modality} />
+                </div>
+                <div className="py-2 px-2 min-w-0 flex items-center gap-1.5">
+                    {expanded
+                        ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
+                        : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                    <div className="min-w-0">
+                        <p className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</p>
+                        {item.implementation_notes && (
+                            <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{safeStr(item.implementation_notes)}</p>
+                        )}
+                    </div>
+                </div>
+                <div className="py-2 px-1 text-center">
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusCfg.bg, statusCfg.text)}>
+                        {statusCfg.label}
+                    </span>
+                </div>
+                <div className="py-2 px-1 text-center">
+                    <span className={cn("text-[10px] flex items-center justify-center gap-1", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
+                        <Calendar className="h-2.5 w-2.5" />
+                        {formatDate(item.deadline)}
+                    </span>
+                </div>
+                <div className="py-2 px-1 text-center">
+                    <span className="text-[10px] text-foreground/70 font-mono">
+                        {files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""}` : <span className="text-muted-foreground/30 italic">none</span>}
+                    </span>
+                </div>
+                <div className="py-2 px-1 text-center" onClick={e => e.stopPropagation()}>
+                    {canAdvance && (
+                        <button
+                            onClick={() => onStatusTransition(docId, item)}
+                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
+                        >
+                            {taskStatus === "assigned" && <><ArrowRight className="h-2.5 w-2.5" /> Start</>}
+                            {taskStatus === "in_progress" && <><CheckCircle2 className="h-2.5 w-2.5" /> Submit</>}
+                            {taskStatus === "reworking" && <><RotateCcw className="h-2.5 w-2.5" /> Resubmit</>}
+                        </button>
+                    )}
+                    {taskStatus === "review" && <span className="text-[10px] text-blue-400 italic">Awaiting review</span>}
+                    {taskStatus === "completed" && (
+                        <span className="text-[10px] text-emerald-400 flex items-center justify-center gap-1">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> Done
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Expanded: Evidence & Comments */}
+            {expanded && (
+                <div className="bg-muted/5 border-t border-border/10 px-4 py-3 space-y-3 ml-9">
+                    {/* Comments */}
+                    <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <MessageSquare className="h-3 w-3 text-muted-foreground/50" />
+                            <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Comments / Notes</span>
+                        </div>
+                        <textarea
+                            value={comment}
+                            onChange={e => setComment(e.target.value)}
+                            placeholder="Add your comments, notes, or questions here..."
+                            rows={3}
+                            className="w-full bg-background text-xs rounded-md px-3 py-2 border border-border/50 focus:border-primary focus:outline-none text-foreground placeholder:text-muted-foreground/30 resize-y min-h-[60px]"
+                        />
+                        {commentDirty && (
+                            <div className="flex justify-end mt-1.5">
+                                <button
+                                    onClick={handleSaveComment}
+                                    disabled={savingComment}
+                                    className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 font-medium transition-colors"
+                                >
+                                    {savingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    Save Comment
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Evidence files list */}
+                    <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                                <Paperclip className="h-3 w-3 text-muted-foreground/50" />
+                                <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Evidence Files</span>
+                            </div>
+                            <button
+                                onClick={() => inputRef.current?.click()}
+                                className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                            >
+                                <Paperclip className="h-2.5 w-2.5" /> Upload
+                            </button>
+                            <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(docId, item.id, f); e.target.value = "" }} />
+                        </div>
+
+                        {files.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground/30 italic py-2">No evidence files uploaded yet. Click Upload to add files.</p>
+                        ) : (
+                            <div className="space-y-1">
+                                {files.map((file, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-background rounded-md px-3 py-1.5 border border-border/30 group/file">
+                                        <FileText className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                        <span className="text-[11px] text-foreground/80 truncate flex-1 min-w-0">{file.name}</span>
+                                        <span className="text-[9px] text-muted-foreground/40 font-mono shrink-0">{formatDate(file.uploaded_at)}</span>
+                                        {file.url && (
+                                            <a
+                                                href={file.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground/40 hover:text-primary transition-colors opacity-0 group-hover/file:opacity-100"
+                                                title="Open file"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                        )}
+                                        <button
+                                            onClick={() => handleDeleteFile(idx)}
+                                            className="p-0.5 rounded hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors opacity-0 group-hover/file:opacity-100"
+                                            title="Remove file"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Source info */}
+                    <div className="text-[9px] text-muted-foreground/30 pt-1 border-t border-border/10">
+                        From: {docName}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -229,86 +391,16 @@ function TeamBoardContent() {
         </div>
     )
 
-    const renderRow = ({ item, docId, docName }: { item: ActionableItem; docId: string; docName: string }) => {
-        const taskStatus = item.task_status || "assigned"
-        const statusCfg = TASK_STATUS_CONFIG[taskStatus] || TASK_STATUS_CONFIG.assigned
-        const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
-        const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking"
-
-        return (
-            <div
-                key={`${docId}-${item.id}`}
-                className={cn(
-                    "grid border-b border-border/10 items-center hover:bg-muted/5 transition-colors",
-                    taskStatus === "completed" && "opacity-60"
-                )}
-                style={{ gridTemplateColumns: gridCols }}
-            >
-                {/* Risk icon */}
-                <div className="py-2 flex justify-center">
-                    <RiskIcon modality={item.modality} />
-                </div>
-
-                {/* Task text (read-only) */}
-                <div className="py-2 px-2 min-w-0">
-                    <p className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</p>
-                    {item.implementation_notes && (
-                        <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{safeStr(item.implementation_notes)}</p>
-                    )}
-                </div>
-
-                {/* Status badge */}
-                <div className="py-2 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusCfg.bg, statusCfg.text)}>
-                        {statusCfg.label}
-                    </span>
-                </div>
-
-                {/* Deadline (read-only) */}
-                <div className="py-2 px-1 text-center">
-                    <span className={cn("text-[10px] flex items-center justify-center gap-1", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
-                        <Calendar className="h-2.5 w-2.5" />
-                        {formatDate(item.deadline)}
-                    </span>
-                </div>
-
-                {/* Evidence */}
-                <div className="py-2 px-1">
-                    <FilesCell
-                        files={item.evidence_files || []}
-                        onUpload={f => handleEvidenceUpload(docId, item.id, f)}
-                    />
-                </div>
-
-                {/* Action button */}
-                <div className="py-2 px-1 text-center">
-                    {canAdvance && (
-                        <button
-                            onClick={() => handleStatusTransition(docId, item)}
-                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
-                            title={
-                                taskStatus === "assigned" ? "Start working" :
-                                taskStatus === "in_progress" ? "Submit for review" :
-                                "Re-submit for review"
-                            }
-                        >
-                            {taskStatus === "assigned" && <><ArrowRight className="h-2.5 w-2.5" /> Start</>}
-                            {taskStatus === "in_progress" && <><CheckCircle2 className="h-2.5 w-2.5" /> Submit</>}
-                            {taskStatus === "reworking" && <><RotateCcw className="h-2.5 w-2.5" /> Resubmit</>}
-                        </button>
-                    )}
-                    {taskStatus === "review" && (
-                        <span className="text-[10px] text-blue-400 italic">Awaiting review</span>
-                    )}
-                    {taskStatus === "completed" && (
-                        <span className="text-[10px] text-emerald-400 flex items-center justify-center gap-1">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Done
-                        </span>
-                    )}
-                </div>
-            </div>
-        )
-    }
+    const renderTaskRow = (entry: { item: ActionableItem; docId: string; docName: string }) => (
+        <TaskRow
+            key={`${entry.docId}-${entry.item.id}`}
+            entry={entry}
+            gridCols={gridCols}
+            onUpdate={handleUpdate}
+            onUpload={handleEvidenceUpload}
+            onStatusTransition={handleStatusTransition}
+        />
+    )
 
     return (
         <div className="flex h-screen bg-background">
@@ -373,7 +465,7 @@ function TeamBoardContent() {
                             {!collapsedGroups.has("active") && (
                                 <>
                                     {renderHeader()}
-                                    {activeItems.map(renderRow)}
+                                    {activeItems.map(renderTaskRow)}
                                     <div className="px-5 py-2 border-b border-border/20">
                                         <StatusSummaryBar items={activeItems} />
                                     </div>
@@ -399,7 +491,7 @@ function TeamBoardContent() {
                             {!collapsedGroups.has("completed") && (
                                 <>
                                     {renderHeader()}
-                                    {completedItems.map(renderRow)}
+                                    {completedItems.map(renderTaskRow)}
                                 </>
                             )}
                         </div>

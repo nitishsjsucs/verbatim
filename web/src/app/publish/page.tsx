@@ -315,9 +315,15 @@ export default function PublishPage() {
 
     const handlePublishAllTeam = React.useCallback(async (items: FlatItem[]) => {
         if (items.length === 0) { toast.info("No items to publish"); return }
-        const dl = commonDeadline ? `${commonDeadline}T${commonDeadlineTime || "23:59"}` : ""
-        if (!dl) { toast.error("Set a common deadline first"); return }
+        const globalDl = commonDeadline ? `${commonDeadline}T${commonDeadlineTime || "23:59"}` : ""
+        // Check if any item lacks both individual and global deadline
+        const noDeadline = items.filter(({ item }) => !item.deadline && !globalDl)
+        if (noDeadline.length > 0) {
+            toast.error("Set a common deadline first — some items have no individual deadline")
+            return
+        }
         for (const { item, docId } of items) {
+            const dl = item.deadline || globalDl
             await handlePublish(docId, item.id, dl)
         }
         toast.success(`Published ${items.length} items`)

@@ -563,11 +563,12 @@ export default function ActionablesPage() {
         }
     }, [pdfDocId, allDocs])
 
-    // Flatten all actionables with doc info
+    // Flatten all actionables with doc info (exclude published items — they live in tracker now)
     const allItems = React.useMemo(() => {
         const items: { item: ActionableItem; docId: string; docName: string }[] = []
         for (const doc of allDocs) {
             for (const item of doc.actionables) {
+                if (item.published_at) continue // published items belong to tracker, not actionables
                 items.push({ item, docId: doc.doc_id, docName: doc.doc_name })
             }
         }

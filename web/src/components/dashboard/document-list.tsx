@@ -31,7 +31,8 @@ export function DocumentList() {
     const [loading, setLoading] = useState(true)
     const [expandedDoc, setExpandedDoc] = useState<DocumentMeta | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
-    const [dateFilter, setDateFilter] = useState("")  // "all", "today", "week", "month", or ISO date
+    const [dateFrom, setDateFrom] = useState("")  // ISO date string yyyy-mm-dd
+    const [dateTo, setDateTo] = useState("")      // ISO date string yyyy-mm-dd
 
     const loadDocuments = async () => {
         try {
@@ -76,32 +77,23 @@ export function DocumentList() {
                 (doc.description && doc.description.toLowerCase().includes(q))
             )
         }
-        // Date filter
-        if (dateFilter && dateFilter !== "all") {
-            const now = new Date()
-            let cutoff: Date | null = null
-            if (dateFilter === "today") {
-                cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            } else if (dateFilter === "week") {
-                cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-            } else if (dateFilter === "month") {
-                cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-            } else {
-                // Exact date string (ISO)
-                cutoff = new Date(dateFilter)
-            }
-            if (cutoff) {
-                filtered = filtered.filter(doc => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const raw = doc as any
-                    const uploadedAt: string | undefined = raw.uploaded_at || raw.created_at
-                    if (!uploadedAt) return true // keep docs without date
-                    return new Date(uploadedAt) >= cutoff!
-                })
-            }
+        // Date range filter
+        if (dateFrom || dateTo) {
+            const from = dateFrom ? new Date(dateFrom + "T00:00:00") : null
+            const to = dateTo ? new Date(dateTo + "T23:59:59") : null
+            filtered = filtered.filter(doc => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const raw = doc as any
+                const uploadedAt: string | undefined = raw.uploaded_at || raw.created_at
+                if (!uploadedAt) return true // keep docs without date
+                const d = new Date(uploadedAt)
+                if (from && d < from) return false
+                if (to && d > to) return false
+                return true
+            })
         }
         return filtered
-    }, [documents, searchQuery, dateFilter])
+    }, [documents, searchQuery, dateFrom, dateTo])
 
     if (loading) {
         return <div className="p-8 text-center text-muted-foreground">Loading documents...</div>
@@ -132,17 +124,32 @@ export function DocumentList() {
                     className="w-full bg-muted/30 text-sm rounded-md pl-8 pr-3 py-2 border border-transparent focus:border-border focus:outline-none text-foreground placeholder:text-muted-foreground/50"
                 />
             </div>
-            <select
-                value={dateFilter}
-                onChange={e => setDateFilter(e.target.value)}
-                className="bg-muted/30 text-sm rounded-md px-3 py-2 border border-transparent focus:border-border focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-            >
-                <option value="all">All dates</option>
-                <option value="today">Today</option>
-                <option value="week">Past 7 days</option>
-                <option value="month">Past 30 days</option>
-            </select>
-            {(searchQuery || (dateFilter && dateFilter !== "all")) && (
+            <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] text-muted-foreground/50 font-medium">From</span>
+                <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={e => setDateFrom(e.target.value)}
+                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark] w-[130px]"
+                />
+                <span className="text-[10px] text-muted-foreground/50 font-medium">To</span>
+                <input
+                    type="date"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark] w-[130px]"
+                />
+                {(dateFrom || dateTo) && (
+                    <button
+                        onClick={() => { setDateFrom(""); setDateTo("") }}
+                        className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-foreground transition-colors"
+                        title="Clear date filter"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </button>
+                )}
+            </div>
+            {(searchQuery || dateFrom || dateTo) && (
                 <span className="text-xs text-muted-foreground/60 font-mono shrink-0">
                     {filteredDocuments.length} of {documents.length}
                 </span>
