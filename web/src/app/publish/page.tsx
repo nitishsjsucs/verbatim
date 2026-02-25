@@ -415,7 +415,8 @@ export default function PublishPage() {
                                     {commonDeadlineSaved ? "Saved" : "Save"}
                                 </button>
                             </div>
-                            <Button
+                        </div>
+                        <Button
                             size="sm"
                             className="h-8 gap-1.5 px-3 text-[12px]"
                             onClick={handlePublishAll}
@@ -424,8 +425,6 @@ export default function PublishPage() {
                             <Send className="h-3 w-3" />
                             Publish All ({publishQueue.length})
                         </Button>
-                        </div>
-                        
                     </div>
 
                     {/* Search */}
