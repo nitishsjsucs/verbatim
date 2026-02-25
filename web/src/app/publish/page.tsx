@@ -167,7 +167,7 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                         </div>
                     )}
                     <div>
-                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Deadline</p>
+                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Independent Deadline</p>
                         <div className="flex items-center gap-2">
                             <input
                                 type="date"
@@ -414,15 +414,19 @@ export default function PublishPage() {
                                     <Save className="h-3 w-3" />
                                     {commonDeadlineSaved ? "Saved" : "Save"}
                                 </button>
-                                <Button
-                                    size="sm"
-                                    className="h-8 gap-1.5 px-3 text-[12px]"
+                                <button
                                     onClick={handlePublishAll}
                                     disabled={publishQueue.length === 0}
+                                    className={cn(
+                                        "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
+                                        publishQueue.length > 0
+                                            ? "bg-white text-foreground hover:bg-muted/10"
+                                            : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                    )}
                                 >
                                     <Send className="h-3 w-3" />
                                     Publish All ({publishQueue.length})
-                                </Button>
+                                </button>
                             </div>
                         </div>
                         
