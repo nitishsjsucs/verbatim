@@ -13,7 +13,7 @@ import {
 import {
     Send, Loader2, Search,
     ChevronDown, ChevronRight, Undo2,
-    Calendar,
+    Calendar, Save,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -75,35 +75,53 @@ interface FlatItem {
 
 // --- Publish Card ---
 
-function PublishCard({ entry, onUpdate, onPublish }: {
+function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlineTime }: {
     entry: FlatItem
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
     onPublish: (docId: string, itemId: string, deadline: string) => Promise<void>
+    commonDeadline: string
+    commonDeadlineTime: string
 }) {
     const { item, docId, docName } = entry
     const [expanded, setExpanded] = React.useState(false)
-    const [deadlineDate, setDeadlineDate] = React.useState(() => {
-        if (item.deadline) return item.deadline.split("T")[0] || ""
-        return ""
-    })
-    const [deadlineTime, setDeadlineTime] = React.useState(() => {
-        if (item.deadline) return item.deadline.split("T")[1] || "23:59"
-        return "23:59"
-    })
+    const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
+    const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
+    const [saving, setSaving] = React.useState(false)
+
+    // Track if local deadline differs from saved item deadline
+    const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
+    const savedDl = item.deadline || ""
+    const deadlineDirty = currentDl !== savedDl
+
+    const handleSaveDeadline = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (!deadlineDate) { toast.error("Set a date first"); return }
+        setSaving(true)
+        try {
+            await onUpdate(docId, item.id, { deadline: currentDl })
+            toast.success("Deadline saved")
+        } finally {
+            setSaving(false)
+        }
+    }
 
     const handlePublish = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        if (!deadlineDate) {
-            toast.error("Set a deadline date before publishing")
+        // Use item deadline, or local unsaved deadline, or common deadline as fallback
+        let dl = currentDl
+        if (!dl && commonDeadline) {
+            dl = `${commonDeadline}T${commonDeadlineTime || "23:59"}`
+        }
+        if (!dl) {
+            toast.error("Set a deadline (or a common deadline) before publishing")
             return
         }
-        const dl = `${deadlineDate}T${deadlineTime || "23:59"}`
         await onPublish(docId, item.id, dl)
     }
 
     const handleRevert = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        await onUpdate(docId, item.id, { approval_status: "pending", published_at: "" })
+        await onUpdate(docId, item.id, { approval_status: "pending", published_at: "", deadline: "", task_status: "" })
     }
 
     return (
@@ -117,11 +135,17 @@ function PublishCard({ entry, onUpdate, onPublish }: {
                     <RiskIcon modality={item.modality} />
                     <p className="text-xs text-foreground/90 leading-relaxed truncate flex-1 min-w-0">{safeStr(item.action)}</p>
                 </button>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Show saved deadline as badge if set */}
+                    {item.deadline && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">
+                            {item.deadline.split("T")[0]}
+                        </span>
+                    )}
                     <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Send back to pending">
                         <Undo2 className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={handlePublish} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors ml-1 font-medium" title="Publish to tracker">
+                    <button onClick={handlePublish} className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium" title="Publish to tracker">
                         <Send className="h-3 w-3" />
                         Publish
                     </button>
@@ -157,7 +181,25 @@ function PublishCard({ entry, onUpdate, onPublish }: {
                                 onChange={e => setDeadlineTime(e.target.value)}
                                 className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                             />
+                            <button
+                                onClick={handleSaveDeadline}
+                                disabled={!deadlineDirty || saving || !deadlineDate}
+                                className={cn(
+                                    "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
+                                    deadlineDirty && deadlineDate
+                                        ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                        : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                )}
+                            >
+                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                Save
+                            </button>
                         </div>
+                        {!deadlineDate && commonDeadline && (
+                            <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                No individual deadline — will use common deadline ({commonDeadline}) on publish
+                            </p>
+                        )}
                     </div>
                     <div className="text-[10px] text-muted-foreground/40">{docName}</div>
                 </div>
@@ -200,26 +242,28 @@ export default function PublishPage() {
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
             const updated = await updateActionable(docId, itemId, updates)
+            // Merge: original ← optimistic updates ← API response (authoritative)
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
-                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
+                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updates, ...updated } as ActionableItem : a) }
             }))
-            toast.success("Updated")
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }
     }, [])
 
     const handlePublish = React.useCallback(async (docId: string, itemId: string, deadline: string) => {
+        const publishUpdates = {
+            published_at: new Date().toISOString(),
+            deadline,
+            task_status: "assigned",
+        }
         try {
-            const updated = await updateActionable(docId, itemId, {
-                published_at: new Date().toISOString(),
-                deadline,
-                task_status: "assigned",
-            })
+            const updated = await updateActionable(docId, itemId, publishUpdates)
+            // Merge: original ← optimistic publish fields ← API response
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
-                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
+                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...publishUpdates, ...updated } as ActionableItem : a) }
             }))
             toast.success("Published to tracker")
         } catch (err) {
@@ -398,6 +442,8 @@ export default function PublishPage() {
                                         entry={entry}
                                         onUpdate={handleUpdate}
                                         onPublish={handlePublish}
+                                        commonDeadline={commonDeadline}
+                                        commonDeadlineTime={commonDeadlineTime}
                                     />
                                 ))}
                             </div>

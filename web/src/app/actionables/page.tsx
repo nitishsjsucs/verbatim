@@ -526,14 +526,14 @@ export default function ActionablesPage() {
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
             const updated = await updateActionable(docId, itemId, updates)
+            // Merge: original item ← optimistic updates ← API response (authoritative)
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
                 return {
                     ...d,
-                    actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a),
+                    actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updates, ...updated } as ActionableItem : a),
                 }
             }))
-            toast.success("Updated")
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }

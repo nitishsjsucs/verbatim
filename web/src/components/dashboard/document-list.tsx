@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { FileText, MoreHorizontal, Trash2, X, MessageSquare, CalendarDays } from "lucide-react"
+import { FileText, MoreHorizontal, Trash2, X, MessageSquare, CalendarDays, Search } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -30,6 +30,8 @@ export function DocumentList() {
     const [documents, setDocuments] = useState<DocumentMeta[]>([])
     const [loading, setLoading] = useState(true)
     const [expandedDoc, setExpandedDoc] = useState<DocumentMeta | null>(null)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [dateFilter, setDateFilter] = useState("")  // "all", "today", "week", "month", or ISO date
 
     const loadDocuments = async () => {
         try {
@@ -64,6 +66,43 @@ export function DocumentList() {
         }
     }
 
+    const filteredDocuments = useMemo(() => {
+        let filtered = documents
+        // Name search
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase()
+            filtered = filtered.filter(doc =>
+                doc.name.toLowerCase().includes(q) ||
+                (doc.description && doc.description.toLowerCase().includes(q))
+            )
+        }
+        // Date filter
+        if (dateFilter && dateFilter !== "all") {
+            const now = new Date()
+            let cutoff: Date | null = null
+            if (dateFilter === "today") {
+                cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            } else if (dateFilter === "week") {
+                cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            } else if (dateFilter === "month") {
+                cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            } else {
+                // Exact date string (ISO)
+                cutoff = new Date(dateFilter)
+            }
+            if (cutoff) {
+                filtered = filtered.filter(doc => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const raw = doc as any
+                    const uploadedAt: string | undefined = raw.uploaded_at || raw.created_at
+                    if (!uploadedAt) return true // keep docs without date
+                    return new Date(uploadedAt) >= cutoff!
+                })
+            }
+        }
+        return filtered
+    }, [documents, searchQuery, dateFilter])
+
     if (loading) {
         return <div className="p-8 text-center text-muted-foreground">Loading documents...</div>
     }
@@ -82,6 +121,34 @@ export function DocumentList() {
 
     return (
         <>
+        {/* Search & Filter Bar */}
+        <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-[9px] h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search documents by name..."
+                    className="w-full bg-muted/30 text-sm rounded-md pl-8 pr-3 py-2 border border-transparent focus:border-border focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+                />
+            </div>
+            <select
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                className="bg-muted/30 text-sm rounded-md px-3 py-2 border border-transparent focus:border-border focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+            >
+                <option value="all">All dates</option>
+                <option value="today">Today</option>
+                <option value="week">Past 7 days</option>
+                <option value="month">Past 30 days</option>
+            </select>
+            {(searchQuery || (dateFilter && dateFilter !== "all")) && (
+                <span className="text-xs text-muted-foreground/60 font-mono shrink-0">
+                    {filteredDocuments.length} of {documents.length}
+                </span>
+            )}
+        </div>
+
         <div className="rounded-md border border-border bg-card overflow-hidden">
             <Table>
                 <TableHeader>
@@ -93,7 +160,14 @@ export function DocumentList() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {documents.map((doc) => (
+                    {filteredDocuments.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-sm text-muted-foreground/60">
+                                No documents match your search
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    {filteredDocuments.map((doc) => (
                         <TableRow key={doc.id} className="border-b border-border/60 hover:bg-accent/40 transition-colors group">
                             <TableCell className="pl-4 py-2.5">
                                 <Link
