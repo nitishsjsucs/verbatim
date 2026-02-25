@@ -97,7 +97,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                     <DialogDescription>
                         {result
                             ? "Your document has been processed successfully."
-                            : "Drag and drop a PDF file here or click to browse (This process may take upwards of a 10 minutes)."
+                            : "Drag and drop a PDF file here or click to browse (This process may take upwards of 10 minutes)."
                         }
                     </DialogDescription>
                 </DialogHeader>
