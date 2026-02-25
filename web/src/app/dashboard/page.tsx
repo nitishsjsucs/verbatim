@@ -303,6 +303,10 @@ export default function DashboardPage() {
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
                         </div>
                         <div className="text-center">
+                            <p className="text-lg font-bold text-blue-400">{stats.review}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
+                        </div>
+                        <div className="text-center">
                             <p className="text-lg font-bold text-orange-400">{stats.reworking}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
                         </div>
@@ -310,10 +314,7 @@ export default function DashboardPage() {
                             <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
                         </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-blue-400">{stats.review}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
-                        </div>
+                        
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
                             <p className="text-lg font-bold text-red-500">{stats.highRisk}</p>
