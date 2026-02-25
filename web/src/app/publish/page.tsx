@@ -420,7 +420,7 @@ export default function PublishPage() {
                                     className={cn(
                                         "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
                                         publishQueue.length > 0
-                                            ? "bg-white text-foreground hover:bg-muted/10"
+                                            ? "bg-background text-foreground hover:bg-muted/10"
                                             : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
                                     )}
                                 >
