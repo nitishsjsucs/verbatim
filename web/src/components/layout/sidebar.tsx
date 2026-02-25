@@ -158,10 +158,11 @@ export function Sidebar({ className }: SidebarProps) {
                 active={pathname === "/publish"}
                 collapsed={collapsed}
               />
+              <div className="my-2 border-t border-sidebar-border/50" />
               <NavItem
                 href="/dashboard"
                 icon={<LayoutDashboard className="h-4 w-4" />}
-                iconClassName="text-amber-500"
+                iconClassName="text-pink-500"
                 label="Tracker"
                 active={pathname === "/dashboard"}
                 collapsed={collapsed}
@@ -169,7 +170,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/reports"
                 icon={<BarChart3 className="h-4 w-4" />}
-                iconClassName="text-amber-500"
+                iconClassName="text-pink-500"
                 label="Reports"
                 active={pathname === "/reports"}
                 collapsed={collapsed}
