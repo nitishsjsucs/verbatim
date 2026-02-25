@@ -278,6 +278,20 @@ export async function deleteActionable(docId: string, itemId: string): Promise<v
     }
 }
 
+export async function uploadEvidence(file: File): Promise<{ filename: string; stored_name: string; url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE_URL}/evidence/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to upload evidence');
+    }
+    return res.json();
+}
+
 export async function fetchApprovedByTeam(): Promise<Record<string, ActionableItem[]>> {
     const res = await apiFetch('/actionables/approved-by-team');
     if (!res.ok) throw new Error('Failed to fetch approved actionables');

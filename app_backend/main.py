@@ -887,6 +887,47 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
     return target.to_dict()
 
 
+# ---------------------------------------------------------------------------
+# Evidence file upload & serving
+# ---------------------------------------------------------------------------
+
+EVIDENCE_DIR = PROJECT_ROOT / "data" / "evidence"
+EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.post("/evidence/upload")
+async def upload_evidence(file: UploadFile = File(...)):
+    """Upload an evidence file and return a persistent URL."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    # Generate unique filename to avoid collisions
+    ext = Path(file.filename).suffix
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    dest = EVIDENCE_DIR / unique_name
+
+    try:
+        with dest.open("wb") as buf:
+            shutil.copyfileobj(file.file, buf)
+    finally:
+        file.file.close()
+
+    return {
+        "filename": file.filename,
+        "stored_name": unique_name,
+        "url": f"/evidence/files/{unique_name}",
+    }
+
+
+@app.get("/evidence/files/{filename}")
+def serve_evidence_file(filename: str):
+    """Serve an uploaded evidence file."""
+    file_path = EVIDENCE_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(str(file_path), filename=filename)
+
+
 @app.post("/documents/{doc_id}/actionables")
 def create_manual_actionable(doc_id: str, body: dict = Body(...)):
     """Create a manually-added actionable for a document."""

@@ -172,6 +172,7 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                             <input
                                 type="date"
                                 value={deadlineDate}
+                                min={new Date().toISOString().split("T")[0]}
                                 onChange={e => setDeadlineDate(e.target.value)}
                                 className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                             />
@@ -216,7 +217,32 @@ export default function PublishPage() {
     const [searchQuery, setSearchQuery] = React.useState("")
     const [commonDeadline, setCommonDeadline] = React.useState("")
     const [commonDeadlineTime, setCommonDeadlineTime] = React.useState("23:59")
+    const [commonDeadlineSaved, setCommonDeadlineSaved] = React.useState(false)
     const [collapsedTeams, setCollapsedTeams] = React.useState<Set<string>>(new Set())
+
+    // Load persisted common deadline from localStorage
+    React.useEffect(() => {
+        try {
+            const saved = localStorage.getItem("publish_common_deadline")
+            if (saved) {
+                const { date, time } = JSON.parse(saved)
+                if (date) setCommonDeadline(date)
+                if (time) setCommonDeadlineTime(time)
+            }
+        } catch { /* ignore */ }
+    }, [])
+
+    const handleSaveCommonDeadline = () => {
+        if (!commonDeadline) { toast.error("Set a date first"); return }
+        const today = new Date().toISOString().split("T")[0]
+        if (commonDeadline < today) { toast.error("Deadline cannot be in the past"); return }
+        localStorage.setItem("publish_common_deadline", JSON.stringify({ date: commonDeadline, time: commonDeadlineTime }))
+        setCommonDeadlineSaved(true)
+        toast.success("Common deadline saved")
+        setTimeout(() => setCommonDeadlineSaved(false), 2000)
+    }
+
+    const todayStr = React.useMemo(() => new Date().toISOString().split("T")[0], [])
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -358,11 +384,12 @@ export default function PublishPage() {
 
                     <div className="flex items-center gap-3 bg-muted/20 rounded-lg p-3">
                         <div className="flex-1">
-                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Common Deadline (applies to Publish All)</p>
+                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Common Deadline (applies to items without individual deadlines)</p>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="date"
                                     value={commonDeadline}
+                                    min={todayStr}
                                     onChange={e => setCommonDeadline(e.target.value)}
                                     className="flex-1 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                 />
@@ -372,6 +399,21 @@ export default function PublishPage() {
                                     onChange={e => setCommonDeadlineTime(e.target.value)}
                                     className="w-28 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                 />
+                                <button
+                                    onClick={handleSaveCommonDeadline}
+                                    disabled={!commonDeadline}
+                                    className={cn(
+                                        "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
+                                        commonDeadlineSaved
+                                            ? "bg-emerald-500/15 text-emerald-500"
+                                            : commonDeadline
+                                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                    )}
+                                >
+                                    <Save className="h-3 w-3" />
+                                    {commonDeadlineSaved ? "Saved" : "Save"}
+                                </button>
                             </div>
                         </div>
                         <Button

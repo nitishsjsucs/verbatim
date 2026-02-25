@@ -15,7 +15,8 @@ import {
 import {
     LayoutDashboard, ChevronDown, ChevronRight,
     Loader2, Search, AlertTriangle,
-    Paperclip, Calendar,
+    Paperclip, Calendar, Save, ExternalLink,
+    Download, FileText, X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -414,7 +415,6 @@ export default function DashboardPage() {
                                     const rowKey = `${docId}-${item.id}`
                                     const taskStatus = item.task_status || "assigned"
                                     const statusStyle = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
-                                    const evidenceCount = (item.evidence_files || []).length
 
                                     return (
                                         <div
@@ -464,15 +464,9 @@ export default function DashboardPage() {
                                                 </span>
                                             </div>
 
-                                            {/* Evidence */}
-                                            <div className="py-1.5 px-1 text-center">
-                                                {evidenceCount > 0 ? (
-                                                    <span className="text-[10px] text-foreground/70 flex items-center justify-center gap-1">
-                                                        <Paperclip className="h-2.5 w-2.5" />{evidenceCount}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
-                                                )}
+                                            {/* Evidence (clickable popover) */}
+                                            <div className="py-1.5 px-1 flex justify-center">
+                                                <EvidencePopover files={item.evidence_files || []} />
                                             </div>
 
                                             {/* Published date */}
@@ -507,42 +501,165 @@ export default function DashboardPage() {
     )
 }
 
+// ─── Evidence popover (compliance officer can view/download evidence) ────────
+
+function EvidencePopover({ files }: { files: { name: string; url: string; uploaded_at: string }[] }) {
+    const [open, setOpen] = React.useState(false)
+    const popoverRef = React.useRef<HTMLDivElement>(null)
+
+    // Close on outside click
+    React.useEffect(() => {
+        if (!open) return
+        const handler = (e: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false)
+        }
+        document.addEventListener("mousedown", handler)
+        return () => document.removeEventListener("mousedown", handler)
+    }, [open])
+
+    if (files.length === 0) {
+        return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
+    }
+
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+
+    return (
+        <div className="relative" ref={popoverRef}>
+            <button
+                onClick={() => setOpen(!open)}
+                className="text-[10px] text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
+            >
+                <Paperclip className="h-2.5 w-2.5" />{files.length}
+            </button>
+
+            {open && (
+                <div className="absolute z-50 top-full mt-1 right-0 w-72 bg-background border border-border rounded-lg shadow-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-foreground/80">Evidence Files</span>
+                        <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground/40">
+                            <X className="h-3 w-3" />
+                        </button>
+                    </div>
+                    {files.map((file, idx) => {
+                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
+                        return (
+                            <div key={idx} className="flex items-center gap-2.5 bg-muted/20 rounded-md px-3 py-2.5 border border-border/20">
+                                <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                                    <FileText className="h-3.5 w-3.5 text-primary/70" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
+                                    <p className="text-[9px] text-muted-foreground/40">
+                                        {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    {fileUrl && (
+                                        <>
+                                            <a
+                                                href={fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                title="Open"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                            <a
+                                                href={fileUrl}
+                                                download={file.name}
+                                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                title="Download"
+                                            >
+                                                <Download className="h-3 w-3" />
+                                            </a>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
+    )
+}
+
 // ─── Deadline editable cell ──────────────────────────────────────────────────
 
 function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
     const inputRef = React.useRef<HTMLInputElement>(null)
+    const [localValue, setLocalValue] = React.useState(value || "")
+    const [saving, setSaving] = React.useState(false)
+
+    // Sync if the prop changes externally
+    React.useEffect(() => { setLocalValue(value || "") }, [value])
+
+    const isDirty = localValue !== (value || "")
 
     const display = React.useMemo(() => {
-        if (!value) return "—"
+        const v = localValue || value
+        if (!v) return "—"
         try {
-            return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-        } catch { return value }
-    }, [value])
+            return new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        } catch { return v }
+    }, [localValue, value])
 
     const isOverdue = React.useMemo(() => {
-        if (!value) return false
-        try { return new Date(value).getTime() < Date.now() } catch { return false }
-    }, [value])
+        const v = localValue || value
+        if (!v) return false
+        try { return new Date(v).getTime() < Date.now() } catch { return false }
+    }, [localValue, value])
+
+    const todayMin = React.useMemo(() => {
+        const d = new Date()
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T00:00`
+    }, [])
+
+    const handleSave = async () => {
+        if (!localValue) return
+        setSaving(true)
+        try {
+            onSave(localValue)
+        } finally {
+            setSaving(false)
+        }
+    }
 
     return (
-        <div className="relative inline-flex items-center">
-            <button
+        <div className="inline-flex items-center gap-0.5">
+            <div
+                className="relative cursor-pointer"
                 onClick={() => inputRef.current?.showPicker()}
-                className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded hover:bg-muted/30 transition-colors flex items-center gap-1",
-                    isOverdue ? "text-red-400" : "text-muted-foreground/70"
-                )}
             >
-                <Calendar className="h-2.5 w-2.5" />
-                {display}
-            </button>
-            <input
-                ref={inputRef}
-                type="datetime-local"
-                value={value || ""}
-                onChange={e => onSave(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full"
-            />
+                <span
+                    className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded hover:bg-muted/30 transition-colors flex items-center gap-1",
+                        isOverdue ? "text-red-400" : "text-muted-foreground/70"
+                    )}
+                >
+                    <Calendar className="h-2.5 w-2.5" />
+                    {display}
+                </span>
+                <input
+                    ref={inputRef}
+                    type="datetime-local"
+                    value={localValue}
+                    min={todayMin}
+                    onChange={e => setLocalValue(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+            </div>
+            {isDirty && (
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 font-medium transition-colors"
+                    title="Save deadline"
+                >
+                    {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5" />}
+                </button>
+            )}
         </div>
     )
 }
