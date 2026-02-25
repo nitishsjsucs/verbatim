@@ -80,7 +80,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
 
                         {/* 4. Children */}
                         {node.children && node.children.length > 0 && (
-                            <DetailSection title={`Children (${node.children.length})`} icon={<Hash className="h-3.5 w-3.5" />}>
+                            <CollapsibleSection title={`Children (${node.children.length})`} icon={<Hash className="h-3.5 w-3.5" />}>
                                 <div className="space-y-1">
                                     {node.children.map((child) => (
                                         <div key={child.node_id} className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
@@ -89,12 +89,12 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                         </div>
                                     ))}
                                 </div>
-                            </DetailSection>
+                            </CollapsibleSection>
                         )}
 
                         {/* 5. Tables */}
                         {node.tables && node.tables.length > 0 && (
-                            <DetailSection title={`Tables (${node.tables.length})`} icon={<Table2 className="h-3.5 w-3.5" />}>
+                            <CollapsibleSection title={`Tables (${node.tables.length})`} icon={<Table2 className="h-3.5 w-3.5" />}>
                                 <div className="space-y-2">
                                     {node.tables.map((table) => (
                                         <div key={table.table_id} className="border border-border/20 rounded-md p-2">
@@ -110,7 +110,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                         </div>
                                     ))}
                                 </div>
-                            </DetailSection>
+                            </CollapsibleSection>
                         )}
 
                         {/* 6. Cross-references — collapsible */}

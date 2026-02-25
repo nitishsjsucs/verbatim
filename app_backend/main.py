@@ -862,6 +862,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
         "reporting_or_notification_to", "evidence_quote", "source_location",
         "implementation_notes", "workstream", "needs_legal_review",
         "approval_status", "validation_notes",
+        "published_at", "deadline", "task_status", "completion_date",
     ]
     for field_name in editable_fields:
         if field_name in body:

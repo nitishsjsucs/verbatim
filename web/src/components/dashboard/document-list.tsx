@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { FileText, MoreHorizontal, Trash2, X, MessageSquare } from "lucide-react"
+import { FileText, MoreHorizontal, Trash2, X, MessageSquare, CalendarDays } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -88,8 +88,8 @@ export function DocumentList() {
                     <TableRow className="border-b border-border hover:bg-transparent">
                         <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
                         <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Nodes</TableHead>
-                        <TableHead className="h-9 w-[44px]"></TableHead>
+                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Published</TableHead>
+                        <TableHead className="h-9 w-[120px]"></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -114,15 +114,18 @@ export function DocumentList() {
                                 )}
                             </TableCell>
                             <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
-                            <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.nodes}</TableCell>
+                            <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
+                                <span className="text-muted-foreground/60">—</span>
+                            </TableCell>
                             <TableCell className="text-right py-2.5 pr-2">
-                                <div className="flex items-center justify-end gap-1">
+                                <div className="flex items-center justify-end gap-1.5">
                                 <Link
                                     href={`/documents/${doc.id}?tab=chat`}
-                                    className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
                                     title="Chat with document"
                                 >
                                     <MessageSquare className="h-3.5 w-3.5" />
+                                    Chat
                                 </Link>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

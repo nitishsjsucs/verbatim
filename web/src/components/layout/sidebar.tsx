@@ -14,6 +14,7 @@ import {
   BarChart3,
   ClipboardList,
   LogOut,
+  Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -147,6 +148,14 @@ export function Sidebar({ className }: SidebarProps) {
                 iconClassName="text-amber-500"
                 label="Actionables"
                 active={pathname === "/actionables"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/publish"
+                icon={<Send className="h-4 w-4" />}
+                iconClassName="text-amber-500"
+                label="Publish"
+                active={pathname === "/publish"}
                 collapsed={collapsed}
               />
               <NavItem

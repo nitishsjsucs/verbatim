@@ -23,6 +23,9 @@ class Modality(str, Enum):
     PROHIBITED = "Prohibited"  # shall not, must not, prohibited
     PERMITTED = "Permitted"  # may, at its option
     RECOMMENDED = "Recommended"  # should, endeavour to
+    HIGH_RISK = "High Risk"
+    MEDIUM_RISK = "Medium Risk"
+    LOW_RISK = "Low Risk"
 
 
 class Workstream(str, Enum):
@@ -63,6 +66,10 @@ class ActionableItem:
     validation_notes: str = ""  # Notes from validation pass
     approval_status: str = "pending"  # pending, approved, rejected
     is_manual: bool = False  # True if manually created by user
+    published_at: str = ""  # ISO timestamp when published to tracker
+    deadline: str = ""  # ISO datetime deadline for completion
+    task_status: str = ""  # assigned, in_progress, review, completed, reworking
+    completion_date: str = ""  # ISO timestamp when completed
 
     def to_dict(self) -> dict:
         return {
@@ -86,6 +93,10 @@ class ActionableItem:
             "validation_notes": self.validation_notes,
             "approval_status": self.approval_status,
             "is_manual": self.is_manual,
+            "published_at": self.published_at,
+            "deadline": self.deadline,
+            "task_status": self.task_status,
+            "completion_date": self.completion_date,
         }
 
     @classmethod
@@ -123,6 +134,10 @@ class ActionableItem:
             validation_notes=data.get("validation_notes", ""),
             approval_status=data.get("approval_status", "pending"),
             is_manual=data.get("is_manual", False),
+            published_at=data.get("published_at", ""),
+            deadline=data.get("deadline", ""),
+            task_status=data.get("task_status", ""),
+            completion_date=data.get("completion_date", ""),
         )
 
 
