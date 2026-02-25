@@ -175,6 +175,14 @@ export function Sidebar({ className }: SidebarProps) {
                 active={pathname === "/reports"}
                 collapsed={collapsed}
               />
+              <NavItem
+                href="/risk"
+                icon={<Shield className="h-4 w-4" />}
+                iconClassName="text-pink-500"
+                label="Risk"
+                active={pathname === "/risk"}
+                collapsed={collapsed}
+              />
             </div>
 
             <div className="my-2 border-t border-sidebar-border/50" />
