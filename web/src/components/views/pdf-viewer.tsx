@@ -317,10 +317,11 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
     const totalHeight = offsets.length > 0 ? offsets[offsets.length - 1] : 0
 
     // Scroll handler — binary search for visible range
-    // IMPORTANT: initial computation is SYNCHRONOUS to avoid blank pages on fast cache hits.
-    // Only subsequent scroll events are debounced via RAF.
-    React.useEffect(() => {
+    // Uses useLayoutEffect to fire SYNCHRONOUSLY after DOM mutations,
+    // preventing blank pages on fast cache hits where useEffect was too late.
+    React.useLayoutEffect(() => {
         const c = scrollRef.current
+        console.log(`[PdfViewer:scrollEffect] entered — ref=${!!c} offsets=${offsets.length} pageSizes=${pageSizes.length}`)
         if (!c || offsets.length === 0) return
 
         const computeVisibleRange = (source: string) => {
@@ -419,8 +420,14 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
         )
     }
 
-    const [vStart, vEnd] = visibleRange
     const numPages = pdfDoc.numPages
+
+    // FAILSAFE: ensure we always render at least the first few pages when
+    // pageSizes exist, even if the scroll layoutEffect hasn't updated visibleRange yet.
+    // This prevents blank pages on fast cache-hit doc switches.
+    const minVisible = pageSizes.length > 0 ? Math.min(numPages - 1, BUFFER * 2 + 1) : 1
+    const vStart = visibleRange[0]
+    const vEnd = Math.max(visibleRange[1], minVisible)
 
     // Debug: log when render runs with mismatched state
     if (pageSizes.length > 0 && pageSizes.length !== numPages) {
