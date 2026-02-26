@@ -17,7 +17,8 @@ import {
     FileText, Paperclip, Calendar, CheckCircle2,
     ArrowRight, RotateCcw, Trash2, Save,
     MessageSquare, ExternalLink, Download, Upload, Undo2,
-    ArrowUpDown, SortAsc, SortDesc,
+    SortAsc, SortDesc,
+    LayoutDashboard, AlertTriangle, X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -87,6 +88,115 @@ function RiskIcon({ modality }: { modality: string }) {
         <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.text)} title={risk}>
             !
         </span>
+    )
+}
+
+// ─── Format helpers ──────────────────────────────────────────────────────────
+
+function formatTime(iso: string | undefined): string {
+    if (!iso) return ""
+    try {
+        const d = new Date(iso)
+        return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+    } catch { return "" }
+}
+
+// ─── Progress bar ────────────────────────────────────────────────────────────
+
+function ProgressBar({ completed, total }: { completed: number; total: number }) {
+    if (total === 0) return <span className="text-[10px] text-muted-foreground/40">—</span>
+    const pct = (completed / total) * 100
+    return (
+        <div className="flex items-center gap-2 w-full">
+            <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                {completed}/{total}
+            </span>
+        </div>
+    )
+}
+
+// ─── Evidence popover ────────────────────────────────────────────────────────
+
+function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
+    const reviewedStatuses = ["review", "completed", "reworking"]
+    const canView = taskStatus ? reviewedStatuses.includes(taskStatus) : true
+    const [open, setOpen] = React.useState(false)
+    const popoverRef = React.useRef<HTMLDivElement>(null)
+
+    React.useEffect(() => {
+        if (!open) return
+        const handler = (e: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false)
+        }
+        document.addEventListener("mousedown", handler)
+        return () => document.removeEventListener("mousedown", handler)
+    }, [open])
+
+    if (files.length === 0) {
+        return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
+    }
+
+    if (!canView) {
+        return (
+            <span className="text-[10px] text-muted-foreground/30 italic flex items-center gap-1" title="Evidence visible after submission">
+                <Paperclip className="h-2.5 w-2.5" /> pending
+            </span>
+        )
+    }
+
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+
+    return (
+        <div className="relative" ref={popoverRef}>
+            <button
+                onClick={() => setOpen(!open)}
+                className="text-[10px] text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
+            >
+                <Paperclip className="h-2.5 w-2.5" />{files.length}
+            </button>
+
+            {open && (
+                <div className="absolute z-50 top-full mt-1 right-0 w-72 bg-background border border-border rounded-lg shadow-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold text-foreground/80">Evidence Files</span>
+                        <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground/40">
+                            <X className="h-3 w-3" />
+                        </button>
+                    </div>
+                    {files.map((file, idx) => {
+                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
+                        return (
+                            <div key={idx} className="flex items-center gap-2.5 bg-muted/20 rounded-md px-3 py-2.5 border border-border/20">
+                                <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                                    <FileText className="h-3.5 w-3.5 text-primary/70" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
+                                    <p className="text-[9px] text-muted-foreground/40">
+                                        {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    {fileUrl && (
+                                        <>
+                                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Open">
+                                                <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                            <a href={fileUrl} download={file.name} className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Download">
+                                                <Download className="h-3 w-3" />
+                                            </a>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
     )
 }
 
@@ -180,49 +290,76 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
         toast.success("File removed")
     }
 
+    const commentCount = (item.comments || []).length
+
     return (
         <div className={cn("border-b border-border/10", isCompleted && "opacity-60")}>
-            {/* Main row — columns: Task | Risk | Status | Deadline | Evidence | Action */}
+            {/* Main row — columns match dashboard: Risk | Actionable | Status | Deadline | Time | Evidence | Published | Action */}
             <div
-                className="grid items-center hover:bg-muted/5 transition-colors cursor-pointer"
+                className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
                 style={{ gridTemplateColumns: gridCols }}
                 onClick={() => setExpanded(!expanded)}
             >
-                <div className="py-2 px-2 min-w-0 flex items-center gap-1.5">
+                {/* Risk icon */}
+                <div className="py-1.5 flex justify-center">
+                    <RiskIcon modality={item.modality} />
+                </div>
+
+                {/* Actionable text */}
+                <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                     {expanded
                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
-                    <div className="min-w-0">
-                        <p className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</p>
-                        {item.implementation_notes && (
-                            <p className="text-[10px] text-muted-foreground/50 truncate mt-0.5">{safeStr(item.implementation_notes)}</p>
-                        )}
-                    </div>
+                    <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
+                    {commentCount > 0 && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
+                            <MessageSquare className="h-2.5 w-2.5" />{commentCount}
+                        </span>
+                    )}
                 </div>
-                <div className="py-2 flex justify-center">
-                    <RiskIcon modality={item.modality} />
-                </div>
-                <div className="py-2 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-medium", statusCfg.bg, statusCfg.text)}>
+
+                {/* Status */}
+                <div className="py-1.5 px-1 text-center">
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusCfg.bg, statusCfg.text)}>
                         {statusCfg.label}
                     </span>
                 </div>
-                <div className="py-2 px-1 text-center">
-                    <span className={cn("text-[10px] flex items-center justify-center gap-1", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
+
+                {/* Deadline date */}
+                <div className="py-1.5 px-1 text-center">
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
+                        isOverdue ? "text-red-400 border-red-400/30" : "text-muted-foreground/70 border-muted-foreground/20"
+                    )}>
                         <Calendar className="h-2.5 w-2.5" />
                         {formatDate(item.deadline)}
                     </span>
                 </div>
-                <div className="py-2 px-1 text-center">
-                    <span className="text-[10px] text-foreground/70 font-mono">
-                        {files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""}` : <span className="text-muted-foreground/30 italic">none</span>}
+
+                {/* Deadline time */}
+                <div className="py-1.5 px-1 text-center">
+                    <span className="text-[10px] text-muted-foreground/60">
+                        {formatTime(item.deadline)}
                     </span>
                 </div>
-                <div className="py-2 px-1 text-center" onClick={e => e.stopPropagation()}>
+
+                {/* Evidence */}
+                <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
+                    <EvidencePopover files={files} taskStatus={taskStatus} />
+                </div>
+
+                {/* Published date */}
+                <div className="py-1.5 px-1 text-center">
+                    <span className="text-[10px] text-muted-foreground/60">
+                        {formatDate(item.published_at)}
+                    </span>
+                </div>
+
+                {/* Action */}
+                <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
                     {canAdvance && (
                         <button
                             onClick={() => onStatusTransition(docId, item)}
-                            className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
+                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
                         >
                             {taskStatus === "assigned" && <><ArrowRight className="h-2.5 w-2.5" /> Start</>}
                             {taskStatus === "in_progress" && <><CheckCircle2 className="h-2.5 w-2.5" /> Submit</>}
@@ -243,9 +380,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                         </div>
                     )}
                     {isCompleted && (
-                        <span className="text-[10px] text-emerald-400 flex items-center justify-center gap-1">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> Done
-                        </span>
+                        <span className="text-[9px] text-emerald-400 italic">Done</span>
                     )}
                 </div>
             </div>
@@ -365,43 +500,6 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                     </div>
                 </div>
             )}
-        </div>
-    )
-}
-
-// ─── Status summary bar with labels ─────────────────────────────────────────
-
-function TeamStatsCard({ items, allItemsTotal }: { items: { item: ActionableItem }[]; allItemsTotal: number }) {
-    const total = items.length
-    const percentage = allItemsTotal > 0 ? Math.round((total / allItemsTotal) * 100) : 0
-    const counts: Record<string, number> = {}
-    for (const { item } of items) {
-        const s = item.task_status || "assigned"
-        counts[s] = (counts[s] || 0) + 1
-    }
-    
-    return (
-        <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-foreground">{total}</span>
-                <span className="text-[9px] text-muted-foreground/60">tasks</span>
-                <span className="text-[9px] text-muted-foreground/40">·</span>
-                <span className="text-xs font-bold text-primary">{percentage}%</span>
-            </div>
-            <div className="h-4 w-px bg-border/40" />
-            <div className="flex items-center gap-2">
-                {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => {
-                    const count = counts[s] || 0
-                    if (count === 0) return null
-                    return (
-                        <div key={s} className="flex items-center gap-1">
-                            <div className={cn("h-1.5 w-1.5 rounded-full", TASK_STATUS_CONFIG[s].bg)} />
-                            <span className="text-[10px] font-mono font-bold text-foreground/80">{count}</span>
-                            <span className="text-[9px] text-muted-foreground/50">{TASK_STATUS_CONFIG[s].label.split(" ")[0]}</span>
-                        </div>
-                    )
-                })}
-            </div>
         </div>
     )
 }
@@ -569,6 +667,10 @@ function TeamBoardContent() {
         })
     }
 
+    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
+    const [completedCollapsed, setCompletedCollapsed] = React.useState(false)
+    const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
+
     if (isComplianceOfficer) {
         return (
             <div className="flex h-screen bg-background items-center justify-center text-muted-foreground">
@@ -577,17 +679,19 @@ function TeamBoardContent() {
         )
     }
 
-    // Grid columns: Task | Risk | Status | Deadline | Evidence | Action
-    const gridCols = "minmax(200px,3fr) 36px 110px 100px 80px 110px"
+    // Grid columns matching dashboard: Risk | Actionable | Status | Deadline | Time | Evidence | Published | Action
+    const gridCols = "36px minmax(180px,3fr) 100px 100px 70px 80px 90px 90px"
 
     const renderHeader = () => (
-        <div className="grid border-b border-border/30 bg-muted/10 sticky top-0 z-10" style={{ gridTemplateColumns: gridCols }}>
-            <div className="py-2 px-2 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Task</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Risk</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Status</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Deadline</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Evidence</div>
-            <div className="py-2 px-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider text-center">Action</div>
+        <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
         </div>
     )
 
@@ -609,15 +713,16 @@ function TeamBoardContent() {
             <Sidebar />
 
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* ── Top bar ── */}
+                {/* ── Top bar — matches dashboard ── */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
-                    <h1 className="text-sm font-semibold text-foreground">
-                        My Tasks — {userTeam || "Team"}
+                    <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4 text-primary" />
+                        Implementation Tracker
                     </h1>
                 </div>
 
-                {/* ── Stats row ── */}
-                <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center justify-between gap-4">
+                {/* ── Stats row — identical to dashboard ── */}
+                <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
                     <div className="flex items-center gap-4">
                         <div className="text-center">
                             <p className="text-lg font-bold text-foreground">{stats.total}</p>
@@ -626,40 +731,63 @@ function TeamBoardContent() {
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
                             <p className="text-lg font-bold text-emerald-400">{stats.completed}</p>
-                            <p className="text-[9xs] text-muted-foreground/50 uppercase tracking-wider">Done</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
                         </div>
                         <div className="text-center">
                             <p className="text-lg font-bold text-amber-400">{stats.inProgress}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Active</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
                         </div>
                         <div className="text-center">
                             <p className="text-lg font-bold text-blue-400">{stats.review}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Review</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-orange-400">{stats.reworking}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
+                        </div>
+                        <div className="h-8 w-px bg-border/40" />
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-emerald-500">{stats.yetToDeadline}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-amber-500">{stats.delayed30}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-orange-500">{stats.delayed60}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-red-500">{stats.delayed90}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
                         </div>
                     </div>
-                    
-                    {stats.total > 0 && (
-                        <div className="w-40 text-right">
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-1">Completion</p>
-                            <div className="flex items-end gap-2 justify-end">
-                                <span className="text-xl font-bold text-emerald-400">{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</span>
-                                <span className="text-[9px] text-muted-foreground/40">({stats.completed}/{stats.total})</span>
-                            </div>
-                        </div>
-                    )}
+
+                    <div className="flex-1" />
+
+                    <div className="w-48">
+                        <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
+                        <ProgressBar completed={stats.completed} total={stats.total} />
+                    </div>
                 </div>
 
-                {/* ── Toolbar with filters and sorting ── */}
+                {/* ── Filters — identical to dashboard ── */}
                 <div className="shrink-0 border-b border-border/40 px-5 py-2 flex items-center gap-2 flex-wrap">
                     <div className="relative flex-1 max-w-xs">
                         <Search className="absolute left-2.5 top-[7px] h-3.5 w-3.5 text-muted-foreground" />
                         <input
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search tasks..."
+                            placeholder="Search tracker..."
                             className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
                         />
                     </div>
+
                     <select
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
@@ -670,6 +798,7 @@ function TeamBoardContent() {
                             <option key={s} value={s}>{TASK_STATUS_CONFIG[s].label}</option>
                         ))}
                     </select>
+
                     <select
                         value={riskFilter}
                         onChange={e => setRiskFilter(e.target.value)}
@@ -678,6 +807,7 @@ function TeamBoardContent() {
                         <option value="all">All Risk</option>
                         {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
+
                     <select
                         value={deadlineFilter}
                         onChange={e => setDeadlineFilter(e.target.value)}
@@ -689,6 +819,7 @@ function TeamBoardContent() {
                         <option value="d60">Delayed 60d</option>
                         <option value="d90">Delayed 90d</option>
                     </select>
+
                     {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
@@ -702,6 +833,7 @@ function TeamBoardContent() {
                             Clear Filters
                         </button>
                     )}
+
                     <div className="flex items-center gap-1 ml-auto">
                         <span className="text-[10px] text-muted-foreground/50">Sort:</span>
                         <select
@@ -724,122 +856,61 @@ function TeamBoardContent() {
                     </div>
                 </div>
 
-                {/* ── Team Reports Summary ── */}
-                {!loading && allItems.length > 0 && (
-                    <div className="shrink-0 border-b border-border/40 px-5 py-4">
-                        <h3 className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider mb-3">Team Reports</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Status Distribution */}
-                            <div className="bg-muted/10 rounded-lg p-3">
-                                <p className="text-[10px] font-semibold text-muted-foreground/70 mb-2">By Status</p>
-                                <div className="space-y-1">
-                                    {(["in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => {
-                                        const count = allItems.filter(e => (e.item.task_status || "assigned") === s).length
-                                        if (count === 0) return null
-                                        return (
-                                            <div key={s} className="flex items-center justify-between text-[9px]">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className={cn("h-1.5 w-1.5 rounded-full", TASK_STATUS_CONFIG[s].bg)} />
-                                                    <span className="text-muted-foreground">{TASK_STATUS_CONFIG[s].label}</span>
-                                                </div>
-                                                <span className="font-mono font-bold text-foreground">{count}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Risk Distribution */}
-                            <div className="bg-muted/10 rounded-lg p-3">
-                                <p className="text-[10px] font-semibold text-muted-foreground/70 mb-2">By Risk</p>
-                                <div className="space-y-1">
-                                    {["High Risk", "Medium Risk", "Low Risk"].map(risk => {
-                                        const count = allItems.filter(e => normalizeRisk(e.item.modality) === risk).length
-                                        if (count === 0) return null
-                                        return (
-                                            <div key={risk} className="flex items-center justify-between text-[9px]">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className={cn("h-1.5 w-1.5 rounded-full", 
-                                                        risk === "High Risk" ? "bg-red-500" : 
-                                                        risk === "Medium Risk" ? "bg-yellow-500" : 
-                                                        "bg-emerald-500"
-                                                    )} />
-                                                    <span className="text-muted-foreground">{risk}</span>
-                                                </div>
-                                                <span className="font-mono font-bold text-foreground">{count}</span>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Board content ── */}
+                {/* ── Board table ── */}
                 <div className="flex-1 overflow-auto">
                     {loading && (
                         <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                            <span className="text-sm">Loading tasks...</span>
+                            <span className="text-sm">Loading tracker...</span>
                         </div>
                     )}
 
                     {!loading && allItems.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
                             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                                <FileText className="h-8 w-8 text-muted-foreground" />
+                                <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
                             </div>
-                            <h3 className="text-sm font-medium mb-1">No tasks yet</h3>
+                            <h3 className="text-sm font-medium mb-1">No published actionables to track</h3>
                             <p className="text-xs text-muted-foreground/60 max-w-sm">
                                 No published tasks for your team yet. Contact the compliance officer.
                             </p>
                         </div>
                     )}
 
+                    {/* ── Active section header — matches dashboard ── */}
                     {!loading && activeItems.length > 0 && (
-                        <div className="mb-2">
-                            <div className="flex items-center justify-between px-4 py-2">
-                                <button
-                                    onClick={() => toggleGroup("active")}
-                                    className="flex items-center gap-2 hover:bg-muted/5 transition-colors"
-                                >
-                                    {collapsedGroups.has("active")
-                                        ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                        : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                    }
-                                    <span className="text-sm font-semibold text-amber-400">Active</span>
-                                    <span className="text-[10px] text-muted-foreground/50 font-mono">{activeItems.length} Tasks</span>
-                                </button>
-                                <div className="flex items-center gap-3">
-                                    <TeamStatsCard items={activeItems} allItemsTotal={allItems.length} />
-                                </div>
+                        <>
+                            <div className="px-3 py-2 bg-yellow-500/5 border-b border-yellow-500/20 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
+                                <span className="text-xs font-semibold text-yellow-500 flex items-center gap-2">
+                                    {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                    Active ({activeItems.length})
+                                </span>
                             </div>
 
-                            {!collapsedGroups.has("active") && (
-                                <>
+                            {!activeCollapsed && (
+                                <div className="mb-1">
+                                    {/* Column headers */}
                                     {renderHeader()}
+                                    {/* Rows */}
                                     {activeItems.map(renderTaskRow)}
-                                </>
+                                </div>
                             )}
-                        </div>
+                        </>
                     )}
 
+                    {/* ── Completed section — matches dashboard ── */}
                     {!loading && completedItems.length > 0 && (
-                        <div className="mb-2">
-                            <button
-                                onClick={() => toggleGroup("completed")}
-                                className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/5 transition-colors"
-                            >
-                                {collapsedGroups.has("completed")
-                                    ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                    : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                }
-                                <span className="text-sm font-semibold text-emerald-400">Completed</span>
-                                <span className="text-[10px] text-muted-foreground/50 font-mono">{completedItems.length} Tasks</span>
-                            </button>
+                        <div className="mt-4">
+                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
+                                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
+                                    {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Completed ({completedItems.length})
+                                </span>
+                            </div>
 
-                            {!collapsedGroups.has("completed") && (
+                            {!completedCollapsed && (
                                 <>
                                     {renderHeader()}
                                     {completedItems.map(renderTaskRow)}
@@ -850,7 +921,7 @@ function TeamBoardContent() {
 
                     {!loading && filtered.length === 0 && allItems.length > 0 && (
                         <div className="text-center text-sm text-muted-foreground/60 py-12">
-                            No tasks match the current filters
+                            No actionables match the current filters
                         </div>
                     )}
                 </div>

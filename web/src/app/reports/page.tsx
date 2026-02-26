@@ -370,8 +370,17 @@ function ReportsContent() {
             byRisk[risk] = (byRisk[risk] || 0) + 1
         }
         const completionRate = total > 0 ? ((byStatus.completed / total) * 100).toFixed(1) : "0"
-        return { total, byStatus, byRisk, completionRate, teamItems }
-    }, [allItems, isOfficer, userTeam])
+
+        // Deadline adherence for team
+        const dlMet = teamItems.filter(a => a.task_status === "completed" && a.deadline && a.completion_date && new Date(a.completion_date).getTime() <= new Date(a.deadline).getTime()).length
+        const dlMissed = teamItems.filter(a => a.task_status === "completed" && a.deadline && a.completion_date && new Date(a.completion_date).getTime() > new Date(a.deadline).getTime()).length
+        const dlYet = teamItems.filter(a => dlCategory(a.deadline, a.task_status) === "yet").length
+        const dlD30 = teamItems.filter(a => dlCategory(a.deadline, a.task_status) === "d30").length
+        const dlD60 = teamItems.filter(a => dlCategory(a.deadline, a.task_status) === "d60").length
+        const dlD90 = teamItems.filter(a => dlCategory(a.deadline, a.task_status) === "d90").length
+
+        return { total, byStatus, byRisk, completionRate, teamItems, dlMet, dlMissed, dlYet, dlD30, dlD60, dlD90 }
+    }, [allItems, isOfficer, userTeam, dlCategory])
 
     return (
         <div className="flex h-screen bg-background">
@@ -456,6 +465,58 @@ function ReportsContent() {
                             </div>
                             )}
 
+                            {/* ═══ Team Member Graphs (team-scoped only) ═══ */}
+                            {!isOfficer && myTeamStats && (<>
+                                {/* ── Deadline Adherence + Delay Breakdown (team) ── */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="bg-card border border-border rounded-lg p-5">
+                                        <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                            <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+                                            Deadline Adherence
+                                        </h3>
+                                        <PieChart data={[
+                                            { label: "Met Deadline", value: myTeamStats.dlMet, color: "#22c55e" },
+                                            { label: "Missed Deadline", value: myTeamStats.dlMissed, color: "#ef4444" },
+                                            { label: "Yet to Deadline", value: myTeamStats.dlYet, color: "#3b82f6" },
+                                        ]} />
+                                    </div>
+                                    <div className="bg-card border border-border rounded-lg p-5">
+                                        <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                            <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                                            Delay Breakdown
+                                        </h3>
+                                        <BarChart data={[
+                                            { label: "Yet to DL", value: myTeamStats.dlYet, color: "#22c55e" },
+                                            { label: "Delayed ≤30d", value: myTeamStats.dlD30, color: "#f59e0b" },
+                                            { label: "Delayed ≤60d", value: myTeamStats.dlD60, color: "#f97316" },
+                                            { label: "Delayed >60d", value: myTeamStats.dlD90, color: "#ef4444" },
+                                        ]} />
+                                    </div>
+                                </div>
+
+                                {/* ── Completion Progress (team) ── */}
+                                <div className="bg-card border border-border rounded-lg p-5">
+                                    <h3 className="text-sm font-medium text-foreground mb-4">Completion Progress</h3>
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="flex-1 h-3 rounded-full bg-muted/30 overflow-hidden">
+                                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Number(myTeamStats.completionRate)}%` }} />
+                                        </div>
+                                        <span className="text-sm font-bold font-mono text-foreground">{myTeamStats.completionRate}%</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                        {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => (
+                                            <div key={s} className="bg-muted/20 rounded-lg p-3 text-center">
+                                                <p className="text-xl font-bold" style={{ color: STATUS_COLORS[s] }}>{myTeamStats.byStatus[s]}</p>
+                                                <p className="text-[9px] text-muted-foreground mt-1">{STATUS_LABELS[s]}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>)}
+
+                            {/* ═══ Compliance Officer Sections (all-team data) ═══ */}
+                            {isOfficer && (<>
+
                             {/* ── Status KPIs — clickable filter ── */}
                             <div>
                                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tasks by Status (Published)</h2>
@@ -506,13 +567,10 @@ function ReportsContent() {
 
                             {/* ── Charts row ── */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                {/* Pie chart: Tasks by status */}
                                 <div className="bg-card border border-border rounded-lg p-5">
                                     <h3 className="text-sm font-medium text-foreground mb-4">Tasks by Status</h3>
                                     <PieChart data={statusPieData} />
                                 </div>
-
-                                {/* Pie chart: Tasks by risk */}
                                 <div className="bg-card border border-border rounded-lg p-5">
                                     <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
                                         <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
@@ -624,9 +682,6 @@ function ReportsContent() {
                                     )}
                                 </div>
                             </div>
-
-                            {/* ══════════ Compliance Officer Graphs ══════════ */}
-                            {isOfficer && (<>
 
                             {/* ── Deadline Adherence + Delay Breakdown ── */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
