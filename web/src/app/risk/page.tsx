@@ -18,7 +18,7 @@ export default function RiskPage() {
           {/* Content */}
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <p className="text-lg text-muted-foreground">working on it :)</p>
+              <p className="text-lg text-muted-foreground">🦧 working on it :) </p>
             </div>
           </div>
         </main>
