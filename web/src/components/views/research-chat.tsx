@@ -394,11 +394,11 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
                 <div className="flex items-center gap-2">
                     <Library className="h-3.5 w-3.5 text-primary" />
                     <h2 className="text-[13px] font-medium text-foreground">Research</h2>
-                    {activeConvId && (
+                    {/* {activeConvId && (
                         <span className="text-[11px] text-muted-foreground/50 truncate max-w-[200px]">
                             {conversations.find(c => c.conv_id === activeConvId)?.title?.slice(0, 40) || ""}
                         </span>
-                    )}
+                    )} */}
                 </div>
                 <div className="flex items-center gap-1">
                     <Button
