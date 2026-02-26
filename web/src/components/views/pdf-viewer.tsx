@@ -30,30 +30,41 @@ export interface PdfViewerProps {
 const docCache = new Map<string, { doc: pdfjsLib.PDFDocumentProxy; data: ArrayBuffer }>()
 const MAX_CACHE = 5
 
+function urlTag(url: string) { return url.split('/').pop()?.slice(0, 12) || url }
+
 async function loadPdfDoc(url: string): Promise<pdfjsLib.PDFDocumentProxy> {
+    const tag = urlTag(url)
     const cached = docCache.get(url)
     if (cached) {
         // Verify the proxy is still alive by trying getPage
         try {
             await cached.doc.getPage(1)
+            console.log(`[PDF:${tag}] cache HIT — proxy alive, ${cached.doc.numPages} pages`)
             return cached.doc
-        } catch {
+        } catch (e) {
+            console.warn(`[PDF:${tag}] cache HIT but proxy DEAD:`, e)
             // Proxy destroyed / stale — rebuild from stored ArrayBuffer
             try {
                 const doc = await pdfjsLib.getDocument({ data: cached.data.slice(0) }).promise
                 docCache.set(url, { doc, data: cached.data })
+                console.log(`[PDF:${tag}] rebuilt proxy from ArrayBuffer, ${doc.numPages} pages`)
                 return doc
-            } catch {
+            } catch (e2) {
+                console.error(`[PDF:${tag}] rebuild FAILED, will re-fetch:`, e2)
                 docCache.delete(url) // corrupted, re-fetch
             }
         }
+    } else {
+        console.log(`[PDF:${tag}] cache MISS — fetching from network`)
     }
 
     const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.arrayBuffer()
+    console.log(`[PDF:${tag}] fetched ${(data.byteLength / 1024).toFixed(0)}KB`)
     const doc = await pdfjsLib.getDocument({ data: data.slice(0) }).promise
     docCache.set(url, { doc, data })
+    console.log(`[PDF:${tag}] loaded ${doc.numPages} pages, cache size=${docCache.size}`)
     // Evict oldest if cache grows too large
     if (docCache.size > MAX_CACHE) {
         const oldest = docCache.keys().next().value
@@ -61,6 +72,7 @@ async function loadPdfDoc(url: string): Promise<pdfjsLib.PDFDocumentProxy> {
             const old = docCache.get(oldest)
             old?.doc.destroy().catch(() => {})
             docCache.delete(oldest)
+            console.log(`[PDF] evicted oldest cache entry: ${urlTag(oldest)}`)
         }
     }
     return doc
@@ -104,11 +116,14 @@ const PdfPage = React.memo(function PdfPage({ doc, pageIndex, scale, width, heig
 
     React.useEffect(() => {
         let cancelled = false
+        const docPages = doc.numPages
+        console.log(`[PdfPage] render START p${pageIndex + 1} scale=${scale.toFixed(2)} docPages=${docPages}`)
+
         doc.getPage(pageIndex + 1).then(page => {
-            if (cancelled) return
+            if (cancelled) { console.log(`[PdfPage] p${pageIndex + 1} cancelled before render`); return }
             const vp = page.getViewport({ scale })
             const canvas = canvasRef.current
-            if (!canvas) return
+            if (!canvas) { console.warn(`[PdfPage] p${pageIndex + 1} canvas ref is null`); return }
 
             const dpr = window.devicePixelRatio || 1
             const maxS = Math.sqrt(MAX_CANVAS_SIZE / (vp.width * vp.height))
@@ -123,7 +138,7 @@ const PdfPage = React.memo(function PdfPage({ doc, pageIndex, scale, width, heig
             if (css) canvas.style.transform = "scale(1,1)"; else canvas.style.removeProperty("transform")
 
             const ctx = canvas.getContext("2d", { alpha: false })
-            if (!ctx) return
+            if (!ctx) { console.warn(`[PdfPage] p${pageIndex + 1} canvas context is null`); return }
             renderRef.current?.cancel()
 
             const transform = (css || dpr !== 1)
@@ -132,6 +147,7 @@ const PdfPage = React.memo(function PdfPage({ doc, pageIndex, scale, width, heig
             renderRef.current = page.render({ canvasContext: ctx, viewport: vp, transform })
             renderRef.current.promise.then(() => {
                 if (cancelled) return
+                console.log(`[PdfPage] p${pageIndex + 1} canvas render DONE`)
                 const tc = textRef.current
                 if (!tc) return
                 while (tc.firstChild) tc.removeChild(tc.firstChild)
@@ -139,13 +155,17 @@ const PdfPage = React.memo(function PdfPage({ doc, pageIndex, scale, width, heig
                 page.getTextContent().then(txt => {
                     if (cancelled || !tc) return
                     ;(pdfjsLib as any).renderTextLayer({
-                        textContent: txt,
+                        textContentSource: txt,
                         container: tc,
                         viewport: vp,
                         textDivs: [],
                     })
                 })
-            }).catch(() => {})
+            }).catch(err => {
+                if (!cancelled) console.warn(`[PdfPage] p${pageIndex + 1} render FAILED:`, err)
+            })
+        }).catch(err => {
+            console.error(`[PdfPage] p${pageIndex + 1} getPage FAILED:`, err)
         })
         return () => { cancelled = true; renderRef.current?.cancel() }
     }, [doc, pageIndex, scale])
@@ -214,20 +234,34 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
     const rootRef = React.useRef<HTMLDivElement>(null)
     const rafRef = React.useRef(0)
 
-    // Load PDF (uses cache)
+    // Load PDF (uses cache) — reset ALL dependent state on URL change
     React.useEffect(() => {
         if (!fileUrl) return
         let cancelled = false
+        const tag = urlTag(fileUrl)
+        console.log(`[PdfViewer:${tag}] fileUrl changed, resetting state`)
+
         setError(null)
         setLoading(true)
+        // CRITICAL: reset virtual-scroll state to avoid stale ranges from previous doc
+        setPageSizes([])
+        setVisibleRange([0, 1])
+        setCurrentPage(initialPage)
+        // Reset scroll position
+        if (scrollRef.current) scrollRef.current.scrollTop = 0
 
         loadPdfDoc(fileUrl)
             .then(doc => {
                 if (cancelled) return
+                console.log(`[PdfViewer:${tag}] setPdfDoc — ${doc.numPages} pages`)
                 setPdfDoc(doc)
-                setCurrentPage(initialPage)
             })
-            .catch(err => { if (!cancelled) setError(err?.message || "Failed to load PDF") })
+            .catch(err => {
+                if (!cancelled) {
+                    console.error(`[PdfViewer:${tag}] load FAILED:`, err)
+                    setError(err?.message || "Failed to load PDF")
+                }
+            })
             .finally(() => { if (!cancelled) setLoading(false) })
 
         return () => { cancelled = true }
@@ -236,28 +270,40 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
     // Measure page 1 to get base dimensions, estimate rest
     React.useEffect(() => {
         if (!pdfDoc) return
+        let cancelled = false
         pdfDoc.getPage(1).then(page => {
+            if (cancelled) return
             const vp = page.getViewport({ scale })
             const sizes = Array.from({ length: pdfDoc.numPages }, () => ({ w: Math.round(vp.width), h: Math.round(vp.height) }))
+            console.log(`[PdfViewer] pageSizes computed: ${sizes.length} pages, each ${sizes[0]?.w}x${sizes[0]?.h}`)
             setPageSizes(sizes)
+        }).catch(err => {
+            console.error(`[PdfViewer] pageSizes getPage(1) FAILED:`, err)
         })
+        return () => { cancelled = true }
     }, [pdfDoc, scale])
 
     // Fit-to-width
     React.useEffect(() => {
         if (!pdfDoc || !scrollRef.current) return
+        let cancelled = false
         const calc = () => {
             const cw = scrollRef.current?.clientWidth
-            if (!cw) return
+            if (!cw || cancelled) return
             pdfDoc.getPage(1).then(page => {
+                if (cancelled) return
                 const vp = page.getViewport({ scale: 1.0 })
-                setScale(Math.max(0.5, Math.min(3.0, (cw - 40) / vp.width)))
+                const newScale = Math.max(0.5, Math.min(3.0, (cw - 40) / vp.width))
+                console.log(`[PdfViewer] fit-to-width: containerWidth=${cw} → scale=${newScale.toFixed(3)}`)
+                setScale(newScale)
+            }).catch(err => {
+                console.error(`[PdfViewer] fit-to-width getPage FAILED:`, err)
             })
         }
         calc()
         const ro = new ResizeObserver(calc)
         ro.observe(scrollRef.current)
-        return () => ro.disconnect()
+        return () => { cancelled = true; ro.disconnect() }
     }, [pdfDoc])
 
     // Compute cumulative offsets for virtual scroll
@@ -356,6 +402,14 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
 
     const [vStart, vEnd] = visibleRange
     const numPages = pdfDoc.numPages
+
+    // Debug: log when render runs with mismatched state
+    if (pageSizes.length > 0 && pageSizes.length !== numPages) {
+        console.warn(`[PdfViewer] STATE MISMATCH: pageSizes.length=${pageSizes.length} but numPages=${numPages}`)
+    }
+    if (vStart >= numPages || vEnd >= numPages) {
+        console.warn(`[PdfViewer] VISIBLE RANGE OUT OF BOUNDS: visibleRange=[${vStart},${vEnd}] but numPages=${numPages}`)
+    }
 
     return (
         <div ref={rootRef} className={className} style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column" }}>
