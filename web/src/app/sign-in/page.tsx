@@ -4,6 +4,7 @@ import * as React from "react"
 import { signIn, useSession } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { cn } from "@/lib/utils"
 import { getUserRole } from "@/components/auth/auth-guard"
 
@@ -63,7 +64,11 @@ export default function SignInPage() {
     if (session) return null
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="flex items-center justify-center min-h-screen bg-background relative">
+            {/* Theme toggle — top right */}
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
             <div className="w-full max-w-sm mx-auto">
                 <div className="text-center mb-8">
                     <h1 className="text-xl font-bold text-foreground">RegTECH Pre-Pilot</h1>

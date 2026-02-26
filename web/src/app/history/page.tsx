@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
     MessageSquare, BookOpen, Trash2, Download, Database,
-    Loader2, AlertTriangle, Clock, FileText, Library,
+    Loader2, AlertTriangle, Clock, FileText, Library, History,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -244,28 +244,15 @@ export default function HistoryPage() {
                 {/* Header */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-sm font-semibold">Chat History</h1>
+                        <h1 className="text-sm font-semibold flex items-center gap-2">
+                            <History className="h-4 w-4 text-primary" />
+                            Chat History
+                        </h1>
                         <span className="text-[11px] text-muted-foreground/50 font-medium">
                             {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {conversations.length > 0 && (() => {
-                            const latest = conversations[0]
-                            const isResearch = latest.type === "research"
-                            const continueHref = isResearch
-                                ? `/research?continue=${latest.conv_id}`
-                                : `/documents/${latest.doc_id}?tab=chat&continue=${latest.conv_id}`
-                            return (
-                                <Link
-                                    href={continueHref}
-                                    className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 px-2.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
-                                >
-                                    <MessageSquare className="h-3 w-3" />
-                                    Continue Latest
-                                </Link>
-                            )
-                        })()}
                         <Button
                             variant="outline"
                             size="sm"
@@ -319,7 +306,7 @@ export default function HistoryPage() {
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
-                    <div className="max-w-3xl mx-auto space-y-5">
+                    <div className="space-y-5">
                         {/* Storage stats */}
                         <StorageBar stats={stats} />
 

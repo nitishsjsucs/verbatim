@@ -298,7 +298,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         "text-[9px] px-1.5 py-0.5 rounded font-medium ml-1",
                         item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
                         item.approval_status === "rejected" ? "text-red-400 bg-red-400/10" :
-                        "text-muted-foreground bg-muted"
+                        "text-yellow-400 bg-yellow-400/10"
                     )}>
                         {item.approval_status === "approved" ? "Approved" : item.approval_status === "rejected" ? "Rejected" : "Pending"}
                     </span>
@@ -375,13 +375,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
 // --- Create Actionable Form ---
 
-function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
+function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: {
     docId: string
     docName: string
+    allDocs: DocActionables[]
     onCreated: () => void
     onCancel: () => void
 }) {
     const [creating, setCreating] = React.useState(false)
+    const [selectedDocId, setSelectedDocId] = React.useState(docId)
+    const [docSearchQuery, setDocSearchQuery] = React.useState("")
     const [form, setForm] = React.useState({
         action: "",
         modality: "High Risk" as ActionableModality,
@@ -390,6 +393,14 @@ function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
         evidence_quote: "",
     })
 
+    const filteredDocs = React.useMemo(() => {
+        if (!docSearchQuery.trim()) return allDocs
+        const q = docSearchQuery.toLowerCase()
+        return allDocs.filter(d => d.doc_name.toLowerCase().includes(q))
+    }, [allDocs, docSearchQuery])
+
+    const selectedDocName = allDocs.find(d => d.doc_id === selectedDocId)?.doc_name || docName
+
     const handleSubmit = async () => {
         if (!form.action) {
             toast.error("Actionable text is required")
@@ -397,7 +408,7 @@ function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
         }
         setCreating(true)
         try {
-            await createManualActionable(docId, form)
+            await createManualActionable(selectedDocId, form)
             toast.success("Actionable created")
             onCreated()
         } catch (err) {
@@ -412,11 +423,34 @@ function CreateActionableForm({ docId, docName, onCreated, onCancel }: {
             <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold flex items-center gap-1.5">
                     <Plus className="h-3.5 w-3.5 text-primary" />
-                    New Actionable — {docName}
+                    New Actionable
                 </h3>
                 <button onClick={onCancel} className="p-1 rounded hover:bg-muted text-muted-foreground">
                     <X className="h-3.5 w-3.5" />
                 </button>
+            </div>
+
+            {/* Document selector with search */}
+            <div>
+                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Document *</label>
+                <div className="relative mb-1">
+                    <Search className="absolute left-2 top-[7px] h-3 w-3 text-muted-foreground/50" />
+                    <input
+                        value={docSearchQuery}
+                        onChange={e => setDocSearchQuery(e.target.value)}
+                        placeholder="Search documents..."
+                        className="w-full bg-background text-xs rounded px-2 py-1.5 pl-6 border border-border focus:border-primary focus:outline-none"
+                    />
+                </div>
+                <select
+                    value={selectedDocId}
+                    onChange={e => setSelectedDocId(e.target.value)}
+                    className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                >
+                    {filteredDocs.map(d => (
+                        <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>
+                    ))}
+                </select>
             </div>
 
             <div>
@@ -643,6 +677,13 @@ export default function ActionablesPage() {
         })
     }
 
+    // Pending vs Approved splits
+    const [pendingCollapsed, setPendingCollapsed] = React.useState(false)
+    const [approvedCollapsed, setApprovedCollapsed] = React.useState(true)
+
+    const pendingItems = React.useMemo(() => filtered.filter(e => e.item.approval_status !== "approved"), [filtered])
+    const approvedItems = React.useMemo(() => filtered.filter(e => e.item.approval_status === "approved"), [filtered])
+
     return (
         <RoleRedirect>
         <div className="flex h-screen bg-background">
@@ -780,126 +821,174 @@ export default function ActionablesPage() {
                                 <CreateActionableForm
                                     docId={docFilter !== "all" ? docFilter : allDocs[0].doc_id}
                                     docName={docFilter !== "all" ? (allDocs.find(d => d.doc_id === docFilter)?.doc_name || "") : allDocs[0].doc_name}
+                                    allDocs={allDocs}
                                     onCreated={() => { setShowCreateForm(false); loadAll() }}
                                     onCancel={() => setShowCreateForm(false)}
                                 />
                             )}
 
-                            {/* All tab */}
-                            {!loading && viewTab === "all" && filtered.map(({ item, docId, docName }) => (
-                                <ActionableCard
-                                    key={`${docId}-${item.id}`}
-                                    item={item}
-                                    docId={docId}
-                                    docName={docName}
-                                    onUpdate={handleUpdate}
-                                    onDelete={handleDelete}
-                                    onSourceClick={handleSourceClick}
-                                    isSelected={selectedItemKey === `${docId}-${item.id}`}
-                                    onSelect={() => {
-                                        setSelectedItemKey(`${docId}-${item.id}`)
-                                        if (pdfDocId !== docId) {
-                                            setPdfDocId(docId)
-                                            setPdfDocName(docName)
-                                        }
-                                    }}
-                                />
-                            ))}
+                            {/* ========== ALL THREE TABS wrapped in Pending / Approved sections ========== */}
+                            {!loading && (viewTab === "all" || viewTab === "by-doc" || viewTab === "by-team") && (
+                                <>
+                                    {/* ---- PENDING section ---- */}
+                                    {pendingItems.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setPendingCollapsed(!pendingCollapsed)}>
+                                                {pendingCollapsed
+                                                    ? <ChevronRight className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
+                                                    : <ChevronDown className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
+                                                }
+                                                <p className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider">Pending ({pendingItems.length})</p>
+                                                <div className="h-px bg-yellow-400/20 flex-1" />
+                                            </div>
+                                            {!pendingCollapsed && (
+                                                <div className="space-y-2">
+                                                    {/* All tab — pending */}
+                                                    {viewTab === "all" && pendingItems.map(({ item, docId, docName }) => (
+                                                        <ActionableCard
+                                                            key={`${docId}-${item.id}`}
+                                                            item={item}
+                                                            docId={docId}
+                                                            docName={docName}
+                                                            onUpdate={handleUpdate}
+                                                            onDelete={handleDelete}
+                                                            onSourceClick={handleSourceClick}
+                                                            isSelected={selectedItemKey === `${docId}-${item.id}`}
+                                                            onSelect={() => {
+                                                                setSelectedItemKey(`${docId}-${item.id}`)
+                                                                if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
+                                                            }}
+                                                        />
+                                                    ))}
 
-                            {/* By Document tab — collapsible documents */}
-                            {!loading && viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
-                                const isCollapsed = collapsedDocs.has(docId)
-                                return (
-                                    <div key={docId} className="space-y-1.5">
-                                        <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(docId)}>
-                                            {isCollapsed
-                                                ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            }
-                                            <FileText className="h-3.5 w-3.5 text-primary/60 shrink-0" />
-                                            <span className="text-[11px] font-semibold text-foreground truncate">{docName}</span>
-                                            <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
-                                            <div className="h-px bg-border/30 flex-1" />
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10"
-                                                onClick={(e) => { e.stopPropagation(); handleApproveAll(entries) }}
-                                            >
-                                                <Check className="h-2.5 w-2.5" />
-                                                Approve All
-                                            </Button>
-                                        </div>
-                                        {!isCollapsed && entries.map(({ item, docId: dId, docName: dName }) => (
-                                            <ActionableCard
-                                                key={`${dId}-${item.id}`}
-                                                item={item}
-                                                docId={dId}
-                                                docName={dName}
-                                                onUpdate={handleUpdate}
-                                                onDelete={handleDelete}
-                                                onSourceClick={handleSourceClick}
-                                                isSelected={selectedItemKey === `${dId}-${item.id}`}
-                                                onSelect={() => {
-                                                    setSelectedItemKey(`${dId}-${item.id}`)
-                                                    if (pdfDocId !== dId) {
-                                                        setPdfDocId(dId)
-                                                        setPdfDocName(dName)
-                                                    }
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                )
-                            })}
+                                                    {/* By Document tab — pending */}
+                                                    {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                                        const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
+                                                        if (pendingEntries.length === 0) return null
+                                                        const isCollapsed = collapsedDocs.has(docId)
+                                                        return (
+                                                            <div key={docId} className="space-y-1.5">
+                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(docId)}>
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    <FileText className="h-3.5 w-3.5 text-primary/60 shrink-0" />
+                                                                    <span className="text-[11px] font-semibold text-foreground truncate">{docName}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
+                                                                    <div className="h-px bg-border/30 flex-1" />
+                                                                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
+                                                                        <Check className="h-2.5 w-2.5" /> Approve All
+                                                                    </Button>
+                                                                </div>
+                                                                {!isCollapsed && pendingEntries.map(({ item, docId: dId, docName: dName }) => (
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} />
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })}
 
-                            {/* By Team tab — collapsible teams with Approve All per team */}
-                            {!loading && viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
-                                const isCollapsed = collapsedTeams.has(team)
-                                return (
-                                    <div key={team} className="space-y-1.5">
-                                        <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
-                                            {isCollapsed
-                                                ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            }
-                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
-                                                {team}
-                                            </span>
-                                            <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
-                                            <div className="h-px bg-border/30 flex-1" />
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10"
-                                                onClick={(e) => { e.stopPropagation(); handleApproveAll(entries) }}
-                                            >
-                                                <Check className="h-2.5 w-2.5" />
-                                                Approve All
-                                            </Button>
+                                                    {/* By Team tab — pending */}
+                                                    {viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
+                                                        const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
+                                                        if (pendingEntries.length === 0) return null
+                                                        const isCollapsed = collapsedTeams.has(team)
+                                                        return (
+                                                            <div key={team} className="space-y-1.5">
+                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>{team}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
+                                                                    <div className="h-px bg-border/30 flex-1" />
+                                                                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
+                                                                        <Check className="h-2.5 w-2.5" /> Approve All
+                                                                    </Button>
+                                                                </div>
+                                                                {!isCollapsed && pendingEntries.map(({ item, docId, docName }) => (
+                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} />
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
-                                        {!isCollapsed && entries.map(({ item, docId, docName }) => (
-                                            <ActionableCard
-                                                key={`${docId}-${item.id}`}
-                                                item={item}
-                                                docId={docId}
-                                                docName={docName}
-                                                onUpdate={handleUpdate}
-                                                onDelete={handleDelete}
-                                                onSourceClick={handleSourceClick}
-                                                isSelected={selectedItemKey === `${docId}-${item.id}`}
-                                                onSelect={() => {
-                                                    setSelectedItemKey(`${docId}-${item.id}`)
-                                                    if (pdfDocId !== docId) {
-                                                        setPdfDocId(docId)
-                                                        setPdfDocName(docName)
-                                                    }
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                )
-                            })}
+                                    )}
+
+                                    {/* ---- APPROVED section ---- */}
+                                    {approvedItems.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setApprovedCollapsed(!approvedCollapsed)}>
+                                                {approvedCollapsed
+                                                    ? <ChevronRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                                    : <ChevronDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                                }
+                                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
+                                                <div className="h-px bg-emerald-400/20 flex-1" />
+                                            </div>
+                                            {!approvedCollapsed && (
+                                                <div className="space-y-2">
+                                                    {/* All tab — approved */}
+                                                    {viewTab === "all" && approvedItems.map(({ item, docId, docName }) => (
+                                                        <ActionableCard
+                                                            key={`${docId}-${item.id}`}
+                                                            item={item}
+                                                            docId={docId}
+                                                            docName={docName}
+                                                            onUpdate={handleUpdate}
+                                                            onDelete={handleDelete}
+                                                            onSourceClick={handleSourceClick}
+                                                            isSelected={selectedItemKey === `${docId}-${item.id}`}
+                                                            onSelect={() => {
+                                                                setSelectedItemKey(`${docId}-${item.id}`)
+                                                                if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
+                                                            }}
+                                                        />
+                                                    ))}
+
+                                                    {/* By Document tab — approved */}
+                                                    {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                                        const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
+                                                        if (approvedEntries.length === 0) return null
+                                                        const isCollapsed = collapsedDocs.has(`approved-${docId}`)
+                                                        return (
+                                                            <div key={docId} className="space-y-1.5">
+                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(`approved-${docId}`)}>
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    <FileText className="h-3.5 w-3.5 text-emerald-500/60 shrink-0" />
+                                                                    <span className="text-[11px] font-semibold text-foreground/70 truncate">{docName}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
+                                                                    <div className="h-px bg-border/30 flex-1" />
+                                                                </div>
+                                                                {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} />
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })}
+
+                                                    {/* By Team tab — approved */}
+                                                    {viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
+                                                        const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
+                                                        if (approvedEntries.length === 0) return null
+                                                        const isCollapsed = collapsedTeams.has(`approved-${team}`)
+                                                        return (
+                                                            <div key={team} className="space-y-1.5">
+                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>{team}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
+                                                                    <div className="h-px bg-border/30 flex-1" />
+                                                                </div>
+                                                                {!isCollapsed && approvedEntries.map(({ item, docId, docName }) => (
+                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} />
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
 
                             {!loading && filtered.length === 0 && allDocs.length > 0 && (
                                 <div className="text-center text-sm text-muted-foreground/60 py-12">

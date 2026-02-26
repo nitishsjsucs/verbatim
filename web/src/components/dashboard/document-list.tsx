@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { FileText, Trash2, X, MessageSquare, Search, Pencil, Shield, Loader2, CheckCircle2 } from "lucide-react"
+import { FileText, Trash2, X, MessageSquare, Search, Pencil, Shield, Loader2, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, BookOpen, Filter } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -25,8 +25,10 @@ export function DocumentList() {
     const [loading, setLoading] = useState(true)
     const [expandedDoc, setExpandedDoc] = useState<DocumentMeta | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
-    const [dateFrom, setDateFrom] = useState("")  // ISO date string yyyy-mm-dd
-    const [dateTo, setDateTo] = useState("")      // ISO date string yyyy-mm-dd
+    const [sortBy, setSortBy] = useState<"name" | "date">("date")
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+    const [yearFilter, setYearFilter] = useState<string>("all")
+    const [extractionFilter, setExtractionFilter] = useState<"all" | "extracted" | "not_extracted">("all")
     const [renamingDocId, setRenamingDocId] = useState<string | null>(null)
     const [renameValue, setRenameValue] = useState("")
     const [extractingDocId, setExtractingDocId] = useState<string | null>(null)
@@ -145,6 +147,17 @@ export function DocumentList() {
         }
     }
 
+    // Derive available years from documents
+    const availableYears = useMemo(() => {
+        const years = new Set<string>()
+        for (const doc of documents) {
+            if (doc.ingested_at) {
+                years.add(new Date(doc.ingested_at).getFullYear().toString())
+            }
+        }
+        return Array.from(years).sort((a, b) => Number(b) - Number(a))
+    }, [documents])
+
     const filteredDocuments = useMemo(() => {
         let filtered = documents
         // Name search
@@ -155,23 +168,33 @@ export function DocumentList() {
                 (doc.description && doc.description.toLowerCase().includes(q))
             )
         }
-        // Date range filter
-        if (dateFrom || dateTo) {
-            const from = dateFrom ? new Date(dateFrom + "T00:00:00") : null
-            const to = dateTo ? new Date(dateTo + "T23:59:59") : null
+        // Year filter
+        if (yearFilter !== "all") {
             filtered = filtered.filter(doc => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const raw = doc as any
-                const uploadedAt: string | undefined = raw.uploaded_at || raw.created_at
-                if (!uploadedAt) return true // keep docs without date
-                const d = new Date(uploadedAt)
-                if (from && d < from) return false
-                if (to && d > to) return false
-                return true
+                if (!doc.ingested_at) return false
+                return new Date(doc.ingested_at).getFullYear().toString() === yearFilter
             })
         }
+        // Extraction status filter
+        if (extractionFilter !== "all") {
+            filtered = filtered.filter(doc => {
+                if (extractionFilter === "extracted") return !!doc.has_actionables
+                return !doc.has_actionables
+            })
+        }
+        // Sort
+        filtered = [...filtered].sort((a, b) => {
+            if (sortBy === "name") {
+                const cmp = a.name.localeCompare(b.name)
+                return sortDir === "asc" ? cmp : -cmp
+            }
+            // sort by date
+            const dateA = a.ingested_at ? new Date(a.ingested_at).getTime() : 0
+            const dateB = b.ingested_at ? new Date(b.ingested_at).getTime() : 0
+            return sortDir === "asc" ? dateA - dateB : dateB - dateA
+        })
         return filtered
-    }, [documents, searchQuery, dateFrom, dateTo])
+    }, [documents, searchQuery, yearFilter, extractionFilter, sortBy, sortDir])
 
     if (loading) {
         return <div className="p-8 text-center text-muted-foreground">Loading documents...</div>
@@ -203,31 +226,56 @@ export function DocumentList() {
                 />
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-[10px] text-muted-foreground/50 font-medium">From</span>
-                <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={e => setDateFrom(e.target.value)}
-                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark] w-[130px]"
-                />
-                <span className="text-[10px] text-muted-foreground/50 font-medium">To</span>
-                <input
-                    type="date"
-                    value={dateTo}
-                    onChange={e => setDateTo(e.target.value)}
-                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark] w-[130px]"
-                />
-                {(dateFrom || dateTo) && (
+                <Filter className="h-3.5 w-3.5 text-muted-foreground/50" />
+                {/* Year filter */}
+                <select
+                    value={yearFilter}
+                    onChange={e => setYearFilter(e.target.value)}
+                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                >
+                    <option value="all">All years</option>
+                    {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                {/* Extraction status filter */}
+                <select
+                    value={extractionFilter}
+                    onChange={e => setExtractionFilter(e.target.value as "all" | "extracted" | "not_extracted")}
+                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                >
+                    <option value="all">All status</option>
+                    <option value="extracted">Extracted</option>
+                    <option value="not_extracted">Not Extracted</option>
+                </select>
+                {/* Sort */}
+                <button
+                    onClick={() => {
+                        if (sortBy === "name") { setSortBy("date"); setSortDir("desc") }
+                        else { setSortBy("name"); setSortDir("asc") }
+                    }}
+                    className="flex items-center gap-1 bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent hover:border-border text-muted-foreground hover:text-foreground transition-colors"
+                    title={`Sort by ${sortBy === "name" ? "date" : "name"}`}
+                >
+                    <ArrowUpDown className="h-3 w-3" />
+                    {sortBy === "name" ? "Name" : "Date"}
+                </button>
+                <button
+                    onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+                    className="p-1.5 rounded-md bg-muted/30 hover:border-border text-muted-foreground hover:text-foreground transition-colors"
+                    title={sortDir === "asc" ? "Ascending" : "Descending"}
+                >
+                    {sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                </button>
+                {(yearFilter !== "all" || extractionFilter !== "all") && (
                     <button
-                        onClick={() => { setDateFrom(""); setDateTo("") }}
+                        onClick={() => { setYearFilter("all"); setExtractionFilter("all") }}
                         className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-foreground transition-colors"
-                        title="Clear date filter"
+                        title="Clear filters"
                     >
                         <X className="h-3.5 w-3.5" />
                     </button>
                 )}
             </div>
-            {(searchQuery || dateFrom || dateTo) && (
+            {(searchQuery || yearFilter !== "all" || extractionFilter !== "all") && (
                 <span className="text-xs text-muted-foreground/60 font-mono shrink-0">
                     {filteredDocuments.length} of {documents.length}
                 </span>
@@ -240,7 +288,7 @@ export function DocumentList() {
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Ingested</TableHead>
-                    <TableHead className="h-9 w-[280px]"></TableHead>
+                    <TableHead className="h-9 w-[360px]"></TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -275,7 +323,7 @@ export function DocumentList() {
                         <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
                             {doc.ingested_at ? (
                                 <span className="text-muted-foreground/70">
-                                    {new Date(doc.ingested_at).toLocaleDateString()}
+                                    {new Date(doc.ingested_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                                 </span>
                             ) : (
                                 <span className="text-muted-foreground/60">—</span>
@@ -283,6 +331,16 @@ export function DocumentList() {
                         </TableCell>
                         <TableCell className="text-right py-2.5 pr-2">
                             <div className="flex items-center justify-end gap-1.5">
+                                {doc.description && (
+                                    <button
+                                        onClick={() => setExpandedDoc(doc)}
+                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-[11px] font-medium"
+                                        title="Read full summary"
+                                    >
+                                        <BookOpen className="h-3 w-3" />
+                                        Summary
+                                    </button>
+                                )}
                                 <Link
                                     href={`/documents/${doc.id}?tab=chat`}
                                     className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"

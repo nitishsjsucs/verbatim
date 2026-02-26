@@ -355,70 +355,6 @@ export default function PublishPage() {
         toast.success(`Published ${items.length} items`)
     }, [commonDeadline, commonDeadlineTime, handlePublish])
 
-    // Active: published but NOT completed
-    const activeItems = React.useMemo(() => {
-        let items = allItems.filter(({ item }) => !!item.published_at && item.task_status !== "completed")
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase()
-            items = items.filter(({ item }) =>
-                `${safeStr(item.action)} ${safeStr(item.workstream)} ${safeStr(item.implementation_notes)}`.toLowerCase().includes(q)
-            )
-        }
-        return items
-    }, [allItems, searchQuery])
-
-    // Completed: published and completed
-    const completedItems = React.useMemo(() => {
-        let items = allItems.filter(({ item }) => !!item.published_at && item.task_status === "completed")
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase()
-            items = items.filter(({ item }) =>
-                `${safeStr(item.action)} ${safeStr(item.workstream)} ${safeStr(item.implementation_notes)}`.toLowerCase().includes(q)
-            )
-        }
-        return items
-    }, [allItems, searchQuery])
-
-    // Group active by team
-    const activeByTeam = React.useMemo(() => {
-        const teams: Record<string, FlatItem[]> = {}
-        for (const entry of activeItems) {
-            const ws = entry.item.workstream || "Other"
-            if (!teams[ws]) teams[ws] = []
-            teams[ws].push(entry)
-        }
-        return teams
-    }, [activeItems])
-
-    // Group completed by team
-    const completedByTeam = React.useMemo(() => {
-        const teams: Record<string, FlatItem[]> = {}
-        for (const entry of completedItems) {
-            const ws = entry.item.workstream || "Other"
-            if (!teams[ws]) teams[ws] = []
-            teams[ws].push(entry)
-        }
-        return teams
-    }, [completedItems])
-
-    // Progress per team (PB5): published items — completed vs total
-    const teamProgress = React.useMemo(() => {
-        const publishedItems = allItems.filter(({ item }) => !!item.published_at)
-        const teams: Record<string, { total: number; completed: number }> = {}
-        for (const { item } of publishedItems) {
-            const ws = item.workstream || "Other"
-            if (!teams[ws]) teams[ws] = { total: 0, completed: 0 }
-            teams[ws].total++
-            if (item.task_status === "completed") teams[ws].completed++
-        }
-        return teams
-    }, [allItems])
-
-    // Collapsible state for completed section
-    const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
-    // Collapsible state for active section
-    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
-
     // Stats: published vs not-yet-published
     const publishStats = React.useMemo(() => {
         const approved = allItems.filter(({ item }) => item.approval_status === "approved")
@@ -445,7 +381,7 @@ export default function PublishPage() {
                     <div className="flex items-center gap-2 text-[10px]">
                         <span className="px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-mono">{publishStats.published} published</span>
                         <span className="px-2 py-0.5 rounded bg-amber-400/10 text-amber-400 font-mono">{publishStats.notPublished} not published</span>
-                        <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{publishQueue.length} ready</span>
+                        <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{publishQueue.length} total</span>
                     </div>
                 </div>
 
@@ -527,36 +463,8 @@ export default function PublishPage() {
                         </div>
                     )}
 
-                    {/* PB5: Team Progress Bars */}
-                    {!loading && Object.keys(teamProgress).length > 0 && (
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Team Progress</p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {Object.entries(teamProgress).map(([team, prog]) => {
-                                    const pct = prog.total > 0 ? Math.round((prog.completed / prog.total) * 100) : 0
-                                    return (
-                                        <div key={team} className="flex items-center gap-2.5 bg-muted/20 rounded-md px-3 py-2">
-                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
-                                                {team}
-                                            </span>
-                                            <div className="flex-1 h-1.5 bg-muted/40 rounded-full overflow-hidden">
-                                                <div
-                                                    className={cn("h-full rounded-full transition-all", pct === 100 ? "bg-emerald-500" : "bg-primary")}
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0 w-12 text-right">
-                                                {prog.completed}/{prog.total} <span className="text-muted-foreground/30">({pct}%)</span>
-                                            </span>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Ready to Publish section */}
-                    {!loading && publishQueue.length === 0 && activeItems.length === 0 && completedItems.length === 0 && (
+                    {/* Empty state */}
+                    {!loading && publishQueue.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
                             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                                 <Send className="h-8 w-8 text-muted-foreground" />
@@ -570,7 +478,7 @@ export default function PublishPage() {
 
                     {!loading && publishQueue.length > 0 && (
                         <div className="space-y-2">
-                            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Ready to Publish ({publishQueue.length})</p>
+                            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Total ({publishQueue.length})</p>
                             {Object.entries(byTeam).map(([team, entries]) => {
                                 const isCollapsed = collapsedTeams.has(team)
                                 return (
@@ -608,89 +516,6 @@ export default function PublishPage() {
                                     </div>
                                 )
                             })}
-                        </div>
-                    )}
-
-                    {/* PB4: Active section — published but not completed */}
-                    {!loading && activeItems.length > 0 && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
-                                {activeCollapsed
-                                    ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                }
-                                <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Active ({activeItems.length})</p>
-                                <div className="h-px bg-border/30 flex-1" />
-                            </div>
-                            {!activeCollapsed && Object.entries(activeByTeam).map(([team, entries]) => (
-                                <div key={team} className="space-y-1.5 ml-1">
-                                    <div className="flex items-center gap-2 pt-0.5 pb-0.5">
-                                        <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
-                                            {team}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
-                                        <div className="h-px bg-border/20 flex-1" />
-                                    </div>
-                                    {entries.map((entry) => (
-                                        <div key={`${entry.docId}-${entry.item.id}`} className="border border-border/20 rounded-lg px-3 py-2 flex items-center gap-2">
-                                            <RiskIcon modality={entry.item.modality} />
-                                            <p className="text-xs text-foreground/80 leading-relaxed truncate flex-1 min-w-0">{safeStr(entry.item.action)}</p>
-                                            {entry.item.task_status && (
-                                                <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0",
-                                                    entry.item.task_status === "review" ? "bg-blue-400/10 text-blue-400"
-                                                        : entry.item.task_status === "reworking" ? "bg-amber-400/10 text-amber-400"
-                                                        : entry.item.task_status === "in_progress" ? "bg-cyan-400/10 text-cyan-400"
-                                                        : "bg-muted text-muted-foreground"
-                                                )}>
-                                                    {entry.item.task_status.replace("_", " ")}
-                                                </span>
-                                            )}
-                                            {entry.item.deadline && (
-                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground/60 font-mono shrink-0">
-                                                    {entry.item.deadline.split("T")[0]}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* PB3: Completed section — collapsible */}
-                    {!loading && completedItems.length > 0 && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
-                                {completedCollapsed
-                                    ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                }
-                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Completed ({completedItems.length})</p>
-                                <div className="h-px bg-border/30 flex-1" />
-                            </div>
-                            {!completedCollapsed && Object.entries(completedByTeam).map(([team, entries]) => (
-                                <div key={team} className="space-y-1.5 ml-1">
-                                    <div className="flex items-center gap-2 pt-0.5 pb-0.5">
-                                        <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
-                                            {team}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
-                                        <div className="h-px bg-border/20 flex-1" />
-                                    </div>
-                                    {entries.map((entry) => (
-                                        <div key={`${entry.docId}-${entry.item.id}`} className="border border-emerald-500/10 rounded-lg px-3 py-2 flex items-center gap-2 opacity-70">
-                                            <RiskIcon modality={entry.item.modality} />
-                                            <p className="text-xs text-foreground/60 leading-relaxed truncate flex-1 min-w-0 line-through decoration-muted-foreground/20">{safeStr(entry.item.action)}</p>
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-medium shrink-0">completed</span>
-                                            {entry.item.completion_date && (
-                                                <span className="text-[9px] text-muted-foreground/40 font-mono shrink-0">
-                                                    {new Date(entry.item.completion_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                                                </span>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
                         </div>
                     )}
                 </div>

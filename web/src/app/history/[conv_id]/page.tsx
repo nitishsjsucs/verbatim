@@ -4,7 +4,7 @@ import * as React from "react"
 import {
     ArrowLeft, User, Bot, FileText, Loader2, AlertTriangle,
     ShieldCheck, ShieldAlert, ShieldQuestion, Clock, Brain,
-    Search, ChevronDown, ChevronRight, Library,
+    Search, ChevronDown, ChevronRight, Library, MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/layout/sidebar"
@@ -346,6 +346,21 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                             {conv.doc_name}
                         </span>
                     )}
+                    {conv && (() => {
+                        const isRes = conv.type === "research"
+                        const continueHref = isRes
+                            ? `/research?continue=${conv.conv_id}`
+                            : `/documents/${conv.doc_id}?tab=chat&continue=${conv.conv_id}`
+                        return (
+                            <Link
+                                href={continueHref}
+                                className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 px-2.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors font-medium shrink-0 ml-auto"
+                            >
+                                <MessageSquare className="h-3 w-3" />
+                                Continue Conversation
+                            </Link>
+                        )
+                    })()}
                 </div>
 
                 {/* Split pane body */}

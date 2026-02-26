@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/layout/sidebar"
 import { DocumentList } from "@/components/dashboard/document-list"
 import { RoleRedirect } from "@/components/auth/role-redirect"
+import { Library } from "lucide-react"
 
 export default function Home() {
   return (
@@ -12,7 +13,10 @@ export default function Home() {
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header bar — matches Linear's h-11 chrome */}
           <div className="h-11 border-b border-border flex items-center justify-between px-6 flex-shrink-0 bg-background">
-            <h1 className="text-sm font-semibold text-foreground">Documents Library</h1>
+            <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Library className="h-4 w-4 text-primary" />
+              Documents Library
+            </h1>
           </div>
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
