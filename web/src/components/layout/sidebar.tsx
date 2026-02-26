@@ -50,7 +50,7 @@ export function Sidebar({ className }: SidebarProps) {
     <div
       className={cn(
         "relative flex flex-col h-screen border-r border-sidebar-border bg-sidebar flex-shrink-0 transition-all duration-200 ease-in-out overflow-hidden",
-        collapsed ? "w-[52px]" : "w-[220px]",
+        collapsed ? "w-[52px]" : "w-[200px]",
         className
       )}
     >
@@ -219,14 +219,30 @@ export function Sidebar({ className }: SidebarProps) {
       </div>
 
       {/* ── Footer ── */}
-      {session && (
-        <div className={cn("px-2 py-1", collapsed && "px-1")}>
-          {!collapsed && session.user && (
-            <div className="px-2 py-1.5 mb-1">
-              <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-              <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
-            </div>
-          )}
+      <div className={cn("px-2 py-1 border-t border-sidebar-border/50 mt-auto", collapsed && "px-1")}>
+        {!collapsed && session?.user && (
+          <div className="px-2 py-1.5 mb-1">
+            <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
+            <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
+          </div>
+        )}
+
+        {/* Settings (left) + Theme (right) on same row */}
+        <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="group flex items-center gap-2 rounded px-2 h-8 font-medium transition-colors hover:bg-sidebar-accent/70"
+            type="button"
+            title={collapsed ? "Settings" : undefined}
+          >
+            <Settings className="h-4 w-4 text-sidebar-foreground/50" />
+            {!collapsed && <span className="text-[13px] text-sidebar-foreground/60">Settings</span>}
+          </button>
+          <ThemeToggle />
+        </div>
+
+        {/* Sign Out below the Settings/Theme row */}
+        {session && (
           <NavItem
             icon={<LogOut className="h-4 w-4" />}
             iconClassName="text-sidebar-foreground/50"
@@ -234,31 +250,9 @@ export function Sidebar({ className }: SidebarProps) {
             collapsed={collapsed}
             onClick={() => signOut().then(() => window.location.href = "/sign-in")}
           />
-        </div>
-      )}
-
-      <NavItem
-        icon={<Settings className="h-4 w-4" />}
-        iconClassName="text-sidebar-foreground/50"
-        label="Settings"
-        collapsed={collapsed}
-        onClick={() => setSettingsOpen(true)}
-      />
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-
-      <div
-        className={cn(
-          "flex items-center h-8 px-2 rounded",
-          collapsed ? "justify-center" : "justify-between"
         )}
-      >
-        {!collapsed && (
-          <span className="text-[11px] text-sidebar-foreground/35 select-none">
-            Theme
-          </span>
-        )}
-        <ThemeToggle />
       </div>
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
