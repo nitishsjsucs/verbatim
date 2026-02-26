@@ -16,7 +16,7 @@ export default function Home() {
           </div>
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto py-8 px-6">
+            <div className="py-6 px-6">
               {/* <p className="text-sm text-muted-foreground mb-6">Manage and query your PDF documents.</p> */}
               <DocumentList />
             </div>

@@ -143,7 +143,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                         />
                     </div>
                     <div className="flex-1" />
-                    <div className="text-[11px] text-muted-foreground/40 font-medium truncate max-w-[280px]">
+                    <div className="text-[11px] text-muted-foreground/40 font-medium truncate" title={doc.doc_name}>
                         {doc.doc_name} &middot; {doc.total_pages}p
                     </div>
                 </div>

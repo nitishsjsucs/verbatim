@@ -4,12 +4,45 @@ import * as React from "react"
 import { Viewer, Worker, SpecialZoomLevel } from "@react-pdf-viewer/core"
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout"
 import type { ToolbarSlot, TransformToolbarSlot } from "@react-pdf-viewer/toolbar"
+import { AlertCircle, RefreshCw } from "lucide-react"
 
 // Styles
 import "@react-pdf-viewer/core/lib/styles/index.css"
 import "@react-pdf-viewer/default-layout/lib/styles/index.css"
 
 const WORKER_URL = "https://unpkg.com/pdfjs-dist@3.4.120/build/pdf.worker.min.js"
+
+// Error boundary to catch React 19 compatibility issues with @react-pdf-viewer
+class PdfErrorBoundary extends React.Component<
+    { children: React.ReactNode; onRetry?: () => void },
+    { hasError: boolean; error?: Error }
+> {
+    constructor(props: { children: React.ReactNode; onRetry?: () => void }) {
+        super(props)
+        this.state = { hasError: false }
+    }
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error }
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#888", fontSize: 13, padding: 24, textAlign: "center" }}>
+                    <AlertCircle style={{ width: 24, height: 24, color: "#ef4444" }} />
+                    <p>PDF viewer failed to load</p>
+                    <p style={{ fontSize: 11, opacity: 0.6 }}>{this.state.error?.message}</p>
+                    <button
+                        onClick={() => { this.setState({ hasError: false, error: undefined }); this.props.onRetry?.() }}
+                        style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", fontSize: 12 }}
+                    >
+                        <RefreshCw style={{ width: 14, height: 14 }} /> Retry
+                    </button>
+                </div>
+            )
+        }
+        return this.props.children
+    }
+}
 
 export interface PdfViewerHandle {
     jumpToPage: (pageIndex: number) => void
@@ -93,7 +126,14 @@ export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
 
         React.useImperativeHandle(ref, () => ({
             jumpToPage: (pageIndex: number) => {
-                rawJumpToPage(pageIndex)
+                try {
+                    if (typeof rawJumpToPage === "function") {
+                        rawJumpToPage(pageIndex)
+                    }
+                } catch (err) {
+                    console.warn("jumpToPage failed:", err)
+                    return
+                }
 
                 // Poll until the target page element is in the DOM, then scroll to center it.
                 // This is more reliable than a fixed timeout.
@@ -146,15 +186,17 @@ export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
 
         return (
             <div ref={containerRef} className={className} style={{ height: "100%", width: "100%" }}>
-                <Worker workerUrl={WORKER_URL}>
-                    <Viewer
-                        fileUrl={blobUrl}
-                        initialPage={initialPage}
-                        defaultScale={SpecialZoomLevel.PageWidth}
-                        theme={pdfTheme}
-                        plugins={[defaultLayoutPluginInstance]}
-                    />
-                </Worker>
+                <PdfErrorBoundary onRetry={() => setBlobUrl(null)}>
+                    <Worker workerUrl={WORKER_URL}>
+                        <Viewer
+                            fileUrl={blobUrl}
+                            initialPage={initialPage}
+                            defaultScale={SpecialZoomLevel.PageWidth}
+                            theme={pdfTheme}
+                            plugins={[defaultLayoutPluginInstance]}
+                        />
+                    </Worker>
+                </PdfErrorBoundary>
             </div>
         )
     }

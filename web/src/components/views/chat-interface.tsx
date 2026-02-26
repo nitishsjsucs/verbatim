@@ -568,8 +568,9 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                         className="bg-background/50 border-border/40 hover:border-border/80 hover:shadow-sm transition-all cursor-pointer group/card overflow-hidden"
                                                         onClick={() => {
                                                             if (onCitationClick) {
-                                                                const match = cite.page_range.match(/p\.?\s*(\d+)/)
-                                                                if (match) onCitationClick(parseInt(match[1], 10))
+                                                                const match = cite.page_range?.match(/p\.?\s*(\d+)/)
+                                                                const page = match ? parseInt(match[1], 10) : 1
+                                                                onCitationClick(page)
                                                             }
                                                         }}
                                                     >

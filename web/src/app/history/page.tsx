@@ -142,14 +142,6 @@ function ConversationCard({
                 >
                     Continue →
                 </Link>
-                <Link
-                    href={docHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
-                    title={isResearch ? "Open Research" : "Open Document"}
-                >
-                    Open
-                </Link>
                 {confirmDelete ? (
                     <div className="flex items-center gap-1">
                         <button
@@ -258,6 +250,22 @@ export default function HistoryPage() {
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
+                        {conversations.length > 0 && (() => {
+                            const latest = conversations[0]
+                            const isResearch = latest.type === "research"
+                            const continueHref = isResearch
+                                ? `/research?continue=${latest.conv_id}`
+                                : `/documents/${latest.doc_id}?tab=chat&continue=${latest.conv_id}`
+                            return (
+                                <Link
+                                    href={continueHref}
+                                    className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 px-2.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
+                                >
+                                    <MessageSquare className="h-3 w-3" />
+                                    Continue Latest
+                                </Link>
+                            )
+                        })()}
                         <Button
                             variant="outline"
                             size="sm"

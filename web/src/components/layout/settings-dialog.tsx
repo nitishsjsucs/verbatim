@@ -54,7 +54,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const handleChangePassword = async () => {
         if (!currentPassword || !newPassword) { toast.error("Fill in all password fields"); return }
         if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return }
-        if (newPassword.length < 6) { toast.error("Password must be at least 6 characters"); return }
+        if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return }
+        if (!/[A-Z]/.test(newPassword)) { toast.error("Password must contain at least one uppercase letter"); return }
+        if (!/[0-9]/.test(newPassword)) { toast.error("Password must contain at least one number"); return }
         setSavingPassword(true)
         try {
             await authClient.changePassword({
@@ -139,6 +141,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                             className="w-full bg-muted/30 text-sm rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none text-foreground"
                             placeholder="Confirm new password"
                         />
+                        <p className="text-[10px] text-muted-foreground/50">Min 8 characters, 1 uppercase, 1 number</p>
                         <Button
                             size="sm"
                             onClick={handleChangePassword}
@@ -177,15 +180,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 )}
                             >
                                 <Moon className="h-3.5 w-3.5" /> Dark
-                            </button>
-                            <button
-                                onClick={() => setTheme("system")}
-                                className={cn(
-                                    "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md border text-xs font-medium transition-colors",
-                                    "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40"
-                                )}
-                            >
-                                System
                             </button>
                         </div>
                     </div>

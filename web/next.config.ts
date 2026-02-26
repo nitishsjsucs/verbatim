@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
       canvas: { browser: "" },
     },
   },
+  webpack: (config) => {
+    // canvas is not available in the browser — alias to false for production builds
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+    return config;
+  },
 };
 
 export default nextConfig;

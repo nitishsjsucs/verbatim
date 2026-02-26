@@ -49,7 +49,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "relative flex flex-col h-screen border-r border-sidebar-border bg-sidebar flex-shrink-0 transition-all duration-200 ease-in-out",
+        "relative flex flex-col h-screen border-r border-sidebar-border bg-sidebar flex-shrink-0 transition-all duration-200 ease-in-out overflow-hidden",
         collapsed ? "w-[52px]" : "w-[220px]",
         className
       )}
@@ -313,30 +313,22 @@ const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
       className
     )
 
-    const tooltipEl = collapsed ? (
-      <span className="absolute left-full ml-2 px-2 py-1 rounded bg-popover text-popover-foreground text-xs font-medium shadow-md border border-border whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-        {label}
-      </span>
-    ) : null
-
     if (href) {
       const anchorProps = props as Omit<
         React.AnchorHTMLAttributes<HTMLAnchorElement>,
         "href"
       >
       return (
-        <Link href={href} className={commonClasses} {...anchorProps}>
+        <Link href={href} className={commonClasses} title={collapsed ? label : undefined} {...anchorProps}>
           {content}
-          {tooltipEl}
         </Link>
       )
     }
 
     const buttonProps = props as React.ButtonHTMLAttributes<HTMLButtonElement>
     return (
-      <button ref={ref} className={commonClasses} type="button" {...buttonProps}>
+      <button ref={ref} className={commonClasses} type="button" title={collapsed ? label : undefined} {...buttonProps}>
         {content}
-        {tooltipEl}
       </button>
     )
   }

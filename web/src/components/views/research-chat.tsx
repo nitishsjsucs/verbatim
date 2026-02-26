@@ -504,10 +504,9 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                     className="bg-background/50 border-border/40 hover:border-border/80 hover:shadow-sm transition-all cursor-pointer group/card overflow-hidden"
                                                     onClick={() => {
                                                         if (onCitationClick && cite.doc_id) {
-                                                            const match = cite.page_range.match(/p\.?\s*(\d+)/)
-                                                            if (match) {
-                                                                onCitationClick(cite.doc_id, parseInt(match[1], 10), cite.doc_name)
-                                                            }
+                                                            const match = cite.page_range?.match(/p\.?\s*(\d+)/)
+                                                            const page = match ? parseInt(match[1], 10) : 1
+                                                            onCitationClick(cite.doc_id, page, cite.doc_name)
                                                         }
                                                     }}
                                                 >

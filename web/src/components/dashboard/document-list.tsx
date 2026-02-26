@@ -2,17 +2,11 @@
 
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { FileText, MoreHorizontal, Trash2, X, MessageSquare, CalendarDays, Search, Pencil, Shield, Loader2 } from "lucide-react"
+import { FileText, Trash2, X, MessageSquare, Search, Pencil, Shield, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
 import { Button } from "@/components/ui/button"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
     Table,
     TableBody,
@@ -21,7 +15,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { fetchDocuments, extractActionablesStreaming } from "@/lib/api"
+import { fetchDocuments, extractActionablesStreaming, ExtractionProgressEvent } from "@/lib/api"
 import { DocumentMeta } from "@/lib/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -36,6 +30,9 @@ export function DocumentList() {
     const [renamingDocId, setRenamingDocId] = useState<string | null>(null)
     const [renameValue, setRenameValue] = useState("")
     const [extractingDocId, setExtractingDocId] = useState<string | null>(null)
+    const [extractProgress, setExtractProgress] = useState<string>("")
+    const [extractConfirmDocId, setExtractConfirmDocId] = useState<string | null>(null)
+    const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
 
     const loadDocuments = async () => {
         try {
@@ -55,8 +52,6 @@ export function DocumentList() {
     }, [])
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this document?")) return
-
         try {
             const res = await fetch(`${API_BASE_URL}/documents/${id}`, {
                 method: "DELETE",
@@ -64,9 +59,37 @@ export function DocumentList() {
             if (!res.ok) throw new Error("Failed to delete")
 
             toast.success("Document deleted")
+            setDeletingDocId(null)
             loadDocuments()
         } catch (error) {
             toast.error("Failed to delete document")
+        }
+    }
+
+    const handleExtract = async (docId: string, docName: string) => {
+        setExtractConfirmDocId(null)
+        setExtractingDocId(docId)
+        setExtractProgress("Starting extraction...")
+        try {
+            const result = await extractActionablesStreaming(docId, false, (event: ExtractionProgressEvent) => {
+                if (event.event === "prefilter_done") {
+                    setExtractProgress(`Found ${event.candidate_count || 0} candidate sections...`)
+                } else if (event.event === "batch_start") {
+                    setExtractProgress(`Processing batch ${event.batch}...`)
+                } else if (event.event === "batch_done") {
+                    setExtractProgress(`Extracted ${event.cumulative_actionables || 0} actionables so far...`)
+                } else if (event.event === "validation_start") {
+                    setExtractProgress(`Validating ${event.total_actionables || 0} actionables...`)
+                } else if (event.event === "validation_done") {
+                    setExtractProgress(`Validated: ${event.validated} ok, ${event.flagged} flagged`)
+                }
+            })
+            toast.success(`Extracted ${result.actionables?.length || 0} actionables from ${docName}`)
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Extraction failed")
+        } finally {
+            setExtractingDocId(null)
+            setExtractProgress("")
         }
     }
 
@@ -176,115 +199,203 @@ export function DocumentList() {
             )}
         </div>
 
-        <div className="rounded-md border border-border bg-card overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow className="border-b border-border hover:bg-transparent">
-                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Ingested</TableHead>
-                        <TableHead className="h-9 w-[120px]"></TableHead>
+        <Table>
+            <TableHeader>
+                <TableRow className="border-b border-border hover:bg-transparent">
+                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Ingested</TableHead>
+                    <TableHead className="h-9 w-[280px]"></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {filteredDocuments.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-sm text-muted-foreground/60">
+                            No documents match your search
+                        </TableCell>
                     </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredDocuments.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={4} className="text-center py-8 text-sm text-muted-foreground/60">
-                                No documents match your search
-                            </TableCell>
-                        </TableRow>
-                    )}
-                    {filteredDocuments.map((doc) => (
-                        <TableRow key={doc.id} className="border-b border-border/60 hover:bg-accent/40 transition-colors group">
-                            <TableCell className="pl-4 py-2.5">
-                                <Link
-                                    href={`/documents/${doc.id}`}
-                                    className="flex items-center gap-2 group/link"
+                )}
+                {filteredDocuments.map((doc) => (
+                    <TableRow key={doc.id} className="border-b border-border/60 hover:bg-accent/40 transition-colors group">
+                        <TableCell className="pl-4 py-2.5">
+                            <Link
+                                href={`/documents/${doc.id}`}
+                                className="flex items-center gap-2 group/link"
+                            >
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
+                                <span className="text-[13px] font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
+                            </Link>
+                            {doc.description && (
+                                <button
+                                    className="text-[11px] text-muted-foreground/60 truncate block max-w-full pl-[22px] mt-0.5 text-left hover:text-muted-foreground transition-colors cursor-pointer"
+                                    title="Click to view full description"
+                                    onClick={() => setExpandedDoc(doc)}
                                 >
-                                    <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
-                                    <span className="text-[13px] font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
-                                </Link>
-                                {doc.description && (
-                                    <button
-                                        className="text-[11px] text-muted-foreground/60 truncate block max-w-full pl-[22px] mt-0.5 text-left hover:text-muted-foreground transition-colors cursor-pointer"
-                                        title="Click to view full description"
-                                        onClick={() => setExpandedDoc(doc)}
-                                    >
-                                        {doc.description.replace(/\*\*/g, "").slice(0, 100)}…
-                                    </button>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
-                            <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
-                                {doc.ingested_at ? (
-                                    <span className="text-muted-foreground/70">
-                                        {new Date(doc.ingested_at).toLocaleDateString()}
-                                    </span>
-                                ) : (
-                                    <span className="text-muted-foreground/60">—</span>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right py-2.5 pr-2">
-                                <div className="flex items-center justify-end gap-1.5">
+                                    {doc.description.replace(/\*\*/g, "").slice(0, 100)}…
+                                </button>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
+                        <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
+                            {doc.ingested_at ? (
+                                <span className="text-muted-foreground/70">
+                                    {new Date(doc.ingested_at).toLocaleDateString()}
+                                </span>
+                            ) : (
+                                <span className="text-muted-foreground/60">—</span>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-right py-2.5 pr-2">
+                            <div className="flex items-center justify-end gap-1.5">
                                 <Link
                                     href={`/documents/${doc.id}?tab=chat`}
-                                    className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
                                     title="Chat with document"
                                 >
-                                    <MessageSquare className="h-3.5 w-3.5" />
+                                    <MessageSquare className="h-3 w-3" />
                                     Chat
                                 </Link>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-7 w-7 p-0 opacity-60 hover:opacity-100 transition-opacity">
-                                            <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            className="text-[13px]"
-                                            onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
-                                        >
-                                            <Pencil className="mr-2 h-3.5 w-3.5" />
-                                            Rename
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="text-[13px]"
-                                            disabled={extractingDocId === doc.id}
-                                            onClick={async () => {
-                                                setExtractingDocId(doc.id)
-                                                try {
-                                                    const result = await extractActionablesStreaming(doc.id, false)
-                                                    toast.success(`Extracted ${result.actionables?.length || 0} actionables from ${doc.name}`)
-                                                } catch (err) {
-                                                    toast.error(err instanceof Error ? err.message : "Extraction failed")
-                                                } finally {
-                                                    setExtractingDocId(null)
-                                                }
-                                            }}
-                                        >
-                                            {extractingDocId === doc.id
-                                                ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                                : <Shield className="mr-2 h-3.5 w-3.5" />}
-                                            {extractingDocId === doc.id ? "Extracting..." : "Extract Actionables"}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="text-destructive focus:text-destructive focus:bg-destructive/10 text-[13px]"
-                                            onClick={() => handleDelete(doc.id)}
-                                        >
-                                            <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+                                <button
+                                    onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-[11px] font-medium"
+                                    title="Rename document"
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                    Rename
+                                </button>
+                                <button
+                                    onClick={() => setExtractConfirmDocId(doc.id)}
+                                    disabled={extractingDocId === doc.id}
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title="Extract actionables from document"
+                                >
+                                    {extractingDocId === doc.id
+                                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                                        : <Shield className="h-3 w-3" />}
+                                    Extract
+                                </button>
+                                <button
+                                    onClick={() => setDeletingDocId(doc.id)}
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-[11px] font-medium"
+                                    title="Delete document"
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                    Delete
+                                </button>
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+
+        {/* Extract Confirm Dialog */}
+        {extractConfirmDocId && (
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                onClick={() => setExtractConfirmDocId(null)}
+            >
+                <div
+                    className="bg-background border border-border rounded-xl shadow-2xl w-[420px] p-6 space-y-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                            <Shield className="h-5 w-5 text-amber-500" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-foreground">Extract Actionables</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {documents.find(d => d.id === extractConfirmDocId)?.name}
+                            </p>
+                        </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        This will analyze the document and extract compliance actionables. This process may take several minutes depending on document size.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setExtractConfirmDocId(null)}>Cancel</Button>
+                        <Button
+                            size="sm"
+                            className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
+                            onClick={() => {
+                                const doc = documents.find(d => d.id === extractConfirmDocId)
+                                handleExtract(extractConfirmDocId, doc?.name || extractConfirmDocId)
+                            }}
+                        >
+                            <Shield className="h-3.5 w-3.5" />
+                            Start Extraction
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Extract Progress Dialog */}
+        {extractingDocId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-background border border-border rounded-xl shadow-2xl w-[420px] p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                            <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-foreground">Extracting Actionables...</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {documents.find(d => d.id === extractingDocId)?.name}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="bg-muted/30 rounded-lg p-3">
+                        <p className="text-xs text-foreground/80 animate-pulse">{extractProgress || "Starting..."}</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/50 text-center">
+                        This may take several minutes. Please wait...
+                    </p>
+                </div>
+            </div>
+        )}
+
+        {/* Delete Confirm Dialog */}
+        {deletingDocId && (
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                onClick={() => setDeletingDocId(null)}
+            >
+                <div
+                    className="bg-background border border-border rounded-xl shadow-2xl w-[400px] p-6 space-y-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-red-500/15 flex items-center justify-center">
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-foreground">Delete Document</h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {documents.find(d => d.id === deletingDocId)?.name}
+                            </p>
+                        </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        This will permanently delete this document and all associated data. This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setDeletingDocId(null)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => handleDelete(deletingDocId)}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Rename Dialog */}
         {renamingDocId && (
