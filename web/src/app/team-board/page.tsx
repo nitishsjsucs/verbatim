@@ -218,7 +218,6 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                     )}
                     {isUnderReview && (
                         <div className="flex items-center justify-center gap-1">
-                            <span className="text-[10px] text-blue-400 italic">Awaiting review</span>
                             {canRevert && (
                                 <button
                                     onClick={() => onRevert(docId, item)}
@@ -359,29 +358,35 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
 
 // ─── Status summary bar with labels ─────────────────────────────────────────
 
-function StatusSummaryBar({ items }: { items: { item: ActionableItem }[] }) {
+function TeamStatsCard({ items, allItemsTotal }: { items: { item: ActionableItem }[]; allItemsTotal: number }) {
+    const total = items.length
+    const percentage = allItemsTotal > 0 ? Math.round((total / allItemsTotal) * 100) : 0
     const counts: Record<string, number> = {}
     for (const { item } of items) {
         const s = item.task_status || "assigned"
         counts[s] = (counts[s] || 0) + 1
     }
-    const total = items.length || 1
-    const segments: { key: TaskStatus; pct: number }[] = (["in_progress", "review", "completed", "reworking", "assigned"] as TaskStatus[])
-        .map(s => ({ key: s, pct: ((counts[s] || 0) / total) * 100 }))
-        .filter(s => s.pct > 0)
+    
     return (
-        <div className="space-y-1">
-            <div className="flex h-2 rounded-full overflow-hidden bg-muted/30">
-                {segments.map(s => (
-                    <div key={s.key} className={cn(TASK_STATUS_CONFIG[s.key].bg, "transition-all")} style={{ width: `${s.pct}%` }} />
-                ))}
+        <div className="bg-muted/10 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+                <div className="flex items-end gap-2">
+                    <span className="text-2xl font-bold text-foreground">{total}</span>
+                    <span className="text-xs text-muted-foreground/60">actionables</span>
+                </div>
+                <div className="text-right">
+                    <span className="text-lg font-bold text-primary">{percentage}%</span>
+                    <p className="text-[9px] text-muted-foreground/60">of total</p>
+                </div>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
-                {segments.map(s => (
-                    <span key={s.key} className="text-[9px] text-muted-foreground/60 flex items-center gap-1">
-                        <span className={cn("h-1.5 w-1.5 rounded-full", TASK_STATUS_CONFIG[s.key].bg)} />
-                        {TASK_STATUS_CONFIG[s.key].label} {counts[s.key]}
-                    </span>
+            <div className="grid grid-cols-5 gap-2 pt-2 border-t border-border/30">
+                {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => (
+                    <div key={s} className="text-center">
+                        <p className="text-sm font-bold" style={{ color: TASK_STATUS_CONFIG[s].bg.includes("emerald") ? "#10b981" : TASK_STATUS_CONFIG[s].bg.includes("blue") ? "#3b82f6" : TASK_STATUS_CONFIG[s].bg.includes("amber") ? "#f59e0b" : TASK_STATUS_CONFIG[s].bg.includes("orange") ? "#f97316" : "#64748b" }}>
+                            {counts[s] || 0}
+                        </p>
+                        <p className="text-[9px] text-muted-foreground/50 capitalize">{TASK_STATUS_CONFIG[s].label.split(" ")[0]}</p>
+                    </div>
                 ))}
             </div>
         </div>
@@ -599,7 +604,7 @@ function TeamBoardContent() {
                 </div>
 
                 {/* ── Stats row ── */}
-                <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
+                <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="text-center">
                             <p className="text-lg font-bold text-foreground">{stats.total}</p>
@@ -608,42 +613,27 @@ function TeamBoardContent() {
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
                             <p className="text-lg font-bold text-emerald-400">{stats.completed}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
+                            <p className="text-[9xs] text-muted-foreground/50 uppercase tracking-wider">Done</p>
                         </div>
                         <div className="text-center">
                             <p className="text-lg font-bold text-amber-400">{stats.inProgress}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Active</p>
                         </div>
                         <div className="text-center">
                             <p className="text-lg font-bold text-blue-400">{stats.review}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-orange-400">{stats.reworking}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
-                        </div>
-                        <div className="h-8 w-px bg-border/40" />
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-emerald-500">{stats.yetToDeadline}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-amber-500">{stats.delayed30}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-orange-500">{stats.delayed60}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-lg font-bold text-red-500">{stats.delayed90}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Review</p>
                         </div>
                     </div>
+                    
+                    {stats.total > 0 && (
+                        <div className="w-40 text-right">
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-1">Completion</p>
+                            <div className="flex items-end gap-2 justify-end">
+                                <span className="text-xl font-bold text-emerald-400">{stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%</span>
+                                <span className="text-[9px] text-muted-foreground/40">({stats.completed}/{stats.total})</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Toolbar with filters and sorting ── */}
@@ -708,6 +698,58 @@ function TeamBoardContent() {
                     </div>
                 </div>
 
+                {/* ── Team Reports Summary ── */}
+                {!loading && allItems.length > 0 && (
+                    <div className="shrink-0 border-b border-border/40 px-5 py-4">
+                        <h3 className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider mb-3">Team Reports</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Status Distribution */}
+                            <div className="bg-muted/10 rounded-lg p-3">
+                                <p className="text-[10px] font-semibold text-muted-foreground/70 mb-2">By Status</p>
+                                <div className="space-y-1">
+                                    {(["in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => {
+                                        const count = allItems.filter(e => (e.item.task_status || "assigned") === s).length
+                                        if (count === 0) return null
+                                        return (
+                                            <div key={s} className="flex items-center justify-between text-[9px]">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={cn("h-1.5 w-1.5 rounded-full", TASK_STATUS_CONFIG[s].bg)} />
+                                                    <span className="text-muted-foreground">{TASK_STATUS_CONFIG[s].label}</span>
+                                                </div>
+                                                <span className="font-mono font-bold text-foreground">{count}</span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Risk Distribution */}
+                            <div className="bg-muted/10 rounded-lg p-3">
+                                <p className="text-[10px] font-semibold text-muted-foreground/70 mb-2">By Risk</p>
+                                <div className="space-y-1">
+                                    {["High Risk", "Medium Risk", "Low Risk"].map(risk => {
+                                        const count = allItems.filter(e => normalizeRisk(e.item.modality) === risk).length
+                                        if (count === 0) return null
+                                        return (
+                                            <div key={risk} className="flex items-center justify-between text-[9px]">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={cn("h-1.5 w-1.5 rounded-full", 
+                                                        risk === "High Risk" ? "bg-red-500" : 
+                                                        risk === "Medium Risk" ? "bg-yellow-500" : 
+                                                        "bg-emerald-500"
+                                                    )} />
+                                                    <span className="text-muted-foreground">{risk}</span>
+                                                </div>
+                                                <span className="font-mono font-bold text-foreground">{count}</span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── Board content ── */}
                 <div className="flex-1 overflow-auto">
                     {loading && (
@@ -747,8 +789,8 @@ function TeamBoardContent() {
                                 <>
                                     {renderHeader()}
                                     {activeItems.map(renderTaskRow)}
-                                    <div className="px-5 py-2 border-b border-border/20">
-                                        <StatusSummaryBar items={activeItems} />
+                                    <div className="px-5 py-3 border-t border-border/20">
+                                        <TeamStatsCard items={activeItems} allItemsTotal={allItems.length} />
                                     </div>
                                 </>
                             )}

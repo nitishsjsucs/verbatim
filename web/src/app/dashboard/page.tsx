@@ -458,6 +458,20 @@ export default function DashboardPage() {
                         <option value="d90">Delayed 90d</option>
                     </select>
 
+                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
+                        <button
+                            onClick={() => {
+                                setStatusFilter("all")
+                                setRiskFilter("all")
+                                setDeadlineFilter("all")
+                                setSearchQuery("")
+                            }}
+                            className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-transparent focus:border-border"
+                        >
+                            Clear Filters
+                        </button>
+                    )}
+
                     <div className="flex items-center gap-1 ml-auto">
                         <span className="text-[10px] text-muted-foreground/50">Sort:</span>
                         <select
