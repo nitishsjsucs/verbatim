@@ -451,7 +451,7 @@ export function DocumentList() {
                 "Finishing up..."
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
                     <div className="bg-background border border-border rounded-xl shadow-2xl w-[480px] p-6 space-y-5">
                         {/* Header */}
                         <div className="flex items-center gap-3">

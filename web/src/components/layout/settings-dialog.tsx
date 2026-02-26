@@ -146,7 +146,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                             size="sm"
                             onClick={handleChangePassword}
                             disabled={savingPassword || !currentPassword || !newPassword}
-                            className="gap-1.5 w-full justify-center bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 text-white"
+                            className="gap-1.5 w-full justify-center"
                         >
                             {savingPassword && <Loader2 className="h-3 w-3 animate-spin" />}
                             Update Password

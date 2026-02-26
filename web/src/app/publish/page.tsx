@@ -388,7 +388,7 @@ export default function PublishPage() {
                 {/* Common deadline + publish all */}
                 <div className="shrink-0 border-b border-border/40 px-5 py-3 space-y-3">
                     <div className="text-[10px] text-muted-foreground/60 bg-blue-500/5 border border-blue-500/10 rounded px-3 py-2 flex items-center gap-2">
-                        <Calendar className="h-3 w-3 text-blue-400 shrink-0" />
+                        <Calendar className="h-3 w-3 text-muted-foreground shrink-0 dark:text-blue-200" />
                         Set deadlines and publish approved actionables to the tracker. Published items will be assigned to teams.
                     </div>
 

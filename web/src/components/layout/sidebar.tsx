@@ -246,7 +246,7 @@ export function Sidebar({ className }: SidebarProps) {
           <button
             onClick={() => signOut().then(() => window.location.href = "/sign-in")}
             className={cn(
-              "w-full flex items-center rounded px-2 h-8 font-medium transition-colors border border-red-500 text-red-500 bg-transparent hover:bg-red-50",
+              "w-full flex items-center rounded px-2 h-8 font-medium transition-colors text-red-500 bg-transparent hover:bg-red-50",
               collapsed && "justify-center"
             )}
             type="button"
