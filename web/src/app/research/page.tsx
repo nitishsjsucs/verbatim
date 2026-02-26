@@ -28,6 +28,19 @@ const PdfViewer = dynamic(
 type RightPanel = "corpus" | "pdf"
 
 export default function ResearchPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="flex h-screen w-full bg-background items-center justify-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span className="animate-pulse">Loading...</span>
+            </div>
+        }>
+            <ResearchPageContent />
+        </React.Suspense>
+    )
+}
+
+function ResearchPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const continueConvId = searchParams.get("continue") || null

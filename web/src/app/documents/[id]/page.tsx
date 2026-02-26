@@ -42,6 +42,19 @@ function findNodeById(nodes: TreeNode[], nodeId: string): TreeNode | undefined {
 type ViewMode = "document" | "chat"
 
 export default function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
+    return (
+        <React.Suspense fallback={
+            <div className="flex h-screen w-full bg-background items-center justify-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span className="animate-pulse">Loading...</span>
+            </div>
+        }>
+            <DocumentPageContent params={params} />
+        </React.Suspense>
+    )
+}
+
+function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
     const { id } = React.use(params)
 
     const [doc, setDoc] = React.useState<DocumentDetail | null>(null)
