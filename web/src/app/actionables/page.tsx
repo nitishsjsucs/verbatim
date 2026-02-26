@@ -682,7 +682,15 @@ export default function ActionablesPage() {
     const [approvedCollapsed, setApprovedCollapsed] = React.useState(true)
 
     const pendingItems = React.useMemo(() => filtered.filter(e => e.item.approval_status !== "approved"), [filtered])
-    const approvedItems = React.useMemo(() => filtered.filter(e => e.item.approval_status === "approved"), [filtered])
+    const approvedItems = React.useMemo(() => {
+        const items = filtered.filter(e => e.item.approval_status === "approved")
+        // Sort by approval date descending so recently approved appear at top
+        return items.sort((a, b) => {
+            const aDate = (a.item as any).approved_at || a.item.published_at || ""
+            const bDate = (b.item as any).approved_at || b.item.published_at || ""
+            return bDate.localeCompare(aDate)
+        })
+    }, [filtered])
 
     return (
         <RoleRedirect>
@@ -733,8 +741,8 @@ export default function ActionablesPage() {
                         <div className="flex items-center gap-2 text-[10px]">
                             <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
                             <span className="px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-mono">{stats.approved} approved</span>
+                            <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
                             <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} published</span>
-                            <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground/60 font-mono">{stats.pending} pending</span>
                         </div>
                         <Button
                             variant="outline"

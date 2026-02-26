@@ -379,9 +379,9 @@ export default function PublishPage() {
                         Publish to Tracker
                     </h1>
                     <div className="flex items-center gap-2 text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{publishStats.published + publishStats.notPublished} total</span>
                         <span className="px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-mono">{publishStats.published} published</span>
                         <span className="px-2 py-0.5 rounded bg-amber-400/10 text-amber-400 font-mono">{publishStats.notPublished} not published</span>
-                        <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{publishQueue.length} total</span>
                     </div>
                 </div>
 

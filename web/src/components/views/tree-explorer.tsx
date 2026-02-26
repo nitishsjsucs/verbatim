@@ -130,7 +130,6 @@ function TreeItem({ node, level = 0, onSelect, selectedId, defaultExpanded }: Tr
                 )}
                 onClick={() => {
                     if (onSelect) onSelect(node)
-                    if (hasChildren) setExpanded(!expanded)
                 }}
                 style={{ paddingLeft: `${(level * 12) + 8}px` }}
             >

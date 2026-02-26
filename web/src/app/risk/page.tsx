@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
+import { ShieldAlert } from "lucide-react"
 
 export default function RiskPage() {
   return (
@@ -12,7 +13,10 @@ export default function RiskPage() {
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
           <div className="h-11 border-b border-border flex items-center px-5 shrink-0 bg-background">
-            <h1 className="text-sm font-semibold text-foreground">Risk</h1>
+            <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-primary" />
+              Risk
+            </h1>
           </div>
 
           {/* Content */}

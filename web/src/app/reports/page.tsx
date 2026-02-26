@@ -225,6 +225,19 @@ function ReportsContent() {
 
     React.useEffect(() => { loadData() }, [loadData])
 
+    // Deadline category helper
+    const dlCategory = React.useCallback((deadline: string | undefined, status: string | undefined): string => {
+        if (!deadline) return "none"
+        if (status === "completed") return "met"
+        const dl = new Date(deadline).getTime()
+        const now = Date.now()
+        if (dl >= now) return "yet"
+        const days = (now - dl) / (1000 * 60 * 60 * 24)
+        if (days <= 30) return "d30"
+        if (days <= 60) return "d60"
+        return "d90"
+    }, [])
+
     // Stats
     const stats = React.useMemo(() => {
         const total = allItems.length
@@ -255,8 +268,33 @@ function ReportsContent() {
 
         const completionRate = total > 0 ? ((byStatus.completed / total) * 100).toFixed(1) : "0"
 
-        return { total, totalActionables, approved, pending, published, byStatus, byRisk, byWorkstream, completionRate }
-    }, [allItems, allActionables])
+        // Deadline adherence stats
+        const dlMet = allItems.filter(a => a.task_status === "completed" && a.deadline && a.completion_date && new Date(a.completion_date).getTime() <= new Date(a.deadline).getTime()).length
+        const dlMissed = allItems.filter(a => a.task_status === "completed" && a.deadline && a.completion_date && new Date(a.completion_date).getTime() > new Date(a.deadline).getTime()).length
+        const dlYet = allItems.filter(a => dlCategory(a.deadline, a.task_status) === "yet").length
+        const dlD30 = allItems.filter(a => dlCategory(a.deadline, a.task_status) === "d30").length
+        const dlD60 = allItems.filter(a => dlCategory(a.deadline, a.task_status) === "d60").length
+        const dlD90 = allItems.filter(a => dlCategory(a.deadline, a.task_status) === "d90").length
+
+        // Workload by team (how many active tasks each team has)
+        const workload: Record<string, { active: number; review: number; completed: number; reworking: number }> = {}
+        for (const a of allItems) {
+            const team = safeStr(a.workstream) || "Other"
+            if (!workload[team]) workload[team] = { active: 0, review: 0, completed: 0, reworking: 0 }
+            const s = a.task_status || "assigned"
+            if (s === "assigned" || s === "in_progress") workload[team].active++
+            else if (s === "review") workload[team].review++
+            else if (s === "completed") workload[team].completed++
+            else if (s === "reworking") workload[team].reworking++
+        }
+
+        return {
+            total, totalActionables, approved, pending, published,
+            byStatus, byRisk, byWorkstream, completionRate,
+            dlMet, dlMissed, dlYet, dlD30, dlD60, dlD90,
+            workload,
+        }
+    }, [allItems, allActionables, dlCategory])
 
     // Pie chart data — by status
     const statusPieData = React.useMemo(() => {
@@ -288,6 +326,31 @@ function ReportsContent() {
                 color: WORKSTREAM_BAR_COLORS[i % WORKSTREAM_BAR_COLORS.length],
             }))
     }, [stats.byWorkstream])
+
+    // Deadline adherence pie
+    const deadlinePieData = React.useMemo(() => [
+        { label: "Met Deadline", value: stats.dlMet, color: "#22c55e" },
+        { label: "Missed Deadline", value: stats.dlMissed, color: "#ef4444" },
+        { label: "Yet to Deadline", value: stats.dlYet, color: "#3b82f6" },
+    ], [stats.dlMet, stats.dlMissed, stats.dlYet])
+
+    // Delay breakdown bar
+    const delayBarData = React.useMemo(() => [
+        { label: "Yet to DL", value: stats.dlYet, color: "#22c55e" },
+        { label: "Delayed ≤30d", value: stats.dlD30, color: "#f59e0b" },
+        { label: "Delayed ≤60d", value: stats.dlD60, color: "#f97316" },
+        { label: "Delayed >60d", value: stats.dlD90, color: "#ef4444" },
+    ], [stats.dlYet, stats.dlD30, stats.dlD60, stats.dlD90])
+
+    // Workload stacked bar data
+    const workloadData = React.useMemo(() => {
+        return Object.entries(stats.workload)
+            .sort((a, b) => {
+                const aTotal = a[1].active + a[1].review + a[1].completed + a[1].reworking
+                const bTotal = b[1].active + b[1].review + b[1].completed + b[1].reworking
+                return bTotal - aTotal
+            })
+    }, [stats.workload])
 
     return (
         <div className="flex h-screen bg-background">
@@ -489,6 +552,106 @@ function ReportsContent() {
                                     {allItems.length === 0 && (
                                         <div className="text-sm text-muted-foreground/40 text-center py-8">
                                             No published tasks yet
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* ══════════ Compliance Officer Graphs ══════════ */}
+
+                            {/* ── Deadline Adherence + Delay Breakdown ── */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-card border border-border rounded-lg p-5">
+                                    <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+                                        Deadline Adherence
+                                    </h3>
+                                    <PieChart data={deadlinePieData} />
+                                </div>
+
+                                <div className="bg-card border border-border rounded-lg p-5">
+                                    <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                        <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                                        Delay Breakdown (Active Tasks)
+                                    </h3>
+                                    <BarChart data={delayBarData} />
+                                </div>
+                            </div>
+
+                            {/* ── Approvals Overview ── */}
+                            <div className="bg-card border border-border rounded-lg p-5">
+                                <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                    <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                                    Approvals Overview
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-muted/20 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-foreground">{stats.totalActionables}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Total Extracted</p>
+                                    </div>
+                                    <div className="bg-emerald-500/10 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-emerald-500">{stats.approved}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Approved</p>
+                                    </div>
+                                    <div className="bg-yellow-500/10 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Pending Review</p>
+                                    </div>
+                                    <div className="bg-blue-500/10 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-blue-500">{stats.published}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Published</p>
+                                    </div>
+                                </div>
+                                {stats.totalActionables > 0 && (
+                                    <div className="mt-4 flex items-center gap-3">
+                                        <span className="text-[10px] text-muted-foreground">Approval Rate</span>
+                                        <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
+                                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(stats.approved / stats.totalActionables) * 100}%` }} />
+                                        </div>
+                                        <span className="text-[10px] font-mono text-muted-foreground">{((stats.approved / stats.totalActionables) * 100).toFixed(1)}%</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* ── Team Workload ── */}
+                            <div className="bg-card border border-border rounded-lg p-5">
+                                <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                    Team Workload Distribution
+                                </h3>
+                                <div className="space-y-3">
+                                    {workloadData.map(([team, w]) => {
+                                        const total = w.active + w.review + w.completed + w.reworking
+                                        return (
+                                            <div key={team} className="flex items-center gap-3">
+                                                <span className="text-xs text-foreground w-44 truncate font-medium">{team}</span>
+                                                <div className="flex-1 h-4 rounded-full overflow-hidden flex bg-muted/30">
+                                                    {w.active > 0 && (
+                                                        <div className="h-full bg-amber-500" style={{ width: `${(w.active / total) * 100}%` }} title={`Active: ${w.active}`} />
+                                                    )}
+                                                    {w.review > 0 && (
+                                                        <div className="h-full bg-blue-500" style={{ width: `${(w.review / total) * 100}%` }} title={`Review: ${w.review}`} />
+                                                    )}
+                                                    {w.reworking > 0 && (
+                                                        <div className="h-full bg-orange-500" style={{ width: `${(w.reworking / total) * 100}%` }} title={`Reworking: ${w.reworking}`} />
+                                                    )}
+                                                    {w.completed > 0 && (
+                                                        <div className="h-full bg-emerald-500" style={{ width: `${(w.completed / total) * 100}%` }} title={`Completed: ${w.completed}`} />
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] font-mono text-muted-foreground shrink-0 w-8 text-right">{total}</span>
+                                            </div>
+                                        )
+                                    })}
+                                    {workloadData.length === 0 && (
+                                        <div className="text-sm text-muted-foreground/40 text-center py-8">No data</div>
+                                    )}
+                                    {workloadData.length > 0 && (
+                                        <div className="flex items-center gap-4 pt-2 mt-2 border-t border-border/20">
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-amber-500" /><span className="text-[10px] text-muted-foreground">Active</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-blue-500" /><span className="text-[10px] text-muted-foreground">Review</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-orange-500" /><span className="text-[10px] text-muted-foreground">Reworking</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-emerald-500" /><span className="text-[10px] text-muted-foreground">Completed</span></div>
                                         </div>
                                     )}
                                 </div>

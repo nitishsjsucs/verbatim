@@ -285,10 +285,10 @@ export function DocumentList() {
         <Table>
             <TableHeader>
                 <TableRow className="border-b border-border hover:bg-transparent">
-                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4" style={{ width: '40%', minWidth: 220, maxWidth: 400 }}>Name</TableHead>
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Ingested</TableHead>
-                    <TableHead className="h-9 w-[360px]"></TableHead>
+                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[130px] text-right">Date Ingested</TableHead>
+                    <TableHead className="h-9" style={{ width: '45%', minWidth: 380 }}></TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>

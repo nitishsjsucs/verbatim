@@ -9,7 +9,7 @@ interface CommentThreadProps {
     comments: ActionableComment[]
     currentUser: string
     currentRole: "compliance_officer" | "team_member"
-    onAddComment: (text: string) => Promise<void>
+    onAddComment?: (text: string) => Promise<void>
 }
 
 function formatTimestamp(iso: string): string {
@@ -48,7 +48,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
         if (!text || sending) return
         setSending(true)
         try {
-            await onAddComment(text)
+            await onAddComment?.(text)
             setDraft("")
         } finally {
             setSending(false)
@@ -127,7 +127,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
             </div>
 
             {/* Input */}
-            <div className="flex items-end gap-2 mt-2 pt-2 border-t border-border/20">
+            {onAddComment && <div className="flex items-end gap-2 mt-2 pt-2 border-t border-border/20">
                 <textarea
                     value={draft}
                     onChange={e => setDraft(e.target.value)}
@@ -148,7 +148,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                 >
                     {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 </button>
-            </div>
+            </div>}
         </div>
     )
 }

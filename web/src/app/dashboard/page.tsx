@@ -20,7 +20,7 @@ import {
     Loader2, Search, AlertTriangle,
     Paperclip, Calendar, Save, ExternalLink,
     Download, FileText, X, CheckCircle2,
-    XCircle, MessageSquare,
+    XCircle, MessageSquare, SortAsc, SortDesc,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -81,6 +81,21 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
 }
 
 const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
+
+const STATUS_SORT_ORDER: Record<string, number> = {
+    review: 0, reworking: 1, in_progress: 2, assigned: 3, completed: 4,
+}
+
+function deadlineCategory(deadline: string | undefined): string {
+    if (!deadline) return "none"
+    const dl = new Date(deadline).getTime()
+    const now = Date.now()
+    if (dl >= now) return "yet"
+    const days = (now - dl) / (1000 * 60 * 60 * 24)
+    if (days <= 30) return "d30"
+    if (days <= 60) return "d60"
+    return "d90"
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -153,7 +168,12 @@ export default function DashboardPage() {
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
     const [riskFilter, setRiskFilter] = React.useState<string>("all")
+    const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
+    const [sortBy, setSortBy] = React.useState<string>("status")
+    const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
+    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
+    const [completedCollapsed, setCompletedCollapsed] = React.useState(false)
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
 
     const userName = session?.user?.name || "Compliance Officer"
@@ -216,11 +236,12 @@ export default function DashboardPage() {
         return rows
     }, [allDocs])
 
-    // Filter
+    // Filter + Sort
     const filtered = React.useMemo(() => {
-        return allRows.filter(({ item }) => {
+        let result = allRows.filter(({ item }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
+            if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)}`.toLowerCase()
@@ -228,7 +249,27 @@ export default function DashboardPage() {
             }
             return true
         })
-    }, [allRows, statusFilter, riskFilter, searchQuery])
+        // Sort
+        result = [...result].sort((a, b) => {
+            let cmp = 0
+            if (sortBy === "status") {
+                cmp = (STATUS_SORT_ORDER[a.item.task_status || "assigned"] || 3) - (STATUS_SORT_ORDER[b.item.task_status || "assigned"] || 3)
+            } else if (sortBy === "deadline") {
+                const da = a.item.deadline ? new Date(a.item.deadline).getTime() : Infinity
+                const db = b.item.deadline ? new Date(b.item.deadline).getTime() : Infinity
+                cmp = da - db
+            } else if (sortBy === "risk") {
+                const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
+                cmp = (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1)
+            } else if (sortBy === "published") {
+                const pa = a.item.published_at ? new Date(a.item.published_at).getTime() : 0
+                const pb = b.item.published_at ? new Date(b.item.published_at).getTime() : 0
+                cmp = pb - pa
+            }
+            return sortDir === "desc" ? -cmp : cmp
+        })
+        return result
+    }, [allRows, statusFilter, riskFilter, deadlineFilter, searchQuery, sortBy, sortDir])
 
     // Split into active (non-completed) and completed
     const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
@@ -284,7 +325,11 @@ export default function DashboardPage() {
         const highRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "High Risk").length
         const midRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Medium Risk").length
         const lowRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Low Risk").length
-        return { total, completed, inProgress, reworking, review, assigned, highRisk, midRisk, lowRisk }
+        const yetToDeadline = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "yet").length
+        const delayed30 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d30").length
+        const delayed60 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d60").length
+        const delayed90 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d90").length
+        return { total, completed, inProgress, reworking, review, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
     }, [allRows])
 
     const toggleGroup = (ws: string) => {
@@ -315,8 +360,8 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ── Stats row ── */}
-                <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4">
-                    <div className="flex items-center gap-6">
+                <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
+                    <div className="flex items-center gap-4">
                         <div className="text-center">
                             <p className="text-lg font-bold text-foreground">{stats.total}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Total</p>
@@ -342,19 +387,22 @@ export default function DashboardPage() {
                             <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
                         </div>
-                        
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
-                            <p className="text-lg font-bold text-red-500">{stats.highRisk}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">High Risk</p>
+                            <p className="text-lg font-bold text-emerald-500">{stats.yetToDeadline}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-yellow-500">{stats.midRisk}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Mid Risk</p>
+                            <p className="text-lg font-bold text-amber-500">{stats.delayed30}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-emerald-500">{stats.lowRisk}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Low Risk</p>
+                            <p className="text-lg font-bold text-orange-500">{stats.delayed60}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-lg font-bold text-red-500">{stats.delayed90}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
                         </div>
                     </div>
 
@@ -367,7 +415,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ── Filters ── */}
-                <div className="shrink-0 border-b border-border/40 px-5 py-2 flex items-center gap-2">
+                <div className="shrink-0 border-b border-border/40 px-5 py-2 flex items-center gap-2 flex-wrap">
                     <div className="relative flex-1 max-w-xs">
                         <Search className="absolute left-2.5 top-[7px] h-3.5 w-3.5 text-muted-foreground" />
                         <input
@@ -397,6 +445,39 @@ export default function DashboardPage() {
                         <option value="all">All Risk</option>
                         {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
+
+                    <select
+                        value={deadlineFilter}
+                        onChange={e => setDeadlineFilter(e.target.value)}
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                    >
+                        <option value="all">All Deadlines</option>
+                        <option value="yet">Yet to Deadline</option>
+                        <option value="d30">Delayed 30d</option>
+                        <option value="d60">Delayed 60d</option>
+                        <option value="d90">Delayed 90d</option>
+                    </select>
+
+                    <div className="flex items-center gap-1 ml-auto">
+                        <span className="text-[10px] text-muted-foreground/50">Sort:</span>
+                        <select
+                            value={sortBy}
+                            onChange={e => setSortBy(e.target.value)}
+                            className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                        >
+                            <option value="status">Status</option>
+                            <option value="deadline">Deadline</option>
+                            <option value="risk">Risk</option>
+                            <option value="published">Date Published</option>
+                        </select>
+                        <button
+                            onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+                            className="p-1 rounded hover:bg-muted/30 text-muted-foreground/50 hover:text-foreground transition-colors"
+                            title={sortDir === "asc" ? "Ascending" : "Descending"}
+                        >
+                            {sortDir === "asc" ? <SortAsc className="h-3.5 w-3.5" /> : <SortDesc className="h-3.5 w-3.5" />}
+                        </button>
+                    </div>
                 </div>
 
                 {/* ── Board table ── */}
@@ -420,11 +501,23 @@ export default function DashboardPage() {
                         </div>
                     )}
 
-                    {!loading && sortedGroupKeys.map(ws => {
+                    {/* ── Active section header ── */}
+                    {!loading && activeRows.length > 0 && (
+                        <div className="px-3 py-2 bg-yellow-500/5 border-b border-yellow-500/20 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
+                            <span className="text-xs font-semibold text-yellow-500 flex items-center gap-2">
+                                {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                Active ({activeRows.length})
+                            </span>
+                        </div>
+                    )}
+
+                    {!loading && !activeCollapsed && sortedGroupKeys.map(ws => {
                         const rows = grouped[ws] || []
                         const isCollapsed = collapsedGroups.has(ws)
                         const wsColors = WORKSTREAM_COLORS[ws] || WORKSTREAM_COLORS.Other
                         const groupCompleted = rows.filter(r => r.item.task_status === "completed").length
+                        const pct = rows.length > 0 ? Math.round((groupCompleted / rows.length) * 100) : 0
 
                         return (
                             <div key={ws} className="mb-1">
@@ -439,9 +532,7 @@ export default function DashboardPage() {
                                         <span className="text-xs font-semibold text-foreground">{ws}</span>
                                         <span className="text-[10px] text-muted-foreground/50 font-mono">{rows.length} items</span>
                                     </button>
-                                    <div className="w-32 shrink-0">
-                                        <ProgressBar completed={groupCompleted} total={rows.length} />
-                                    </div>
+                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">{groupCompleted}/{rows.length} ({pct}%)</span>
                                 </div>
 
                                 {/* ── Column headers ── */}
@@ -594,14 +685,15 @@ export default function DashboardPage() {
                     {/* ── Completed Section ── */}
                     {!loading && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20">
+                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
                                 <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
+                                    {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                     Completed ({completedRows.length})
                                 </span>
                             </div>
 
-                            {completedTeamKeys.map(ws => {
+                            {!completedCollapsed && completedTeamKeys.map(ws => {
                                 const rows = completedByTeam[ws] || []
                                 const isCollapsed = collapsedCompletedTeams.has(ws)
                                 const wsColors = WORKSTREAM_COLORS[ws] || WORKSTREAM_COLORS.Other

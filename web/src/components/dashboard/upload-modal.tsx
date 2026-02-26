@@ -112,9 +112,9 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                     /* Post-ingestion result summary — matches Extract Actionable style */
                     <div className="mt-4 space-y-5 overflow-y-auto max-h-[60vh]">
                         {/* Header with icon */}
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-green-500/15 flex items-center justify-center">
-                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
+                                <CheckCircle2 className="h-7 w-7 text-green-500" />
                             </div>
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold text-foreground truncate">{result.doc_name}</p>
@@ -165,9 +165,9 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                 ) : uploading ? (
                     /* Uploading state — progress bar matching Extract Actionable style */
                     <div className="mt-4 space-y-5">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-purple-500/15 flex items-center justify-center">
-                                <Loader2 className="h-5 w-5 text-purple-500 animate-spin" />
+                        <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
+                                <Loader2 className="h-7 w-7 text-purple-500 animate-spin" />
                             </div>
                             <div>
                                 <h2 className="text-sm font-semibold text-foreground">Ingesting Document</h2>

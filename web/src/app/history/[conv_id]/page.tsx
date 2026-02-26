@@ -286,6 +286,28 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
         }
     }, [isResearch, conv])
 
+    // For research conversations, auto-open PDF from first citation doc_id
+    React.useEffect(() => {
+        if (!isResearch || !conv || pdfDocId) return
+        // Try to find the first doc_id from citations in messages
+        for (const msg of conv.messages) {
+            if (msg.citations) {
+                for (const cite of msg.citations) {
+                    const cDocId = (cite as any).doc_id as string | undefined
+                    if (cDocId) { setPdfDocId(cDocId); return }
+                }
+            }
+            if (msg.retrieved_sections) {
+                for (const sec of msg.retrieved_sections as any[]) {
+                    if (sec.doc_id) { setPdfDocId(sec.doc_id); return }
+                }
+            }
+        }
+        // Fallback: use first document from the docNameMap
+        const firstDocId = Object.values(docNameMap)[0]
+        if (firstDocId) setPdfDocId(firstDocId)
+    }, [isResearch, conv, pdfDocId, docNameMap])
+
     const pdfUrl = pdfDocId
         ? `${API_BASE}/documents/${pdfDocId}/raw`
         : null
