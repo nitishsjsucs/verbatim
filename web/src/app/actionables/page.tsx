@@ -3,7 +3,6 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import dynamic from "next/dynamic"
-import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 import {
     fetchAllActionables,
     updateActionable,
@@ -29,15 +28,7 @@ import { RoleRedirect } from "@/components/auth/role-redirect"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="flex items-center justify-center h-full w-full text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Loading PDF viewer...
-            </div>
-        ),
-    }
+    { ssr: false }
 )
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
@@ -484,7 +475,8 @@ export default function ActionablesPage() {
     // PDF state
     const [pdfDocId, setPdfDocId] = React.useState<string | null>(null)
     const [pdfDocName, setPdfDocName] = React.useState<string>("")
-    const pdfRef = React.useRef<PdfViewerHandle>(null)
+    const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
+    const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
     // Selection
     const [selectedItemKey, setSelectedItemKey] = React.useState<string | null>(null)
@@ -557,10 +549,9 @@ export default function ActionablesPage() {
             setPdfDocId(docId)
             const doc = allDocs.find(d => d.doc_id === docId)
             setPdfDocName(doc?.doc_name || docId)
-            setTimeout(() => { pdfRef.current?.jumpToPage(pageNumber - 1) }, 800)
-        } else {
-            pdfRef.current?.jumpToPage(pageNumber - 1)
         }
+        setPdfJumpPage(pageNumber - 1)
+        setPdfJumpKey(k => k + 1)
     }, [pdfDocId, allDocs])
 
     // Flatten all actionables with doc info (exclude published items — they live in tracker now)
@@ -947,7 +938,7 @@ export default function ActionablesPage() {
                         )}
                         <div className="flex-1 min-h-0 overflow-hidden">
                             {pdfUrl ? (
-                                <PdfViewer ref={pdfRef} fileUrl={pdfUrl} className="h-full w-full" />
+                                <PdfViewer fileUrl={pdfUrl} jumpToPage={pdfJumpPage} jumpKey={pdfJumpKey} className="h-full w-full" />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-muted-foreground/40 text-sm">
                                     No document selected

@@ -14,19 +14,10 @@ import { Conversation, ConversationMessage } from "@/lib/types"
 import Link from "next/link"
 import { Markdown } from "@/components/ui/markdown"
 import dynamic from "next/dynamic"
-import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="flex items-center justify-center h-full w-full text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                <span className="text-sm">Loading PDF viewer...</span>
-            </div>
-        ),
-    }
+    { ssr: false }
 )
 
 // --- Helper components ---
@@ -128,8 +119,8 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                         </div>
                         <div className="grid gap-1.5">
                             {msg.citations.map((cite) => {
-                                const pageMatch = cite.page_range.match(/p\.?\s*(\d+)/)
-                                const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : null
+                                const pageMatch = cite.page_range?.match(/p\.?\s*(\d+)/)
+                                const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 1
                                 const citeDocId = (cite as any).doc_id as string | undefined
                                 const citeDocName = (cite as any).doc_name as string | undefined
                                 return (
@@ -137,9 +128,9 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                                     key={cite.citation_id}
                                     className={cn(
                                         "bg-background/50 border border-border/40 rounded-lg p-2.5 transition-colors",
-                                        pageNum && onCitationClick ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : ""
+                                        onCitationClick ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : ""
                                     )}
-                                    onClick={() => pageNum && onCitationClick?.(citeDocId, pageNum, citeDocName)}
+                                    onClick={() => onCitationClick?.(citeDocId, pageNum, citeDocName)}
                                 >
                                     <div className="flex items-center justify-between gap-2 mb-1">
                                         <div className="flex items-center gap-1.5 min-w-0">
@@ -220,7 +211,6 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
     const bottomRef = React.useRef<HTMLDivElement>(null)
-    const pdfRef = React.useRef<PdfViewerHandle>(null)
 
     React.useEffect(() => {
         setLoading(true)
@@ -244,7 +234,8 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
     // For document conversations, use the conversation's doc_id.
     // For research conversations, dynamically load based on citation doc_id.
     const [pdfDocId, setPdfDocId] = React.useState<string | null>(null)
-    const [pendingPage, setPendingPage] = React.useState<number | null>(null)
+    const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
+    const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
     // Set initial pdfDocId for document conversations
     React.useEffect(() => {
@@ -257,37 +248,14 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
         ? `${API_BASE}/documents/${pdfDocId}/raw`
         : null
 
-    // Handle pending page jump after PDF loads
-    React.useEffect(() => {
-        if (pendingPage !== null && pdfDocId) {
-            let attempts = 0
-            const interval = setInterval(() => {
-                attempts++
-                if (pdfRef.current) {
-                    pdfRef.current.jumpToPage(pendingPage - 1)
-                }
-                if (attempts >= 20) {
-                    clearInterval(interval)
-                    setPendingPage(null)
-                }
-            }, 300)
-            return () => clearInterval(interval)
-        }
-    }, [pendingPage, pdfDocId])
-
     const handleCitationClick = React.useCallback((docId: string | undefined, pageNumber: number, docName?: string) => {
         const targetDocId = docId || conv?.doc_id
         if (!targetDocId) return
 
-        if (pdfDocId === targetDocId) {
-            // Same doc — just jump
-            pdfRef.current?.jumpToPage(pageNumber - 1)
-        } else {
-            // Different doc — load it, then jump after render
-            setPdfDocId(targetDocId)
-            setPendingPage(pageNumber)
-        }
-    }, [pdfDocId, conv])
+        setPdfDocId(targetDocId)
+        setPdfJumpPage(pageNumber - 1)
+        setPdfJumpKey(k => k + 1)
+    }, [conv])
 
     return (
         <RoleRedirect>
@@ -371,8 +339,9 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                     {pdfUrl && (
                         <div className="flex-1 min-h-0 overflow-hidden">
                             <PdfViewer
-                                ref={pdfRef}
                                 fileUrl={pdfUrl}
+                                jumpToPage={pdfJumpPage}
+                                jumpKey={pdfJumpKey}
                                 className="h-full w-full"
                             />
                         </div>

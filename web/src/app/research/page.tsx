@@ -5,7 +5,6 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { ResearchChat } from "@/components/views/research-chat"
 import { CorpusPanel } from "@/components/views/corpus-panel"
 import dynamic from "next/dynamic"
-import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 import { Loader2, X, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -14,15 +13,7 @@ import { RoleRedirect } from "@/components/auth/role-redirect"
 // Dynamic import — pdf.js requires browser APIs (no SSR)
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="flex items-center justify-center h-full w-full text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Loading PDF viewer...
-            </div>
-        ),
-    }
+    { ssr: false }
 )
 
 type RightPanel = "corpus" | "pdf"
@@ -44,49 +35,23 @@ function ResearchPageContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const continueConvId = searchParams.get("continue") || null
-    const pdfRef = React.useRef<PdfViewerHandle>(null)
-
     // Which right panel to show
     const [rightPanel, setRightPanel] = React.useState<RightPanel>("corpus")
 
     // PDF viewer state
     const [pdfDocId, setPdfDocId] = React.useState<string | null>(null)
     const [pdfDocName, setPdfDocName] = React.useState<string>("")
-    const [pendingPage, setPendingPage] = React.useState<number | null>(null)
+    const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
+    const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
     // When citation is clicked in chat, load the document's PDF and jump to page
     const handleCitationClick = React.useCallback((docId: string, pageNumber: number, docName?: string) => {
-        if (pdfDocId === docId) {
-            // Same document — just jump
-            pdfRef.current?.jumpToPage(pageNumber - 1)
-            setRightPanel("pdf")
-        } else {
-            // Different document — load it and queue the page jump
-            setPdfDocId(docId)
-            setPdfDocName(docName || docId)
-            setPendingPage(pageNumber)
-            setRightPanel("pdf")
-        }
-    }, [pdfDocId])
-
-    // Jump to pending page when PdfViewer mounts with a new doc
-    React.useEffect(() => {
-        if (pendingPage !== null && pdfDocId) {
-            // Retry jumping until the PDF is ready (blob fetch + render takes time)
-            let attempts = 0
-            const interval = setInterval(() => {
-                attempts++
-                if (pdfRef.current) {
-                    pdfRef.current.jumpToPage(pendingPage - 1)
-                }
-                if (attempts >= 20) {
-                    clearInterval(interval)
-                    setPendingPage(null)
-                }
-            }, 300)
-            return () => clearInterval(interval)
-        }
-    }, [pendingPage, pdfDocId])
+        setPdfDocId(docId)
+        setPdfDocName(docName || docId)
+        setPdfJumpPage(pageNumber - 1)
+        setPdfJumpKey(k => k + 1)
+        setRightPanel("pdf")
+    }, [])
 
     const handleDocumentClick = React.useCallback((docId: string) => {
         // Navigate to the document detail page
@@ -139,8 +104,9 @@ function ResearchPageContent() {
                                 {/* PDF Viewer */}
                                 <div className="flex-1 min-h-0 overflow-hidden">
                                     <PdfViewer
-                                        ref={pdfRef}
                                         fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${pdfDocId}/raw`}
+                                        jumpToPage={pdfJumpPage}
+                                        jumpKey={pdfJumpKey}
                                     />
                                 </div>
                             </>

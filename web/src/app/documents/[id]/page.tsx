@@ -6,7 +6,6 @@ import { ChatInterface } from "@/components/views/chat-interface"
 import { TreeExplorer } from "@/components/views/tree-explorer"
 import { NodeDetailPanel } from "@/components/views/node-detail-panel"
 import dynamic from "next/dynamic"
-import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 import { fetchDocument } from "@/lib/api"
 import { DocumentDetail, TreeNode } from "@/lib/types"
 import { Loader2, AlertCircle, FileText, MessageSquare } from "lucide-react"
@@ -17,15 +16,7 @@ import { useSearchParams } from "next/navigation"
 // Dynamic import — pdf.js requires browser APIs (no SSR)
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="flex items-center justify-center h-full w-full text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Loading PDF viewer...
-            </div>
-        ),
-    }
+    { ssr: false }
 )
 
 function findNodeById(nodes: TreeNode[], nodeId: string): TreeNode | undefined {
@@ -66,8 +57,9 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
     const continueConvId = searchParams.get("continue") || null
     const [viewMode, setViewMode] = React.useState<ViewMode>(initialTab)
 
-    // Ref to control PDF viewer — no state updates, no re-render loops
-    const pdfRef = React.useRef<PdfViewerHandle>(null)
+    // Prop-based page navigation for PdfViewer (ref forwarding broken with dynamic + React 19)
+    const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
+    const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
     React.useEffect(() => {
         fetchDocument(id)
@@ -85,15 +77,16 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
 
     const handleNodeSelect = React.useCallback((node: TreeNode) => {
         setSelectedNodeId(node.node_id)
-        // Jump to the page in the PDF viewer via ref (no state update)
-        if (pdfRef.current && node.start_page >= 1) {
-            pdfRef.current.jumpToPage(node.start_page - 1)
+        if (node.start_page >= 1) {
+            setPdfJumpPage(node.start_page - 1)
+            setPdfJumpKey(k => k + 1)
         }
     }, [])
 
     const handleCitationClick = React.useCallback((pageNumber: number) => {
-        if (pdfRef.current && pageNumber >= 1) {
-            pdfRef.current.jumpToPage(pageNumber - 1)
+        if (pageNumber >= 1) {
+            setPdfJumpPage(pageNumber - 1)
+            setPdfJumpKey(k => k + 1)
         }
     }, [])
 
@@ -186,8 +179,9 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                             {/* PDF Viewer — 60% width */}
                             <div className="w-[60%] min-w-0 h-full">
                                 <PdfViewer
-                                    ref={pdfRef}
                                     fileUrl={pdfUrl}
+                                    jumpToPage={pdfJumpPage}
+                                    jumpKey={pdfJumpKey}
                                 />
                             </div>
                         </>
@@ -202,8 +196,9 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                             {/* PDF Viewer (right side — 40%) */}
                             <div className="w-[40%] min-w-0 h-full">
                                 <PdfViewer
-                                    ref={pdfRef}
                                     fileUrl={pdfUrl}
+                                    jumpToPage={pdfJumpPage}
+                                    jumpKey={pdfJumpKey}
                                 />
                             </div>
                         </>
