@@ -6,6 +6,7 @@ import { ResearchChat } from "@/components/views/research-chat"
 import { CorpusPanel } from "@/components/views/corpus-panel"
 import dynamic from "next/dynamic"
 import { Loader2, X, FileText } from "lucide-react"
+import { fetchDocuments } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { RoleRedirect } from "@/components/auth/role-redirect"
@@ -44,15 +45,39 @@ function ResearchPageContent() {
     const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
     const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
+    // Cache document name → id map for resolving citations with missing doc_id
+    const [docNameMap, setDocNameMap] = React.useState<Record<string, string>>({})
+    React.useEffect(() => {
+        fetchDocuments().then(docs => {
+            const map: Record<string, string> = {}
+            docs.forEach(d => { map[d.name] = d.id })
+            setDocNameMap(map)
+        }).catch(() => {})
+    }, [])
+
     // When citation is clicked in chat, load the document's PDF and jump to page
     const handleCitationClick = React.useCallback((docId: string, pageNumber: number, docName?: string) => {
-        console.log("[Research] handleCitationClick:", { docId, pageNumber, docName })
-        setPdfDocId(docId)
-        setPdfDocName(docName || docId)
+        let resolvedId = docId
+        // Resolve empty docId from docName using cached document list
+        if (!resolvedId && docName) {
+            resolvedId = docNameMap[docName] || ""
+            if (!resolvedId) {
+                for (const [name, id] of Object.entries(docNameMap)) {
+                    if (name.includes(docName) || docName.includes(name)) {
+                        resolvedId = id
+                        break
+                    }
+                }
+            }
+        }
+        if (!resolvedId) return
+
+        setPdfDocId(resolvedId)
+        setPdfDocName(docName || resolvedId)
         setPdfJumpPage(pageNumber - 1)
         setPdfJumpKey(k => k + 1)
         setRightPanel("pdf")
-    }, [])
+    }, [docNameMap])
 
     const handleDocumentClick = React.useCallback((docId: string) => {
         // Navigate to the document detail page

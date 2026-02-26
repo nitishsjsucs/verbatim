@@ -233,6 +233,8 @@ class QueryRecord:
                 "page_range": s.page_range,
                 "source": s.source,
                 "token_count": s.token_count,
+                "doc_id": s.doc_id,
+                "doc_name": s.doc_name,
             }
             for s in self.retrieved_sections
         ]

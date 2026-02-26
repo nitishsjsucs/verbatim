@@ -1233,8 +1233,8 @@ def run_corpus_query(request: CorpusQueryRequest):
                 "page_range": s.page_range,
                 "source": s.source,
                 "token_count": s.token_count,
-                "doc_id": getattr(s, "_doc_id", ""),
-                "doc_name": getattr(s, "_doc_name", ""),
+                "doc_id": s.doc_id,
+                "doc_name": s.doc_name,
             }
             for s in answer.retrieved_sections
         ]

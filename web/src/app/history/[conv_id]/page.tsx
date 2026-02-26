@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
-import { fetchConversation } from "@/lib/api"
+import { fetchConversation, fetchDocuments } from "@/lib/api"
 import { Conversation, ConversationMessage } from "@/lib/types"
 import Link from "next/link"
 import { Markdown } from "@/components/ui/markdown"
@@ -121,8 +121,29 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                             {msg.citations.map((cite) => {
                                 const pageMatch = cite.page_range?.match(/p\.?\s*(\d+)/)
                                 const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 1
-                                const citeDocId = (cite as any).doc_id as string | undefined
-                                const citeDocName = (cite as any).doc_name as string | undefined
+
+                                // Get doc_id with fallbacks
+                                let citeDocId = (cite as any).doc_id as string | undefined
+                                let citeDocName = (cite as any).doc_name as string | undefined
+
+                                // Fallback 1: look up from retrieved_sections by node_id
+                                if (!citeDocId && msg.retrieved_sections) {
+                                    const sec = (msg.retrieved_sections as any[]).find((s: any) => s.node_id === cite.node_id)
+                                    if (sec?.doc_id) { citeDocId = sec.doc_id; citeDocName = citeDocName || sec.doc_name || "" }
+                                }
+
+                                // Fallback 2: parse filename from citation_id "[filename | section, p.N]"
+                                if (!citeDocId && cite.citation_id && msg.retrieved_sections) {
+                                    const cidMatch = cite.citation_id.match(/^\[(.+?)\s*\|/)
+                                    if (cidMatch) {
+                                        const fname = cidMatch[1].trim()
+                                        const sec = (msg.retrieved_sections as any[]).find((s: any) =>
+                                            s.doc_name === fname || (s.doc_name && fname.includes(s.doc_name)) || (s.doc_name && s.doc_name.includes(fname))
+                                        )
+                                        if (sec?.doc_id) { citeDocId = sec.doc_id; citeDocName = citeDocName || sec.doc_name || fname }
+                                    }
+                                }
+
                                 return (
                                 <div
                                     key={cite.citation_id}
@@ -131,8 +152,14 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                                         onCitationClick ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : ""
                                     )}
                                     onClick={() => {
-                                        console.log("[History] Citation clicked:", { citeDocId, pageNum, citeDocName, page_range: cite.page_range, hasCallback: !!onCitationClick })
-                                        onCitationClick?.(citeDocId, pageNum, citeDocName)
+                                        // If still no doc_id, pass filename from citation_id as docName for parent resolution
+                                        let finalDocId = citeDocId
+                                        let finalDocName = citeDocName
+                                        if (!finalDocId && cite.citation_id) {
+                                            const cidFb = cite.citation_id.match(/^\[(.+?)\s*\|/)
+                                            if (cidFb) { finalDocName = finalDocName || cidFb[1].trim() }
+                                        }
+                                        onCitationClick?.(finalDocId, pageNum, finalDocName)
                                     }}
                                 >
                                     <div className="flex items-center justify-between gap-2 mb-1">
@@ -240,6 +267,18 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
     const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
     const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
+    // Cache document name → id map for resolving citations with missing doc_id
+    const [docNameMap, setDocNameMap] = React.useState<Record<string, string>>({})
+    React.useEffect(() => {
+        if (isResearch) {
+            fetchDocuments().then(docs => {
+                const map: Record<string, string> = {}
+                docs.forEach(d => { map[d.name] = d.id })
+                setDocNameMap(map)
+            }).catch(() => {})
+        }
+    }, [isResearch])
+
     // Set initial pdfDocId for document conversations
     React.useEffect(() => {
         if (!isResearch && conv?.doc_id) {
@@ -252,17 +291,25 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
         : null
 
     const handleCitationClick = React.useCallback((docId: string | undefined, pageNumber: number, docName?: string) => {
-        const targetDocId = docId || (conv?.doc_id !== "research" ? conv?.doc_id : undefined)
-        console.log("[History] handleCitationClick:", { docId, pageNumber, docName, targetDocId, convDocId: conv?.doc_id, isResearch })
-        if (!targetDocId) {
-            console.warn("[History] No valid doc_id for citation — cannot open PDF")
-            return
+        let targetDocId = docId || (conv?.doc_id !== "research" ? conv?.doc_id : undefined)
+        // Resolve empty docId from docName using cached document list
+        if (!targetDocId && docName && Object.keys(docNameMap).length > 0) {
+            targetDocId = docNameMap[docName] || undefined
+            if (!targetDocId) {
+                for (const [name, id] of Object.entries(docNameMap)) {
+                    if (name.includes(docName) || docName.includes(name)) {
+                        targetDocId = id
+                        break
+                    }
+                }
+            }
         }
+        if (!targetDocId) return
 
         setPdfDocId(targetDocId)
         setPdfJumpPage(pageNumber - 1)
         setPdfJumpKey(k => k + 1)
-    }, [conv, isResearch])
+    }, [conv, isResearch, docNameMap])
 
     return (
         <RoleRedirect>

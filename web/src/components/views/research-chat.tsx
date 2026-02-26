@@ -503,16 +503,38 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                     key={cite.citation_id}
                                                     className="bg-background/50 border-border/40 hover:border-border/80 hover:shadow-sm transition-all cursor-pointer group/card overflow-hidden"
                                                     onClick={() => {
-                                                        console.log("[ResearchChat] Citation clicked:", { doc_id: cite.doc_id, doc_name: cite.doc_name, page_range: cite.page_range, node_id: cite.node_id, hasCallback: !!onCitationClick })
-                                                        if (onCitationClick) {
-                                                            const match = cite.page_range?.match(/p\.?\s*(\d+)/)
-                                                            const page = match ? parseInt(match[1], 10) : 1
-                                                            const docId = cite.doc_id || (cite as any).doc_id
-                                                            if (docId) {
-                                                                onCitationClick(docId, page, cite.doc_name)
-                                                            } else {
-                                                                console.warn("[ResearchChat] Citation missing doc_id — cannot open PDF", cite)
+                                                        if (!onCitationClick) return
+                                                        const match = cite.page_range?.match(/p\.?\s*(\d+)/)
+                                                        const page = match ? parseInt(match[1], 10) : 1
+
+                                                        let docId = cite.doc_id
+                                                        let docName = cite.doc_name
+
+                                                        // Fallback 1: look up from retrieved sections by node_id
+                                                        if (!docId && msg.retrievedSections) {
+                                                            const sec = msg.retrievedSections.find(s => s.node_id === cite.node_id)
+                                                            if (sec?.doc_id) { docId = sec.doc_id; docName = docName || sec.doc_name || "" }
+                                                        }
+
+                                                        // Fallback 2: parse filename from citation_id "[filename | section, p.N]"
+                                                        if (!docId && cite.citation_id && msg.retrievedSections) {
+                                                            const cidMatch = cite.citation_id.match(/^\[(.+?)\s*\|/)
+                                                            if (cidMatch) {
+                                                                const fname = cidMatch[1].trim()
+                                                                const sec = msg.retrievedSections.find(s =>
+                                                                    s.doc_name === fname || (s.doc_name && fname.includes(s.doc_name)) || (s.doc_name && s.doc_name.includes(fname))
+                                                                )
+                                                                if (sec?.doc_id) { docId = sec.doc_id; docName = docName || sec.doc_name || fname }
                                                             }
+                                                        }
+
+                                                        if (docId) {
+                                                            onCitationClick(docId, page, docName)
+                                                        } else {
+                                                            // Last resort: pass filename from citation_id so parent can resolve
+                                                            const cidFallback = cite.citation_id?.match(/^\[(.+?)\s*\|/)
+                                                            const fname = cidFallback ? cidFallback[1].trim() : ""
+                                                            onCitationClick("", page, fname || docName)
                                                         }
                                                     }}
                                                 >

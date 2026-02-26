@@ -272,6 +272,8 @@ class CorpusQAEngine:
         self, result: dict, rr: CorpusRetrievalResult
     ) -> list[Citation]:
         """Parse citations from LLM result, enriching with doc_id/doc_name."""
+        import re
+
         citations = []
 
         # Build a lookup from node_id to (doc_id, doc_name, page_range)
@@ -283,6 +285,12 @@ class CorpusQAEngine:
                 "page_range": s.page_range,
             }
 
+        # Build a secondary lookup from doc_name to doc_id (for fallback)
+        name_to_doc: dict[str, str] = {}
+        for s in rr.all_sections:
+            if s.doc_name and s.doc_id:
+                name_to_doc[s.doc_name] = s.doc_id
+
         for c in result.get("citations", []):
             node_id = c.get("node_id", "")
             doc_info = node_doc_map.get(node_id, {})
@@ -291,6 +299,23 @@ class CorpusQAEngine:
             doc_id = c.get("doc_id", doc_info.get("doc_id", ""))
             doc_name = c.get("doc_name", doc_info.get("doc_name", ""))
             page_range = doc_info.get("page_range", "")
+
+            # Fallback: parse filename from citation_id (format: "[filename | section, p.N]")
+            if not doc_id:
+                cite_id = c.get("citation_id", "")
+                m = re.match(r"^\[(.+?)\s*\|", cite_id)
+                if m:
+                    filename = m.group(1).strip()
+                    # Try exact match first, then substring match
+                    if filename in name_to_doc:
+                        doc_id = name_to_doc[filename]
+                        doc_name = doc_name or filename
+                    else:
+                        for dn, did in name_to_doc.items():
+                            if filename in dn or dn in filename:
+                                doc_id = did
+                                doc_name = doc_name or dn
+                                break
 
             citations.append(
                 Citation(
