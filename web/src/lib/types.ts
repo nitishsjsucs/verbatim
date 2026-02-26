@@ -5,6 +5,7 @@ export interface DocumentMeta {
     pages: number;
     nodes: number;
     description?: string;
+    ingested_at?: string;  // ISO datetime of when document was ingested
 }
 
 export interface IngestResponse {
@@ -326,7 +327,8 @@ export interface ConversationMessage {
     record_id?: string;
     timestamp: string;
     // Hydrated fields (populated from QueryRecord on load — assistant msgs only)
-    citations?: Citation[];
+    // Citations may include doc_id/doc_name for research (corpus) conversations
+    citations?: (Citation & { doc_id?: string; doc_name?: string })[];
     inferred_points?: InferredPoint[];
     verification_status?: string;
     verification_notes?: string;

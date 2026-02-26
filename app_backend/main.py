@@ -440,6 +440,68 @@ def delete_document(doc_id: str):
     return {"status": "deleted", "id": doc_id}
 
 
+@app.patch("/documents/{doc_id}/rename")
+def rename_document(doc_id: str, body: dict):
+    """Rename a document (updates doc_name in tree store, GridFS, actionables, and corpus)."""
+    new_name = body.get("name", "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    store = get_tree_store()
+    tree = store.load(doc_id)
+    if not tree:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    old_name = tree.doc_name
+
+    # 1. Update tree store (MongoDB trees collection)
+    store._collection.update_one({"_id": doc_id}, {"$set": {"doc_name": new_name}})
+
+    # 2. Rename in GridFS if PDF exists
+    try:
+        from utils.mongo import get_fs
+        fs = get_fs()
+        grid_file = fs.find_one({"filename": old_name})
+        if grid_file:
+            from utils.mongo import get_db
+            db = get_db()
+            db_name = db.name if hasattr(db, 'name') else None
+            # Access the underlying files collection to rename
+            from pymongo import MongoClient
+            client = db.client
+            if db_name:
+                client[db_name]["fs.files"].update_one(
+                    {"_id": grid_file._id},
+                    {"$set": {"filename": new_name}}
+                )
+            logger.info("Renamed PDF in GridFS: %s -> %s", old_name, new_name)
+    except Exception as e:
+        logger.warning("Failed to rename in GridFS: %s", e)
+
+    # 3. Update actionables store doc_name
+    try:
+        actionable_store = get_actionable_store()
+        actionable_store._collection.update_one(
+            {"_id": doc_id},
+            {"$set": {"doc_name": new_name}}
+        )
+    except Exception as e:
+        logger.warning("Failed to rename in actionables: %s", e)
+
+    # 4. Update corpus store
+    try:
+        corpus_store = get_corpus_store()
+        corpus_store._collection.update_one(
+            {"_id": doc_id},
+            {"$set": {"doc_name": new_name}}
+        )
+    except Exception as e:
+        logger.warning("Failed to rename in corpus: %s", e)
+
+    logger.info("Renamed document %s: %s -> %s", doc_id, old_name, new_name)
+    return {"status": "renamed", "id": doc_id, "old_name": old_name, "new_name": new_name}
+
+
 @app.post("/ingest", response_model=IngestResponse)
 async def ingest_document(
     file: UploadFile = File(...),

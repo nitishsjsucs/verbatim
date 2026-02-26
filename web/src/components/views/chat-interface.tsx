@@ -25,6 +25,7 @@ import { Markdown } from "@/components/ui/markdown"
 interface ChatInterfaceProps {
     docId: string
     onCitationClick?: (pageNumber: number) => void
+    continueConvId?: string | null
 }
 
 interface Message {
@@ -251,7 +252,7 @@ function ConversationList({
 
 // --- Main component ---
 
-export function ChatInterface({ docId, onCitationClick }: ChatInterfaceProps) {
+export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatInterfaceProps) {
     const [messages, setMessages] = React.useState<Message[]>([])
     const [input, setInput] = React.useState("")
     const [loading, setLoading] = React.useState(false)
@@ -305,12 +306,15 @@ export function ChatInterface({ docId, onCitationClick }: ChatInterfaceProps) {
                 if (cancelled) return
                 setConversations(convList)
 
-                // Auto-open the most recent conversation
-                if (convList.length > 0) {
-                    const mostRecent = convList[0]
-                    setActiveConvId(mostRecent.conv_id)
+                // If continueConvId is provided, open that conversation; otherwise open most recent
+                const targetConvId = continueConvId && convList.some(c => c.conv_id === continueConvId)
+                    ? continueConvId
+                    : convList.length > 0 ? convList[0].conv_id : null
+
+                if (targetConvId) {
+                    setActiveConvId(targetConvId)
                     try {
-                        const conv = await fetchConversation(mostRecent.conv_id)
+                        const conv = await fetchConversation(targetConvId)
                         if (cancelled) return
                         if (conv.messages && conv.messages.length > 0) {
                             setMessages(conv.messages.map(mapToMessage))
@@ -326,7 +330,7 @@ export function ChatInterface({ docId, onCitationClick }: ChatInterfaceProps) {
             })
 
         return () => { cancelled = true }
-    }, [docId, mapToMessage])
+    }, [docId, mapToMessage, continueConvId])
 
     // Switch conversation
     const handleSelectConversation = React.useCallback(async (convId: string) => {

@@ -20,9 +20,9 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
 
     return (
         <>
-            <div className="flex flex-col h-full border-t border-border/40 bg-sidebar/80">
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 shrink-0">
+            <div className="flex flex-col h-full border-t border-border/40 bg-sidebar/80 overflow-hidden">
+                {/* Header — fixed at top, does not scroll */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 shrink-0 bg-sidebar/80">
                     <div className="min-w-0 flex-1">
                         <h3 className="text-sm font-semibold truncate text-sidebar-foreground" title={node.title}>
                             {node.title || `Untitled ${node.node_type}`}
@@ -37,8 +37,8 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                     </Button>
                 </div>
 
-                {/* Content */}
-                <ScrollArea className="flex-1">
+                {/* Content — scrollable, header stays fixed above */}
+                <div className="flex-1 overflow-y-auto">
                     <div className="p-4 space-y-4">
                         {/* 1. Description FIRST */}
                         {node.description && (
@@ -139,7 +139,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                             </CollapsibleSection>
                         )}
                     </div>
-                </ScrollArea>
+                </div>
             </div>
 
             {/* Summary Dialog */}

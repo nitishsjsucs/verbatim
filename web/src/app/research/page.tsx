@@ -8,7 +8,7 @@ import dynamic from "next/dynamic"
 import type { PdfViewerHandle } from "@/components/views/pdf-viewer"
 import { Loader2, X, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // Dynamic import — pdf.js requires browser APIs (no SSR)
@@ -29,6 +29,8 @@ type RightPanel = "corpus" | "pdf"
 
 export default function ResearchPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const continueConvId = searchParams.get("continue") || null
     const pdfRef = React.useRef<PdfViewerHandle>(null)
 
     // Which right panel to show
@@ -91,7 +93,7 @@ export default function ResearchPage() {
                 <main className="flex-1 flex overflow-hidden">
                     {/* Left: Research Chat (65%) */}
                     <div className="flex-[65] min-w-0 border-r border-border">
-                        <ResearchChat onCitationClick={handleCitationClick} />
+                        <ResearchChat onCitationClick={handleCitationClick} continueConvId={continueConvId} />
                     </div>
 
                     {/* Right: Corpus Panel or PDF Viewer (35%) */}

@@ -230,20 +230,48 @@ export default function DashboardPage() {
         })
     }, [allRows, statusFilter, riskFilter, searchQuery])
 
-    // Group by workstream
+    // Split into active (non-completed) and completed
+    const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
+    const completedRows = React.useMemo(() => filtered.filter(r => r.item.task_status === "completed"), [filtered])
+
+    // Group active by workstream
     const grouped = React.useMemo(() => {
         const groups: Record<string, FlatRow[]> = {}
-        for (const row of filtered) {
+        for (const row of activeRows) {
             const ws = safeStr(row.item.workstream) || "Other"
             if (!groups[ws]) groups[ws] = []
             groups[ws].push(row)
         }
         return groups
-    }, [filtered])
+    }, [activeRows])
 
     const sortedGroupKeys = React.useMemo(() => {
         return [...WORKSTREAM_OPTIONS, "Other"].filter(ws => grouped[ws] && grouped[ws].length > 0)
     }, [grouped])
+
+    // Group completed by team (workstream)
+    const completedByTeam = React.useMemo(() => {
+        const groups: Record<string, FlatRow[]> = {}
+        for (const row of completedRows) {
+            const ws = safeStr(row.item.workstream) || "Other"
+            if (!groups[ws]) groups[ws] = []
+            groups[ws].push(row)
+        }
+        return groups
+    }, [completedRows])
+
+    const completedTeamKeys = React.useMemo(() => {
+        return [...WORKSTREAM_OPTIONS, "Other"].filter(ws => completedByTeam[ws] && completedByTeam[ws].length > 0)
+    }, [completedByTeam])
+
+    const [collapsedCompletedTeams, setCollapsedCompletedTeams] = React.useState<Set<string>>(new Set())
+    const toggleCompletedTeam = (ws: string) => {
+        setCollapsedCompletedTeams(prev => {
+            const next = new Set(prev)
+            if (next.has(ws)) next.delete(ws); else next.add(ws)
+            return next
+        })
+    }
 
     // Stats
     const stats = React.useMemo(() => {
@@ -563,6 +591,105 @@ export default function DashboardPage() {
                         )
                     })}
 
+                    {/* ── Completed Section ── */}
+                    {!loading && completedRows.length > 0 && (
+                        <div className="mt-4">
+                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20">
+                                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Completed ({completedRows.length})
+                                </span>
+                            </div>
+
+                            {completedTeamKeys.map(ws => {
+                                const rows = completedByTeam[ws] || []
+                                const isCollapsed = collapsedCompletedTeams.has(ws)
+                                const wsColors = WORKSTREAM_COLORS[ws] || WORKSTREAM_COLORS.Other
+
+                                return (
+                                    <div key={`completed-${ws}`} className="mb-0.5">
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-background/50 border-b border-border/10">
+                                            <button onClick={() => toggleCompletedTeam(ws)} className="flex items-center gap-2 flex-1 min-w-0">
+                                                {isCollapsed
+                                                    ? <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                                    : <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+                                                <div className={cn("h-3 w-0.5 rounded-full shrink-0", wsColors.header)} />
+                                                <span className="text-[11px] font-medium text-muted-foreground">{ws}</span>
+                                                <span className="text-[9px] text-muted-foreground/40 font-mono">{rows.length}</span>
+                                            </button>
+                                        </div>
+
+                                        {!isCollapsed && (
+                                            <div className="grid gap-0 border-b border-border/10 bg-muted/5 px-3" style={{ gridTemplateColumns: gridCols }}>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
+                                            </div>
+                                        )}
+
+                                        {!isCollapsed && rows.map(({ item, docId }) => {
+                                            const rowKey = `completed-${docId}-${item.id}`
+                                            const isExpanded = expandedRow === rowKey
+                                            const commentCount = (item.comments || []).length
+
+                                            return (
+                                                <div key={rowKey} className="border-b border-border/5 opacity-70">
+                                                    <div
+                                                        className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
+                                                        style={{ gridTemplateColumns: gridCols }}
+                                                        onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
+                                                    >
+                                                        <div className="py-1.5 px-1">
+                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
+                                                                {item.workstream}
+                                                            </span>
+                                                        </div>
+                                                        <div className="py-1.5 flex justify-center"><RiskIcon modality={item.modality} /></div>
+                                                        <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
+                                                            {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                                                            <span className="text-xs text-foreground/90 truncate line-through decoration-emerald-500/40">{safeStr(item.action)}</span>
+                                                            {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
+                                                        </div>
+                                                        <div className="py-1.5 px-1 text-center">
+                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
+                                                                {TASK_STATUS_STYLES.completed.label}
+                                                            </span>
+                                                        </div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
+                                                            <EvidencePopover files={item.evidence_files || []} taskStatus="completed" />
+                                                        </div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[9px] text-emerald-400 italic">Approved</span></div>
+                                                    </div>
+                                                    {isExpanded && (
+                                                        <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
+                                                            <CommentThread
+                                                                comments={item.comments || []}
+                                                                currentUser={userName}
+                                                                currentRole="compliance_officer"
+                                                                onAddComment={async (text) => handleAddComment(docId, item, text)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+
                     {!loading && filtered.length === 0 && allRows.length > 0 && (
                         <div className="text-center text-sm text-muted-foreground/60 py-12">
                             No actionables match the current filters
@@ -719,8 +846,8 @@ function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) =>
             >
                 <span
                     className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded hover:bg-muted/30 transition-colors flex items-center gap-1",
-                        isOverdue ? "text-red-400" : "text-muted-foreground/70"
+                        "text-[10px] px-1.5 py-0.5 rounded border border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-1 group/dl",
+                        isOverdue ? "text-red-400 border-red-400/30" : "text-muted-foreground/70 border-muted-foreground/20"
                     )}
                 >
                     <Calendar className="h-2.5 w-2.5" />

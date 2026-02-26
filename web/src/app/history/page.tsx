@@ -73,6 +73,9 @@ function ConversationCard({
 
     const href = `/history/${conv.conv_id}`
     const docHref = isResearch ? "/research" : `/documents/${conv.doc_id}`
+    const continueHref = isResearch
+        ? `/research?continue=${conv.conv_id}`
+        : `/documents/${conv.doc_id}?tab=chat&continue=${conv.conv_id}`
     const updatedDate = conv.updated_at ? new Date(conv.updated_at) : null
 
     return (
@@ -132,12 +135,20 @@ function ConversationCard({
             {/* Actions */}
             <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Link
+                    href={continueHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[11px] text-primary hover:text-primary/80 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
+                    title="Continue this conversation"
+                >
+                    Continue →
+                </Link>
+                <Link
                     href={docHref}
                     onClick={(e) => e.stopPropagation()}
                     className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
                     title={isResearch ? "Open Research" : "Open Document"}
                 >
-                    Open →
+                    Open
                 </Link>
                 {confirmDelete ? (
                     <div className="flex items-center gap-1">

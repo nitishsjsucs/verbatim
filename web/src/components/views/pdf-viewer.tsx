@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Viewer, Worker, SpecialZoomLevel } from "@react-pdf-viewer/core"
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout"
+import type { ToolbarSlot, TransformToolbarSlot } from "@react-pdf-viewer/toolbar"
 
 // Styles
 import "@react-pdf-viewer/core/lib/styles/index.css"
@@ -23,7 +24,45 @@ interface PdfViewerProps {
 export const PdfViewer = React.forwardRef<PdfViewerHandle, PdfViewerProps>(
     function PdfViewer({ fileUrl, initialPage = 0, className }, ref) {
         const containerRef = React.useRef<HTMLDivElement>(null)
-        const defaultLayoutPluginInstance = defaultLayoutPlugin()
+        const transform: TransformToolbarSlot = (slot: ToolbarSlot) => {
+            // Remove: Open, Print, and "More actions" (properties) buttons
+            const { Open, Print, ShowProperties, ...rest } = slot
+            return {
+                ...rest,
+                Open: () => <></>,
+                Print: () => <></>,
+                ShowProperties: () => <></>,
+            }
+        }
+        const defaultLayoutPluginInstance = defaultLayoutPlugin({
+            // Remove sidebar tabs: thumbnails, bookmarks, attachments
+            sidebarTabs: () => [],
+            renderToolbar: (Toolbar) => (
+                <Toolbar>{(slots: ToolbarSlot) => {
+                    const transformed = transform(slots)
+                    const {
+                        CurrentPageInput, GoToNextPage, GoToPreviousPage, NumberOfPages,
+                        EnterFullScreen, Download, Zoom, ZoomIn, ZoomOut,
+                        Search, GoToFirstPage, GoToLastPage,
+                    } = transformed
+                    return (
+                        <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <GoToFirstPage /><GoToPreviousPage />
+                                <CurrentPageInput /> / <NumberOfPages />
+                                <GoToNextPage /><GoToLastPage />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <ZoomOut /><Zoom /><ZoomIn />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Search /><Download /><EnterFullScreen />
+                            </div>
+                        </div>
+                    )
+                }}</Toolbar>
+            ),
+        })
         const [blobUrl, setBlobUrl] = React.useState<string | null>(null)
 
         React.useEffect(() => {

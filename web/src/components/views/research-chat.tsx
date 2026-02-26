@@ -49,6 +49,7 @@ interface ResearchMessage {
 interface ResearchChatProps {
     className?: string
     onCitationClick?: (docId: string, pageNumber: number, docName?: string) => void
+    continueConvId?: string | null
 }
 
 // --- Helper sub-components ---
@@ -203,7 +204,7 @@ function ResearchConversationList({
 
 // --- Main component ---
 
-export function ResearchChat({ className, onCitationClick }: ResearchChatProps) {
+export function ResearchChat({ className, onCitationClick, continueConvId }: ResearchChatProps) {
     const [messages, setMessages] = React.useState<ResearchMessage[]>([])
     const [input, setInput] = React.useState("")
     const [loading, setLoading] = React.useState(false)
@@ -250,11 +251,15 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
                 if (cancelled) return
                 setConversations(convList)
 
-                if (convList.length > 0) {
-                    const mostRecent = convList[0]
-                    setActiveConvId(mostRecent.conv_id)
+                // If continueConvId is provided, open that conversation; otherwise open most recent
+                const targetConvId = continueConvId && convList.some(c => c.conv_id === continueConvId)
+                    ? continueConvId
+                    : convList.length > 0 ? convList[0].conv_id : null
+
+                if (targetConvId) {
+                    setActiveConvId(targetConvId)
                     try {
-                        const conv = await fetchConversation(mostRecent.conv_id)
+                        const conv = await fetchConversation(targetConvId)
                         if (cancelled) return
                         if (conv.messages && conv.messages.length > 0) {
                             setMessages(conv.messages.map((m) => mapToMessage(m as unknown as Record<string, unknown>)))
@@ -268,7 +273,7 @@ export function ResearchChat({ className, onCitationClick }: ResearchChatProps) 
             })
 
         return () => { cancelled = true }
-    }, [mapToMessage])
+    }, [mapToMessage, continueConvId])
 
     // Switch conversation
     const handleSelectConversation = React.useCallback(async (convId: string) => {

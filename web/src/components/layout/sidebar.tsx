@@ -25,6 +25,7 @@ import { AppConfig } from "@/lib/types"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSession, signOut } from "@/lib/auth-client"
 import { getUserRole } from "@/components/auth/auth-guard"
+import { SettingsDialog } from "@/components/layout/settings-dialog"
 
 interface SidebarProps {
   className?: string
@@ -33,6 +34,7 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const [collapsed, setCollapsed] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
+  const [settingsOpen, setSettingsOpen] = React.useState(false)
   const pathname = usePathname()
   const [_config, setConfig] = React.useState<AppConfig | null>(null)
   const { data: session } = useSession()
@@ -240,7 +242,9 @@ export function Sidebar({ className }: SidebarProps) {
         iconClassName="text-sidebar-foreground/50"
         label="Settings"
         collapsed={collapsed}
+        onClick={() => setSettingsOpen(true)}
       />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <div
         className={cn(
@@ -303,11 +307,17 @@ const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
     )
 
     const commonClasses = cn(
-      "group w-full flex items-center rounded px-2 h-8 font-medium transition-colors",
+      "group w-full flex items-center rounded px-2 h-8 font-medium transition-colors relative",
       active ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/70",
       collapsed && "justify-center",
       className
     )
+
+    const tooltipEl = collapsed ? (
+      <span className="absolute left-full ml-2 px-2 py-1 rounded bg-popover text-popover-foreground text-xs font-medium shadow-md border border-border whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+        {label}
+      </span>
+    ) : null
 
     if (href) {
       const anchorProps = props as Omit<
@@ -317,6 +327,7 @@ const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
       return (
         <Link href={href} className={commonClasses} {...anchorProps}>
           {content}
+          {tooltipEl}
         </Link>
       )
     }
@@ -325,6 +336,7 @@ const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
     return (
       <button ref={ref} className={commonClasses} type="button" {...buttonProps}>
         {content}
+        {tooltipEl}
       </button>
     )
   }

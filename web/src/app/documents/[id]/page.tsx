@@ -50,6 +50,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
     const [selectedNodeId, setSelectedNodeId] = React.useState<string | undefined>()
     const searchParams = useSearchParams()
     const initialTab = searchParams.get("tab") === "chat" ? "chat" : "document"
+    const continueConvId = searchParams.get("continue") || null
     const [viewMode, setViewMode] = React.useState<ViewMode>(initialTab)
 
     // Ref to control PDF viewer — no state updates, no re-render loops
@@ -182,7 +183,7 @@ export default function DocumentPage({ params }: { params: Promise<{ id: string 
                         <>
                             {/* Chat Interface (left side — 60%) */}
                             <div className="w-[60%] min-w-[300px] h-full border-r border-border bg-background overflow-hidden">
-                                <ChatInterface docId={id} onCitationClick={handleCitationClick} />
+                                <ChatInterface docId={id} onCitationClick={handleCitationClick} continueConvId={continueConvId} />
                             </div>
 
                             {/* PDF Viewer (right side — 40%) */}

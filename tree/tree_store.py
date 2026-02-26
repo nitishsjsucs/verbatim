@@ -22,6 +22,13 @@ class TreeStore:
         data = tree.to_dict()
         # Use doc_id as _id for easy lookup
         data["_id"] = tree.doc_id
+        # Store ingestion timestamp (only on first insert; preserve on re-ingest unless missing)
+        from datetime import datetime, timezone
+        existing = self._collection.find_one({"_id": tree.doc_id}, {"ingested_at": 1})
+        if existing and existing.get("ingested_at"):
+            data["ingested_at"] = existing["ingested_at"]
+        else:
+            data["ingested_at"] = datetime.now(timezone.utc).isoformat()
         
         self._collection.replace_one(
             {"_id": tree.doc_id},
@@ -80,6 +87,7 @@ class TreeStore:
                 "doc_description": 1,
                 "total_pages": 1,
                 "node_count": 1,
+                "ingested_at": 1,
             }
         )
         
@@ -91,6 +99,7 @@ class TreeStore:
                 "pages": doc.get("total_pages", 0),
                 "nodes": doc.get("node_count", 0),
                 "description": doc.get("doc_description", ""),
+                "ingested_at": doc.get("ingested_at", ""),
             })
         
         logger.info("Fetched summaries for %d documents in single batch query", len(docs))

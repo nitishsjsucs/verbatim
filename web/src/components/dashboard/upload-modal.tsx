@@ -91,7 +91,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-hidden flex flex-col">
                 <DialogHeader>
                     <DialogTitle>{result ? "Ingestion Complete" : "Upload Document"}</DialogTitle>
                     <DialogDescription>
@@ -104,7 +104,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
 
                 {result ? (
                     /* Post-ingestion result summary */
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-4 space-y-4 overflow-y-auto max-h-[60vh]">
                         <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
                             <CheckCircle2 className="h-8 w-8 text-green-500 shrink-0" />
                             <div className="min-w-0">

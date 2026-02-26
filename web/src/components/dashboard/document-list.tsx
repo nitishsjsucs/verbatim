@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { FileText, MoreHorizontal, Trash2, X, MessageSquare, CalendarDays, Search } from "lucide-react"
+import { FileText, MoreHorizontal, Trash2, X, MessageSquare, CalendarDays, Search, Pencil, Shield, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { fetchDocuments } from "@/lib/api"
+import { fetchDocuments, extractActionablesStreaming } from "@/lib/api"
 import { DocumentMeta } from "@/lib/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -33,6 +33,9 @@ export function DocumentList() {
     const [searchQuery, setSearchQuery] = useState("")
     const [dateFrom, setDateFrom] = useState("")  // ISO date string yyyy-mm-dd
     const [dateTo, setDateTo] = useState("")      // ISO date string yyyy-mm-dd
+    const [renamingDocId, setRenamingDocId] = useState<string | null>(null)
+    const [renameValue, setRenameValue] = useState("")
+    const [extractingDocId, setExtractingDocId] = useState<string | null>(null)
 
     const loadDocuments = async () => {
         try {
@@ -64,6 +67,23 @@ export function DocumentList() {
             loadDocuments()
         } catch (error) {
             toast.error("Failed to delete document")
+        }
+    }
+
+    const handleRename = async (id: string, newName: string) => {
+        if (!newName.trim()) { toast.error("Name cannot be empty"); return }
+        try {
+            const res = await fetch(`${API_BASE_URL}/documents/${id}/rename`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: newName.trim() }),
+            })
+            if (!res.ok) throw new Error("Failed to rename")
+            toast.success("Document renamed")
+            setRenamingDocId(null)
+            loadDocuments()
+        } catch (error) {
+            toast.error("Failed to rename document")
         }
     }
 
@@ -162,7 +182,7 @@ export function DocumentList() {
                     <TableRow className="border-b border-border hover:bg-transparent">
                         <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4">Name</TableHead>
                         <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Published</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[120px] text-right">Date Ingested</TableHead>
                         <TableHead className="h-9 w-[120px]"></TableHead>
                     </TableRow>
                 </TableHeader>
@@ -196,7 +216,13 @@ export function DocumentList() {
                             </TableCell>
                             <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
                             <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
-                                <span className="text-muted-foreground/60">—</span>
+                                {doc.ingested_at ? (
+                                    <span className="text-muted-foreground/70">
+                                        {new Date(doc.ingested_at).toLocaleDateString()}
+                                    </span>
+                                ) : (
+                                    <span className="text-muted-foreground/60">—</span>
+                                )}
                             </TableCell>
                             <TableCell className="text-right py-2.5 pr-2">
                                 <div className="flex items-center justify-end gap-1.5">
@@ -210,12 +236,39 @@ export function DocumentList() {
                                 </Link>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" className="h-7 w-7 p-0 opacity-60 hover:opacity-100 transition-opacity">
                                             <span className="sr-only">Open menu</span>
                                             <MoreHorizontal className="h-3.5 w-3.5" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            className="text-[13px]"
+                                            onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
+                                        >
+                                            <Pencil className="mr-2 h-3.5 w-3.5" />
+                                            Rename
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-[13px]"
+                                            disabled={extractingDocId === doc.id}
+                                            onClick={async () => {
+                                                setExtractingDocId(doc.id)
+                                                try {
+                                                    const result = await extractActionablesStreaming(doc.id, false)
+                                                    toast.success(`Extracted ${result.actionables?.length || 0} actionables from ${doc.name}`)
+                                                } catch (err) {
+                                                    toast.error(err instanceof Error ? err.message : "Extraction failed")
+                                                } finally {
+                                                    setExtractingDocId(null)
+                                                }
+                                            }}
+                                        >
+                                            {extractingDocId === doc.id
+                                                ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                                : <Shield className="mr-2 h-3.5 w-3.5" />}
+                                            {extractingDocId === doc.id ? "Extracting..." : "Extract Actionables"}
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem
                                             className="text-destructive focus:text-destructive focus:bg-destructive/10 text-[13px]"
                                             onClick={() => handleDelete(doc.id)}
@@ -232,6 +285,33 @@ export function DocumentList() {
                 </TableBody>
             </Table>
         </div>
+
+        {/* Rename Dialog */}
+        {renamingDocId && (
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                onClick={() => setRenamingDocId(null)}
+            >
+                <div
+                    className="bg-background border border-border rounded-xl shadow-2xl w-[400px] p-6 space-y-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <h2 className="text-sm font-semibold text-foreground">Rename Document</h2>
+                    <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={e => setRenameValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") handleRename(renamingDocId, renameValue) }}
+                        className="w-full bg-muted/30 text-sm rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none text-foreground"
+                        placeholder="Document name..."
+                    />
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setRenamingDocId(null)}>Cancel</Button>
+                        <Button size="sm" onClick={() => handleRename(renamingDocId, renameValue)}>Save</Button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Document Description Dialog */}
         {expandedDoc && (

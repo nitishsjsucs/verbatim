@@ -112,7 +112,7 @@ interface DocActionables {
     actionables: ActionableItem[]
 }
 
-type ViewTab = "all" | "by-team"
+type ViewTab = "all" | "by-doc" | "by-team"
 
 // --- Editable Field Component ---
 
@@ -600,15 +600,20 @@ export default function ActionablesPage() {
         return teams
     }, [filtered])
 
-    // Stats
+    // Stats (published count comes from allDocs since allItems excludes published)
     const stats = React.useMemo(() => {
         const total = allItems.length
         const approved = allItems.filter(e => e.item.approval_status === "approved").length
         const rejected = allItems.filter(e => e.item.approval_status === "rejected").length
         const pending = total - approved - rejected
-        const published = allItems.filter(e => !!e.item.published_at).length
+        let published = 0
+        for (const doc of allDocs) {
+            for (const item of doc.actionables) {
+                if (item.published_at) published++
+            }
+        }
         return { total, approved, rejected, pending, published }
-    }, [allItems])
+    }, [allItems, allDocs])
 
     const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
 
@@ -616,9 +621,7 @@ export default function ActionablesPage() {
     const handleApproveAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
         const pending = items.filter(e => e.item.approval_status === "pending")
         if (pending.length === 0) { toast.info("No pending items to approve"); return }
-        for (const { item, docId } of pending) {
-            await handleUpdate(docId, item.id, { approval_status: "approved" })
-        }
+        await Promise.all(pending.map(({ item, docId }) => handleUpdate(docId, item.id, { approval_status: "approved" })))
         toast.success(`Approved ${pending.length} actionables`)
     }, [handleUpdate])
 
@@ -626,6 +629,25 @@ export default function ActionablesPage() {
         setCollapsedTeams(prev => {
             const next = new Set(prev)
             if (next.has(team)) next.delete(team); else next.add(team)
+            return next
+        })
+    }
+
+    // Group by document
+    const byDocument = React.useMemo(() => {
+        const docs: Record<string, { docName: string; entries: { item: ActionableItem; docId: string; docName: string }[] }> = {}
+        for (const entry of filtered) {
+            if (!docs[entry.docId]) docs[entry.docId] = { docName: entry.docName, entries: [] }
+            docs[entry.docId].entries.push(entry)
+        }
+        return docs
+    }, [filtered])
+
+    const [collapsedDocs, setCollapsedDocs] = React.useState<Set<string>>(new Set())
+    const toggleDoc = (docId: string) => {
+        setCollapsedDocs(prev => {
+            const next = new Set(prev)
+            if (next.has(docId)) next.delete(docId); else next.add(docId)
             return next
         })
     }
@@ -652,6 +674,16 @@ export default function ActionablesPage() {
                                 )}
                             >
                                 All
+                            </button>
+                            <button
+                                onClick={() => setViewTab("by-doc")}
+                                className={cn(
+                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+                                    viewTab === "by-doc" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <FileText className="h-3 w-3" />
+                                By Document
                             </button>
                             <button
                                 onClick={() => setViewTab("by-team")}
@@ -782,6 +814,53 @@ export default function ActionablesPage() {
                                     }}
                                 />
                             ))}
+
+                            {/* By Document tab — collapsible documents */}
+                            {!loading && viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                const isCollapsed = collapsedDocs.has(docId)
+                                return (
+                                    <div key={docId} className="space-y-1.5">
+                                        <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(docId)}>
+                                            {isCollapsed
+                                                ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            }
+                                            <FileText className="h-3.5 w-3.5 text-primary/60 shrink-0" />
+                                            <span className="text-[11px] font-semibold text-foreground truncate">{docName}</span>
+                                            <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>
+                                            <div className="h-px bg-border/30 flex-1" />
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10"
+                                                onClick={(e) => { e.stopPropagation(); handleApproveAll(entries) }}
+                                            >
+                                                <Check className="h-2.5 w-2.5" />
+                                                Approve All
+                                            </Button>
+                                        </div>
+                                        {!isCollapsed && entries.map(({ item, docId: dId, docName: dName }) => (
+                                            <ActionableCard
+                                                key={`${dId}-${item.id}`}
+                                                item={item}
+                                                docId={dId}
+                                                docName={dName}
+                                                onUpdate={handleUpdate}
+                                                onDelete={handleDelete}
+                                                onSourceClick={handleSourceClick}
+                                                isSelected={selectedItemKey === `${dId}-${item.id}`}
+                                                onSelect={() => {
+                                                    setSelectedItemKey(`${dId}-${item.id}`)
+                                                    if (pdfDocId !== dId) {
+                                                        setPdfDocId(dId)
+                                                        setPdfDocName(dName)
+                                                    }
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                )
+                            })}
 
                             {/* By Team tab — collapsible teams with Approve All per team */}
                             {!loading && viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
