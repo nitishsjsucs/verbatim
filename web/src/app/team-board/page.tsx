@@ -717,7 +717,7 @@ function TeamBoardContent() {
                 <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
                     <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4 text-primary" />
-                        Implementation Tracker
+                        {`My Tasks - ${userTeam || "Team"}`}
                     </h1>
                 </div>
 
