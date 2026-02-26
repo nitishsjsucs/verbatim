@@ -150,7 +150,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                             <div className="w-[40%] min-w-[260px] border-r border-border flex flex-col bg-sidebar/50">
                                 <div className="p-3 border-b border-border/40 flex-shrink-0">
                                     <h2 className="font-semibold text-sm truncate" title={doc.doc_name}>
-                                        Structure
+                                        Document Structure
                                     </h2>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         {doc.structure.length} top-level sections
