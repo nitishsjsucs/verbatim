@@ -130,7 +130,10 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                                         "bg-background/50 border border-border/40 rounded-lg p-2.5 transition-colors",
                                         onCitationClick ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : ""
                                     )}
-                                    onClick={() => onCitationClick?.(citeDocId, pageNum, citeDocName)}
+                                    onClick={() => {
+                                        console.log("[History] Citation clicked:", { citeDocId, pageNum, citeDocName, page_range: cite.page_range, hasCallback: !!onCitationClick })
+                                        onCitationClick?.(citeDocId, pageNum, citeDocName)
+                                    }}
                                 >
                                     <div className="flex items-center justify-between gap-2 mb-1">
                                         <div className="flex items-center gap-1.5 min-w-0">
@@ -249,13 +252,17 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
         : null
 
     const handleCitationClick = React.useCallback((docId: string | undefined, pageNumber: number, docName?: string) => {
-        const targetDocId = docId || conv?.doc_id
-        if (!targetDocId) return
+        const targetDocId = docId || (conv?.doc_id !== "research" ? conv?.doc_id : undefined)
+        console.log("[History] handleCitationClick:", { docId, pageNumber, docName, targetDocId, convDocId: conv?.doc_id, isResearch })
+        if (!targetDocId) {
+            console.warn("[History] No valid doc_id for citation — cannot open PDF")
+            return
+        }
 
         setPdfDocId(targetDocId)
         setPdfJumpPage(pageNumber - 1)
         setPdfJumpKey(k => k + 1)
-    }, [conv])
+    }, [conv, isResearch])
 
     return (
         <RoleRedirect>

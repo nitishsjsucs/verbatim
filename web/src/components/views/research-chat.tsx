@@ -503,10 +503,16 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                     key={cite.citation_id}
                                                     className="bg-background/50 border-border/40 hover:border-border/80 hover:shadow-sm transition-all cursor-pointer group/card overflow-hidden"
                                                     onClick={() => {
-                                                        if (onCitationClick && cite.doc_id) {
+                                                        console.log("[ResearchChat] Citation clicked:", { doc_id: cite.doc_id, doc_name: cite.doc_name, page_range: cite.page_range, node_id: cite.node_id, hasCallback: !!onCitationClick })
+                                                        if (onCitationClick) {
                                                             const match = cite.page_range?.match(/p\.?\s*(\d+)/)
                                                             const page = match ? parseInt(match[1], 10) : 1
-                                                            onCitationClick(cite.doc_id, page, cite.doc_name)
+                                                            const docId = cite.doc_id || (cite as any).doc_id
+                                                            if (docId) {
+                                                                onCitationClick(docId, page, cite.doc_name)
+                                                            } else {
+                                                                console.warn("[ResearchChat] Citation missing doc_id — cannot open PDF", cite)
+                                                            }
                                                         }
                                                     }}
                                                 >

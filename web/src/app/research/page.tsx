@@ -46,6 +46,7 @@ function ResearchPageContent() {
 
     // When citation is clicked in chat, load the document's PDF and jump to page
     const handleCitationClick = React.useCallback((docId: string, pageNumber: number, docName?: string) => {
+        console.log("[Research] handleCitationClick:", { docId, pageNumber, docName })
         setPdfDocId(docId)
         setPdfDocName(docName || docId)
         setPdfJumpPage(pageNumber - 1)
