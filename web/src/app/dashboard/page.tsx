@@ -965,7 +965,7 @@ function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) =>
                     value={localValue}
                     min={todayMin}
                     onChange={e => setLocalValue(e.target.value)}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:dark] dark:[color-scheme:dark]"
                 />
             </div>
             {isDirty && (

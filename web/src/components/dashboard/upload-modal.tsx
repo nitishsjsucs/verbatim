@@ -97,7 +97,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-hidden flex flex-col" showCloseButton={!uploading}>
+            <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-hidden flex flex-col" showCloseButton={!uploading} onInteractOutside={(e) => { if (uploading) e.preventDefault() }} onEscapeKeyDown={(e) => { if (uploading) e.preventDefault() }}>
                 <DialogHeader>
                     <DialogTitle>{result ? "Ingestion Complete" : "Upload Document"}</DialogTitle>
                     <DialogDescription>

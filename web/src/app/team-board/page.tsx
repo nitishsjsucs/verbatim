@@ -115,15 +115,28 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
     const files = item.evidence_files || []
 
     // Check if revert is allowed (within 10 minutes of submission)
+    // Use a tick state to force re-render when the 10-min window expires
+    const [, setRevertTick] = React.useState(0)
     const canRevert = React.useMemo(() => {
         if (taskStatus !== "review") return false
-        // Find most recent status change — approximate via last comment or use submitted_at if available
         const submittedAt = (item as any).submitted_at
         if (submittedAt) {
             const elapsed = Date.now() - new Date(submittedAt).getTime()
             return elapsed < 10 * 60 * 1000 // 10 minutes
         }
         return true // If no timestamp, allow revert
+    }, [taskStatus, item])
+
+    // Auto-disable revert after 10 minutes by scheduling a re-render
+    React.useEffect(() => {
+        if (taskStatus !== "review") return
+        const submittedAt = (item as any).submitted_at
+        if (!submittedAt) return
+        const elapsed = Date.now() - new Date(submittedAt).getTime()
+        const remaining = 10 * 60 * 1000 - elapsed
+        if (remaining <= 0) return // Already expired
+        const timer = setTimeout(() => setRevertTick(t => t + 1), remaining + 100)
+        return () => clearTimeout(timer)
     }, [taskStatus, item])
 
     const handleAddComment = async (text: string) => {
@@ -368,26 +381,26 @@ function TeamStatsCard({ items, allItemsTotal }: { items: { item: ActionableItem
     }
     
     return (
-        <div className="bg-muted/10 rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-                <div className="flex items-end gap-2">
-                    <span className="text-2xl font-bold text-foreground">{total}</span>
-                    <span className="text-xs text-muted-foreground/60">actionables</span>
-                </div>
-                <div className="text-right">
-                    <span className="text-lg font-bold text-primary">{percentage}%</span>
-                    <p className="text-[9px] text-muted-foreground/60">of total</p>
-                </div>
+        <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-foreground">{total}</span>
+                <span className="text-[9px] text-muted-foreground/60">tasks</span>
+                <span className="text-[9px] text-muted-foreground/40">·</span>
+                <span className="text-xs font-bold text-primary">{percentage}%</span>
             </div>
-            <div className="grid grid-cols-5 gap-2 pt-2 border-t border-border/30">
-                {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => (
-                    <div key={s} className="text-center">
-                        <p className="text-sm font-bold" style={{ color: TASK_STATUS_CONFIG[s].bg.includes("emerald") ? "#10b981" : TASK_STATUS_CONFIG[s].bg.includes("blue") ? "#3b82f6" : TASK_STATUS_CONFIG[s].bg.includes("amber") ? "#f59e0b" : TASK_STATUS_CONFIG[s].bg.includes("orange") ? "#f97316" : "#64748b" }}>
-                            {counts[s] || 0}
-                        </p>
-                        <p className="text-[9px] text-muted-foreground/50 capitalize">{TASK_STATUS_CONFIG[s].label.split(" ")[0]}</p>
-                    </div>
-                ))}
+            <div className="h-4 w-px bg-border/40" />
+            <div className="flex items-center gap-2">
+                {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => {
+                    const count = counts[s] || 0
+                    if (count === 0) return null
+                    return (
+                        <div key={s} className="flex items-center gap-1">
+                            <div className={cn("h-1.5 w-1.5 rounded-full", TASK_STATUS_CONFIG[s].bg)} />
+                            <span className="text-[10px] font-mono font-bold text-foreground/80">{count}</span>
+                            <span className="text-[9px] text-muted-foreground/50">{TASK_STATUS_CONFIG[s].label.split(" ")[0]}</span>
+                        </div>
+                    )
+                })}
             </div>
         </div>
     )
@@ -676,6 +689,19 @@ function TeamBoardContent() {
                         <option value="d60">Delayed 60d</option>
                         <option value="d90">Delayed 90d</option>
                     </select>
+                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
+                        <button
+                            onClick={() => {
+                                setStatusFilter("all")
+                                setRiskFilter("all")
+                                setDeadlineFilter("all")
+                                setSearchQuery("")
+                            }}
+                            className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-transparent focus:border-border"
+                        >
+                            Clear Filters
+                        </button>
+                    )}
                     <div className="flex items-center gap-1 ml-auto">
                         <span className="text-[10px] text-muted-foreground/50">Sort:</span>
                         <select
@@ -773,25 +799,27 @@ function TeamBoardContent() {
 
                     {!loading && activeItems.length > 0 && (
                         <div className="mb-2">
-                            <button
-                                onClick={() => toggleGroup("active")}
-                                className="flex items-center gap-2 px-4 py-2 w-full hover:bg-muted/5 transition-colors"
-                            >
-                                {collapsedGroups.has("active")
-                                    ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                    : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                }
-                                <span className="text-sm font-semibold text-amber-400">Active</span>
-                                <span className="text-[10px] text-muted-foreground/50 font-mono">{activeItems.length} Tasks</span>
-                            </button>
+                            <div className="flex items-center justify-between px-4 py-2">
+                                <button
+                                    onClick={() => toggleGroup("active")}
+                                    className="flex items-center gap-2 hover:bg-muted/5 transition-colors"
+                                >
+                                    {collapsedGroups.has("active")
+                                        ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                        : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                    }
+                                    <span className="text-sm font-semibold text-amber-400">Active</span>
+                                    <span className="text-[10px] text-muted-foreground/50 font-mono">{activeItems.length} Tasks</span>
+                                </button>
+                                <div className="flex items-center gap-3">
+                                    <TeamStatsCard items={activeItems} allItemsTotal={allItems.length} />
+                                </div>
+                            </div>
 
                             {!collapsedGroups.has("active") && (
                                 <>
                                     {renderHeader()}
                                     {activeItems.map(renderTaskRow)}
-                                    <div className="px-5 py-3 border-t border-border/20">
-                                        <TeamStatsCard items={activeItems} allItemsTotal={allItems.length} />
-                                    </div>
                                 </>
                             )}
                         </div>

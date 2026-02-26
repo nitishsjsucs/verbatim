@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
-import { AuthGuard, getUserRole } from "@/components/auth/auth-guard"
+import { AuthGuard, getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { useSession } from "@/lib/auth-client"
 import { fetchAllActionables } from "@/lib/api"
 import { ActionableItem, ActionablesResult, TaskStatus } from "@/lib/types"
@@ -195,6 +195,8 @@ function BarChart({ data }: { data: { label: string; value: number; color: strin
 function ReportsContent() {
     const { data: session } = useSession()
     const role = getUserRole(session)
+    const isOfficer = role === "compliance_officer" || role === "admin"
+    const userTeam = getUserTeam(session)
 
     const [allItems, setAllItems] = React.useState<ActionableItem[]>([])
     const [allActionables, setAllActionables] = React.useState<ActionableItem[]>([])
@@ -352,6 +354,25 @@ function ReportsContent() {
             })
     }, [stats.workload])
 
+    // Team member individual stats
+    const myTeamStats = React.useMemo(() => {
+        if (isOfficer || !userTeam) return null
+        const teamItems = allItems.filter(a => safeStr(a.workstream) === userTeam)
+        const total = teamItems.length
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, review: 0, completed: 0, reworking: 0 }
+        for (const a of teamItems) {
+            const s = (a.task_status || "assigned") as TaskStatus
+            byStatus[s] = (byStatus[s] || 0) + 1
+        }
+        const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
+        for (const a of teamItems) {
+            const risk = normalizeRisk(a.modality)
+            byRisk[risk] = (byRisk[risk] || 0) + 1
+        }
+        const completionRate = total > 0 ? ((byStatus.completed / total) * 100).toFixed(1) : "0"
+        return { total, byStatus, byRisk, completionRate, teamItems }
+    }, [allItems, isOfficer, userTeam])
+
     return (
         <div className="flex h-screen bg-background">
             <Sidebar />
@@ -379,7 +400,50 @@ function ReportsContent() {
 
                     {!loading && (
                         <>
-                            {/* ── Overview KPIs ── */}
+                            {/* ── My Team Performance (team members only) ── */}
+                            {!isOfficer && myTeamStats && (
+                                <div>
+                                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                        My Team — {userTeam}
+                                    </h2>
+                                    <div className="flex gap-3 flex-wrap mb-4">
+                                        <KpiCard title="Total Assigned" value={myTeamStats.total} />
+                                        <KpiCard title="Completed" value={myTeamStats.byStatus.completed} color="#22c55e" />
+                                        <KpiCard title="In Progress" value={myTeamStats.byStatus.in_progress} color="#f59e0b" />
+                                        <KpiCard title="Under Review" value={myTeamStats.byStatus.review} color="#3b82f6" />
+                                        <KpiCard title="Reworking" value={myTeamStats.byStatus.reworking} color="#f97316" />
+                                        <KpiCard title="Completion Rate" value={Number(myTeamStats.completionRate)} color="#22c55e" />
+                                    </div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div className="bg-card border border-border rounded-lg p-5">
+                                            <h3 className="text-sm font-medium text-foreground mb-4">My Tasks by Status</h3>
+                                            <PieChart data={
+                                                (["assigned", "in_progress", "review", "completed", "reworking"] as TaskStatus[]).map((s, i) => ({
+                                                    label: STATUS_LABELS[s],
+                                                    value: myTeamStats.byStatus[s],
+                                                    color: PIE_COLORS[i],
+                                                }))
+                                            } />
+                                        </div>
+                                        <div className="bg-card border border-border rounded-lg p-5">
+                                            <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
+                                                <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+                                                My Tasks by Risk Level
+                                            </h3>
+                                            <PieChart data={
+                                                ["High Risk", "Medium Risk", "Low Risk"].map((r, i) => ({
+                                                    label: r,
+                                                    value: myTeamStats.byRisk[r],
+                                                    color: RISK_PIE_COLORS[i],
+                                                }))
+                                            } />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Overview KPIs (Compliance Officer) ── */}
+                            {isOfficer && (
                             <div>
                                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Overview</h2>
                                 <div className="flex gap-3 flex-wrap">
@@ -390,6 +454,7 @@ function ReportsContent() {
                                     <KpiCard title="Completion Rate" value={Number(stats.completionRate)} color="#22c55e" />
                                 </div>
                             </div>
+                            )}
 
                             {/* ── Status KPIs — clickable filter ── */}
                             <div>
@@ -473,23 +538,26 @@ function ReportsContent() {
                             {/* ── Progress by team ── */}
                             <div className="bg-card border border-border rounded-lg p-5">
                                 <h3 className="text-sm font-medium text-foreground mb-4">Completion Progress by Team</h3>
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {Object.entries(stats.byWorkstream)
                                         .sort((a, b) => b[1].total - a[1].total)
-                                        .map(([team, { total, done }]) => (
-                                            <div key={team} className="flex items-center gap-3">
-                                                <span className="text-xs text-foreground w-44 truncate font-medium">{team}</span>
-                                                <div className="flex-1 h-2 rounded-full bg-muted/30 overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-emerald-500 rounded-full transition-all"
-                                                        style={{ width: `${(done / (total || 1)) * 100}%` }}
-                                                    />
+                                        .map(([team, { total, done }]) => {
+                                            const pct = total > 0 ? ((done / total) * 100).toFixed(0) : "0"
+                                            return (
+                                                <div key={team} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/10 transition-colors">
+                                                    <span className="text-xs text-foreground font-medium truncate max-w-[200px]">{team}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs font-mono font-bold text-foreground">{done}<span className="text-muted-foreground/50 font-normal">/{total}</span></span>
+                                                        <span className={cn(
+                                                            "text-xs font-bold font-mono min-w-[40px] text-right",
+                                                            Number(pct) === 100 ? "text-emerald-500" : Number(pct) >= 50 ? "text-amber-500" : "text-muted-foreground"
+                                                        )}>
+                                                            {pct}%
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <span className="text-[10px] text-muted-foreground font-mono w-20 text-right">
-                                                    {done}/{total} ({total > 0 ? ((done / total) * 100).toFixed(0) : 0}%)
-                                                </span>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     {Object.keys(stats.byWorkstream).length === 0 && (
                                         <div className="text-sm text-muted-foreground/40 text-center py-8">
                                             No published tasks yet
@@ -558,6 +626,7 @@ function ReportsContent() {
                             </div>
 
                             {/* ══════════ Compliance Officer Graphs ══════════ */}
+                            {isOfficer && (<>
 
                             {/* ── Deadline Adherence + Delay Breakdown ── */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -656,6 +725,7 @@ function ReportsContent() {
                                     )}
                                 </div>
                             </div>
+                            </>)}
                         </>
                     )}
                 </div>

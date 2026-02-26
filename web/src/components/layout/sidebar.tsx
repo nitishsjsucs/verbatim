@@ -226,8 +226,6 @@ export function Sidebar({ className }: SidebarProps) {
             <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
           </div>
         )}
-
-        {/* Settings (left) + Theme (right) on same row */}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
           <button
             onClick={() => setSettingsOpen(true)}
@@ -240,19 +238,17 @@ export function Sidebar({ className }: SidebarProps) {
           </button>
           <ThemeToggle />
         </div>
-
-        {/* Sign Out below the Settings/Theme row */}
         {session && (
           <button
             onClick={() => signOut().then(() => window.location.href = "/sign-in")}
             className={cn(
-              "w-full flex items-center rounded px-2 h-8 font-medium transition-colors text-red-500 bg-transparent hover:bg-red-50",
+              "w-full flex items-center rounded px-2 h-8 font-medium transition-colors text-red-500 bg-transparent hover:bg-red-500/10 border-none outline-none",
               collapsed && "justify-center"
             )}
             type="button"
             title={collapsed ? "Sign Out" : undefined}
           >
-            <LogOut className="h-4 w-4 shrink-0 text-red-500 stroke-current fill-none" />
+            <LogOut className="h-4 w-4 shrink-0 text-red-500" />
             {!collapsed && <span className="ml-2 truncate text-[13px] text-red-500">Sign Out</span>}
           </button>
         )}

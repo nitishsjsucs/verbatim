@@ -397,7 +397,6 @@ export function DocumentList() {
         {extractConfirmDocId && (
             <div
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                onClick={() => setExtractConfirmDocId(null)}
             >
                 <div
                     className="bg-background border border-border rounded-xl shadow-2xl w-[420px] p-6 space-y-4"
