@@ -4,6 +4,7 @@ import os
 import shutil
 import logging
 import uuid
+from urllib.parse import quote as url_quote
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -387,19 +388,21 @@ def get_document_raw(doc_id: str):
         settings = get_settings()
         local_path = settings.storage.trees_dir.parent / "pdfs" / tree.doc_name
         if local_path.exists():
+            safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
             return FileResponse(
                 str(local_path),
                 media_type="application/pdf",
-                headers={"Content-Disposition": f"inline; filename={tree.doc_name}"},
+                headers={"Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"},
             )
         raise HTTPException(
             status_code=404, detail=f"PDF file not found: {tree.doc_name}"
         )
 
+    safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
     return StreamingResponse(
         grid_out,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename={tree.doc_name}"},
+        headers={"Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"},
     )
 
 
