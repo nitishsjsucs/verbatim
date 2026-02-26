@@ -230,7 +230,14 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
     // Page dimensions (only measured for page 1, rest estimated until scrolled)
     const [pageSizes, setPageSizes] = React.useState<{ w: number; h: number }[]>([])
     const [visibleRange, setVisibleRange] = React.useState<[number, number]>([0, 1])
-    const scrollRef = React.useRef<HTMLDivElement>(null)
+    // Callback ref: tracks scroll container mount/unmount via state so effects can depend on it.
+    // scrollRef stays for imperative access (scrollTo, scrollTop, etc.)
+    const scrollRef = React.useRef<HTMLDivElement | null>(null)
+    const [scrollEl, setScrollEl] = React.useState<HTMLDivElement | null>(null)
+    const scrollRefCallback = React.useCallback((node: HTMLDivElement | null) => {
+        scrollRef.current = node
+        setScrollEl(node)
+    }, [])
     const rootRef = React.useRef<HTMLDivElement>(null)
     const rafRef = React.useRef(0)
 
@@ -283,12 +290,12 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
         return () => { cancelled = true }
     }, [pdfDoc, scale])
 
-    // Fit-to-width
+    // Fit-to-width — depends on scrollEl so it runs when scroll container mounts
     React.useEffect(() => {
-        if (!pdfDoc || !scrollRef.current) return
+        if (!pdfDoc || !scrollEl) return
         let cancelled = false
         const calc = () => {
-            const cw = scrollRef.current?.clientWidth
+            const cw = scrollEl.clientWidth
             if (!cw || cancelled) return
             pdfDoc.getPage(1).then(page => {
                 if (cancelled) return
@@ -302,9 +309,9 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
         }
         calc()
         const ro = new ResizeObserver(calc)
-        ro.observe(scrollRef.current)
+        ro.observe(scrollEl)
         return () => { cancelled = true; ro.disconnect() }
-    }, [pdfDoc])
+    }, [pdfDoc, scrollEl])
 
     // Compute cumulative offsets for virtual scroll
     const offsets = React.useMemo(() => {
@@ -317,10 +324,10 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
     const totalHeight = offsets.length > 0 ? offsets[offsets.length - 1] : 0
 
     // Scroll handler — binary search for visible range
-    // Uses useLayoutEffect to fire SYNCHRONOUSLY after DOM mutations,
-    // preventing blank pages on fast cache hits where useEffect was too late.
+    // Depends on scrollEl (callback ref state) so it re-runs when the scroll container mounts.
+    // Uses useLayoutEffect to fire SYNCHRONOUSLY after DOM mutations.
     React.useLayoutEffect(() => {
-        const c = scrollRef.current
+        const c = scrollEl
         console.log(`[PdfViewer:scrollEffect] entered — ref=${!!c} offsets=${offsets.length} pageSizes=${pageSizes.length}`)
         if (!c || offsets.length === 0) return
 
@@ -373,7 +380,7 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
 
         c.addEventListener("scroll", onScroll, { passive: true })
         return () => { c.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); clearTimeout(retryTimer) }
-    }, [offsets, pageSizes.length])
+    }, [scrollEl, offsets, pageSizes.length])
 
     // Jump to page via props
     React.useEffect(() => {
@@ -469,7 +476,7 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
                 onFullscreen={handleFullscreen}
             />
 
-            <div ref={scrollRef} className="rpv-scroll-container">
+            <div ref={scrollRefCallback} className="rpv-scroll-container">
                 {/* Single tall container for correct scrollbar */}
                 <div style={{ height: totalHeight, position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
                     {pageSizes.length > 0 && Array.from({ length: vEnd - vStart + 1 }, (_, i) => {
