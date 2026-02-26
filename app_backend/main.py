@@ -381,6 +381,11 @@ def get_document_raw(doc_id: str):
 
     fs = get_fs()
 
+    cache_headers = {
+        "Cache-Control": "public, max-age=3600, immutable",
+        "ETag": f'"{doc_id}"',
+    }
+
     grid_out = fs.find_one({"filename": tree.doc_name})
 
     if not grid_out:
@@ -392,17 +397,28 @@ def get_document_raw(doc_id: str):
             return FileResponse(
                 str(local_path),
                 media_type="application/pdf",
-                headers={"Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"},
+                headers={
+                    "Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}",
+                    **cache_headers,
+                },
             )
         raise HTTPException(
             status_code=404, detail=f"PDF file not found: {tree.doc_name}"
         )
 
     safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
+    file_length = grid_out.length if hasattr(grid_out, "length") else None
+    resp_headers = {
+        "Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}",
+        **cache_headers,
+    }
+    if file_length:
+        resp_headers["Content-Length"] = str(file_length)
+
     return StreamingResponse(
         grid_out,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"},
+        headers=resp_headers,
     )
 
 
