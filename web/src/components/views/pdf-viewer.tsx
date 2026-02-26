@@ -28,20 +28,40 @@ export interface PdfViewerProps {
 
 // --- In-memory PDF document cache (survives re-mounts, keyed by URL) ---
 const docCache = new Map<string, { doc: pdfjsLib.PDFDocumentProxy; data: ArrayBuffer }>()
+const MAX_CACHE = 5
 
 async function loadPdfDoc(url: string): Promise<pdfjsLib.PDFDocumentProxy> {
     const cached = docCache.get(url)
-    if (cached) return cached.doc
+    if (cached) {
+        // Verify the proxy is still alive by trying getPage
+        try {
+            await cached.doc.getPage(1)
+            return cached.doc
+        } catch {
+            // Proxy destroyed / stale — rebuild from stored ArrayBuffer
+            try {
+                const doc = await pdfjsLib.getDocument({ data: cached.data.slice(0) }).promise
+                docCache.set(url, { doc, data: cached.data })
+                return doc
+            } catch {
+                docCache.delete(url) // corrupted, re-fetch
+            }
+        }
+    }
 
     const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.arrayBuffer()
-    const doc = await pdfjsLib.getDocument({ data }).promise
+    const doc = await pdfjsLib.getDocument({ data: data.slice(0) }).promise
     docCache.set(url, { doc, data })
-    // Evict oldest if cache grows too large (keep last 5)
-    if (docCache.size > 5) {
+    // Evict oldest if cache grows too large
+    if (docCache.size > MAX_CACHE) {
         const oldest = docCache.keys().next().value
-        if (oldest && oldest !== url) docCache.delete(oldest)
+        if (oldest && oldest !== url) {
+            const old = docCache.get(oldest)
+            old?.doc.destroy().catch(() => {})
+            docCache.delete(oldest)
+        }
     }
     return doc
 }
@@ -118,8 +138,12 @@ const PdfPage = React.memo(function PdfPage({ doc, pageIndex, scale, width, heig
                 tc.style.setProperty("--scale-factor", `${scale}`)
                 page.getTextContent().then(txt => {
                     if (cancelled || !tc) return
-                    const tl = new (pdfjsLib as any).TextLayer({ textContentSource: txt, container: tc, viewport: vp })
-                    tl.render().catch(() => {})
+                    ;(pdfjsLib as any).renderTextLayer({
+                        textContent: txt,
+                        container: tc,
+                        viewport: vp,
+                        textDivs: [],
+                    })
                 })
             }).catch(() => {})
         })

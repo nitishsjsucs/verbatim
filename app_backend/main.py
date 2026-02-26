@@ -349,7 +349,23 @@ def health_check():
 def list_documents():
     """List all indexed documents (batch loaded for efficiency - FIX #5)."""
     store = get_tree_store()
-    return store.list_documents_summary()
+    docs = store.list_documents_summary()
+
+    # Batch-check which docs already have actionables extracted
+    try:
+        act_store = get_actionable_store()
+        extracted_ids = set()
+        for raw in act_store._collection.find({}, {"doc_id": 1, "actionables": {"$slice": 1}}):
+            did = raw.get("doc_id", "")
+            if did and raw.get("actionables"):
+                extracted_ids.add(did)
+        for d in docs:
+            d["has_actionables"] = d["id"] in extracted_ids
+    except Exception:
+        for d in docs:
+            d["has_actionables"] = False
+
+    return docs
 
 
 @app.get("/documents/{doc_id}")

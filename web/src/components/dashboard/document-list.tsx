@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { FileText, Trash2, X, MessageSquare, Search, Pencil, Shield, Loader2 } from "lucide-react"
+import { FileText, Trash2, X, MessageSquare, Search, Pencil, Shield, Loader2, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -30,8 +30,16 @@ export function DocumentList() {
     const [renamingDocId, setRenamingDocId] = useState<string | null>(null)
     const [renameValue, setRenameValue] = useState("")
     const [extractingDocId, setExtractingDocId] = useState<string | null>(null)
-    const [extractProgress, setExtractProgress] = useState<string>("")
     const [extractConfirmDocId, setExtractConfirmDocId] = useState<string | null>(null)
+    // Detailed extraction progress
+    const [extStage, setExtStage] = useState<"starting" | "prefilter" | "extracting" | "validating" | "done">("starting")
+    const [extTotalNodes, setExtTotalNodes] = useState(0)
+    const [extCandidates, setExtCandidates] = useState(0)
+    const [extTotalBatches, setExtTotalBatches] = useState(0)
+    const [extCurrentBatch, setExtCurrentBatch] = useState(0)
+    const [extCumulative, setExtCumulative] = useState(0)
+    const [extValidated, setExtValidated] = useState(0)
+    const [extFlagged, setExtFlagged] = useState(0)
     const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
 
     const loadDocuments = async () => {
@@ -69,27 +77,54 @@ export function DocumentList() {
     const handleExtract = async (docId: string, docName: string) => {
         setExtractConfirmDocId(null)
         setExtractingDocId(docId)
-        setExtractProgress("Starting extraction...")
+        setExtStage("starting")
+        setExtTotalNodes(0)
+        setExtCandidates(0)
+        setExtTotalBatches(0)
+        setExtCurrentBatch(0)
+        setExtCumulative(0)
+        setExtValidated(0)
+        setExtFlagged(0)
         try {
             const result = await extractActionablesStreaming(docId, false, (event: ExtractionProgressEvent) => {
-                if (event.event === "prefilter_done") {
-                    setExtractProgress(`Found ${event.candidate_count || 0} candidate sections...`)
-                } else if (event.event === "batch_start") {
-                    setExtractProgress(`Processing batch ${event.batch}...`)
-                } else if (event.event === "batch_done") {
-                    setExtractProgress(`Extracted ${event.cumulative_actionables || 0} actionables so far...`)
-                } else if (event.event === "validation_start") {
-                    setExtractProgress(`Validating ${event.total_actionables || 0} actionables...`)
-                } else if (event.event === "validation_done") {
-                    setExtractProgress(`Validated: ${event.validated} ok, ${event.flagged} flagged`)
+                switch (event.event) {
+                    case "start":
+                        setExtStage("prefilter")
+                        setExtTotalNodes(event.total_nodes || 0)
+                        break
+                    case "prefilter_done":
+                        setExtCandidates(event.candidate_count || 0)
+                        setExtTotalNodes(event.total_nodes || 0)
+                        break
+                    case "batches_planned":
+                        setExtStage("extracting")
+                        setExtTotalBatches(event.total_batches || 0)
+                        setExtCandidates(event.candidate_count || 0)
+                        break
+                    case "batch_start":
+                        setExtCurrentBatch(event.batch || 0)
+                        break
+                    case "batch_done":
+                        setExtCurrentBatch(event.batch || 0)
+                        setExtCumulative(event.cumulative_actionables || 0)
+                        break
+                    case "validation_start":
+                        setExtStage("validating")
+                        setExtCumulative(event.total_actionables || 0)
+                        break
+                    case "validation_done":
+                        setExtStage("done")
+                        setExtValidated(event.validated || 0)
+                        setExtFlagged(event.flagged || 0)
+                        break
                 }
             })
             toast.success(`Extracted ${result.actionables?.length || 0} actionables from ${docName}`)
+            loadDocuments()
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Extraction failed")
         } finally {
             setExtractingDocId(null)
-            setExtractProgress("")
         }
     }
 
@@ -264,17 +299,27 @@ export function DocumentList() {
                                     <Pencil className="h-3 w-3" />
                                     Rename
                                 </button>
-                                <button
-                                    onClick={() => setExtractConfirmDocId(doc.id)}
-                                    disabled={extractingDocId === doc.id}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                                    title="Extract actionables from document"
-                                >
-                                    {extractingDocId === doc.id
-                                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                                        : <Shield className="h-3 w-3" />}
-                                    Extract
-                                </button>
+                                {doc.has_actionables ? (
+                                    <span
+                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-emerald-500/10 text-emerald-500 text-[11px] font-medium cursor-default"
+                                        title="Actionables already extracted"
+                                    >
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Extracted
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={() => setExtractConfirmDocId(doc.id)}
+                                        disabled={extractingDocId === doc.id}
+                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                        title="Extract actionables from document"
+                                    >
+                                        {extractingDocId === doc.id
+                                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                                            : <Shield className="h-3 w-3" />}
+                                        Extract
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setDeletingDocId(doc.id)}
                                     className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-[11px] font-medium"
@@ -332,30 +377,97 @@ export function DocumentList() {
             </div>
         )}
 
-        {/* Extract Progress Dialog */}
-        {extractingDocId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                <div className="bg-background border border-border rounded-xl shadow-2xl w-[420px] p-6 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                            <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
+        {/* Extract Progress Dialog — rich progress bar */}
+        {extractingDocId && (() => {
+            const batchPct = extTotalBatches > 0 ? Math.round((extCurrentBatch / extTotalBatches) * 100) : 0
+            const overallPct =
+                extStage === "starting" || extStage === "prefilter" ? 5 :
+                extStage === "extracting" ? Math.round(10 + (batchPct * 0.7)) :
+                extStage === "validating" ? 85 :
+                100
+            const stageLabel =
+                extStage === "starting" ? "Initializing..." :
+                extStage === "prefilter" ? "Scanning document for deontic language..." :
+                extStage === "extracting" ? `Extracting batch ${extCurrentBatch} of ${extTotalBatches}` :
+                extStage === "validating" ? "Validating & deduplicating actionables..." :
+                "Finishing up..."
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-background border border-border rounded-xl shadow-2xl w-[480px] p-6 space-y-5">
+                        {/* Header */}
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                                <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-semibold text-foreground">Extracting Actionables</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    {documents.find(d => d.id === extractingDocId)?.name}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-sm font-semibold text-foreground">Extracting Actionables...</h2>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {documents.find(d => d.id === extractingDocId)?.name}
-                            </p>
+
+                        {/* Stage label */}
+                        <p className="text-xs text-foreground/80 font-medium">{stageLabel}</p>
+
+                        {/* Overall progress bar */}
+                        <div className="space-y-1.5">
+                            <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-amber-500/70 rounded-full transition-all duration-700 ease-out"
+                                    style={{ width: `${overallPct}%` }}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                <span>{overallPct}% complete</span>
+                                {extStage === "extracting" && extTotalBatches > 0 && (
+                                    <span>Batch {extCurrentBatch}/{extTotalBatches}</span>
+                                )}
+                            </div>
                         </div>
+
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-muted/30 rounded-lg p-3 text-center">
+                                <p className="text-lg font-semibold font-mono">
+                                    {extCandidates > 0 ? extCandidates : "..."}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">Sections scanned</p>
+                                {extTotalNodes > 0 && (
+                                    <p className="text-[9px] text-muted-foreground/50">of {extTotalNodes} total</p>
+                                )}
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-3 text-center">
+                                <p className="text-lg font-semibold font-mono text-amber-500">
+                                    {extCumulative}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">Found so far</p>
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-3 text-center">
+                                <p className="text-lg font-semibold font-mono">
+                                    {extStage === "done" ? `${extValidated}/${extFlagged}` : "..."}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                    {extStage === "done" ? "Valid / Flagged" : "Validation"}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Validation indeterminate bar */}
+                        {extStage === "validating" && (
+                            <div className="w-full h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                                <div className="h-full bg-amber-500/40 rounded-full animate-pulse w-full" />
+                            </div>
+                        )}
+
+                        <p className="text-[10px] text-muted-foreground/50 text-center">
+                            This may take several minutes depending on document size.
+                        </p>
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-3">
-                        <p className="text-xs text-foreground/80 animate-pulse">{extractProgress || "Starting..."}</p>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground/50 text-center">
-                        This may take several minutes. Please wait...
-                    </p>
                 </div>
-            </div>
-        )}
+            )
+        })()}
 
         {/* Delete Confirm Dialog */}
         {deletingDocId && (

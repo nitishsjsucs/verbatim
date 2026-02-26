@@ -548,20 +548,10 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                     </select>
                 </div>
 
-                {/* Showing count + re-extract */}
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
-                    <span>
-                        Showing {filtered.length} of {result.total_extracted}
-                        {result.extracted_at && ` · Extracted ${new Date(result.extracted_at).toLocaleDateString()}`}
-                    </span>
-                    <button
-                        onClick={() => handleExtract(true)}
-                        disabled={extracting}
-                        className="hover:text-muted-foreground transition-colors flex items-center gap-1"
-                    >
-                        {extracting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-                        Re-extract
-                    </button>
+                {/* Showing count */}
+                <div className="text-[10px] text-muted-foreground/60">
+                    Showing {filtered.length} of {result.total_extracted}
+                    {result.extracted_at && ` · Extracted ${new Date(result.extracted_at).toLocaleDateString()}`}
                 </div>
             </div>
 

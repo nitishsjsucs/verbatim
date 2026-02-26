@@ -6,6 +6,7 @@ export interface DocumentMeta {
     nodes: number;
     description?: string;
     ingested_at?: string;  // ISO datetime of when document was ingested
+    has_actionables?: boolean;  // true if actionables already extracted
 }
 
 export interface IngestResponse {
