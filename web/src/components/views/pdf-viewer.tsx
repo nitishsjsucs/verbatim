@@ -316,43 +316,62 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
 
     const totalHeight = offsets.length > 0 ? offsets[offsets.length - 1] : 0
 
-    // Throttled scroll handler — binary search for visible range
+    // Scroll handler — binary search for visible range
+    // IMPORTANT: initial computation is SYNCHRONOUS to avoid blank pages on fast cache hits.
+    // Only subsequent scroll events are debounced via RAF.
     React.useEffect(() => {
         const c = scrollRef.current
         if (!c || offsets.length === 0) return
 
-        const onScroll = () => {
-            cancelAnimationFrame(rafRef.current)
-            rafRef.current = requestAnimationFrame(() => {
-                const top = c.scrollTop
-                const bottom = top + c.clientHeight
-                const n = pageSizes.length
+        const computeVisibleRange = (source: string) => {
+            const top = c.scrollTop
+            const bottom = top + c.clientHeight
+            const n = pageSizes.length
 
-                // Binary search for first visible page
-                let lo = 0, hi = n - 1
-                while (lo < hi) { const m = (lo + hi) >> 1; offsets[m + 1] < top - 200 ? lo = m + 1 : hi = m }
-                const first = Math.max(0, lo - BUFFER)
+            if (n === 0 || bottom === 0) {
+                console.warn(`[PdfViewer:scroll] ${source}: skip — n=${n} clientHeight=${c.clientHeight}`)
+                return
+            }
 
-                // Find last visible page
-                let last = lo
-                while (last < n - 1 && offsets[last] < bottom + 200) last++
-                last = Math.min(n - 1, last + BUFFER)
+            // Binary search for first visible page
+            let lo = 0, hi = n - 1
+            while (lo < hi) { const m = (lo + hi) >> 1; offsets[m + 1] < top - 200 ? lo = m + 1 : hi = m }
+            const first = Math.max(0, lo - BUFFER)
 
-                setVisibleRange(prev => prev[0] === first && prev[1] === last ? prev : [first, last])
+            // Find last visible page
+            let last = lo
+            while (last < n - 1 && offsets[last] < bottom + 200) last++
+            last = Math.min(n - 1, last + BUFFER)
 
-                // Track current page
-                let closest = lo, minDist = Infinity
-                for (let i = lo; i <= Math.min(last, n - 1); i++) {
-                    const d = Math.abs(offsets[i] - top)
-                    if (d < minDist) { minDist = d; closest = i }
-                }
-                setCurrentPage(prev => prev === closest ? prev : closest)
-            })
+            console.log(`[PdfViewer:scroll] ${source}: scrollTop=${Math.round(top)} clientH=${c.clientHeight} → visible=[${first},${last}] (n=${n})`)
+
+            setVisibleRange(prev => prev[0] === first && prev[1] === last ? prev : [first, last])
+
+            // Track current page
+            let closest = lo, minDist = Infinity
+            for (let i = lo; i <= Math.min(last, n - 1); i++) {
+                const d = Math.abs(offsets[i] - top)
+                if (d < minDist) { minDist = d; closest = i }
+            }
+            setCurrentPage(prev => prev === closest ? prev : closest)
         }
 
-        onScroll()
+        // Compute IMMEDIATELY on mount/update (not deferred to RAF)
+        computeVisibleRange("init")
+
+        // Safety: if clientHeight was 0 (layout not yet complete), retry after a short delay
+        let retryTimer = 0
+        if (c.clientHeight === 0) {
+            retryTimer = window.setTimeout(() => computeVisibleRange("init-retry"), 50)
+        }
+
+        const onScroll = () => {
+            cancelAnimationFrame(rafRef.current)
+            rafRef.current = requestAnimationFrame(() => computeVisibleRange("scroll"))
+        }
+
         c.addEventListener("scroll", onScroll, { passive: true })
-        return () => { c.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current) }
+        return () => { c.removeEventListener("scroll", onScroll); cancelAnimationFrame(rafRef.current); clearTimeout(retryTimer) }
     }, [offsets, pageSizes.length])
 
     // Jump to page via props
