@@ -210,6 +210,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 }) {
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
+    const isApproved = item.approval_status === "approved"
 
     const handleFieldSave = async (field: string, value: unknown) => {
         setSaving(true)
@@ -284,12 +285,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </button>
                         </>
                     )}
-                    {item.approval_status === "approved" && (
-                        <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Revert to pending">
-                            <Undo2 className="h-3.5 w-3.5" />
-                        </button>
-                    )}
-                    {item.approval_status === "rejected" && (
+                    {(item.approval_status === "approved" || item.approval_status === "rejected") && (
                         <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Revert to pending">
                             <Undo2 className="h-3.5 w-3.5" />
                         </button>
@@ -314,6 +310,38 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </div>
                     )}
 
+                    {isApproved ? (
+                        <>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes) || <span className="text-muted-foreground/40 italic">None</span>}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/40">None</span>}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Team</p>
+                                    <span className={cn("inline-block text-xs rounded-md px-2.5 py-1.5 font-medium", WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground")}>{item.workstream}</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
+                                    <span className={cn("inline-block text-xs rounded-md px-2.5 py-1.5 font-medium", RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground")}>{normalizeRisk(item.modality)}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-border/10">
+                                <div className="flex items-center gap-3">
+                                    <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1">
+                                        <FileText className="h-3 w-3" />
+                                        {item.source_location || "No source"}
+                                    </button>
+                                    <span className="text-[10px] text-muted-foreground/40">{docName}</span>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
                     <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
                     <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
 
@@ -367,6 +395,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </button>
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>

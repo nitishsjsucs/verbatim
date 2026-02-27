@@ -386,72 +386,63 @@ export default function PublishPage() {
                     </div>
                 </div>
 
-                {/* Common deadline + publish all */}
-                <div className="shrink-0 border-b border-border/40 px-5 py-3 space-y-3">
-                    <div className="text-[10px] text-muted-foreground/60 bg-blue-500/5 border border-blue-500/10 rounded px-3 py-2 flex items-center gap-2">
+                {/* Unified toolbar: Alert + Search + Calendar + Time + Save + Publish — single row */}
+                <div className="shrink-0 border-b border-border/40 px-5 py-2.5">
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 bg-blue-500/5 border border-blue-500/10 rounded px-3 py-1.5 mb-2">
                         <Calendar className="h-3 w-3 text-muted-foreground shrink-0 dark:text-blue-200" />
-                        Set deadlines and publish approved actionables to the tracker. Published items will be assigned to teams.
+                        Set deadlines and publish approved actionables to the tracker. Published items will be assigned to teams. Common deadline applies to items without individual deadlines.
                     </div>
-
-                    <div className="flex items-center gap-3 bg-muted/20 rounded-lg p-3">
-                        <div className="flex-1">
-                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Common Deadline (applies to items without individual deadlines)</p>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="date"
-                                    value={commonDeadline}
-                                    min={todayStr}
-                                    onChange={e => setCommonDeadline(e.target.value)}
-                                    className="flex-1 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                                />
-                                <input
-                                    type="time"
-                                    value={commonDeadlineTime}
-                                    onChange={e => setCommonDeadlineTime(e.target.value)}
-                                    className="w-28 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                                />
-                                <button
-                                    onClick={handleSaveCommonDeadline}
-                                    disabled={!commonDeadline}
-                                    className={cn(
-                                        "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
-                                        commonDeadlineSaved
-                                            ? "bg-emerald-500/15 text-emerald-500"
-                                            : commonDeadline
-                                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                    )}
-                                >
-                                    <Save className="h-3 w-3" />
-                                    {commonDeadlineSaved ? "Saved" : "Save"}
-                                </button>
-                                <button
-                                    onClick={handlePublishAll}
-                                    disabled={publishQueue.length === 0}
-                                    className={cn(
-                                        "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
-                                        publishQueue.length > 0
-                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                                            : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                    )}
-                                >
-                                    <Send className="h-3 w-3" />
-                                    Publish All ({publishQueue.length})
-                                </button>
-                            </div>
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search className="absolute left-2.5 top-[7px] h-3.5 w-3.5 text-muted-foreground" />
+                            <input
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Search items..."
+                                className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
+                            />
                         </div>
-                        
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-[7px] h-3.5 w-3.5 text-muted-foreground" />
                         <input
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search items..."
-                            className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
+                            type="date"
+                            value={commonDeadline}
+                            min={todayStr}
+                            onChange={e => setCommonDeadline(e.target.value)}
+                            className="w-36 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                         />
+                        <input
+                            type="time"
+                            value={commonDeadlineTime}
+                            onChange={e => setCommonDeadlineTime(e.target.value)}
+                            className="w-36 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                        />
+                        <button
+                            onClick={handleSaveCommonDeadline}
+                            disabled={!commonDeadline}
+                            className={cn(
+                                "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
+                                commonDeadlineSaved
+                                    ? "bg-emerald-500/15 text-emerald-500"
+                                    : commonDeadline
+                                        ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                        : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                            )}
+                        >
+                            <Save className="h-3 w-3" />
+                            {commonDeadlineSaved ? "Saved" : "Save"}
+                        </button>
+                        <button
+                            onClick={handlePublishAll}
+                            disabled={publishQueue.length === 0}
+                            className={cn(
+                                "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
+                                publishQueue.length > 0
+                                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                                    : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                            )}
+                        >
+                            <Send className="h-3 w-3" />
+                            Publish All ({publishQueue.length})
+                        </button>
                     </div>
                 </div>
 

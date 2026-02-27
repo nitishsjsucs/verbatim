@@ -309,15 +309,6 @@ export function DocumentList() {
                                 <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
                                 <span className="text-[13px] font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
                             </Link>
-                            {doc.description && (
-                                <button
-                                    className="text-[11px] text-muted-foreground/60 truncate block max-w-full pl-[22px] mt-0.5 text-left hover:text-muted-foreground transition-colors cursor-pointer"
-                                    title="Click to view full description"
-                                    onClick={() => setExpandedDoc(doc)}
-                                >
-                                    {doc.description.replace(/\*\*/g, "").slice(0, 100)}…
-                                </button>
-                            )}
                         </TableCell>
                         <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
                         <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
@@ -330,7 +321,17 @@ export function DocumentList() {
                             )}
                         </TableCell>
                         <TableCell className="text-right py-2.5 pr-2">
-                            <div className="grid items-center gap-1.5" style={{ gridTemplateColumns: "82px 62px 78px 84px 66px", justifyContent: "end" }}>
+                            <div className="grid items-center gap-1.5" style={{ gridTemplateColumns: "62px 82px 78px 84px 66px", justifyContent: "end" }}>
+                                <div>
+                                    <Link
+                                        href={`/documents/${doc.id}?tab=chat`}
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
+                                        title="Chat with document"
+                                    >
+                                        <MessageSquare className="h-3 w-3" />
+                                        Chat
+                                    </Link>
+                                </div>
                                 <div>
                                     {doc.description ? (
                                         <button
@@ -342,16 +343,6 @@ export function DocumentList() {
                                             Summary
                                         </button>
                                     ) : <span />}
-                                </div>
-                                <div>
-                                    <Link
-                                        href={`/documents/${doc.id}?tab=chat`}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
-                                        title="Chat with document"
-                                    >
-                                        <MessageSquare className="h-3 w-3" />
-                                        Chat
-                                    </Link>
                                 </div>
                                 <div>
                                     <button
