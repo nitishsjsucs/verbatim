@@ -88,8 +88,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
 
-  --border: oklch(0.864 0 0);                /* #dcdcdc — outlines */
-  --input: oklch(0.864 0 0);
+  --border: transparent;                     /* strokes removed */
+  --input: transparent;
   --ring: oklch(0.48 0.12 270);              /* indigo ring */
 
   --chart-1: oklch(0.48 0.12 270);
@@ -105,7 +105,7 @@
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.91 0 0);         /* #e8e8e8 hover */
   --sidebar-accent-foreground: oklch(0.13 0 0);
-  --sidebar-border: oklch(0.864 0 0);        /* #dcdcdc */
+  --sidebar-border: transparent;
   --sidebar-ring: oklch(0.48 0.12 270);
 }
 
@@ -137,9 +137,9 @@
   --destructive: oklch(0.61 0.23 20);
   --destructive-foreground: oklch(0.97 0.01 200);
 
-  /* Border #3E3E44 */
-  --border: oklch(0.32 0.01 270);
-  --input: oklch(0.32 0.01 270);
+  /* Border — removed strokes */
+  --border: transparent;
+  --input: transparent;
 
   --ring: oklch(0.65 0.02 260);
 
@@ -157,13 +157,13 @@
   --sidebar-primary-foreground: oklch(0.13 0.01 240);
   --sidebar-accent: oklch(0.24 0.01 270);
   --sidebar-accent-foreground: oklch(0.97 0.01 200);
-  --sidebar-border: oklch(1 0 0 / 8%); /* subtle white */
+  --sidebar-border: transparent;
   --sidebar-ring: oklch(0.65 0.02 260);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-transparent outline-none;
   }
   body {
     @apply bg-background text-foreground;
@@ -232,10 +232,10 @@
     cursor: pointer;
   }
 
-  /* ─── Visual consistency: border-radius & border-width ────────────── */
+  /* ─── Visual consistency: border-radius ────────────── */
   input, select, textarea, button {
     border-radius: var(--radius);
-    border-width: 1px;
+    border-width: 0;
   }
 
   /* ─── Dark scrollbars ─────────────────────────────────────────────── */

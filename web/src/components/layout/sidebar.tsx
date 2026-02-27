@@ -186,8 +186,6 @@ export function Sidebar({ className }: SidebarProps) {
                 collapsed={collapsed}
               />
             </div>
-
-            <div className="my-2 border-t border-sidebar-border/50" />
           </>
         )}
 
@@ -212,16 +210,14 @@ export function Sidebar({ className }: SidebarProps) {
                 collapsed={collapsed}
               />
             </div>
-
-            <div className="my-2 border-t border-sidebar-border/50" />
           </>
         )}
       </div>
 
       {/* ── Footer ── */}
-      <div className={cn("px-2 py-1 border-t border-sidebar-border/50 mt-auto", collapsed && "px-1")}>
+      <div className={cn("px-2 py-1 mt-auto", collapsed && "px-1")}>
         {!collapsed && session?.user && (
-          <div className="px-2 py-1.5 mb-1">
+          <div className="px-2 py-1.5">
             <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
             <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
           </div>

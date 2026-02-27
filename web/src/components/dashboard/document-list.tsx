@@ -415,7 +415,7 @@ export function DocumentList() {
                         </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        This will analyze the document and extract compliance actionables. This process may take several minutes depending on document size.
+                        This will analyze the document and extract compliance actionables. This process may take several minutes depending on document size. (This process may take upwards of 10 minutes).
                     </p>
                     <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setExtractConfirmDocId(null)}>Cancel</Button>
