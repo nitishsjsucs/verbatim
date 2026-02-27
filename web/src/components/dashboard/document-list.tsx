@@ -288,7 +288,7 @@ export function DocumentList() {
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4" style={{ width: '50%'}}>Name</TableHead>
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
                     <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[130px] text-right">Date Ingested</TableHead>
-                    <TableHead className="h-9"></TableHead>
+                    <TableHead className="h-9 w-[480px]"></TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -330,7 +330,7 @@ export function DocumentList() {
                             )}
                         </TableCell>
                         <TableCell className="text-right py-2.5 pr-2">
-                            <div className="flex items-center justify-end gap-1.5">
+                            <div className="flex items-center justify-end gap-1.5 flex-nowrap">
                                 {doc.description && (
                                     <button
                                         onClick={() => setExpandedDoc(doc)}

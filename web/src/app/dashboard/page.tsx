@@ -169,7 +169,7 @@ export default function DashboardPage() {
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
     const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
-    const [sortBy, setSortBy] = React.useState<string>("status")
+    const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
     const [activeCollapsed, setActiveCollapsed] = React.useState(false)
@@ -273,7 +273,14 @@ export default function DashboardPage() {
 
     // Split into active (non-completed) and completed
     const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
-    const completedRows = React.useMemo(() => filtered.filter(r => r.item.task_status === "completed"), [filtered])
+    const completedRows = React.useMemo(() => {
+        const rows = filtered.filter(r => r.item.task_status === "completed")
+        return rows.sort((a, b) => {
+            const da = a.item.completion_date ? new Date(a.item.completion_date).getTime() : 0
+            const db = b.item.completion_date ? new Date(b.item.completion_date).getTime() : 0
+            return db - da
+        })
+    }, [filtered])
 
     // Group active by workstream
     const grouped = React.useMemo(() => {

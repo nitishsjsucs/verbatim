@@ -310,6 +310,7 @@ export default function PublishPage() {
 
     // Publish queue: approved but NOT yet published
     const publishQueue = React.useMemo(() => {
+        const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
         let queue = allItems.filter(({ item }) => item.approval_status === "approved" && !item.published_at)
         if (searchQuery) {
             const q = searchQuery.toLowerCase()
@@ -317,7 +318,7 @@ export default function PublishPage() {
                 `${safeStr(item.action)} ${safeStr(item.workstream)} ${safeStr(item.implementation_notes)}`.toLowerCase().includes(q)
             )
         }
-        return queue
+        return queue.sort((a, b) => (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1))
     }, [allItems, searchQuery])
 
     // Group by team

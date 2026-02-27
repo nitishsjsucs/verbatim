@@ -345,6 +345,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
     // Filter actionables
     const filtered = React.useMemo(() => {
         if (!result?.actionables) return []
+        const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
         return result.actionables.filter(a => {
             if (modalityFilter !== "all" && normalizeRisk(a.modality) !== modalityFilter) return false
             if (workstreamFilter !== "all" && a.workstream !== workstreamFilter) return false
@@ -354,7 +355,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                 if (!searchable.includes(q)) return false
             }
             return true
-        })
+        }).sort((a, b) => (ro[normalizeRisk(a.modality)] ?? 1) - (ro[normalizeRisk(b.modality)] ?? 1))
     }, [result, modalityFilter, workstreamFilter, searchQuery])
 
     if (loading) {

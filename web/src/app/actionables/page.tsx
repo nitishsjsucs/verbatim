@@ -602,6 +602,7 @@ export default function ActionablesPage() {
 
     // Filter based on current tab (all / by-team only)
     const filtered = React.useMemo(() => {
+        const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
         return allItems.filter(({ item, docId }) => {
             if (docFilter !== "all" && docId !== docFilter) return false
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
@@ -611,7 +612,7 @@ export default function ActionablesPage() {
                 if (!searchable.includes(q)) return false
             }
             return true
-        })
+        }).sort((a, b) => (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1))
     }, [allItems, docFilter, riskFilter, searchQuery])
 
     // Group by team for the "by-team" view
