@@ -791,14 +791,14 @@ function TeamBoardContent() {
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             placeholder="Search tracker..."
-                            className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
+                            className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-1.5 border border-border/40 focus:border-border focus:outline-none"
                         />
                     </div>
 
                     <select
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value)}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                     >
                         <option value="all">All Status</option>
                         {ALL_TASK_STATUSES.map(s => (
@@ -809,7 +809,7 @@ function TeamBoardContent() {
                     <select
                         value={riskFilter}
                         onChange={e => setRiskFilter(e.target.value)}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                     >
                         <option value="all">All Risk</option>
                         {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -818,7 +818,7 @@ function TeamBoardContent() {
                     <select
                         value={deadlineFilter}
                         onChange={e => setDeadlineFilter(e.target.value)}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                     >
                         <option value="all">All Deadlines</option>
                         <option value="yet">Yet to Deadline</option>
@@ -835,7 +835,7 @@ function TeamBoardContent() {
                                 setDeadlineFilter("all")
                                 setSearchQuery("")
                             }}
-                            className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-transparent focus:border-border"
+                            className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-border/40 focus:border-border"
                         >
                             Clear Filters
                         </button>
@@ -846,7 +846,7 @@ function TeamBoardContent() {
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
-                            className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                            className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                         >
                             <option value="status">Status</option>
                             <option value="deadline">Deadline</option>

@@ -832,13 +832,13 @@ export default function ActionablesPage() {
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     placeholder="Search actionables..."
-                                    className="w-full bg-muted/30 text-xs rounded-md pl-7 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
+                                    className="w-full bg-muted/30 text-xs rounded-md pl-7 pr-3 py-1.5 border border-border/40 focus:border-border focus:outline-none"
                                 />
                             </div>
                             <select
                                 value={docFilter}
                                 onChange={e => setDocFilter(e.target.value)}
-                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground max-w-[140px]"
+                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[140px]"
                             >
                                 <option value="all">All documents</option>
                                 {allDocs.map(d => (
@@ -848,7 +848,7 @@ export default function ActionablesPage() {
                             <select
                                 value={riskFilter}
                                 onChange={e => setRiskFilter(e.target.value)}
-                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                             >
                                 <option value="all">All risk</option>
                                 {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -1095,7 +1095,7 @@ export default function ActionablesPage() {
                                             const doc = allDocs.find(d => d.doc_id === e.target.value)
                                             setPdfDocName(doc?.doc_name || e.target.value)
                                         }}
-                                        className="bg-muted/30 text-[11px] rounded px-2 py-1 border border-transparent focus:border-border focus:outline-none text-foreground max-w-[180px]"
+                                        className="bg-muted/30 text-[11px] rounded px-2 py-1 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[180px]"
                                     >
                                         {allDocs.map(d => (
                                             <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>

@@ -73,16 +73,16 @@ function Section({ title, icon, children, defaultOpen = true }: {
 }) {
     const [open, setOpen] = React.useState(defaultOpen)
     return (
-        <div className="mb-1">
+        <div className="border border-border/60 rounded-lg bg-card/50 overflow-hidden">
             <button
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center gap-2 py-2 px-1 text-left hover:bg-muted/20 rounded transition-colors"
+                className="w-full flex items-center gap-2 py-2.5 px-4 text-left hover:bg-muted/20 transition-colors"
             >
                 {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                 {icon}
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</span>
             </button>
-            {open && <div className="mt-2 space-y-3">{children}</div>}
+            {open && <div className="px-4 pb-4 pt-1 space-y-4 border-t border-border/30">{children}</div>}
         </div>
     )
 }
@@ -91,7 +91,7 @@ function Section({ title, icon, children, defaultOpen = true }: {
 
 function Stat({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
-        <div className="bg-card rounded-lg p-3 text-center min-w-[100px]">
+        <div className="bg-card border border-border/40 rounded-lg px-4 py-3 text-center min-w-[110px]">
             <p className="text-[15px] font-bold font-mono" style={{ color: color || "var(--foreground)" }}>{value}</p>
             <p className="text-[9px] text-muted-foreground/60 mt-0.5">{label}</p>
             {sub && <p className="text-[8px] text-muted-foreground/40 mt-0.5">{sub}</p>}
@@ -112,7 +112,7 @@ function KpiCard({ title, value, color, filterActive, onClick }: {
         <button
             onClick={onClick}
             className={cn(
-                "flex-1 min-w-[130px] bg-card rounded-lg p-4 text-left transition-all hover:shadow-md",
+                "flex-1 min-w-[130px] bg-card border border-border/40 rounded-lg p-4 text-left transition-all hover:shadow-md",
                 filterActive && "ring-2 ring-primary"
             )}
         >
@@ -498,7 +498,7 @@ function ReportsContent() {
                 </div>
 
                 {/* ── Dashboard content ── */}
-                <div className="flex-1 overflow-auto p-5 space-y-2">
+                <div className="flex-1 overflow-auto p-6 space-y-3">
                     {loading && (
                         <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -534,11 +534,11 @@ function ReportsContent() {
                         {/* S2: Deadline Pressure */}
                         <Section title="Section 2 — Deadline Pressure" icon={<Clock className="h-3.5 w-3.5 text-amber-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Overdue Bucket Distribution</h3>
                                     <BarChart data={delayBarData} />
                                 </div>
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Upcoming Deadlines</h3>
                                     <div className="flex gap-3 flex-wrap">
                                         <Stat label="Next 7 Days" value={stats.upcoming7} color={stats.upcoming7 > 0 ? "#ef4444" : "#22c55e"} />
@@ -552,11 +552,11 @@ function ReportsContent() {
                         {/* S3: Risk Exposure */}
                         <Section title="Section 3 — Risk Exposure" icon={<AlertTriangle className="h-3.5 w-3.5 text-red-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Open Tasks by Risk Level</h3>
                                     <PieChart data={openRiskPieData} />
                                 </div>
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Overdue Tasks by Risk Level</h3>
                                     <BarChart data={overdueRiskBarData} />
                                 </div>
@@ -565,7 +565,7 @@ function ReportsContent() {
 
                         {/* S4: Team Performance */}
                         <Section title="Section 4 — Team Performance" icon={<Users className="h-3.5 w-3.5 text-blue-500" />}>
-                            <div className="bg-card rounded-lg p-4">
+                            <div className="bg-card border border-border/30 rounded-lg p-4">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
                                         <thead>
@@ -598,7 +598,7 @@ function ReportsContent() {
                                     </table>
                                 </div>
                             </div>
-                            <div className="bg-card rounded-lg p-4">
+                            <div className="bg-card border border-border/30 rounded-lg p-4">
                                 <h3 className="text-sm font-medium text-foreground mb-3">Tasks by Team</h3>
                                 {workstreamBarData.length > 0 ? <BarChart data={workstreamBarData} /> : <p className="text-sm text-muted-foreground/40 text-center py-4">No data</p>}
                             </div>
@@ -628,16 +628,16 @@ function ReportsContent() {
                         {/* S6: Trend Analysis */}
                         <Section title="Section 6 — Trend Analysis" icon={<BarChart3 className="h-3.5 w-3.5 text-cyan-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Tasks by Status</h3>
                                     <PieChart data={statusPieData} />
                                 </div>
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Deadline Adherence</h3>
                                     <PieChart data={deadlinePieData} />
                                 </div>
                             </div>
-                            <div className="bg-card rounded-lg p-4">
+                            <div className="bg-card border border-border/30 rounded-lg p-4">
                                 <h3 className="text-sm font-medium text-foreground mb-3">Completion Progress by Team</h3>
                                 <div className="space-y-2">
                                     {Object.entries(stats.byWorkstream).sort((a, b) => b[1].total - a[1].total).map(([team, { total, done }]) => {
@@ -659,11 +659,11 @@ function ReportsContent() {
                         {/* S7: Regulatory Exposure */}
                         <Section title="Section 7 — Regulatory Exposure" icon={<Shield className="h-3.5 w-3.5 text-amber-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Tasks by Risk Level</h3>
                                     <PieChart data={riskPieData} />
                                 </div>
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium text-foreground mb-3">Risk Distribution by Team</h3>
                                     <div className="space-y-2">
                                         {(() => {
@@ -756,13 +756,13 @@ function ReportsContent() {
                                 <span className="text-[10px] font-mono font-bold">{myStats.completionRate}%</span>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium mb-3">Tasks by Status</h3>
                                     <PieChart data={(["assigned", "in_progress", "review", "completed", "reworking"] as TaskStatus[]).map((s, i) => ({
                                         label: STATUS_LABELS[s], value: myStats.byStatus[s], color: PIE_COLORS[i],
                                     }))} />
                                 </div>
-                                <div className="bg-card rounded-lg p-4">
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium mb-3">Tasks by Risk Level</h3>
                                     <PieChart data={["High Risk", "Medium Risk", "Low Risk"].map((r, i) => ({
                                         label: r, value: myStats.byRisk[r], color: RISK_PIE_COLORS[i],

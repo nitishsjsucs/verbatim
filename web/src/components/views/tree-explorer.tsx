@@ -51,7 +51,7 @@ export function TreeExplorer({ structure, className, onNodeSelect, selectedNodeI
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Filter nodes..."
-                        className="w-full bg-sidebar-accent/50 text-xs text-sidebar-foreground rounded-md pl-7 pr-7 py-1.5 border border-transparent focus:border-sidebar-border focus:outline-none transition-colors"
+                        className="w-full bg-sidebar-accent/50 text-xs text-sidebar-foreground rounded-md pl-7 pr-7 py-1.5 border border-sidebar-border/40 focus:border-sidebar-border focus:outline-none transition-colors"
                     />
                     {searchQuery && (
                         <button

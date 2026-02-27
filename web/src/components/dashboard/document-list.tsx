@@ -222,7 +222,7 @@ export function DocumentList() {
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search documents by name..."
-                    className="w-full bg-muted/30 text-sm rounded-md pl-8 pr-3 py-2 border border-transparent focus:border-border focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full bg-muted/30 text-sm rounded-md pl-8 pr-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground placeholder:text-muted-foreground/50"
                 />
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -231,7 +231,7 @@ export function DocumentList() {
                 <select
                     value={yearFilter}
                     onChange={e => setYearFilter(e.target.value)}
-                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground"
                 >
                     <option value="all">All years</option>
                     {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -240,7 +240,7 @@ export function DocumentList() {
                 <select
                     value={extractionFilter}
                     onChange={e => setExtractionFilter(e.target.value as "all" | "extracted" | "not_extracted")}
-                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                    className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground"
                 >
                     <option value="all">All status</option>
                     <option value="extracted">Extracted</option>
@@ -252,7 +252,7 @@ export function DocumentList() {
                         if (sortBy === "name") { setSortBy("date"); setSortDir("desc") }
                         else { setSortBy("name"); setSortDir("asc") }
                     }}
-                    className="flex items-center gap-1 bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent hover:border-border text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex items-center gap-1 bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 hover:border-border text-muted-foreground hover:text-foreground transition-colors"
                     title={`Sort by ${sortBy === "name" ? "date" : "name"}`}
                 >
                     <ArrowUpDown className="h-3 w-3" />

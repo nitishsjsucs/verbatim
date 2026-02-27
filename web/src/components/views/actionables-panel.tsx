@@ -524,13 +524,13 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             placeholder="Search actionables..."
-                            className="w-full bg-muted/30 text-xs rounded-md pl-7 pr-3 py-1.5 border border-transparent focus:border-border focus:outline-none"
+                            className="w-full bg-muted/30 text-xs rounded-md pl-7 pr-3 py-1.5 border border-border/40 focus:border-border focus:outline-none"
                         />
                     </div>
                     <select
                         value={modalityFilter}
                         onChange={e => setModalityFilter(e.target.value as ActionableModality | "all")}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                     >
                         <option value="all">All risk levels</option>
                         <option value="High Risk">High Risk</option>
@@ -540,7 +540,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                     <select
                         value={workstreamFilter}
                         onChange={e => setWorkstreamFilter(e.target.value as ActionableWorkstream | "all")}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-transparent focus:border-border focus:outline-none text-foreground"
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
                     >
                         <option value="all">All workstreams</option>
                         {workstreams.map(ws => (
