@@ -330,62 +330,72 @@ export function DocumentList() {
                             )}
                         </TableCell>
                         <TableCell className="text-right py-2.5 pr-2">
-                            <div className="flex items-center justify-end gap-1.5 flex-nowrap">
-                                {doc.description && (
+                            <div className="grid items-center gap-1.5" style={{ gridTemplateColumns: "82px 62px 78px 84px 66px", justifyContent: "end" }}>
+                                <div>
+                                    {doc.description ? (
+                                        <button
+                                            onClick={() => setExpandedDoc(doc)}
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-[11px] font-medium"
+                                            title="Read full summary"
+                                        >
+                                            <BookOpen className="h-3 w-3" />
+                                            Summary
+                                        </button>
+                                    ) : <span />}
+                                </div>
+                                <div>
+                                    <Link
+                                        href={`/documents/${doc.id}?tab=chat`}
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
+                                        title="Chat with document"
+                                    >
+                                        <MessageSquare className="h-3 w-3" />
+                                        Chat
+                                    </Link>
+                                </div>
+                                <div>
                                     <button
-                                        onClick={() => setExpandedDoc(doc)}
-                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-[11px] font-medium"
-                                        title="Read full summary"
+                                        onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-[11px] font-medium"
+                                        title="Rename document"
                                     >
-                                        <BookOpen className="h-3 w-3" />
-                                        Summary
+                                        <Pencil className="h-3 w-3" />
+                                        Rename
                                     </button>
-                                )}
-                                <Link
-                                    href={`/documents/${doc.id}?tab=chat`}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
-                                    title="Chat with document"
-                                >
-                                    <MessageSquare className="h-3 w-3" />
-                                    Chat
-                                </Link>
-                                <button
-                                    onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-[11px] font-medium"
-                                    title="Rename document"
-                                >
-                                    <Pencil className="h-3 w-3" />
-                                    Rename
-                                </button>
-                                {doc.has_actionables ? (
-                                    <span
-                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-emerald-500/10 text-emerald-500 text-[11px] font-medium cursor-default"
-                                        title="Actionables already extracted"
-                                    >
-                                        <CheckCircle2 className="h-3 w-3" />
-                                        Extracted
-                                    </span>
-                                ) : (
+                                </div>
+                                <div>
+                                    {doc.has_actionables ? (
+                                        <span
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-emerald-500/10 text-emerald-500 text-[11px] font-medium cursor-default"
+                                            title="Actionables already extracted"
+                                        >
+                                            <CheckCircle2 className="h-3 w-3" />
+                                            Extracted
+                                        </span>
+                                    ) : (
+                                        <button
+                                            onClick={() => setExtractConfirmDocId(doc.id)}
+                                            disabled={extractingDocId === doc.id}
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                            title="Extract actionables from document"
+                                        >
+                                            {extractingDocId === doc.id
+                                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                : <Shield className="h-3 w-3" />}
+                                            Extract
+                                        </button>
+                                    )}
+                                </div>
+                                <div>
                                     <button
-                                        onClick={() => setExtractConfirmDocId(doc.id)}
-                                        disabled={extractingDocId === doc.id}
-                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                                        title="Extract actionables from document"
+                                        onClick={() => setDeletingDocId(doc.id)}
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-[11px] font-medium"
+                                        title="Delete document"
                                     >
-                                        {extractingDocId === doc.id
-                                            ? <Loader2 className="h-3 w-3 animate-spin" />
-                                            : <Shield className="h-3 w-3" />}
-                                        Extract
+                                        <Trash2 className="h-3 w-3" />
+                                        Delete
                                     </button>
-                                )}
-                                <button
-                                    onClick={() => setDeletingDocId(doc.id)}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-[11px] font-medium"
-                                    title="Delete document"
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                    Delete
-                                </button>
+                                </div>
                             </div>
                         </TableCell>
                     </TableRow>
