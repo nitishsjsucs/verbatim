@@ -67,17 +67,17 @@ const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: stri
 }
 
 const RISK_STYLES: Record<string, { bg: string; text: string }> = {
-    "High Risk":   { bg: "bg-[color:var(--color-danger)]/15",  text: "text-[color:var(--color-danger)]" },
-    "Medium Risk": { bg: "bg-[color:var(--color-warning)]/15", text: "text-[color:var(--color-warning)]" },
-    "Low Risk":    { bg: "bg-[color:var(--color-success)]/15", text: "text-[color:var(--color-success)]" },
+    "High Risk":   { bg: "bg-red-500/15",    text: "text-red-500" },
+    "Medium Risk": { bg: "bg-yellow-500/15",  text: "text-yellow-500" },
+    "Low Risk":    { bg: "bg-emerald-500/15", text: "text-emerald-500" },
 }
 
 const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: string }> = {
-    assigned:    { bg: "bg-[color:var(--color-neutral)]/15",   text: "text-[color:var(--color-neutral)]",   label: "Assigned" },
-    in_progress: { bg: "bg-[color:var(--color-warning)]/15",   text: "text-[color:var(--color-warning)]",   label: "In Progress" },
-    review:      { bg: "bg-[color:var(--color-info)]/15",      text: "text-[color:var(--color-info)]",      label: "Under Review" },
-    completed:   { bg: "bg-[color:var(--color-success)]/15",   text: "text-[color:var(--color-success)]",   label: "Completed" },
-    reworking:   { bg: "bg-[color:var(--color-reworking)]/15", text: "text-[color:var(--color-reworking)]", label: "Reworking" },
+    assigned:    { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
+    in_progress: { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
+    review:      { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
+    completed:   { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
+    reworking:   { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
 }
 
 const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
@@ -120,14 +120,14 @@ function RiskIcon({ modality }: { modality: string }) {
 // ─── Progress bar ────────────────────────────────────────────────────────────
 
 function ProgressBar({ completed, total }: { completed: number; total: number }) {
-    if (total === 0) return <span className="text-[11px] text-muted-foreground/40">—</span>
+    if (total === 0) return <span className="text-[10px] text-muted-foreground/40">—</span>
     const pct = (completed / total) * 100
     return (
         <div className="flex items-center gap-2 w-full">
             <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                <div className="h-full transition-all" style={{ width: `${pct}%`, backgroundColor: "var(--color-success)" }} />
+                <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
                 {completed}/{total}
             </span>
         </div>
@@ -363,53 +363,53 @@ export default function DashboardPage() {
                 <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
                     <div className="flex items-center gap-4">
                         <div className="text-center">
-                            <p className="text-sm font-bold text-foreground">{stats.total}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Total</p>
+                            <p className="text-lg font-bold text-foreground">{stats.total}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Total</p>
                         </div>
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-success)]">{stats.completed}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
+                            <p className="text-lg font-bold text-emerald-400">{stats.completed}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-warning)]">{stats.inProgress}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
+                            <p className="text-lg font-bold text-amber-400">{stats.inProgress}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-info)]">{stats.review}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
+                            <p className="text-lg font-bold text-blue-400">{stats.review}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-reworking)]">{stats.reworking}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
+                            <p className="text-lg font-bold text-orange-400">{stats.reworking}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-neutral)]">{stats.assigned}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
+                            <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
                         </div>
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-success)]">{stats.yetToDeadline}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
+                            <p className="text-lg font-bold text-emerald-500">{stats.yetToDeadline}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-warning)]">{stats.delayed30}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
+                            <p className="text-lg font-bold text-amber-500">{stats.delayed30}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-reworking)]">{stats.delayed60}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
+                            <p className="text-lg font-bold text-orange-500">{stats.delayed60}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-sm font-bold text-[color:var(--color-danger)]">{stats.delayed90}</p>
-                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
+                            <p className="text-lg font-bold text-red-500">{stats.delayed90}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
                         </div>
                     </div>
 
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
+                        <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -473,7 +473,7 @@ export default function DashboardPage() {
                     )}
 
                     <div className="flex items-center gap-1 ml-auto">
-                        <span className="text-[11px] text-muted-foreground/50">Sort:</span>
+                        <span className="text-[10px] text-muted-foreground/50">Sort:</span>
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
@@ -517,8 +517,8 @@ export default function DashboardPage() {
 
                     {/* ── Active section header ── */}
                     {!loading && activeRows.length > 0 && (
-                        <div className="px-3 py-2 bg-[color:var(--color-warning)]/5 border-b border-[color:var(--color-warning)]/20 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
-                            <span className="text-xs font-semibold text-[color:var(--color-warning)] flex items-center gap-2">
+                        <div className="px-3 py-2 bg-yellow-500/5 border-b border-yellow-500/20 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
+                            <span className="text-xs font-semibold text-yellow-500 flex items-center gap-2">
                                 {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                 <AlertTriangle className="h-3.5 w-3.5" />
                                 Active ({activeRows.length})
@@ -544,24 +544,24 @@ export default function DashboardPage() {
                                         }
                                         <div className={cn("h-4 w-1 rounded-full shrink-0", wsColors.header)} />
                                         <span className="text-xs font-semibold text-foreground">{ws}</span>
-                                        <span className="text-[11px] text-muted-foreground/50 font-mono">{rows.length} items</span>
+                                        <span className="text-[10px] text-muted-foreground/50 font-mono">{rows.length} items</span>
                                     </button>
-                                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">{groupCompleted}/{rows.length} ({pct}%)</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">{groupCompleted}/{rows.length} ({pct}%)</span>
                                 </div>
 
                                 {/* ── Column headers ── */}
                                 {!isCollapsed && (
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
-                                        <div className="text-[11px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
                                 )}
 
@@ -599,7 +599,7 @@ export default function DashboardPage() {
                                                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                     {commentCount > 0 && (
-                                                        <span className="shrink-0 flex items-center gap-0.5 text-[11px] text-primary/60">
+                                                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
                                                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
                                                         </span>
                                                     )}
@@ -607,7 +607,7 @@ export default function DashboardPage() {
 
                                                 {/* Status (read-only) */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium", statusStyle.bg, statusStyle.text)}>
+                                                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
                                                         {statusStyle.label}
                                                     </span>
                                                 </div>
@@ -622,7 +622,7 @@ export default function DashboardPage() {
 
                                                 {/* Deadline time (from same field) */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-[11px] text-muted-foreground/60">
+                                                    <span className="text-[10px] text-muted-foreground/60">
                                                         {formatTime(item.deadline)}
                                                     </span>
                                                 </div>
@@ -634,14 +634,14 @@ export default function DashboardPage() {
 
                                                 {/* Published date */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-[11px] text-muted-foreground/60">
+                                                    <span className="text-[10px] text-muted-foreground/60">
                                                         {formatDate(item.published_at)}
                                                     </span>
                                                 </div>
 
                                                 {/* Completion date */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-[11px] text-muted-foreground/60">
+                                                    <span className="text-[10px] text-muted-foreground/60">
                                                         {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
                                                     </span>
                                                 </div>
@@ -652,14 +652,14 @@ export default function DashboardPage() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
-                                                                className="inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded bg-[color:var(--color-success)]/15 text-[color:var(--color-success)] hover:bg-[color:var(--color-success)]/25 transition-colors font-medium"
+                                                                className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                 title="Approve — mark as completed"
                                                             >
                                                                 <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                                                             </button>
                                                             <button
                                                                 onClick={() => handleUpdate(docId, item.id, { task_status: "reworking" })}
-                                                                className="inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded bg-[color:var(--color-danger)]/15 text-[color:var(--color-danger)] hover:bg-[color:var(--color-danger)]/25 transition-colors font-medium"
+                                                                className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                 title="Reject — send back for rework"
                                                             >
                                                                 <XCircle className="h-2.5 w-2.5" /> Reject
@@ -667,13 +667,13 @@ export default function DashboardPage() {
                                                         </>
                                                     )}
                                                     {taskStatus === "completed" && (
-                                                        <span className="text-[11px] text-[color:var(--color-success)] italic">Approved</span>
+                                                        <span className="text-[9px] text-emerald-400 italic">Approved</span>
                                                     )}
                                                     {taskStatus === "reworking" && (
-                                                        <span className="text-[11px] text-[color:var(--color-reworking)] italic">Reworking</span>
+                                                        <span className="text-[9px] text-orange-400 italic">Reworking</span>
                                                     )}
                                                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
-                                                        <span className="text-[11px] text-muted-foreground/30">—</span>
+                                                        <span className="text-[9px] text-muted-foreground/30">—</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -699,8 +699,8 @@ export default function DashboardPage() {
                     {/* ── Completed Section ── */}
                     {!loading && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <div className="px-3 py-2 bg-[color:var(--color-success)]/5 border-y border-[color:var(--color-success)]/20 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
-                                <span className="text-xs font-semibold text-[color:var(--color-success)] flex items-center gap-2">
+                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
+                                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
                                     {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                     Completed ({completedRows.length})
@@ -721,22 +721,22 @@ export default function DashboardPage() {
                                                     : <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
                                                 <div className={cn("h-3 w-0.5 rounded-full shrink-0", wsColors.header)} />
                                                 <span className="text-[11px] font-medium text-muted-foreground">{ws}</span>
-                                                <span className="text-[11px] text-muted-foreground/40 font-mono">{rows.length}</span>
+                                                <span className="text-[9px] text-muted-foreground/40 font-mono">{rows.length}</span>
                                             </button>
                                         </div>
 
                                         {!isCollapsed && (
                                             <div className="grid gap-0 border-b border-border/10 bg-muted/5 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
-                                                <div className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
                                             </div>
                                         )}
 
@@ -753,29 +753,29 @@ export default function DashboardPage() {
                                                         onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
                                                     >
                                                         <div className="py-1.5 px-1">
-                                                            <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
+                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
                                                                 {item.workstream}
                                                             </span>
                                                         </div>
                                                         <div className="py-1.5 flex justify-center"><RiskIcon modality={item.modality} /></div>
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
-                                                            <span className="text-xs text-foreground/90 truncate line-through decoration-[color:var(--color-success)]/40">{safeStr(item.action)}</span>
-                                                            {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[11px] text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
+                                                            <span className="text-xs text-foreground/90 truncate line-through decoration-emerald-500/40">{safeStr(item.action)}</span>
+                                                            {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
-                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
+                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
                                                                 {TASK_STATUS_STYLES.completed.label}
                                                             </span>
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[11px] text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[11px] text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
                                                         <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
                                                             <EvidencePopover files={item.evidence_files || []} taskStatus="completed" />
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[11px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[11px] text-[color:var(--color-success)]/70">{formatDate(item.completion_date)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[11px] text-[color:var(--color-success)] italic">Approved</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[9px] text-emerald-400 italic">Approved</span></div>
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
@@ -828,12 +828,12 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
     }, [open])
 
     if (files.length === 0) {
-        return <span className="text-[11px] text-muted-foreground/30 italic">empty</span>
+        return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
     }
 
     if (!canView) {
         return (
-            <span className="text-[11px] text-muted-foreground/30 italic flex items-center gap-1" title="Evidence visible after team submits for review">
+            <span className="text-[10px] text-muted-foreground/30 italic flex items-center gap-1" title="Evidence visible after team submits for review">
                 <Paperclip className="h-2.5 w-2.5" /> pending
             </span>
         )
@@ -845,7 +845,7 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
         <div className="relative" ref={popoverRef}>
             <button
                 onClick={() => setOpen(!open)}
-                className="text-[11px] text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
+                className="text-[10px] text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
             >
                 <Paperclip className="h-2.5 w-2.5" />{files.length}
             </button>
@@ -867,7 +867,7 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                    <p className="text-[11px] text-muted-foreground/40">
+                                    <p className="text-[9px] text-muted-foreground/40">
                                         {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
                                     </p>
                                 </div>
@@ -952,8 +952,8 @@ function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) =>
             >
                 <span
                     className={cn(
-                        "text-[11px] px-1.5 py-0.5 rounded border border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-1 group/dl",
-                        isOverdue ? "text-[color:var(--color-danger)] border-[color:var(--color-danger)]/30" : "text-muted-foreground/70 border-muted-foreground/20"
+                        "text-[10px] px-1.5 py-0.5 rounded border border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-1 group/dl",
+                        isOverdue ? "text-red-400 border-red-400/30" : "text-muted-foreground/70 border-muted-foreground/20"
                     )}
                 >
                     <Calendar className="h-2.5 w-2.5" />
@@ -972,7 +972,7 @@ function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) =>
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded bg-[color:var(--color-success)]/15 text-[color:var(--color-success)] hover:bg-[color:var(--color-success)]/25 font-medium transition-colors"
+                    className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 font-medium transition-colors"
                     title="Save deadline"
                 >
                     {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5" />}

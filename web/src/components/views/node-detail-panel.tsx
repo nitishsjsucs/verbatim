@@ -28,8 +28,8 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                             {node.title || `Untitled ${node.node_type}`}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[11px] font-mono text-muted-foreground/60">{node.node_id}</span>
-                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{node.node_type}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground/60">{node.node_id}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{node.node_type}</span>
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
@@ -100,7 +100,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                         <div key={table.table_id} className="border border-border/20 rounded-md p-2">
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className="text-xs font-medium text-foreground/80">{table.caption || table.table_id}</span>
-                                                <span className="text-[11px] text-muted-foreground/50">{table.num_rows}&times;{table.num_cols}</span>
+                                                <span className="text-[10px] text-muted-foreground/50">{table.num_rows}&times;{table.num_cols}</span>
                                             </div>
                                             {table.markdown && (
                                                 <pre className="text-xs text-muted-foreground/70 whitespace-pre-wrap font-mono overflow-x-auto max-h-40 overflow-y-auto">
@@ -119,10 +119,10 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                 <div className="space-y-1">
                                     {node.cross_references.map((cr, i) => (
                                         <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-                                            <span className={cn("h-1.5 w-1.5 rounded-full", cr.resolved ? "bg-[color:var(--color-success)]" : "bg-[color:var(--color-danger)]")} />
+                                            <span className={cn("h-1.5 w-1.5 rounded-full", cr.resolved ? "bg-green-400" : "bg-red-400")} />
                                             <span className="truncate">{cr.target_identifier}</span>
                                             {cr.target_node_id && (
-                                                <span className="font-mono text-[11px] text-muted-foreground/50">&rarr; {cr.target_node_id}</span>
+                                                <span className="font-mono text-[10px] text-muted-foreground/50">&rarr; {cr.target_node_id}</span>
                                             )}
                                         </div>
                                     ))}

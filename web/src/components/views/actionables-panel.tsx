@@ -16,9 +16,9 @@ import {
 // --- Color/icon config ---
 
 const MODALITY_CONFIG: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
-    "High Risk": { color: "text-[color:var(--color-danger)]", bg: "bg-[color:var(--color-danger)]/15", icon: <Shield className="h-3 w-3" /> },
-    "Medium Risk": { color: "text-[color:var(--color-warning)]", bg: "bg-[color:var(--color-warning)]/15", icon: <Shield className="h-3 w-3" /> },
-    "Low Risk": { color: "text-[color:var(--color-success)]", bg: "bg-[color:var(--color-success)]/15", icon: <Shield className="h-3 w-3" /> },
+    "High Risk": { color: "text-red-500", bg: "bg-red-500/15", icon: <Shield className="h-3 w-3" /> },
+    "Medium Risk": { color: "text-yellow-500", bg: "bg-yellow-500/15", icon: <Shield className="h-3 w-3" /> },
+    "Low Risk": { color: "text-emerald-500", bg: "bg-emerald-500/15", icon: <Shield className="h-3 w-3" /> },
 }
 
 function normalizeRisk(modality: string): string {
@@ -48,9 +48,9 @@ const WORKSTREAM_COLORS: Record<string, string> = {
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
     return (
         <div className="bg-muted/30 rounded-lg p-3">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</p>
-            <p className="text-sm font-semibold font-mono mt-0.5">{value}</p>
-            {sub && <p className="text-[11px] text-muted-foreground/60 mt-0.5">{sub}</p>}
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
+            <p className="text-lg font-semibold font-mono mt-0.5">{value}</p>
+            {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
         </div>
     )
 }
@@ -122,11 +122,11 @@ function ActionableCard({ item, onSourceClick }: {
                 {/* Flags */}
                 <div className="flex items-center gap-1.5 shrink-0">
                     {item.needs_legal_review && (
-                        <span className="text-[color:var(--color-warning)]" title="Needs legal review">
+                        <span className="text-amber-400" title="Needs legal review">
                             <AlertTriangle className="h-3 w-3" />
                         </span>
                     )}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-medium", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
                         {item.workstream}
                     </span>
                 </div>
@@ -149,31 +149,31 @@ function ActionableCard({ item, onSourceClick }: {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                         {item.trigger_or_condition && (
                             <div className="col-span-2">
-                                <span className="text-muted-foreground/60 text-[11px]">Condition: </span>
+                                <span className="text-muted-foreground/60 text-[10px]">Condition: </span>
                                 <span className="text-muted-foreground/90">{item.trigger_or_condition}</span>
                             </div>
                         )}
                         {item.thresholds && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[11px]">Threshold: </span>
+                                <span className="text-muted-foreground/60 text-[10px]">Threshold: </span>
                                 <span className="text-muted-foreground/90 font-mono">{item.thresholds}</span>
                             </div>
                         )}
                         {item.deadline_or_frequency && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[11px]">Deadline/Freq: </span>
+                                <span className="text-muted-foreground/60 text-[10px]">Deadline/Freq: </span>
                                 <span className="text-muted-foreground/90">{item.deadline_or_frequency}</span>
                             </div>
                         )}
                         {item.effective_date && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[11px]">Effective: </span>
+                                <span className="text-muted-foreground/60 text-[10px]">Effective: </span>
                                 <span className="text-muted-foreground/90">{item.effective_date}</span>
                             </div>
                         )}
                         {item.reporting_or_notification_to && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[11px]">Report to: </span>
+                                <span className="text-muted-foreground/60 text-[10px]">Report to: </span>
                                 <span className="text-muted-foreground/90">{item.reporting_or_notification_to}</span>
                             </div>
                         )}
@@ -182,7 +182,7 @@ function ActionableCard({ item, onSourceClick }: {
                     {/* Implementation notes */}
                     {item.implementation_notes && (
                         <div>
-                            <p className="text-[11px] font-medium text-muted-foreground mb-0.5">Implementation</p>
+                            <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Implementation</p>
                             <p className="text-xs text-muted-foreground/80">{item.implementation_notes}</p>
                         </div>
                     )}
@@ -191,28 +191,28 @@ function ActionableCard({ item, onSourceClick }: {
                     <div className="flex items-center justify-between pt-1 border-t border-border/10">
                         <button
                             onClick={handleSourceClick}
-                            className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                            className="text-[10px] text-primary hover:underline flex items-center gap-1"
                         >
                             <FileText className="h-3 w-3" />
                             {item.source_location}
                         </button>
                         <div className="flex items-center gap-2">
                             <span className={cn(
-                                "text-[11px] px-1.5 py-0.5 rounded",
-                                item.validation_status === "validated" ? "bg-[color:var(--color-success)]/10 text-[color:var(--color-success)]" :
-                                item.validation_status === "flagged" ? "bg-[color:var(--color-danger)]/10 text-[color:var(--color-danger)]" :
-                                item.validation_status === "added_by_validator" ? "bg-[color:var(--color-info)]/10 text-[color:var(--color-info)]" :
+                                "text-[9px] px-1.5 py-0.5 rounded",
+                                item.validation_status === "validated" ? "bg-green-400/10 text-green-400" :
+                                item.validation_status === "flagged" ? "bg-red-400/10 text-red-400" :
+                                item.validation_status === "added_by_validator" ? "bg-blue-400/10 text-blue-400" :
                                 "bg-muted text-muted-foreground",
                             )}>
                                 {item.validation_status}
                             </span>
-                            <span className="text-[11px] font-mono text-muted-foreground/50">{item.id}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground/50">{item.id}</span>
                         </div>
                     </div>
 
                     {/* Validation notes */}
                     {item.validation_notes && (
-                        <p className="text-[11px] text-muted-foreground/60 italic">{item.validation_notes}</p>
+                        <p className="text-[10px] text-muted-foreground/60 italic">{item.validation_notes}</p>
                     )}
                 </div>
             )}
@@ -395,7 +395,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                                     style={{ width: `${batchPct}%` }}
                                 />
                             </div>
-                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                                 <span>{batchPct}%</span>
                                 <span>Batch {progress.currentBatch}/{progress.totalBatches}</span>
                             </div>
@@ -408,7 +408,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div className="h-full bg-primary/40 rounded-full animate-pulse w-full" />
                             </div>
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-[10px] text-muted-foreground">
                                 Verifying {progress.cumulativeActionables} actionables against source text...
                             </p>
                         </div>
@@ -417,32 +417,32 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                     {/* Stats cards */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Nodes scanned</p>
-                            <p className="text-sm font-semibold font-mono mt-0.5">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nodes scanned</p>
+                            <p className="text-lg font-semibold font-mono mt-0.5">
                                 {progress.candidateCount > 0 ? progress.candidateCount : "..."}
                             </p>
-                            <p className="text-[11px] text-muted-foreground/60">of {progress.totalNodes || "?"} total</p>
+                            <p className="text-[10px] text-muted-foreground/60">of {progress.totalNodes || "?"} total</p>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Found so far</p>
-                            <p className="text-sm font-semibold font-mono mt-0.5 text-primary">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Found so far</p>
+                            <p className="text-lg font-semibold font-mono mt-0.5 text-primary">
                                 {progress.cumulativeActionables}
                             </p>
-                            <p className="text-[11px] text-muted-foreground/60">actionables</p>
+                            <p className="text-[10px] text-muted-foreground/60">actionables</p>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Last batch</p>
-                            <p className="text-sm font-semibold font-mono mt-0.5">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Last batch</p>
+                            <p className="text-lg font-semibold font-mono mt-0.5">
                                 +{progress.lastBatchActionables}
                             </p>
-                            <p className="text-[11px] text-muted-foreground/60">new items</p>
+                            <p className="text-[10px] text-muted-foreground/60">new items</p>
                         </div>
                     </div>
 
                     {/* Current sections being processed */}
                     {progress.currentSections.length > 0 && (
                         <div className="text-left">
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
                                 Processing sections
                             </p>
                             <div className="space-y-0.5">
@@ -456,7 +456,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                         </div>
                     )}
 
-                    {error && <p className="text-xs text-[color:var(--color-danger)]">{ error}</p>}
+                    {error && <p className="text-xs text-red-400">{error}</p>}
                 </div>
             </div>
         )
@@ -469,12 +469,12 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                 <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                     <Shield className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-medium mb-2">Extract Compliance Actionables</h3>
+                <h3 className="text-base font-medium mb-2">Extract Compliance Actionables</h3>
                 <p className="text-sm text-muted-foreground/70 max-w-md mb-6">
                     Scan this document for all obligations, prohibitions, permissions, and recommendations.
                     Each actionable is extracted with its actor, conditions, deadlines, and evidence quote.
                 </p>
-                {error && <p className="text-xs text-[color:var(--color-danger)] mb-4">{error}</p>}
+                {error && <p className="text-xs text-red-400 mb-4">{error}</p>}
                 <Button
                     onClick={() => handleExtract(false)}
                     className="gap-2"
@@ -549,7 +549,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                 </div>
 
                 {/* Showing count */}
-                <div className="text-[11px] text-muted-foreground/60">
+                <div className="text-[10px] text-muted-foreground/60">
                     Showing {filtered.length} of {result.total_extracted}
                     {result.extracted_at && ` · Extracted ${new Date(result.extracted_at).toLocaleDateString()}`}
                 </div>

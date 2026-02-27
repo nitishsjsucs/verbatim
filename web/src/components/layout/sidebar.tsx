@@ -94,7 +94,7 @@ export function Sidebar({ className }: SidebarProps) {
                 <UploadModal>
                   <NavItem
                     icon={<UploadCloud className="h-4 w-4" />}
-                    iconClassName="text-primary"
+                    iconClassName="text-purple-500"
                     label="Ingest"
                     collapsed={collapsed}
                   />
@@ -102,7 +102,7 @@ export function Sidebar({ className }: SidebarProps) {
               ) : (
                 <NavItem
                   icon={<UploadCloud className="h-4 w-4" />}
-                  iconClassName="text-primary"
+                  iconClassName="text-purple-500"
                   label="Ingest"
                   collapsed={collapsed}
                 />
@@ -111,7 +111,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/"
                 icon={<FileText className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-purple-500"
                 label="Documents"
                 active={pathname === "/" || (pathname?.startsWith("/documents") ?? false)}
                 collapsed={collapsed}
@@ -125,7 +125,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/research"
                 icon={<BookOpen className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-emerald-500"
                 label="Research"
                 active={pathname === "/research"}
                 collapsed={collapsed}
@@ -133,7 +133,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/history"
                 icon={<History className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-emerald-500"
                 label="History"
                 active={pathname === "/history"}
                 collapsed={collapsed}
@@ -147,7 +147,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/actionables"
                 icon={<Shield className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-amber-500"
                 label="Actionables"
                 active={pathname === "/actionables"}
                 collapsed={collapsed}
@@ -155,7 +155,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/publish"
                 icon={<Send className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-amber-500"
                 label="Publish"
                 active={pathname === "/publish"}
                 collapsed={collapsed}
@@ -164,7 +164,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/dashboard"
                 icon={<LayoutDashboard className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-pink-500"
                 label="Tracker"
                 active={pathname === "/dashboard"}
                 collapsed={collapsed}
@@ -172,7 +172,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/reports"
                 icon={<BarChart3 className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-pink-500"
                 label="Reports"
                 active={pathname === "/reports"}
                 collapsed={collapsed}
@@ -180,7 +180,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/risk"
                 icon={<Shield className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-pink-500"
                 label="Risk"
                 active={pathname === "/risk"}
                 collapsed={collapsed}
@@ -198,7 +198,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/team-board"
                 icon={<ClipboardList className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-amber-500"
                 label="My Tasks"
                 active={pathname === "/team-board"}
                 collapsed={collapsed}
@@ -206,7 +206,7 @@ export function Sidebar({ className }: SidebarProps) {
               <NavItem
                 href="/reports"
                 icon={<BarChart3 className="h-4 w-4" />}
-                iconClassName="text-primary"
+                iconClassName="text-amber-500"
                 label="Reports"
                 active={pathname === "/reports"}
                 collapsed={collapsed}
@@ -223,7 +223,7 @@ export function Sidebar({ className }: SidebarProps) {
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5 mb-1">
             <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-[11px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
+            <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : "Team Member"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
@@ -234,7 +234,7 @@ export function Sidebar({ className }: SidebarProps) {
             title={collapsed ? "Settings" : undefined}
           >
             <Settings className="h-4 w-4 text-sidebar-foreground/50" />
-            {!collapsed && <span className="text-xs text-sidebar-foreground/60">Settings</span>}
+            {!collapsed && <span className="text-[13px] text-sidebar-foreground/60">Settings</span>}
           </button>
           <ThemeToggle />
         </div>
@@ -242,14 +242,14 @@ export function Sidebar({ className }: SidebarProps) {
           <button
             onClick={() => signOut().then(() => window.location.href = "/sign-in")}
             className={cn(
-              "w-full flex items-center rounded px-2 h-8 font-medium transition-colors text-[color:var(--color-danger)] bg-transparent hover:bg-[color:var(--color-danger)]/10 border-none outline-none",
+              "w-full flex items-center rounded px-2 h-8 font-medium transition-colors text-red-500 bg-transparent hover:bg-red-500/10 border-none outline-none",
               collapsed && "justify-center"
             )}
             type="button"
             title={collapsed ? "Sign Out" : undefined}
           >
-            <LogOut className="h-4 w-4 shrink-0 text-[color:var(--color-danger)]" />
-            {!collapsed && <span className="ml-2 truncate text-xs text-[color:var(--color-danger)]">Sign Out</span>}
+            <LogOut className="h-4 w-4 shrink-0 text-red-500" />
+            {!collapsed && <span className="ml-2 truncate text-[13px] text-red-500">Sign Out</span>}
           </button>
         )}
       </div>
@@ -289,7 +289,7 @@ const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
         {!collapsed && (
           <span
             className={cn(
-              "ml-2 truncate text-xs transition-colors",
+              "ml-2 truncate text-[13px] transition-colors",
               active
                 ? "text-sidebar-foreground"
                 : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"

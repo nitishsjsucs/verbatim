@@ -42,9 +42,9 @@ const WORKSTREAM_OPTIONS: ActionableWorkstream[] = [
 ]
 
 const RISK_CONFIG: Record<string, { color: string; bg: string }> = {
-    "High Risk":   { color: "text-[color:var(--color-danger)]",  bg: "bg-[color:var(--color-danger)]/15" },
-    "Medium Risk": { color: "text-[color:var(--color-warning)]", bg: "bg-[color:var(--color-warning)]/15" },
-    "Low Risk":    { color: "text-[color:var(--color-success)]", bg: "bg-[color:var(--color-success)]/15" },
+    "High Risk":   { color: "text-red-500",    bg: "bg-red-500/15" },
+    "Medium Risk": { color: "text-yellow-500",  bg: "bg-yellow-500/15" },
+    "Low Risk":    { color: "text-emerald-500", bg: "bg-emerald-500/15" },
 }
 
 // Team tag colors that do NOT use red/yellow/green
@@ -276,29 +276,29 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <div className="flex items-center gap-1 shrink-0">
                     {item.approval_status === "pending" && (
                         <>
-                            <button onClick={handleApprove} className="p-1 rounded hover:bg-[color:var(--color-success)]/10 text-muted-foreground/40 hover:text-[color:var(--color-success)] transition-colors" title="Approve">
+                            <button onClick={handleApprove} className="p-1 rounded hover:bg-emerald-400/10 text-muted-foreground/40 hover:text-emerald-400 transition-colors" title="Approve">
                                 <Check className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={handleReject} className="p-1 rounded hover:bg-[color:var(--color-danger)]/10 text-muted-foreground/40 hover:text-[color:var(--color-danger)] transition-colors" title="Reject">
+                            <button onClick={handleReject} className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors" title="Reject">
                                 <X className="h-3.5 w-3.5" />
                             </button>
                         </>
                     )}
                     {item.approval_status === "approved" && (
-                        <button onClick={handleRevert} className="p-1 rounded hover:bg-[color:var(--color-warning)]/10 text-muted-foreground/40 hover:text-[color:var(--color-warning)] transition-colors" title="Revert to pending">
+                        <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Revert to pending">
                             <Undo2 className="h-3.5 w-3.5" />
                         </button>
                     )}
                     {item.approval_status === "rejected" && (
-                        <button onClick={handleRevert} className="p-1 rounded hover:bg-[color:var(--color-warning)]/10 text-muted-foreground/40 hover:text-[color:var(--color-warning)] transition-colors" title="Revert to pending">
+                        <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Revert to pending">
                             <Undo2 className="h-3.5 w-3.5" />
                         </button>
                     )}
                     <span className={cn(
-                        "text-[11px] px-1.5 py-0.5 rounded font-medium ml-1",
-                        item.approval_status === "approved" ? "text-[color:var(--color-success)] bg-[color:var(--color-success)]/10" :
-                        item.approval_status === "rejected" ? "text-[color:var(--color-danger)] bg-[color:var(--color-danger)]/10" :
-                        "text-[color:var(--color-warning)] bg-[color:var(--color-warning)]/10"
+                        "text-[9px] px-1.5 py-0.5 rounded font-medium ml-1",
+                        item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
+                        item.approval_status === "rejected" ? "text-red-400 bg-red-400/10" :
+                        "text-yellow-400 bg-yellow-400/10"
                     )}>
                         {item.approval_status === "approved" ? "Approved" : item.approval_status === "rejected" ? "Rejected" : "Pending"}
                     </span>
@@ -360,7 +360,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => onDelete(docId, item.id)}
-                                className="p-1 rounded hover:bg-[color:var(--color-danger)]/10 text-muted-foreground/30 hover:text-[color:var(--color-danger)] transition-colors"
+                                className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/30 hover:text-red-400 transition-colors"
                                 title="Delete"
                             >
                                 <Trash2 className="h-3 w-3" />
@@ -738,16 +738,16 @@ export default function ActionablesPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 text-[11px]">
+                        <div className="flex items-center gap-2 text-[10px]">
                             <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
-                            <span className="px-2 py-0.5 rounded bg-[color:var(--color-success)]/10 text-[color:var(--color-success)] font-mono">{stats.approved} approved</span>
-                            <span className="px-2 py-0.5 rounded bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)] font-mono">{stats.pending} pending</span>
-                            <span className="px-2 py-0.5 rounded bg-[color:var(--color-info)]/10 text-[color:var(--color-info)] font-mono">{stats.published} published</span>
+                            <span className="px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-mono">{stats.approved} approved</span>
+                            <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
+                            <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} published</span>
                         </div>
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 gap-1.5 px-2.5 text-xs"
+                            className="h-7 gap-1.5 px-2.5 text-[12px]"
                             onClick={() => setShowCreateForm(true)}
                             disabled={allDocs.length === 0}
                         >
@@ -795,7 +795,7 @@ export default function ActionablesPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 gap-1 px-2 text-[11px] text-[color:var(--color-success)] border-[color:var(--color-success)]/30 hover:bg-[color:var(--color-success)]/10"
+                                    className="h-7 gap-1 px-2 text-[11px] text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
                                     onClick={() => handleApproveAll(filtered)}
                                 >
                                     <Check className="h-3 w-3" />
@@ -843,11 +843,11 @@ export default function ActionablesPage() {
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setPendingCollapsed(!pendingCollapsed)}>
                                                 {pendingCollapsed
-                                                    ? <ChevronRight className="h-3.5 w-3.5 text-[color:var(--color-warning)] shrink-0" />
-                                                    : <ChevronDown className="h-3.5 w-3.5 text-[color:var(--color-warning)] shrink-0" />
+                                                    ? <ChevronRight className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
+                                                    : <ChevronDown className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                                                 }
-                                                <p className="text-[11px] font-semibold text-[color:var(--color-warning)] uppercase tracking-wider">Pending ({pendingItems.length})</p>
-                                                <div className="h-px bg-[color:var(--color-warning)]/20 flex-1" />
+                                                <p className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider">Pending ({pendingItems.length})</p>
+                                                <div className="h-px bg-yellow-400/20 flex-1" />
                                             </div>
                                             {!pendingCollapsed && (
                                                 <div className="space-y-2">
@@ -882,7 +882,7 @@ export default function ActionablesPage() {
                                                                     <span className="text-[11px] font-semibold text-foreground truncate">{docName}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
-                                                                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[11px] text-[color:var(--color-success)] hover:bg-[color:var(--color-success)]/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
+                                                                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
                                                                         <Check className="h-2.5 w-2.5" /> Approve All
                                                                     </Button>
                                                                 </div>
@@ -905,7 +905,7 @@ export default function ActionablesPage() {
                                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
-                                                                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[11px] text-[color:var(--color-success)] hover:bg-[color:var(--color-success)]/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
+                                                                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
                                                                         <Check className="h-2.5 w-2.5" /> Approve All
                                                                     </Button>
                                                                 </div>
@@ -925,11 +925,11 @@ export default function ActionablesPage() {
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setApprovedCollapsed(!approvedCollapsed)}>
                                                 {approvedCollapsed
-                                                    ? <ChevronRight className="h-3.5 w-3.5 text-[color:var(--color-success)] shrink-0" />
-                                                    : <ChevronDown className="h-3.5 w-3.5 text-[color:var(--color-success)] shrink-0" />
+                                                    ? <ChevronRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                                    : <ChevronDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                 }
-                                                <p className="text-[11px] font-semibold text-[color:var(--color-success)] uppercase tracking-wider">Approved ({approvedItems.length})</p>
-                                                <div className="h-px bg-[color:var(--color-success)]/20 flex-1" />
+                                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
+                                                <div className="h-px bg-emerald-400/20 flex-1" />
                                             </div>
                                             {!approvedCollapsed && (
                                                 <div className="space-y-2">
@@ -960,7 +960,7 @@ export default function ActionablesPage() {
                                                             <div key={docId} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(`approved-${docId}`)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                                                    <FileText className="h-3.5 w-3.5 text-[color:var(--color-success)]/60 shrink-0" />
+                                                                    <FileText className="h-3.5 w-3.5 text-emerald-500/60 shrink-0" />
                                                                     <span className="text-[11px] font-semibold text-foreground/70 truncate">{docName}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
@@ -1012,7 +1012,7 @@ export default function ActionablesPage() {
                             <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-xs font-medium text-foreground truncate">
+                                    <span className="text-[12px] font-medium text-foreground truncate">
                                         {pdfDocName || pdfDocId}
                                     </span>
                                 </div>

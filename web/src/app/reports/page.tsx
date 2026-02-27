@@ -40,34 +40,22 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
     reworking: "Reworking",
 }
 
-const CSS = (v: string) => `var(${v})`
-
 const STATUS_COLORS: Record<TaskStatus, string> = {
-    assigned:    CSS("--color-neutral"),
-    in_progress: CSS("--color-warning"),
-    review:      CSS("--color-info"),
-    completed:   CSS("--color-success"),
-    reworking:   CSS("--color-reworking"),
+    assigned: "#94a3b8",
+    in_progress: "#f59e0b",
+    review: "#3b82f6",
+    completed: "#22c55e",
+    reworking: "#f97316",
 }
 
 const RISK_COLORS: Record<string, string> = {
-    "High Risk":   CSS("--color-danger"),
-    "Medium Risk": CSS("--color-warning"),
-    "Low Risk":    CSS("--color-success"),
+    "High Risk": "#ef4444",
+    "Medium Risk": "#eab308",
+    "Low Risk": "#22c55e",
 }
 
-const PIE_COLORS = [
-    CSS("--color-neutral"),
-    CSS("--color-warning"),
-    CSS("--color-info"),
-    CSS("--color-success"),
-    CSS("--color-reworking"),
-]
-const RISK_PIE_COLORS = [
-    CSS("--color-danger"),
-    CSS("--color-warning"),
-    CSS("--color-success"),
-]
+const PIE_COLORS = ["#94a3b8", "#f59e0b", "#3b82f6", "#22c55e", "#f97316"]
+const RISK_PIE_COLORS = ["#ef4444", "#eab308", "#22c55e"]
 
 const WORKSTREAM_BAR_COLORS = [
     "#8b5cf6", "#06b6d4", "#3b82f6", "#ec4899",
@@ -151,7 +139,7 @@ function PieChart({ data }: { data: { label: string; value: number; color: strin
                     <div key={i} className="flex items-center gap-2">
                         <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                         <span className="text-xs text-foreground">{s.label}</span>
-                        <span className="text-[11px] text-muted-foreground font-mono">{s.value} ({s.pct}%)</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{s.value} ({s.pct}%)</span>
                     </div>
                 ))}
             </div>
@@ -343,17 +331,17 @@ function ReportsContent() {
 
     // Deadline adherence pie
     const deadlinePieData = React.useMemo(() => [
-        { label: "Met Deadline", value: stats.dlMet, color: CSS("--color-success") },
-        { label: "Missed Deadline", value: stats.dlMissed, color: CSS("--color-danger") },
-        { label: "Yet to Deadline", value: stats.dlYet, color: CSS("--color-info") },
+        { label: "Met Deadline", value: stats.dlMet, color: "#22c55e" },
+        { label: "Missed Deadline", value: stats.dlMissed, color: "#ef4444" },
+        { label: "Yet to Deadline", value: stats.dlYet, color: "#3b82f6" },
     ], [stats.dlMet, stats.dlMissed, stats.dlYet])
 
     // Delay breakdown bar
     const delayBarData = React.useMemo(() => [
-        { label: "Yet to DL", value: stats.dlYet, color: CSS("--color-success") },
-        { label: "Delayed ≤30d", value: stats.dlD30, color: CSS("--color-warning") },
-        { label: "Delayed ≤60d", value: stats.dlD60, color: CSS("--color-reworking") },
-        { label: "Delayed >60d", value: stats.dlD90, color: CSS("--color-danger") },
+        { label: "Yet to DL", value: stats.dlYet, color: "#22c55e" },
+        { label: "Delayed ≤30d", value: stats.dlD30, color: "#f59e0b" },
+        { label: "Delayed ≤60d", value: stats.dlD60, color: "#f97316" },
+        { label: "Delayed >60d", value: stats.dlD90, color: "#ef4444" },
     ], [stats.dlYet, stats.dlD30, stats.dlD60, stats.dlD90])
 
     // Workload stacked bar data
@@ -429,11 +417,11 @@ function ReportsContent() {
                                     </h2>
                                     <div className="flex gap-3 flex-wrap mb-4">
                                         <KpiCard title="Total Assigned" value={myTeamStats.total} />
-                                        <KpiCard title="Completed" value={myTeamStats.byStatus.completed} color="var(--color-success)" />
-                                        <KpiCard title="In Progress" value={myTeamStats.byStatus.in_progress} color="var(--color-warning)" />
-                                        <KpiCard title="Under Review" value={myTeamStats.byStatus.review} color="var(--color-info)" />
-                                        <KpiCard title="Reworking" value={myTeamStats.byStatus.reworking} color="var(--color-reworking)" />
-                                        <KpiCard title="Completion Rate" value={Number(myTeamStats.completionRate)} color="var(--color-success)" />
+                                        <KpiCard title="Completed" value={myTeamStats.byStatus.completed} color="#22c55e" />
+                                        <KpiCard title="In Progress" value={myTeamStats.byStatus.in_progress} color="#f59e0b" />
+                                        <KpiCard title="Under Review" value={myTeamStats.byStatus.review} color="#3b82f6" />
+                                        <KpiCard title="Reworking" value={myTeamStats.byStatus.reworking} color="#f97316" />
+                                        <KpiCard title="Completion Rate" value={Number(myTeamStats.completionRate)} color="#22c55e" />
                                     </div>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="bg-card border border-border rounded-lg p-5">
@@ -469,10 +457,10 @@ function ReportsContent() {
                                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Overview</h2>
                                 <div className="flex gap-3 flex-wrap">
                                     <KpiCard title="Total Actionables" value={stats.totalActionables} />
-                                    <KpiCard title="Approved" value={stats.approved} color="var(--color-success)" />
-                                    <KpiCard title="Pending Review" value={stats.pending} color="var(--color-neutral)" />
-                                    <KpiCard title="Published to Tracker" value={stats.published} color="var(--color-info)" />
-                                    <KpiCard title="Completion Rate" value={Number(stats.completionRate)} color="var(--color-success)" />
+                                    <KpiCard title="Approved" value={stats.approved} color="#22c55e" />
+                                    <KpiCard title="Pending Review" value={stats.pending} color="#94a3b8" />
+                                    <KpiCard title="Published to Tracker" value={stats.published} color="#3b82f6" />
+                                    <KpiCard title="Completion Rate" value={Number(stats.completionRate)} color="#22c55e" />
                                 </div>
                             </div>
                             )}
@@ -487,21 +475,21 @@ function ReportsContent() {
                                             Deadline Adherence
                                         </h3>
                                         <PieChart data={[
-                                            { label: "Met Deadline", value: myTeamStats.dlMet, color: CSS("--color-success") },
-                                            { label: "Missed Deadline", value: myTeamStats.dlMissed, color: CSS("--color-danger") },
-                                            { label: "Yet to Deadline", value: myTeamStats.dlYet, color: CSS("--color-info") },
+                                            { label: "Met Deadline", value: myTeamStats.dlMet, color: "#22c55e" },
+                                            { label: "Missed Deadline", value: myTeamStats.dlMissed, color: "#ef4444" },
+                                            { label: "Yet to Deadline", value: myTeamStats.dlYet, color: "#3b82f6" },
                                         ]} />
                                     </div>
                                     <div className="bg-card border border-border rounded-lg p-5">
                                         <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-                                            <AlertTriangle className="h-3.5 w-3.5 text-[color:var(--color-danger)]" />
-                                        Delay Breakdown
-                                    </h3>
+                                            <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                                            Delay Breakdown
+                                        </h3>
                                         <BarChart data={[
-                                            { label: "Yet to DL", value: myTeamStats.dlYet, color: CSS("--color-success") },
-                                            { label: "Delayed ≤30d", value: myTeamStats.dlD30, color: CSS("--color-warning") },
-                                            { label: "Delayed ≤60d", value: myTeamStats.dlD60, color: CSS("--color-reworking") },
-                                            { label: "Delayed >60d", value: myTeamStats.dlD90, color: CSS("--color-danger") },
+                                            { label: "Yet to DL", value: myTeamStats.dlYet, color: "#22c55e" },
+                                            { label: "Delayed ≤30d", value: myTeamStats.dlD30, color: "#f59e0b" },
+                                            { label: "Delayed ≤60d", value: myTeamStats.dlD60, color: "#f97316" },
+                                            { label: "Delayed >60d", value: myTeamStats.dlD90, color: "#ef4444" },
                                         ]} />
                                     </div>
                                 </div>
@@ -511,15 +499,15 @@ function ReportsContent() {
                                     <h3 className="text-sm font-medium text-foreground mb-4">Completion Progress</h3>
                                     <div className="flex items-center gap-4 mb-4">
                                         <div className="flex-1 h-3 rounded-full bg-muted/30 overflow-hidden">
-                                            <div className="h-full rounded-full transition-all" style={{ width: `${Number(myTeamStats.completionRate)}%`, backgroundColor: "var(--color-success)" }} />
+                                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Number(myTeamStats.completionRate)}%` }} />
                                         </div>
                                         <span className="text-sm font-bold font-mono text-foreground">{myTeamStats.completionRate}%</span>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                         {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => (
                                             <div key={s} className="bg-muted/20 rounded-lg p-3 text-center">
-                                                <p className="text-sm font-bold" style={{ color: STATUS_COLORS[s] }}>{myTeamStats.byStatus[s]}</p>
-                                                <p className="text-[11px] text-muted-foreground mt-1">{STATUS_LABELS[s]}</p>
+                                                <p className="text-xl font-bold" style={{ color: STATUS_COLORS[s] }}>{myTeamStats.byStatus[s]}</p>
+                                                <p className="text-[9px] text-muted-foreground mt-1">{STATUS_LABELS[s]}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -620,7 +608,7 @@ function ReportsContent() {
                                                         <span className="text-xs font-mono font-bold text-foreground">{done}<span className="text-muted-foreground/50 font-normal">/{total}</span></span>
                                                         <span className={cn(
                                                             "text-xs font-bold font-mono min-w-[40px] text-right",
-                                                            Number(pct) === 100 ? "text-[color:var(--color-success)]" : Number(pct) >= 50 ? "text-[color:var(--color-warning)]" : "text-muted-foreground"
+                                                            Number(pct) === 100 ? "text-emerald-500" : Number(pct) >= 50 ? "text-amber-500" : "text-muted-foreground"
                                                         )}>
                                                             {pct}%
                                                         </span>
@@ -677,11 +665,11 @@ function ReportsContent() {
                                                             })}
                                                         </div>
                                                         <div className="flex items-center gap-1.5 shrink-0 w-28">
-                                                            <span className="text-[11px] font-mono text-[color:var(--color-danger)]">{risks["High Risk"]}</span>
-                                                            <span className="text-[11px] text-muted-foreground/30">/</span>
-                                                            <span className="text-[11px] font-mono text-[color:var(--color-warning)]">{risks["Medium Risk"]}</span>
-                                                            <span className="text-[11px] text-muted-foreground/30">/</span>
-                                                            <span className="text-[11px] font-mono text-[color:var(--color-success)]">{risks["Low Risk"]}</span>
+                                                            <span className="text-[9px] font-mono text-red-500">{risks["High Risk"]}</span>
+                                                            <span className="text-[9px] text-muted-foreground/30">/</span>
+                                                            <span className="text-[9px] font-mono text-yellow-500">{risks["Medium Risk"]}</span>
+                                                            <span className="text-[9px] text-muted-foreground/30">/</span>
+                                                            <span className="text-[9px] font-mono text-emerald-500">{risks["Low Risk"]}</span>
                                                         </div>
                                                     </div>
                                                 )
@@ -707,7 +695,7 @@ function ReportsContent() {
 
                                 <div className="bg-card border border-border rounded-lg p-5">
                                     <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-                                        <AlertTriangle className="h-3.5 w-3.5 text-[color:var(--color-danger)]" />
+                                        <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
                                         Delay Breakdown (Active Tasks)
                                     </h3>
                                     <BarChart data={delayBarData} />
@@ -717,34 +705,34 @@ function ReportsContent() {
                             {/* ── Approvals Overview ── */}
                             <div className="bg-card border border-border rounded-lg p-5">
                                 <h3 className="text-sm font-medium text-foreground mb-4 flex items-center gap-2">
-                                    <Shield className="h-3.5 w-3.5 text-[color:var(--color-success)]" />
+                                    <Shield className="h-3.5 w-3.5 text-emerald-500" />
                                     Approvals Overview
                                 </h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div className="bg-muted/20 rounded-lg p-4 text-center">
-                                        <p className="text-sm font-bold text-foreground">{stats.totalActionables}</p>
-                                        <p className="text-[11px] text-muted-foreground mt-1">Total Extracted</p>
+                                        <p className="text-2xl font-bold text-foreground">{stats.totalActionables}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Total Extracted</p>
                                     </div>
-                                    <div className="bg-[color:var(--color-success)]/10 rounded-lg p-4 text-center">
-                                        <p className="text-sm font-bold text-[color:var(--color-success)]">{stats.approved}</p>
-                                        <p className="text-[11px] text-muted-foreground mt-1">Approved</p>
+                                    <div className="bg-emerald-500/10 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-emerald-500">{stats.approved}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Approved</p>
                                     </div>
-                                    <div className="bg-[color:var(--color-warning)]/10 rounded-lg p-4 text-center">
-                                        <p className="text-sm font-bold text-[color:var(--color-warning)]">{stats.pending}</p>
-                                        <p className="text-[11px] text-muted-foreground mt-1">Pending Review</p>
+                                    <div className="bg-yellow-500/10 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-yellow-500">{stats.pending}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Pending Review</p>
                                     </div>
-                                    <div className="bg-[color:var(--color-info)]/10 rounded-lg p-4 text-center">
-                                        <p className="text-sm font-bold text-[color:var(--color-info)]">{stats.published}</p>
-                                        <p className="text-[11px] text-muted-foreground mt-1">Published</p>
+                                    <div className="bg-blue-500/10 rounded-lg p-4 text-center">
+                                        <p className="text-2xl font-bold text-blue-500">{stats.published}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Published</p>
                                     </div>
                                 </div>
                                 {stats.totalActionables > 0 && (
                                     <div className="mt-4 flex items-center gap-3">
-                                        <span className="text-[11px] text-muted-foreground">Approval Rate</span>
+                                        <span className="text-[10px] text-muted-foreground">Approval Rate</span>
                                         <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
-                                            <div className="h-full rounded-full transition-all" style={{ width: `${(stats.approved / stats.totalActionables) * 100}%`, backgroundColor: "var(--color-success)" }} />
+                                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(stats.approved / stats.totalActionables) * 100}%` }} />
                                         </div>
-                                        <span className="text-[11px] font-mono text-muted-foreground">{((stats.approved / stats.totalActionables) * 100).toFixed(1)}%</span>
+                                        <span className="text-[10px] font-mono text-muted-foreground">{((stats.approved / stats.totalActionables) * 100).toFixed(1)}%</span>
                                     </div>
                                 )}
                             </div>
@@ -763,19 +751,19 @@ function ReportsContent() {
                                                 <span className="text-xs text-foreground w-44 truncate font-medium">{team}</span>
                                                 <div className="flex-1 h-4 rounded-full overflow-hidden flex bg-muted/30">
                                                     {w.active > 0 && (
-                                                        <div className="h-full" style={{ width: `${(w.active / total) * 100}%`, backgroundColor: "var(--color-warning)" }} title={`Active: ${w.active}`} />
+                                                        <div className="h-full bg-amber-500" style={{ width: `${(w.active / total) * 100}%` }} title={`Active: ${w.active}`} />
                                                     )}
                                                     {w.review > 0 && (
-                                                        <div className="h-full" style={{ width: `${(w.review / total) * 100}%`, backgroundColor: "var(--color-info)" }} title={`Review: ${w.review}`} />
+                                                        <div className="h-full bg-blue-500" style={{ width: `${(w.review / total) * 100}%` }} title={`Review: ${w.review}`} />
                                                     )}
                                                     {w.reworking > 0 && (
-                                                        <div className="h-full" style={{ width: `${(w.reworking / total) * 100}%`, backgroundColor: "var(--color-reworking)" }} title={`Reworking: ${w.reworking}`} />
+                                                        <div className="h-full bg-orange-500" style={{ width: `${(w.reworking / total) * 100}%` }} title={`Reworking: ${w.reworking}`} />
                                                     )}
                                                     {w.completed > 0 && (
-                                                        <div className="h-full" style={{ width: `${(w.completed / total) * 100}%`, backgroundColor: "var(--color-success)" }} title={`Completed: ${w.completed}`} />
+                                                        <div className="h-full bg-emerald-500" style={{ width: `${(w.completed / total) * 100}%` }} title={`Completed: ${w.completed}`} />
                                                     )}
                                                 </div>
-                                                <span className="text-[11px] font-mono text-muted-foreground shrink-0 w-8 text-right">{total}</span>
+                                                <span className="text-[10px] font-mono text-muted-foreground shrink-0 w-8 text-right">{total}</span>
                                             </div>
                                         )
                                     })}
@@ -784,10 +772,10 @@ function ReportsContent() {
                                     )}
                                     {workloadData.length > 0 && (
                                         <div className="flex items-center gap-4 pt-2 mt-2 border-t border-border/20">
-                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-warning)" }} /><span className="text-[11px] text-muted-foreground">Active</span></div>
-                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-info)" }} /><span className="text-[11px] text-muted-foreground">Review</span></div>
-                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-reworking)" }} /><span className="text-[11px] text-muted-foreground">Reworking</span></div>
-                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "var(--color-success)" }} /><span className="text-[11px] text-muted-foreground">Completed</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-amber-500" /><span className="text-[10px] text-muted-foreground">Active</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-blue-500" /><span className="text-[10px] text-muted-foreground">Review</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-orange-500" /><span className="text-[10px] text-muted-foreground">Reworking</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="h-2.5 w-2.5 rounded-full bg-emerald-500" /><span className="text-[10px] text-muted-foreground">Completed</span></div>
                                         </div>
                                     )}
                                 </div>
