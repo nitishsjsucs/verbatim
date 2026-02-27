@@ -40,6 +40,18 @@ class Synthesizer:
         self._llm = llm or LLMClient()
         self._settings = get_settings()
 
+    def _is_prealloc_enabled(self) -> bool:
+        """Check if synthesis pre-allocation is enabled via optimization toggle."""
+        try:
+            from app_backend.main import _runtime_config, get_retrieval_mode
+            if get_retrieval_mode() != "optimized":
+                return False
+            return _runtime_config.get("enable_synthesis_prealloc", self._settings.optimization.enable_synthesis_prealloc)
+        except Exception:
+            if self._settings.optimization.retrieval_mode != "optimized":
+                return False
+            return self._settings.optimization.enable_synthesis_prealloc
+
     def synthesize(
         self,
         query: Query,
@@ -100,6 +112,17 @@ class Synthesizer:
             }
             effort = _effort_map.get(query.query_type.value, "medium")
 
+            # Phase 0C: Synthesis token pre-allocation
+            max_tokens_for_call = self._settings.llm.max_tokens_long
+            if self._is_prealloc_enabled():
+                input_token_estimate = len(system_prompt + user_msg) // 4  # rough char-to-token
+                estimated_output = max(4096, int(input_token_estimate * 0.25))
+                max_tokens_for_call = min(estimated_output, self._settings.llm.max_tokens_long)
+                logger.info(
+                    "[BENCHMARK][synthesis_prealloc] input_est=%d estimated_output=%d actual_max=%d",
+                    input_token_estimate, estimated_output, max_tokens_for_call,
+                )
+
             # Use chat_json_with_status to detect API-level truncation
             result, was_truncated = self._llm.chat_json_with_status(
                 messages=[
@@ -107,7 +130,7 @@ class Synthesizer:
                     {"role": "user", "content": user_msg},
                 ],
                 model=self._settings.llm.model_pro,
-                max_tokens=self._settings.llm.max_tokens_long,
+                max_tokens=max_tokens_for_call,
                 reasoning_effort=effort,
             )
 

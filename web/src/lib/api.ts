@@ -6,6 +6,8 @@ import {
     QueryResponse,
     FeedbackRequest,
     AppConfig,
+    RetrievalMode,
+    OptimizationFeatures,
     Corpus,
     CorpusQueryRequest,
     CorpusQueryResponse,
@@ -85,6 +87,38 @@ export async function submitFeedback(recordId: string, feedback: FeedbackRequest
 export async function fetchConfig(): Promise<AppConfig> {
     const res = await apiFetch(`/config`);
     if (!res.ok) throw new Error('Failed to fetch config');
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Optimization Toggle API
+// ---------------------------------------------------------------------------
+
+export async function setRetrievalMode(mode: RetrievalMode): Promise<{ retrieval_mode: RetrievalMode }> {
+    const res = await apiFetch(`/config/retrieval-mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+    });
+    if (!res.ok) throw new Error('Failed to set retrieval mode');
+    return res.json();
+}
+
+export async function setOptimizationFeatures(
+    features: Partial<OptimizationFeatures>,
+): Promise<{ updated: Partial<OptimizationFeatures>; retrieval_mode: RetrievalMode }> {
+    const res = await apiFetch(`/config/optimization-features`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(features),
+    });
+    if (!res.ok) throw new Error('Failed to update optimization features');
+    return res.json();
+}
+
+export async function fetchOptimizationStats(): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/optimization/stats`);
+    if (!res.ok) throw new Error('Failed to fetch optimization stats');
     return res.json();
 }
 

@@ -128,6 +128,40 @@ class StorageConfig(BaseSettings):
         return self.resolve(self.logs_path)
 
 
+class OptimizationConfig(BaseSettings):
+    """Optimization pipeline configuration — toggle between legacy and optimized retrieval."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="", env_file=str(PROJECT_ROOT / ".env"), extra="ignore"
+    )
+
+    # Master toggle: "legacy" keeps the current system intact, "optimized" enables new pipeline
+    retrieval_mode: str = Field(default="legacy", alias="RETRIEVAL_MODE")
+
+    # Sub-feature toggles (only active when retrieval_mode="optimized")
+    enable_locator_cache: bool = Field(default=True, alias="OPT_LOCATOR_CACHE")
+    enable_embedding_prefilter: bool = Field(default=True, alias="OPT_EMBEDDING_PREFILTER")
+    enable_query_cache: bool = Field(default=True, alias="OPT_QUERY_CACHE")
+    enable_verification_skip: bool = Field(default=True, alias="OPT_VERIFICATION_SKIP")
+    enable_synthesis_prealloc: bool = Field(default=True, alias="OPT_SYNTHESIS_PREALLOC")
+    enable_reflection_tuning: bool = Field(default=True, alias="OPT_REFLECTION_TUNING")
+
+    # Tuned reflection thresholds (used when enable_reflection_tuning is on)
+    tuned_reflection_skip_section_threshold: int = 4
+    tuned_reflection_skip_token_threshold: int = 30000
+
+    # Embedding prefilter settings
+    embedding_model: str = "text-embedding-3-small"
+    prefilter_top_k: int = 30
+
+    # Query cache settings
+    cache_similarity_threshold: float = 0.95
+    cache_max_entries: int = 500
+
+    # Verification skip confidence threshold
+    verification_skip_min_citations: int = 2
+
+
 class AppConfig(BaseSettings):
     """Top-level application configuration."""
 
@@ -151,6 +185,7 @@ class Settings:
         self.tree = TreeConfig()
         self.retrieval = RetrievalConfig()
         self.storage = StorageConfig()
+        self.optimization = OptimizationConfig()
 
 
 @lru_cache(maxsize=1)

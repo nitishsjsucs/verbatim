@@ -58,6 +58,15 @@ class StructuralRouter:
         self._follower = CrossRefFollower()
         self._def_injector = DefinitionInjector()
 
+        # Phase 1: Optional embedding index + client (set by QAEngine for optimized path)
+        self._embedding_index = None
+        self._embedding_client = None
+
+    def set_embedding_context(self, embedding_index, embedding_client) -> None:
+        """Set embedding index and client for pre-filter support."""
+        self._embedding_index = embedding_index
+        self._embedding_client = embedding_client
+
     def retrieve(
         self, query_text: str, tree: DocumentTree
     ) -> tuple[Query, list[RetrievedSection], RoutingLog]:
@@ -106,7 +115,11 @@ class StructuralRouter:
         # Step 3: Locate relevant nodes (original + expanded queries)
         logger.info("[Retrieval 3/6] Locating relevant nodes...")
         t0 = time.time()
-        located = self._locator.locate(query, tree)
+        located = self._locator.locate(
+            query, tree,
+            embedding_index=self._embedding_index,
+            embedding_client=self._embedding_client,
+        )
 
         # Run locate for each expanded query and merge results
         if expanded_queries:
@@ -116,7 +129,11 @@ class StructuralRouter:
                     query_type=query.query_type,
                     key_terms=query.key_terms,
                 )
-                extra_located = self._locator.locate(eq, tree)
+                extra_located = self._locator.locate(
+                    eq, tree,
+                    embedding_index=self._embedding_index,
+                    embedding_client=self._embedding_client,
+                )
                 located = self._merge_located_nodes(located, extra_located)
                 logger.info(
                     "  -> After expansion '%s': %d total located nodes",

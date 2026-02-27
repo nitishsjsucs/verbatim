@@ -74,13 +74,54 @@ _corpus_qa_engine: Optional[CorpusQAEngine] = None
 _actionable_store: Optional[ActionableStore] = None
 _actionable_extractor: Optional[ActionableExtractor] = None
 _conversation_store: Optional[ConversationStore] = None
+_benchmark_store = None
+
+# Runtime config — survives hot-reloads, persisted to MongoDB
+_runtime_config: dict = {}
+
+
+def _persist_runtime_config(key: str, value) -> None:
+    """Persist a runtime config key to MongoDB."""
+    try:
+        from utils.mongo import get_db
+        db = get_db()
+        db["runtime_config"].update_one(
+            {"_id": "global"},
+            {"$set": {key: value}},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.warning("Failed to persist runtime config: %s", e)
+
+
+def _load_persisted_runtime_config() -> dict:
+    """Load persisted runtime config from MongoDB."""
+    try:
+        from utils.mongo import get_db
+        db = get_db()
+        doc = db["runtime_config"].find_one({"_id": "global"})
+        if doc:
+            doc.pop("_id", None)
+            return doc
+    except Exception as e:
+        logger.warning("Failed to load runtime config: %s", e)
+    return {}
+
+
+def get_retrieval_mode() -> str:
+    """Get the current retrieval mode (runtime override > env default)."""
+    return _runtime_config.get("retrieval_mode", get_settings().optimization.retrieval_mode)
+
+
+def get_benchmark_store():
+    return _benchmark_store
 
 
 def _init_singletons():
     """Initialize all singletons once at startup."""
     global _tree_store, _qa_engine, _ingestion_pipeline, _query_store
     global _corpus_store, _corpus_qa_engine, _actionable_store
-    global _actionable_extractor, _conversation_store
+    global _actionable_extractor, _conversation_store, _benchmark_store
     
     logger.info("Initializing backend singletons...")
     
@@ -110,6 +151,10 @@ def _init_singletons():
     
     _conversation_store = ConversationStore()
     logger.info("  ✓ ConversationStore initialized")
+
+    from tree.benchmark_store import BenchmarkStore
+    _benchmark_store = BenchmarkStore()
+    logger.info("  ✓ BenchmarkStore initialized")
     
     logger.info("All singletons initialized successfully")
 
@@ -117,7 +162,10 @@ def _init_singletons():
 @app.on_event("startup")
 async def startup_event():
     """Initialize all singletons on app startup."""
+    global _runtime_config, _benchmark_store
     _init_singletons()
+    _runtime_config = _load_persisted_runtime_config()
+    logger.info("Runtime config loaded: %s", _runtime_config)
 
 
 # ---------------------------------------------------------------------------
@@ -777,6 +825,7 @@ def submit_feedback(record_id: str, feedback: FeedbackRequest):
 def get_config():
     """Return current system configuration."""
     settings = get_settings()
+    opt = settings.optimization
     return {
         "model": settings.llm.model,
         "model_pro": settings.llm.model_pro,
@@ -784,7 +833,96 @@ def get_config():
         "retrieval_token_budget": settings.retrieval.retrieval_token_budget,
         "max_cross_ref_depth": settings.retrieval.max_cross_ref_depth,
         "context_expansion_siblings": settings.retrieval.context_expansion_siblings,
+        "retrieval_mode": get_retrieval_mode(),
+        "optimization_features": {
+            "enable_locator_cache": opt.enable_locator_cache,
+            "enable_embedding_prefilter": opt.enable_embedding_prefilter,
+            "enable_query_cache": opt.enable_query_cache,
+            "enable_verification_skip": opt.enable_verification_skip,
+            "enable_synthesis_prealloc": opt.enable_synthesis_prealloc,
+            "enable_reflection_tuning": opt.enable_reflection_tuning,
+        },
     }
+
+
+# ---------------------------------------------------------------------------
+# Optimization Toggle Endpoints
+# ---------------------------------------------------------------------------
+
+
+def _invalidate_query_caches(reason: str) -> int:
+    """Invalidate query caches in QAEngine and CorpusQAEngine when settings change."""
+    count = 0
+    try:
+        if _qa_engine and hasattr(_qa_engine, '_query_cache') and _qa_engine._query_cache:
+            count += _qa_engine._query_cache.invalidate_all(reason=reason)
+    except Exception as e:
+        logger.warning("Failed to invalidate QAEngine query cache: %s", e)
+    return count
+
+
+@app.patch("/config/retrieval-mode")
+def set_retrieval_mode(body: dict = Body(...)):
+    """Toggle between 'legacy' and 'optimized' retrieval."""
+    mode = body.get("mode", "legacy")
+    if mode not in ("legacy", "optimized"):
+        raise HTTPException(status_code=400, detail="mode must be 'legacy' or 'optimized'")
+    _runtime_config["retrieval_mode"] = mode
+    _persist_runtime_config("retrieval_mode", mode)
+    # Invalidate query cache — answers generated under different pipeline logic
+    invalidated = _invalidate_query_caches(reason="retrieval_mode_change")
+    logger.info("Retrieval mode changed to: %s (invalidated %d cache entries)", mode, invalidated)
+    return {"retrieval_mode": mode}
+
+
+@app.patch("/config/optimization-features")
+def set_optimization_features(body: dict = Body(...)):
+    """Update individual optimization sub-feature toggles."""
+    valid_keys = {
+        "enable_locator_cache", "enable_embedding_prefilter", "enable_query_cache",
+        "enable_verification_skip", "enable_synthesis_prealloc", "enable_reflection_tuning",
+    }
+    updates = {k: v for k, v in body.items() if k in valid_keys and isinstance(v, bool)}
+    for k, v in updates.items():
+        _runtime_config[k] = v
+        _persist_runtime_config(k, v)
+    # Invalidate query cache when features change
+    if updates:
+        invalidated = _invalidate_query_caches(reason="feature_toggle_change")
+        logger.info("Optimization features updated: %s (invalidated %d cache entries)", updates, invalidated)
+    else:
+        logger.info("Optimization features updated: %s", updates)
+    return {"updated": updates, "retrieval_mode": get_retrieval_mode()}
+
+
+@app.get("/optimization/stats")
+def optimization_stats():
+    """Return aggregate benchmark stats for legacy vs optimized modes."""
+    store = get_benchmark_store()
+    if not store:
+        return {"error": "BenchmarkStore not initialized"}
+
+    cache_stats = {}
+    try:
+        if _qa_engine and hasattr(_qa_engine, '_query_cache') and _qa_engine._query_cache:
+            cache_stats = _qa_engine._query_cache.get_stats()
+    except Exception:
+        pass
+
+    return {
+        "legacy": store.aggregate_stats("legacy"),
+        "optimized": store.aggregate_stats("optimized"),
+        "query_cache": cache_stats,
+        "retrieval_mode": get_retrieval_mode(),
+    }
+
+
+@app.post("/optimization/cache/invalidate")
+def invalidate_cache(body: dict = Body(...)):
+    """Manually invalidate query caches."""
+    reason = body.get("reason", "manual")
+    count = _invalidate_query_caches(reason=reason)
+    return {"invalidated": count, "reason": reason}
 
 
 # ---------------------------------------------------------------------------

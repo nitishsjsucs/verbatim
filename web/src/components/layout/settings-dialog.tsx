@@ -1,14 +1,87 @@
 "use client"
 
 import * as React from "react"
-import { X, Loader2, Moon, Sun } from "lucide-react"
+import { X, Loader2, Moon, Sun, Zap, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { authClient, useSession } from "@/lib/auth-client"
 import { toast } from "sonner"
+import { setRetrievalMode, setOptimizationFeatures } from "@/lib/api"
+import type { RetrievalMode, OptimizationFeatures } from "@/lib/types"
+
+const FEATURE_LABELS: { key: keyof OptimizationFeatures; label: string; description: string }[] = [
+    { key: "enable_locator_cache", label: "Locator Cache", description: "Cache locate results to prevent redundant LLM calls" },
+    { key: "enable_embedding_prefilter", label: "Embedding Pre-Filter", description: "Narrow tree index with embeddings before LLM locate" },
+    { key: "enable_query_cache", label: "Query Cache", description: "Cache answers for semantically similar queries" },
+    { key: "enable_verification_skip", label: "Smart Verification Skip", description: "Skip verification for high-confidence answers" },
+    { key: "enable_synthesis_prealloc", label: "Synthesis Pre-Allocation", description: "Pre-calculate output tokens to avoid truncation" },
+    { key: "enable_reflection_tuning", label: "Reflection Tuning", description: "Lower thresholds to skip unnecessary reflection rounds" },
+]
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     const { data: session } = useSession()
+
+    // Retrieval mode toggle
+    const [retrievalMode, setRetrievalModeState] = React.useState<RetrievalMode>("legacy")
+    const [features, setFeatures] = React.useState<OptimizationFeatures>({
+        enable_locator_cache: true,
+        enable_embedding_prefilter: true,
+        enable_query_cache: true,
+        enable_verification_skip: true,
+        enable_synthesis_prealloc: true,
+        enable_reflection_tuning: true,
+    })
+    const [savingMode, setSavingMode] = React.useState(false)
+
+    React.useEffect(() => {
+        if (open) {
+            // Load from localStorage as fast fallback
+            const stored = localStorage.getItem("retrieval_mode") as RetrievalMode | null
+            if (stored) setRetrievalModeState(stored)
+            const storedFeatures = localStorage.getItem("optimization_features")
+            if (storedFeatures) {
+                try { setFeatures(JSON.parse(storedFeatures)) } catch { /* ignore */ }
+            }
+            // Then sync from backend (source of truth)
+            import("@/lib/api").then(({ fetchConfig }) => {
+                fetchConfig().then((cfg) => {
+                    if (cfg.retrieval_mode) {
+                        setRetrievalModeState(cfg.retrieval_mode as RetrievalMode)
+                        localStorage.setItem("retrieval_mode", cfg.retrieval_mode)
+                    }
+                    if (cfg.optimization_features) {
+                        setFeatures(cfg.optimization_features as OptimizationFeatures)
+                        localStorage.setItem("optimization_features", JSON.stringify(cfg.optimization_features))
+                    }
+                }).catch(() => { /* backend unavailable — use cached */ })
+            })
+        }
+    }, [open])
+
+    const handleToggleMode = async (mode: RetrievalMode) => {
+        setSavingMode(true)
+        try {
+            await setRetrievalMode(mode)
+            setRetrievalModeState(mode)
+            localStorage.setItem("retrieval_mode", mode)
+            toast.success(`Switched to ${mode} retrieval`)
+        } catch {
+            toast.error("Failed to switch retrieval mode")
+        } finally {
+            setSavingMode(false)
+        }
+    }
+
+    const handleToggleFeature = async (key: keyof OptimizationFeatures) => {
+        const updated = { ...features, [key]: !features[key] }
+        setFeatures(updated)
+        localStorage.setItem("optimization_features", JSON.stringify(updated))
+        try {
+            await setOptimizationFeatures({ [key]: updated[key] })
+        } catch {
+            toast.error(`Failed to update ${key}`)
+        }
+    }
 
     // Theme (mirrors ThemeToggle localStorage approach)
     const [theme, setThemeState] = React.useState<"light" | "dark">("dark")
@@ -95,6 +168,68 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                    {/* Retrieval Engine Toggle */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Retrieval Engine</label>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleToggleMode("legacy")}
+                                disabled={savingMode}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-md border text-xs font-semibold transition-colors",
+                                    retrievalMode === "legacy"
+                                        ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                                        : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40"
+                                )}
+                            >
+                                <Shield className="h-4 w-4" /> Legacy (Stable)
+                            </button>
+                            <button
+                                onClick={() => handleToggleMode("optimized")}
+                                disabled={savingMode}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center gap-2 py-3 rounded-md border text-xs font-semibold transition-colors",
+                                    retrievalMode === "optimized"
+                                        ? "border-amber-500 bg-amber-500/10 text-amber-400"
+                                        : "border-border bg-muted/20 text-muted-foreground hover:bg-muted/40"
+                                )}
+                            >
+                                {savingMode ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                                Optimized (New)
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground/60">
+                            {retrievalMode === "optimized"
+                                ? "Using optimized pipeline: embedding pre-filter, caching, tuned thresholds"
+                                : "Using legacy pipeline: full tree index sent to LLM every query"}
+                        </p>
+
+                        {retrievalMode === "optimized" && (
+                            <div className="space-y-1.5 pt-1">
+                                <p className="text-[10px] font-medium text-muted-foreground/80 uppercase tracking-wider">Sub-Features</p>
+                                {FEATURE_LABELS.map(({ key, label, description }) => (
+                                    <label
+                                        key={key}
+                                        className="flex items-center gap-2.5 py-1 cursor-pointer group"
+                                        title={description}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={features[key]}
+                                            onChange={() => handleToggleFeature(key)}
+                                            className="h-3.5 w-3.5 accent-amber-500 rounded"
+                                        />
+                                        <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                                            {label}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="border-t border-border/30" />
+
                     {/* Name */}
                     <div className="space-y-2">
                         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Display Name</label>

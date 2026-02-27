@@ -114,6 +114,88 @@ class Answer:
     # Per-stage timing breakdown (stage_name -> seconds)
     stage_timings: dict[str, float] = field(default_factory=dict)
 
+    def to_dict(self) -> dict:
+        """Serialize Answer to a JSON-safe dict (for caching)."""
+        return {
+            "text": self.text,
+            "citations": [
+                {
+                    "citation_id": c.citation_id,
+                    "node_id": c.node_id,
+                    "title": c.title,
+                    "page_range": c.page_range,
+                    "excerpt": c.excerpt,
+                    "doc_id": getattr(c, "doc_id", ""),
+                    "doc_name": getattr(c, "doc_name", ""),
+                }
+                for c in self.citations
+            ],
+            "inferred_points": [
+                {
+                    "point": ip.point,
+                    "supporting_definitions": ip.supporting_definitions,
+                    "supporting_sections": ip.supporting_sections,
+                    "reasoning": ip.reasoning,
+                    "confidence": ip.confidence,
+                }
+                for ip in self.inferred_points
+            ],
+            "query_type": self.query_type.value,
+            "verified": self.verified,
+            "verification_status": self.verification_status,
+            "verification_notes": self.verification_notes,
+            "total_time_seconds": self.total_time_seconds,
+            "total_tokens": self.total_tokens,
+            "llm_calls": self.llm_calls,
+            "stage_timings": self.stage_timings,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Answer":
+        """Deserialize Answer from a dict (for cache retrieval)."""
+        citations = [
+            Citation(
+                citation_id=c.get("citation_id", ""),
+                node_id=c.get("node_id", ""),
+                title=c.get("title", ""),
+                page_range=c.get("page_range", ""),
+                excerpt=c.get("excerpt", ""),
+                doc_id=c.get("doc_id", ""),
+                doc_name=c.get("doc_name", ""),
+            )
+            for c in data.get("citations", [])
+        ]
+        inferred_points = [
+            InferredPoint(
+                point=ip.get("point", ""),
+                supporting_definitions=ip.get("supporting_definitions", []),
+                supporting_sections=ip.get("supporting_sections", []),
+                reasoning=ip.get("reasoning", ""),
+                confidence=ip.get("confidence", "medium"),
+            )
+            for ip in data.get("inferred_points", [])
+        ]
+        qt_str = data.get("query_type", "single_hop")
+        try:
+            qt = QueryType(qt_str)
+        except ValueError:
+            qt = QueryType.SINGLE_HOP
+
+        answer = cls(
+            text=data.get("text", ""),
+            citations=citations,
+            inferred_points=inferred_points,
+            query_type=qt,
+            verified=data.get("verified", False),
+            verification_status=data.get("verification_status", ""),
+            verification_notes=data.get("verification_notes", ""),
+            total_time_seconds=data.get("total_time_seconds", 0.0),
+            total_tokens=data.get("total_tokens", 0),
+            llm_calls=data.get("llm_calls", 0),
+            stage_timings=data.get("stage_timings", {}),
+        )
+        return answer
+
 
 @dataclass
 class RoutingLog:

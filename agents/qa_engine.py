@@ -24,6 +24,7 @@ from agents.verifier import Verifier
 from agents.planner import Planner
 from tree.tree_store import TreeStore
 from utils.llm_client import LLMClient
+from utils.benchmark import BenchmarkTracker
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,33 @@ class QAEngine:
 
         # Cached trees (avoid reloading for repeated queries)
         self._trees: dict[str, DocumentTree] = {}
+
+        # Current benchmark tracker (set per-query)
+        self._tracker: Optional[BenchmarkTracker] = None
+
+        # Phase 2: Semantic query cache (lazy-init on first optimized query)
+        self._query_cache = None
+        self._embedding_client_for_cache = None
+
+    def _get_retrieval_mode(self) -> str:
+        """Get the current retrieval mode from runtime config."""
+        try:
+            from app_backend.main import get_retrieval_mode
+            return get_retrieval_mode()
+        except Exception:
+            return self._settings.optimization.retrieval_mode
+
+    def _is_feature_enabled(self, feature: str) -> bool:
+        """Check if a specific optimization feature is enabled."""
+        if self._get_retrieval_mode() != "optimized":
+            return False
+        try:
+            from app_backend.main import _runtime_config
+            if feature in _runtime_config:
+                return bool(_runtime_config[feature])
+        except Exception:
+            pass
+        return getattr(self._settings.optimization, feature, False)
 
     def load_document(self, doc_id: str) -> DocumentTree:
         """
@@ -91,9 +119,29 @@ class QAEngine:
         """
         Phase 1: Load tree, classify, retrieve, optionally reflect.
 
+        Dispatches to legacy or optimized path based on the retrieval_mode toggle.
         Returns a RetrievalResult that can be displayed immediately
         while Phase 2 (synthesis + verification) runs.
         """
+        mode = self._get_retrieval_mode()
+        self._tracker = BenchmarkTracker(
+            query_text=query_text, doc_id=doc_id,
+            retrieval_mode=mode, llm_client=self._llm,
+        )
+        logger.info("[QA] Retrieval mode: %s", mode)
+
+        if mode == "optimized":
+            return self._retrieve_optimized(query_text, doc_id, reflect)
+        else:
+            return self._retrieve_legacy(query_text, doc_id, reflect)
+
+    def _retrieve_legacy(
+        self,
+        query_text: str,
+        doc_id: str,
+        reflect: bool = False,
+    ) -> RetrievalResult:
+        """Legacy retrieval path — exact original pipeline, untouched."""
         start = time.time()
         self._llm.reset_usage()
         timings: dict[str, float] = {}
@@ -133,6 +181,77 @@ class QAEngine:
         else:
             timings["3_reflection"] = 0.0
             logger.info("[QA 3/6] Reflection skipped (opt-in)")
+
+        return RetrievalResult(
+            query=query,
+            sections=sections,
+            routing_log=routing_log,
+            tree=tree,
+            timings=timings,
+            llm_usage_snapshot=self._llm.get_usage_summary(),
+            start_time=start,
+        )
+
+    def _retrieve_optimized(
+        self,
+        query_text: str,
+        doc_id: str,
+        reflect: bool = False,
+    ) -> RetrievalResult:
+        """Optimized retrieval path — with benchmarking, caching, and pre-filter."""
+        start = time.time()
+        self._llm.reset_usage()
+        timings: dict[str, float] = {}
+        tracker = self._tracker
+
+        # Step 1: Load tree + embedding index
+        with tracker.stage("load_tree") as s:
+            tree = self.load_document(doc_id)
+            s.set_metadata("node_count", tree.node_count)
+            s.set_metadata("total_pages", tree.total_pages)
+
+            # Load embedding index and set on router if prefilter is enabled
+            _emb_index = None
+            _emb_client = None
+            if self._is_feature_enabled("enable_embedding_prefilter"):
+                _emb_index = self._tree_store.load_embedding_index(doc_id)
+                if _emb_index:
+                    from utils.embedding_client import EmbeddingClient
+                    _emb_client = EmbeddingClient()
+                    self._router.set_embedding_context(_emb_index, _emb_client)
+                    s.set_metadata("embedding_index_entries", len(_emb_index.entries))
+                else:
+                    s.set_metadata("embedding_index_entries", 0)
+                    logger.info("[QA] No embedding index found for %s — using full tree index", doc_id)
+
+        timings["1_load_tree"] = tracker._stages[-1].duration_seconds
+        logger.info("  -> %d nodes, %d pages (%.1fs)", tree.node_count, tree.total_pages, timings["1_load_tree"])
+
+        # Step 2: Classify + Retrieve (with benchmark wrapping)
+        with tracker.stage("retrieval") as s:
+            query, sections, routing_log = self._router.retrieve(query_text, tree)
+            s.set_metadata("query_type", query.query_type.value)
+            s.set_metadata("sections_count", len(sections))
+            s.set_metadata("tokens_retrieved", sum(sec.token_count for sec in sections))
+        timings["2_retrieval"] = tracker._stages[-1].duration_seconds
+        logger.info(
+            "  -> Type: %s, %d sections, %d tokens (%.1fs)",
+            query.query_type.value,
+            len(sections),
+            sum(sec.token_count for sec in sections),
+            timings["2_retrieval"],
+        )
+
+        # Step 3: Reflect (with optimized thresholds if tuning enabled)
+        if reflect:
+            with tracker.stage("reflection") as s:
+                sections = self._reflector.reflect_and_fill(query, sections, tree, self._router)
+                s.set_metadata("sections_after", len(sections))
+                s.set_metadata("tokens_after", sum(sec.token_count for sec in sections))
+            timings["3_reflection"] = tracker._stages[-1].duration_seconds
+        else:
+            tracker.record_skip("reflection", reason="opt-in disabled")
+            timings["3_reflection"] = 0.0
 
         return RetrievalResult(
             query=query,
@@ -233,11 +352,40 @@ class QAEngine:
 
         self._log_contribution_analysis(answer, sections, timings, elapsed)
 
+        # Finalize and save benchmark (if tracker exists)
+        if self._tracker:
+            benchmark = self._tracker.finalize()
+            try:
+                from tree.benchmark_store import BenchmarkStore
+                from app_backend.main import get_benchmark_store
+                bstore = get_benchmark_store()
+                if bstore:
+                    benchmark_id = bstore.save(benchmark)
+                    answer.stage_timings["_benchmark_id"] = benchmark_id
+                    answer.stage_timings["_benchmark"] = benchmark.to_dict()
+            except Exception as e:
+                logger.warning("Failed to save benchmark: %s", e)
+            self._tracker = None
+
         return answer
 
     # ------------------------------------------------------------------
     # Convenience wrapper (backward-compatible)
     # ------------------------------------------------------------------
+
+    def _get_query_cache(self):
+        """Lazy-init and return the query cache."""
+        if self._query_cache is None:
+            from retrieval.query_cache import QueryCache
+            self._query_cache = QueryCache()
+        return self._query_cache
+
+    def _get_cache_embedding_client(self):
+        """Lazy-init and return the embedding client for cache lookups."""
+        if self._embedding_client_for_cache is None:
+            from utils.embedding_client import EmbeddingClient
+            self._embedding_client_for_cache = EmbeddingClient()
+        return self._embedding_client_for_cache
 
     def ask(
         self,
@@ -248,9 +396,50 @@ class QAEngine:
     ) -> Answer:
         """
         Ask a question about a document (runs retrieve + synthesize in one call).
+
+        In optimized mode with query cache enabled, checks the cache first
+        and returns cached answer on semantic hit.
         """
+        # Phase 2: Query cache check (optimized mode only)
+        if self._is_feature_enabled("enable_query_cache"):
+            try:
+                cache = self._get_query_cache()
+                emb_client = self._get_cache_embedding_client()
+                query_embedding = emb_client.embed(query_text)
+                cached = cache.lookup(query_text, query_embedding, doc_id)
+                if cached:
+                    from models.query import Answer as AnswerModel
+                    answer = AnswerModel.from_dict(cached)
+                    answer.stage_timings = answer.stage_timings or {}
+                    answer.stage_timings["_cache_hit"] = True
+                    return answer
+            except Exception as e:
+                logger.warning("[query_cache] Cache lookup failed: %s", e)
+
+        # Run full pipeline
         rr = self.retrieve(query_text, doc_id, reflect=reflect)
-        return self.synthesize_and_verify(rr, query_text, verify=verify, reflect=reflect)
+        answer = self.synthesize_and_verify(rr, query_text, verify=verify, reflect=reflect)
+
+        # Phase 2: Store result in cache (optimized mode only)
+        if self._is_feature_enabled("enable_query_cache"):
+            try:
+                cache = self._get_query_cache()
+                emb_client = self._get_cache_embedding_client()
+                if not hasattr(self, '_last_query_embedding'):
+                    query_embedding = emb_client.embed(query_text)
+                else:
+                    query_embedding = self._last_query_embedding
+                cache.store(
+                    query_text=query_text,
+                    query_embedding=query_embedding,
+                    answer_dict=answer.to_dict(),
+                    doc_id=doc_id,
+                    retrieval_mode="optimized",
+                )
+            except Exception as e:
+                logger.warning("[query_cache] Cache store failed: %s", e)
+
+        return answer
 
     # ------------------------------------------------------------------
     # Contribution analysis logging

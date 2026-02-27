@@ -174,6 +174,12 @@ class IngestionPipeline:
         # Save tree to disk
         tree_path = self._store.save(tree)
 
+        # Step 6b: Build embedding index (Phase 1 optimization — runs even in legacy mode so index is ready)
+        try:
+            self._build_embedding_index(tree)
+        except Exception as e:
+            logger.warning("Embedding index build failed (non-fatal): %s", e)
+
         # Step 7: Update corpus graph + detect relationships
         logger.info("[Step 7/7] Updating corpus graph...")
         step_start = time.time()
@@ -217,3 +223,51 @@ class IngestionPipeline:
         logger.info("=" * 60)
 
         return tree
+
+    def _build_embedding_index(self, tree: DocumentTree) -> None:
+        """Build and save embedding index for a document tree (Phase 1)."""
+        from utils.embedding_client import EmbeddingClient
+        from retrieval.embedding_index import EmbeddingIndex, NodeEmbedding
+
+        logger.info("[Embedding Index] Building for %s (%d nodes)...", tree.doc_id, tree.node_count)
+        step_start = time.time()
+
+        emb_client = EmbeddingClient()
+
+        # Collect all nodes and their embedding text
+        all_nodes = list(tree._all_nodes())
+        texts = []
+        for node in all_nodes:
+            # Combine title + summary for richer semantic signal
+            text = f"{node.title}. {node.summary}" if node.summary else node.title
+            texts.append(text)
+
+        if not texts:
+            logger.warning("[Embedding Index] No nodes to embed for %s", tree.doc_id)
+            return
+
+        # Batch embed all texts
+        embeddings = emb_client.embed_batch(texts)
+
+        # Build index
+        index = EmbeddingIndex(doc_id=tree.doc_id)
+        for node, embedding in zip(all_nodes, embeddings):
+            index.add_entry(NodeEmbedding(
+                node_id=node.node_id,
+                doc_id=tree.doc_id,
+                title=node.title,
+                summary=node.summary or "",
+                level=node.level,
+                page_range=node.page_range_str,
+                token_count=node.token_count,
+                embedding=embedding,
+            ))
+
+        # Save to MongoDB via tree_store
+        self._store.save_embedding_index(index)
+
+        usage = emb_client.get_usage()
+        logger.info(
+            "[Embedding Index] Built for %s: %d entries, %d tokens, %.1fs",
+            tree.doc_id, len(index.entries), usage["total_tokens"], time.time() - step_start,
+        )

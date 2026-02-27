@@ -32,6 +32,7 @@ from retrieval.corpus_router import CorpusRouter
 from agents.verifier import Verifier
 from tree.corpus_store import CorpusStore
 from utils.llm_client import LLMClient
+from utils.benchmark import BenchmarkTracker
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,27 @@ class CorpusQAEngine:
         self._corpus_store = CorpusStore()
         self._corpus_router = CorpusRouter(self._llm)
         self._verifier = Verifier(self._llm)
+        self._tracker: Optional[BenchmarkTracker] = None
+
+    def _get_retrieval_mode(self) -> str:
+        """Get the current retrieval mode from runtime config."""
+        try:
+            from app_backend.main import get_retrieval_mode
+            return get_retrieval_mode()
+        except Exception:
+            return self._settings.optimization.retrieval_mode
+
+    def _is_feature_enabled(self, feature: str) -> bool:
+        """Check if a specific optimization feature is enabled."""
+        if self._get_retrieval_mode() != "optimized":
+            return False
+        try:
+            from app_backend.main import _runtime_config
+            if feature in _runtime_config:
+                return bool(_runtime_config[feature])
+        except Exception:
+            pass
+        return getattr(self._settings.optimization, feature, False)
 
     # ------------------------------------------------------------------
     # Phase 1 — Retrieval (corpus-level)
@@ -66,8 +88,16 @@ class CorpusQAEngine:
         """
         Phase 1: Load corpus, select documents, retrieve from each.
 
+        Dispatches to legacy or optimized path based on the retrieval_mode toggle.
         Returns a CorpusRetrievalResult that can be displayed immediately.
         """
+        mode = self._get_retrieval_mode()
+        self._tracker = BenchmarkTracker(
+            query_text=query_text, doc_id="corpus",
+            retrieval_mode=mode, llm_client=self._llm,
+        )
+        logger.info("[CorpusQA] Retrieval mode: %s", mode)
+
         self._llm.reset_usage()
 
         # Load corpus
@@ -85,8 +115,14 @@ class CorpusQAEngine:
             len(corpus.relationships),
         )
 
-        # Run corpus retrieval
-        result = self._corpus_router.retrieve(query_text, corpus)
+        if mode == "optimized":
+            with self._tracker.stage("corpus_retrieval") as s:
+                result = self._corpus_router.retrieve(query_text, corpus)
+                s.set_metadata("docs_selected", len(result.per_doc_results))
+                s.set_metadata("total_sections", len(result.all_sections))
+        else:
+            result = self._corpus_router.retrieve(query_text, corpus)
+
         return result
 
     # ------------------------------------------------------------------
@@ -150,6 +186,20 @@ class CorpusQAEngine:
             answer.llm_calls,
             answer.total_tokens,
         )
+
+        # Finalize and save benchmark (if tracker exists)
+        if self._tracker:
+            benchmark = self._tracker.finalize()
+            try:
+                from app_backend.main import get_benchmark_store
+                bstore = get_benchmark_store()
+                if bstore:
+                    benchmark_id = bstore.save(benchmark)
+                    answer.stage_timings["_benchmark_id"] = benchmark_id
+                    answer.stage_timings["_benchmark"] = benchmark.to_dict()
+            except Exception as e:
+                logger.warning("Failed to save corpus benchmark: %s", e)
+            self._tracker = None
 
         return answer
 

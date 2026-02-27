@@ -101,9 +101,39 @@ class RetrievalReflector:
         # Early-skip heuristic: if we already have many sections or tokens,
         # reflection is unlikely to add value and is expensive.
         settings = get_settings()
+
+        # Phase 0D: Use tuned (lower) thresholds when optimized mode + reflection tuning is on
+        section_threshold = settings.retrieval.reflection_skip_section_threshold
+        token_threshold = settings.retrieval.reflection_skip_token_threshold
+        _using_tuned = False
+        try:
+            from app_backend.main import _runtime_config, get_retrieval_mode
+            if get_retrieval_mode() == "optimized":
+                _tuning_on = _runtime_config.get(
+                    "enable_reflection_tuning",
+                    settings.optimization.enable_reflection_tuning,
+                )
+                if _tuning_on:
+                    section_threshold = settings.optimization.tuned_reflection_skip_section_threshold
+                    token_threshold = settings.optimization.tuned_reflection_skip_token_threshold
+                    _using_tuned = True
+        except Exception:
+            if (
+                settings.optimization.retrieval_mode == "optimized"
+                and settings.optimization.enable_reflection_tuning
+            ):
+                section_threshold = settings.optimization.tuned_reflection_skip_section_threshold
+                token_threshold = settings.optimization.tuned_reflection_skip_token_threshold
+                _using_tuned = True
+
+        logger.info(
+            "[BENCHMARK][reflection_tuning] thresholds=(section=%d, token=%d) tuned=%s",
+            section_threshold, token_threshold, _using_tuned,
+        )
+
         if (
-            initial_section_count >= settings.retrieval.reflection_skip_section_threshold
-            or initial_token_count >= settings.retrieval.reflection_skip_token_threshold
+            initial_section_count >= section_threshold
+            or initial_token_count >= token_threshold
         ):
             logger.info(
                 "Skipping reflection — evidence abundant (sections=%d, tokens=%d)",
@@ -112,8 +142,8 @@ class RetrievalReflector:
             )
             logger.info(
                 "[Reflection Contribution] SKIPPED — abundant evidence; thresholds: sections>=%d tokens>=%d",
-                settings.retrieval.reflection_skip_section_threshold,
-                settings.retrieval.reflection_skip_token_threshold,
+                section_threshold,
+                token_threshold,
             )
             return sections
 

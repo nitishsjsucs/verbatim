@@ -34,6 +34,37 @@ class Verifier:
         self._llm = llm or LLMClient()
         self._settings = get_settings()
 
+    def _is_verification_skip_enabled(self) -> bool:
+        """Check if verification skip is enabled via optimization toggle."""
+        try:
+            from app_backend.main import _runtime_config, get_retrieval_mode
+            if get_retrieval_mode() != "optimized":
+                return False
+            return _runtime_config.get("enable_verification_skip", self._settings.optimization.enable_verification_skip)
+        except Exception:
+            if self._settings.optimization.retrieval_mode != "optimized":
+                return False
+            return self._settings.optimization.enable_verification_skip
+
+    def _should_skip_verification(self, answer: Answer) -> bool:
+        """Heuristic pre-check: skip verification for high-confidence answers."""
+        if not self._is_verification_skip_enabled():
+            return False
+
+        min_citations = self._settings.optimization.verification_skip_min_citations
+        has_citations = len(answer.citations) >= min_citations
+        has_no_inferred = len(answer.inferred_points) == 0
+        answer_reasonable_length = 100 < len(answer.text) < 5000
+
+        should_skip = has_citations and has_no_inferred and answer_reasonable_length
+        logger.info(
+            "[BENCHMARK][verify_skip] %s | citations=%d (min=%d) inferred=%d len=%d",
+            "SKIPPED" if should_skip else "RAN",
+            len(answer.citations), min_citations,
+            len(answer.inferred_points), len(answer.text),
+        )
+        return should_skip
+
     def verify(self, answer: Answer, query_text: str = "") -> Answer:
         """
         Verify a synthesized answer against its source sections.
@@ -47,6 +78,16 @@ class Verifier:
         Returns:
             The same Answer object with verification fields filled.
         """
+        # Phase 0B: Skip verification for high-confidence answers
+        if self._should_skip_verification(answer):
+            answer.verified = True
+            answer.verification_status = "confidence_skip"
+            answer.verification_notes = (
+                "Verification skipped — high-confidence heuristic passed "
+                f"(citations={len(answer.citations)}, inferred=0, length={len(answer.text)})"
+            )
+            return answer
+
         if not answer.retrieved_sections:
             answer.verified = False
             answer.verification_status = "unverified"

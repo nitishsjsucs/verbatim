@@ -40,7 +40,7 @@ interface ResearchMessage {
     retrievedSections?: CorpusRetrievedSection[]
     selectedDocuments?: Record<string, unknown>[]
     perDocRoutingLogs?: Record<string, unknown>
-    stageTimings?: Record<string, number>
+    stageTimings?: Record<string, unknown>
     totalTimeSeconds?: number
     totalTokens?: number
     llmCalls?: number
@@ -679,8 +679,37 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Pipeline Stats"
                                                 icon={<BarChart3 className="h-3 w-3" />}
+                                                badge={
+                                                    msg.stageTimings?._benchmark ? (
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium">
+                                                            optimized
+                                                        </span>
+                                                    ) : msg.stageTimings?._cache_hit ? (
+                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 font-medium">
+                                                            cache hit
+                                                        </span>
+                                                    ) : null
+                                                }
                                             >
                                                 <div className="space-y-3">
+                                                    {/* Benchmark summary bar (only in optimized mode) */}
+                                                    {Boolean(msg.stageTimings?._benchmark) && (() => {
+                                                        const bm = msg.stageTimings!._benchmark as Record<string, number>
+                                                        const cacheHits = Number(bm.cache_hits ?? 0)
+                                                        const skipped = Number(bm.stages_skipped ?? 0)
+                                                        const llmCalls = Number(bm.total_llm_calls ?? 0)
+                                                        const totalTok = Number(bm.total_input_tokens ?? 0) + Number(bm.total_output_tokens ?? 0)
+                                                        return (
+                                                            <div className="flex items-center gap-2 text-[10px] text-amber-400/80 bg-amber-500/5 rounded-md px-2 py-1.5 border border-amber-500/10">
+                                                                <Zap className="h-3 w-3 shrink-0" />
+                                                                <span>
+                                                                    {cacheHits > 0 && <>{cacheHits} cache hits &middot; </>}
+                                                                    {skipped > 0 && <>{skipped} stages skipped &middot; </>}
+                                                                    {llmCalls} LLM calls &middot; {totalTok.toLocaleString()} tokens
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })()}
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div className="bg-muted/30 rounded-md p-2">
                                                             <p className="text-[10px] text-muted-foreground">Response Time</p>
@@ -704,9 +733,10 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
                                                             {(() => {
                                                                 const entries = Object.entries(msg.stageTimings)
-                                                                const maxVal = Math.max(...entries.map(([, v]) => v), 0.1)
+                                                                    .filter(([k, v]) => typeof v === "number" && !k.startsWith("_"))
+                                                                const maxVal = Math.max(...entries.map(([, v]) => v as number), 0.1)
                                                                 return entries.map(([name, secs]) => (
-                                                                    <StageTimingBar key={name} name={name} seconds={secs} maxSeconds={maxVal} />
+                                                                    <StageTimingBar key={name} name={name} seconds={secs as number} maxSeconds={maxVal} />
                                                                 ))
                                                             })()}
                                                         </div>

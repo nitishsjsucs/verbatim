@@ -335,6 +335,42 @@ class DocumentTree:
             "structure": [node.to_index_entry() for node in self.structure],
         }
 
+    def to_compressed_index(self, candidate_ids: set[str]) -> dict:
+        """
+        Export a compressed index with only pre-filtered candidate nodes.
+
+        Instead of the full recursive tree, this produces a flat list of
+        candidates with minimal metadata — dramatically reducing token count
+        for the LLM Locator.
+
+        Args:
+            candidate_ids: Set of node_ids that passed the embedding pre-filter.
+
+        Returns:
+            A flat dict with doc metadata and candidate entries.
+        """
+        candidates = []
+        for node in self._all_nodes():
+            if node.node_id in candidate_ids:
+                entry: dict = {
+                    "node_id": node.node_id,
+                    "title": node.title,
+                    "pages": node.page_range_str,
+                    "summary": node.summary,
+                }
+                if node.parent_id:
+                    parent = self.get_node(node.parent_id)
+                    if parent:
+                        entry["parent"] = f"{parent.node_id}: {parent.title}"
+                candidates.append(entry)
+
+        return {
+            "doc_id": self.doc_id,
+            "doc_name": self.doc_name,
+            "total_pages": self.total_pages,
+            "candidates": candidates,
+        }
+
     def to_dict(self) -> dict:
         """Export full tree as a serializable dict (for persistence)."""
         return {

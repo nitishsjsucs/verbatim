@@ -89,6 +89,17 @@ export interface FeedbackRequest {
     rating: number | null;
 }
 
+export type RetrievalMode = "legacy" | "optimized";
+
+export interface OptimizationFeatures {
+    enable_locator_cache: boolean;
+    enable_embedding_prefilter: boolean;
+    enable_query_cache: boolean;
+    enable_verification_skip: boolean;
+    enable_synthesis_prealloc: boolean;
+    enable_reflection_tuning: boolean;
+}
+
 export interface AppConfig {
     model: string;
     model_pro: string;
@@ -96,6 +107,8 @@ export interface AppConfig {
     retrieval_token_budget: number;
     max_cross_ref_depth: number;
     context_expansion_siblings: number;
+    retrieval_mode: RetrievalMode;
+    optimization_features: OptimizationFeatures;
 }
 
 export type NodeType =

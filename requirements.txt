@@ -7,3 +7,4 @@ pydantic-settings
 pymupdf
 pymongo>=4.0.0
 pyyaml>=6.0
+numpy>=1.24.0

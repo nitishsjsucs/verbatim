@@ -112,3 +112,33 @@ class TreeStore:
             logger.info("Deleted tree from MongoDB: %s", doc_id)
             return True
         return False
+
+    # ------------------------------------------------------------------
+    # Embedding Index persistence (Phase 1 optimization)
+    # ------------------------------------------------------------------
+
+    def save_embedding_index(self, index) -> None:
+        """Save an EmbeddingIndex to MongoDB."""
+        emb_collection = get_db()["embedding_indexes"]
+        data = index.to_dict()
+        data["_id"] = index.doc_id
+        emb_collection.replace_one(
+            {"_id": index.doc_id},
+            data,
+            upsert=True,
+        )
+        logger.info("Saved embedding index: %s (%d entries)", index.doc_id, len(index.entries))
+
+    def load_embedding_index(self, doc_id: str):
+        """Load an EmbeddingIndex from MongoDB. Returns None if not found."""
+        emb_collection = get_db()["embedding_indexes"]
+        data = emb_collection.find_one({"_id": doc_id})
+        if not data:
+            logger.debug("No embedding index found for %s", doc_id)
+            return None
+        if "_id" in data:
+            del data["_id"]
+        from retrieval.embedding_index import EmbeddingIndex
+        idx = EmbeddingIndex.from_dict(data)
+        logger.info("Loaded embedding index: %s (%d entries)", doc_id, len(idx.entries))
+        return idx
