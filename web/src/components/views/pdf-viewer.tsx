@@ -459,13 +459,13 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
                 .rpv-zoom-label { font-size:12px; min-width:44px; text-align:center; color:var(--rpv-icon,hsl(var(--foreground,0 0% 9%))); }
                 .rpv-scroll-container { flex:1; overflow:auto; background:var(--rpv-container-bg,hsl(var(--muted,220 14% 96%))); }
                 .rpv-page { --rpv-page-bg:#fff; }
-                :root.dark .rpv-toolbar,.dark .rpv-toolbar { background:oklch(0.13 0.01 240); border-color:oklch(0.32 0.01 270); }
+                :root.dark .rpv-toolbar,.dark .rpv-toolbar { background:#05090c; border-color:oklch(0.32 0.01 270); }
                 :root.dark .rpv-btn,.dark .rpv-btn { color:hsl(var(--foreground,0 0% 96%)); }
                 :root.dark .rpv-btn:hover:not(:disabled),.dark .rpv-btn:hover:not(:disabled) { background:hsl(var(--muted,0 0% 15%)); }
                 :root.dark .rpv-page-input input,.dark .rpv-page-input input { border-color:hsl(var(--border,0 0% 20%)); color:hsl(var(--foreground,0 0% 96%)); }
                 :root.dark .rpv-zoom-label,.dark .rpv-zoom-label { color:hsl(var(--foreground,0 0% 96%)); }
                 :root.dark .rpv-sep,.dark .rpv-sep { background:hsl(var(--border,0 0% 20%)); }
-                :root.dark .rpv-scroll-container,.dark .rpv-scroll-container { background:oklch(0.13 0.01 240); }
+                :root.dark .rpv-scroll-container,.dark .rpv-scroll-container { background:#05090c; }
                 :root.dark .rpv-page,.dark .rpv-page { --rpv-page-bg:#fff; filter:invert(1) hue-rotate(180deg); box-shadow:none !important; }
                 .textLayer { pointer-events:all; }
                 .textLayer span { position:absolute; white-space:pre; color:transparent; font-size:1px; }

@@ -207,7 +207,8 @@
   .dark input[type="date"]::-webkit-calendar-picker-indicator,
   .dark input[type="time"]::-webkit-calendar-picker-indicator,
   .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
+    filter: brightness(0) invert(1);
+    cursor: pointer;
   }
 
   /* ─── Dark scrollbars ─────────────────────────────────────────────── */
