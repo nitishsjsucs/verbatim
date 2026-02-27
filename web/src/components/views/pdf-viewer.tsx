@@ -466,7 +466,8 @@ export function PdfViewer({ fileUrl, initialPage = 0, jumpToPage: jumpPage, jump
                 :root.dark .rpv-zoom-label,.dark .rpv-zoom-label { color:hsl(var(--foreground,0 0% 96%)); }
                 :root.dark .rpv-sep,.dark .rpv-sep { background:hsl(var(--border,0 0% 20%)); }
                 :root.dark .rpv-scroll-container,.dark .rpv-scroll-container { background:#05090c; }
-                :root.dark .rpv-page,.dark .rpv-page { --rpv-page-bg:#fff; filter:invert(1) hue-rotate(180deg); box-shadow:none !important; }
+                :root.dark .rpv-page,.dark .rpv-page { --rpv-page-bg:#05090c; box-shadow:none !important; }
+                :root.dark .rpv-page canvas,.dark .rpv-page canvas { filter:invert(1) hue-rotate(180deg); mix-blend-mode:screen; }
                 .textLayer { pointer-events:all; }
                 .textLayer span { position:absolute; white-space:pre; color:transparent; font-size:1px; }
                 .textLayer span::selection { background:rgba(0,0,255,.3); }
