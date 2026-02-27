@@ -154,7 +154,7 @@ const PdfPage = React.memo(function PdfPage({ doc, pageIndex, scale, width, heig
                 tc.style.setProperty("--scale-factor", `${scale}`)
                 page.getTextContent().then(txt => {
                     if (cancelled || !tc) return
-                    ;(pdfjsLib as typeof import('pdfjs-dist')).renderTextLayer({
+                    ;(pdfjsLib as any).renderTextLayer({
                         textContentSource: txt,
                         container: tc,
                         viewport: vp,
