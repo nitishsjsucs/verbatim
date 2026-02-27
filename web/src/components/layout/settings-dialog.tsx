@@ -84,11 +84,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     }
 
     // Theme (mirrors ThemeToggle localStorage approach)
-    const [theme, setThemeState] = React.useState<"light" | "dark">("dark")
+    const [theme, setThemeState] = React.useState<"light" | "dark">("light")
     React.useEffect(() => {
         const stored = localStorage.getItem("theme")
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-        setThemeState(stored ? (stored as "light" | "dark") : prefersDark ? "dark" : "light")
+        setThemeState(stored === "dark" ? "dark" : "light")
     }, [open])
     const setTheme = (t: "light" | "dark" | "system") => {
         const resolved = t === "system"

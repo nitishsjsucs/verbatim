@@ -140,15 +140,15 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                         {/* Stats grid — matches extraction style */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-lg font-semibold font-mono">{result.total_pages}</p>
+                                <p className="text-[15px] font-semibold font-mono">{result.total_pages}</p>
                                 <p className="text-[10px] text-muted-foreground">Pages</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-lg font-semibold font-mono">{result.node_count}</p>
+                                <p className="text-[15px] font-semibold font-mono">{result.node_count}</p>
                                 <p className="text-[10px] text-muted-foreground">Nodes</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-lg font-semibold font-mono">{result.time_seconds.toFixed(1)}s</p>
+                                <p className="text-[15px] font-semibold font-mono">{result.time_seconds.toFixed(1)}s</p>
                                 <p className="text-[10px] text-muted-foreground">Time</p>
                             </div>
                         </div>

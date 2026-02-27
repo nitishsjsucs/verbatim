@@ -732,45 +732,45 @@ function TeamBoardContent() {
                 <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
                     <div className="flex items-center gap-4">
                         <div className="text-center">
-                            <p className="text-lg font-bold text-foreground">{stats.total}</p>
+                            <p className="text-[15px] font-bold text-foreground">{stats.total}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Total</p>
                         </div>
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
-                            <p className="text-lg font-bold text-emerald-400">{stats.completed}</p>
+                            <p className="text-[15px] font-bold text-emerald-400">{stats.completed}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-amber-400">{stats.inProgress}</p>
+                            <p className="text-[15px] font-bold text-amber-400">{stats.inProgress}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-blue-400">{stats.review}</p>
+                            <p className="text-[15px] font-bold text-blue-400">{stats.review}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-orange-400">{stats.reworking}</p>
+                            <p className="text-[15px] font-bold text-orange-400">{stats.reworking}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-slate-400">{stats.assigned}</p>
+                            <p className="text-[15px] font-bold text-slate-400">{stats.assigned}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
                         </div>
                         <div className="h-8 w-px bg-border/40" />
                         <div className="text-center">
-                            <p className="text-lg font-bold text-emerald-500">{stats.yetToDeadline}</p>
+                            <p className="text-[15px] font-bold text-emerald-500">{stats.yetToDeadline}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-amber-500">{stats.delayed30}</p>
+                            <p className="text-[15px] font-bold text-amber-500">{stats.delayed30}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-orange-500">{stats.delayed60}</p>
+                            <p className="text-[15px] font-bold text-orange-500">{stats.delayed60}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-lg font-bold text-red-500">{stats.delayed90}</p>
+                            <p className="text-[15px] font-bold text-red-500">{stats.delayed90}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
                         </div>
                     </div>
@@ -887,7 +887,7 @@ function TeamBoardContent() {
                     {/* ── Active section header — matches dashboard ── */}
                     {!loading && activeItems.length > 0 && (
                         <>
-                            <div className="px-3 py-2 bg-yellow-500/5 border-b border-yellow-500/20 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
+                            <div className="px-3 py-2 bg-background border-b border-yellow-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setActiveCollapsed(!activeCollapsed)}>
                                 <span className="text-xs font-semibold text-yellow-500 flex items-center gap-2">
                                     {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     <AlertTriangle className="h-3.5 w-3.5" />
@@ -909,7 +909,7 @@ function TeamBoardContent() {
                     {/* ── Completed section — matches dashboard ── */}
                     {!loading && completedItems.length > 0 && (
                         <div className="mt-4">
-                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
+                            <div className="px-3 py-2 bg-background border-y border-emerald-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
                                 <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
                                     {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     <CheckCircle2 className="h-3.5 w-3.5" />

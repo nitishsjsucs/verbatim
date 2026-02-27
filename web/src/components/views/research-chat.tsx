@@ -437,7 +437,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                                 <Library className="h-8 w-8 text-foreground" />
                             </div>
-                            <h3 className="text-lg font-medium mb-2">Cross-Document Research</h3>
+                            <h3 className="font-semibold mb-2">Cross-Document Research</h3>
                             <p className="text-sm text-balance max-w-md">
                                 Ask questions that span multiple documents. I&apos;ll automatically select the relevant
                                 documents, retrieve from each, and synthesize a comprehensive answer with per-document citations.

@@ -13,8 +13,8 @@ export function Markdown({ content, className }: MarkdownProps) {
         <div className={cn("prose prose-sm prose-invert max-w-none", className)}>
             <ReactMarkdown
                 components={{
-                    h1: ({ children }) => <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-base font-bold mt-3 mb-1.5">{children}</h2>,
+                    h1: ({ children }) => <h1 className="font-bold mt-4 mb-2">{children}</h1>,
+                    h2: ({ children }) => <h2 className="font-semibold mt-3 mb-1.5">{children}</h2>,
                     h3: ({ children }) => <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>,
                     p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
                     ul: ({ children }) => <ul className="list-disc pl-5 mb-2 space-y-1">{children}</ul>,

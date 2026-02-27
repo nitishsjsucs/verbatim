@@ -83,7 +83,7 @@ function ConversationCard({
             {/* Icon */}
             <div className="mt-0.5 flex-shrink-0">
                 {isResearch
-                    ? <Library className="h-4 w-4 text-primary" />
+                    ? <Library className="h-4 w-4 text-foreground" />
                     : <FileText className="h-4 w-4 text-muted-foreground" />
                 }
             </div>
@@ -97,7 +97,7 @@ function ConversationCard({
                     <span className={cn(
                         "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
                         isResearch
-                            ? "bg-primary/10 text-primary"
+                            ? "bg-muted text-foreground"
                             : "bg-muted text-muted-foreground"
                     )}>
                         {isResearch ? "Research" : "Doc"}
@@ -332,7 +332,7 @@ export default function HistoryPage() {
                                 <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                                     <MessageSquare className="h-8 w-8 text-foreground" />
                                 </div>
-                                <h3 className="text-lg font-medium mb-2">No conversations yet</h3>
+                                <h3 className="font-semibold mb-2">No conversations yet</h3>
                                 <p className="text-sm text-balance max-w-md">
                                     Start chatting with a document or use the Research page. Your conversations
                                     will appear here automatically.

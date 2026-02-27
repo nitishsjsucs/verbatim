@@ -305,7 +305,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 </div>
             </div>
 
-            {/* Expanded details: Implementation, Evidence, Team (all editable) */}
+            {/* Expanded details: Implementation, Evidence, Team */}
             {expanded && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border/20 pt-2.5">
                     {saving && (
@@ -314,39 +314,63 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </div>
                     )}
 
-                    <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
-                    <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+                    {item.approval_status === "approved" ? (
+                        <>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes) || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote) || "—"}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Team</p>
+                                    <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground")}>{item.workstream}</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Risk Level</p>
+                                    <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground")}>{normalizeRisk(item.modality)}</span>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
+                            <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
 
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                        {/* Team — styled pill selector */}
-                        <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Team</p>
-                            <select
-                                value={item.workstream}
-                                onChange={e => handleFieldSave("workstream", e.target.value)}
-                                className={cn(
-                                    "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                    WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground"
-                                )}
-                            >
-                                {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
-                            <select
-                                value={normalizeRisk(item.modality)}
-                                onChange={e => handleFieldSave("modality", e.target.value)}
-                                className={cn(
-                                    "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                    RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
-                                    RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground"
-                                )}
-                            >
-                                {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                        </div>
-                    </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Team</p>
+                                    <select
+                                        value={item.workstream}
+                                        onChange={e => handleFieldSave("workstream", e.target.value)}
+                                        className={cn(
+                                            "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
+                                            WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground"
+                                        )}
+                                    >
+                                        {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
+                                    <select
+                                        value={normalizeRisk(item.modality)}
+                                        onChange={e => handleFieldSave("modality", e.target.value)}
+                                        className={cn(
+                                            "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
+                                            RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
+                                            RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground"
+                                        )}
+                                    >
+                                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     {/* Footer: source + actions */}
                     <div className="flex items-center justify-between pt-2 border-t border-border/10">
@@ -357,15 +381,17 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </button>
                             <span className="text-[10px] text-muted-foreground/40">{docName}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => onDelete(docId, item.id)}
-                                className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/30 hover:text-red-400 transition-colors"
-                                title="Delete"
-                            >
-                                <Trash2 className="h-3 w-3" />
-                            </button>
-                        </div>
+                        {item.approval_status !== "approved" && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => onDelete(docId, item.id)}
+                                    className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/30 hover:text-red-400 transition-colors"
+                                    title="Delete"
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

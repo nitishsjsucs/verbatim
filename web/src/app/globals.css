@@ -167,6 +167,27 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    letter-spacing: 0;
+    font-weight: 400;
+    font-style: normal;
+    text-transform: none;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: none;
+    font-style: normal;
+  }
+  input, select, textarea, button {
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    letter-spacing: 0;
   }
 
   /* ─── Fix <select> and <option> contrast in both modes ─────────── */
@@ -209,6 +230,12 @@
   .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     filter: brightness(0) invert(1);
     cursor: pointer;
+  }
+
+  /* ─── Visual consistency: border-radius & border-width ────────────── */
+  input, select, textarea, button {
+    border-radius: var(--radius);
+    border-width: 1px;
   }
 
   /* ─── Dark scrollbars ─────────────────────────────────────────────── */

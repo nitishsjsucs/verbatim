@@ -505,7 +505,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                 <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                                     <BookOpen className="h-8 w-8 text-foreground" />
                                 </div>
-                                <h3 className="text-lg font-medium mb-2">Ask questions about this document</h3>
+                                <h3 className="font-semibold mb-2">Ask questions about this document</h3>
                                 <p className="text-sm text-balance max-w-md">
                                     Try asking about specific clauses, definitions, or summaries.
                                     I&apos;ll trace headers and follow cross-references to find the answer.

@@ -155,7 +155,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                         {/* Dialog Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-border/40">
                             <div className="min-w-0 flex-1">
-                                <h2 className="text-base font-semibold text-foreground truncate">
+                                <h2 className="font-semibold text-foreground truncate">
                                     {node.title}
                                 </h2>
                                 <p className="text-xs text-muted-foreground mt-0.5">Summary</p>

@@ -79,29 +79,59 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
     const containerRef = React.useRef<HTMLDivElement>(null)
     const draggingRef = React.useRef<"doc" | "chat" | null>(null)
 
+    // Vertical resizable partition for tree/node-detail split
+    const [vertSplit, setVertSplit] = React.useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("doc_split_vert")
+            if (saved) return Math.max(20, Math.min(80, Number(saved)))
+        }
+        return 50
+    })
+    const vertContainerRef = React.useRef<HTMLDivElement>(null)
+    const vertDraggingRef = React.useRef(false)
+
     const handleMouseDown = React.useCallback((mode: "doc" | "chat") => {
         draggingRef.current = mode
         document.body.style.cursor = "col-resize"
         document.body.style.userSelect = "none"
     }, [])
 
+    const handleVertMouseDown = React.useCallback(() => {
+        vertDraggingRef.current = true
+        document.body.style.cursor = "row-resize"
+        document.body.style.userSelect = "none"
+    }, [])
+
     React.useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
-            if (!draggingRef.current || !containerRef.current) return
-            const rect = containerRef.current.getBoundingClientRect()
-            const pct = ((e.clientX - rect.left) / rect.width) * 100
-            const clamped = Math.max(15, Math.min(85, pct))
-            if (draggingRef.current === "doc") {
-                setDocSplit(clamped)
-                localStorage.setItem("doc_split_doc", String(Math.round(clamped)))
-            } else {
-                setChatSplit(clamped)
-                localStorage.setItem("doc_split_chat", String(Math.round(clamped)))
+            if (draggingRef.current && containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect()
+                const pct = ((e.clientX - rect.left) / rect.width) * 100
+                const clamped = Math.max(15, Math.min(85, pct))
+                if (draggingRef.current === "doc") {
+                    setDocSplit(clamped)
+                    localStorage.setItem("doc_split_doc", String(Math.round(clamped)))
+                } else {
+                    setChatSplit(clamped)
+                    localStorage.setItem("doc_split_chat", String(Math.round(clamped)))
+                }
+            }
+            if (vertDraggingRef.current && vertContainerRef.current) {
+                const rect = vertContainerRef.current.getBoundingClientRect()
+                const pct = ((e.clientY - rect.top) / rect.height) * 100
+                const clamped = Math.max(20, Math.min(80, pct))
+                setVertSplit(clamped)
+                localStorage.setItem("doc_split_vert", String(Math.round(clamped)))
             }
         }
         const handleMouseUp = () => {
             if (draggingRef.current) {
                 draggingRef.current = null
+                document.body.style.cursor = ""
+                document.body.style.userSelect = ""
+            }
+            if (vertDraggingRef.current) {
+                vertDraggingRef.current = false
                 document.body.style.cursor = ""
                 document.body.style.userSelect = ""
             }
@@ -209,8 +239,8 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                                         {doc.structure.length} top-level sections
                                     </p>
                                 </div>
-                                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                                    <div className={selectedNode ? "h-1/2 overflow-y-auto" : "flex-1 overflow-y-auto"}>
+                                <div ref={vertContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                                    <div style={selectedNode ? { height: `${vertSplit}%` } : undefined} className={selectedNode ? "overflow-y-auto shrink-0" : "flex-1 overflow-y-auto"}>
                                         <TreeExplorer
                                             structure={doc.structure}
                                             className="border-0 bg-transparent h-full"
@@ -219,12 +249,20 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                                         />
                                     </div>
                                     {selectedNode && (
-                                        <div className="h-1/2 overflow-y-auto border-t border-border/40">
-                                            <NodeDetailPanel
-                                                node={selectedNode}
-                                                onClose={() => setSelectedNodeId(undefined)}
-                                            />
-                                        </div>
+                                        <>
+                                            <div
+                                                onMouseDown={handleVertMouseDown}
+                                                className="h-1 shrink-0 cursor-row-resize hover:bg-primary/30 active:bg-primary/50 transition-colors relative group"
+                                            >
+                                                <div className="absolute inset-x-0 -top-1 -bottom-1 group-hover:bg-primary/10" />
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto">
+                                                <NodeDetailPanel
+                                                    node={selectedNode}
+                                                    onClose={() => setSelectedNodeId(undefined)}
+                                                />
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>

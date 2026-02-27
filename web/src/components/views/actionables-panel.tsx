@@ -49,7 +49,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
     return (
         <div className="bg-muted/30 rounded-lg p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
-            <p className="text-lg font-semibold font-mono mt-0.5">{value}</p>
+            <p className="text-[15px] font-semibold font-mono mt-0.5">{value}</p>
             {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
         </div>
     )
@@ -419,21 +419,21 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                     <div className="grid grid-cols-3 gap-3">
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nodes scanned</p>
-                            <p className="text-lg font-semibold font-mono mt-0.5">
+                            <p className="text-[15px] font-semibold font-mono mt-0.5">
                                 {progress.candidateCount > 0 ? progress.candidateCount : "..."}
                             </p>
                             <p className="text-[10px] text-muted-foreground/60">of {progress.totalNodes || "?"} total</p>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Found so far</p>
-                            <p className="text-lg font-semibold font-mono mt-0.5 text-primary">
+                            <p className="text-[15px] font-semibold font-mono mt-0.5 text-primary">
                                 {progress.cumulativeActionables}
                             </p>
                             <p className="text-[10px] text-muted-foreground/60">actionables</p>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Last batch</p>
-                            <p className="text-lg font-semibold font-mono mt-0.5">
+                            <p className="text-[15px] font-semibold font-mono mt-0.5">
                                 +{progress.lastBatchActionables}
                             </p>
                             <p className="text-[10px] text-muted-foreground/60">new items</p>
@@ -470,7 +470,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                 <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                     <Shield className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-base font-medium mb-2">Extract Compliance Actionables</h3>
+                <h3 className="font-semibold mb-2">Extract Compliance Actionables</h3>
                 <p className="text-sm text-muted-foreground/70 max-w-md mb-6">
                     Scan this document for all obligations, prohibitions, permissions, and recommendations.
                     Each actionable is extracted with its actor, conditions, deadlines, and evidence quote.
