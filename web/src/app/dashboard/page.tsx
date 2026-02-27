@@ -524,7 +524,7 @@ export default function DashboardPage() {
 
                     {/* ── Active section header ── */}
                     {!loading && activeRows.length > 0 && (
-                        <div className="px-3 py-2 bg-yellow-500/5 border-b border-yellow-500/20 cursor-pointer sticky top-0 z-10" onClick={() => setActiveCollapsed(!activeCollapsed)}>
+                        <div className="px-3 py-2 bg-yellow-500/5 border-b border-yellow-500/20 cursor-pointer" onClick={() => setActiveCollapsed(!activeCollapsed)}>
                             <span className="text-xs font-semibold text-yellow-500 flex items-center gap-2">
                                 {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -706,7 +706,7 @@ export default function DashboardPage() {
                     {/* ── Completed Section ── */}
                     {!loading && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20 cursor-pointer sticky top-0 z-10" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
+                            <div className="px-3 py-2 bg-emerald-500/5 border-y border-emerald-500/20 cursor-pointer" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
                                 <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
                                     {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                     <CheckCircle2 className="h-3.5 w-3.5" />
