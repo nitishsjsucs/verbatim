@@ -267,6 +267,44 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
     const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
     const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
+    // Resizable splitter
+    const [historySplit, setHistorySplit] = React.useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("doc_split_history")
+            if (saved) return Math.max(15, Math.min(85, Number(saved)))
+        }
+        return 60
+    })
+    const historyContainerRef = React.useRef<HTMLDivElement>(null)
+    const historyDraggingRef = React.useRef(false)
+
+    const handleSplitMouseDown = React.useCallback(() => {
+        historyDraggingRef.current = true
+        document.body.style.cursor = "col-resize"
+        document.body.style.userSelect = "none"
+    }, [])
+
+    React.useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (!historyDraggingRef.current || !historyContainerRef.current) return
+            const rect = historyContainerRef.current.getBoundingClientRect()
+            const pct = ((e.clientX - rect.left) / rect.width) * 100
+            const clamped = Math.max(15, Math.min(85, pct))
+            setHistorySplit(clamped)
+            localStorage.setItem("doc_split_history", String(Math.round(clamped)))
+        }
+        const onUp = () => {
+            if (historyDraggingRef.current) {
+                historyDraggingRef.current = false
+                document.body.style.cursor = ""
+                document.body.style.userSelect = ""
+            }
+        }
+        window.addEventListener("mousemove", onMove)
+        window.addEventListener("mouseup", onUp)
+        return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp) }
+    }, [])
+
     // Cache document name → id map for resolving citations with missing doc_id
     const [docNameMap, setDocNameMap] = React.useState<Record<string, string>>({})
     React.useEffect(() => {
@@ -386,13 +424,13 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                 </div>
 
                 {/* Split pane body */}
-                <div className="flex-1 flex min-h-0">
+                <div ref={historyContainerRef} className="flex-1 flex min-h-0">
 
                     {/* Left: Chat */}
                     <div className={cn(
-                        "flex flex-col min-h-0 overflow-y-auto",
-                        pdfUrl ? "w-[60%] border-r border-border/40" : "flex-1"
-                    )}>
+                        "flex flex-col min-h-0 overflow-y-auto shrink-0",
+                        pdfUrl ? "border-r border-border/40" : "flex-1"
+                    )} style={pdfUrl ? { width: `${historySplit}%` } : undefined}>
                         <div className="space-y-8 px-5 py-8 max-w-2xl mx-auto w-full">
                             {loading && (
                                 <div className="flex items-center justify-center py-20 text-muted-foreground">
@@ -425,6 +463,16 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                             <div ref={bottomRef} />
                         </div>
                     </div>
+
+                    {/* Drag Handle */}
+                    {pdfUrl && (
+                        <div
+                            onMouseDown={handleSplitMouseDown}
+                            className="w-1 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors relative group"
+                        >
+                            <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+                        </div>
+                    )}
 
                     {/* Right: PDF viewer */}
                     {pdfUrl && (

@@ -518,7 +518,43 @@ export default function ActionablesPage() {
     // Create form
     const [showCreateForm, setShowCreateForm] = React.useState(false)
 
+    // Resizable splitter
+    const [actionSplit, setActionSplit] = React.useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("doc_split_actionables")
+            if (saved) return Math.max(15, Math.min(85, Number(saved)))
+        }
+        return 55
+    })
+    const actionContainerRef = React.useRef<HTMLDivElement>(null)
+    const actionDraggingRef = React.useRef(false)
 
+    const handleSplitMouseDown = React.useCallback(() => {
+        actionDraggingRef.current = true
+        document.body.style.cursor = "col-resize"
+        document.body.style.userSelect = "none"
+    }, [])
+
+    React.useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (!actionDraggingRef.current || !actionContainerRef.current) return
+            const rect = actionContainerRef.current.getBoundingClientRect()
+            const pct = ((e.clientX - rect.left) / rect.width) * 100
+            const clamped = Math.max(15, Math.min(85, pct))
+            setActionSplit(clamped)
+            localStorage.setItem("doc_split_actionables", String(Math.round(clamped)))
+        }
+        const onUp = () => {
+            if (actionDraggingRef.current) {
+                actionDraggingRef.current = false
+                document.body.style.cursor = ""
+                document.body.style.userSelect = ""
+            }
+        }
+        window.addEventListener("mousemove", onMove)
+        window.addEventListener("mouseup", onUp)
+        return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp) }
+    }, [])
 
     // Collapsed teams for by-team view
     const [collapsedTeams, setCollapsedTeams] = React.useState<Set<string>>(new Set())
@@ -759,9 +795,9 @@ export default function ActionablesPage() {
                 </div>
 
                 {/* Body: split pane */}
-                <div className="flex-1 flex min-h-0">
+                <div ref={actionContainerRef} className="flex-1 flex min-h-0">
                     {/* Left: Actionables list */}
-                    <div className="w-[55%] min-w-[400px] border-r border-border flex flex-col min-h-0">
+                    <div style={{ width: `${actionSplit}%` }} className="min-w-0 border-r border-border flex flex-col min-h-0 shrink-0">
                         {/* Filters bar */}
                         <div className="shrink-0 border-b border-border/40 px-4 py-2.5 flex items-center gap-2">
                             <div className="relative flex-1">
@@ -1005,6 +1041,14 @@ export default function ActionablesPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Drag Handle */}
+                    <div
+                        onMouseDown={handleSplitMouseDown}
+                        className="w-1 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors relative group"
+                    >
+                        <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
                     </div>
 
                     {/* Right: PDF viewer */}

@@ -90,18 +90,64 @@ function ResearchPageContent() {
         setPdfDocName("")
     }, [])
 
+    // Resizable splitter
+    const [researchSplit, setResearchSplit] = React.useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("doc_split_research")
+            if (saved) return Math.max(15, Math.min(85, Number(saved)))
+        }
+        return 65
+    })
+    const researchContainerRef = React.useRef<HTMLDivElement>(null)
+    const researchDraggingRef = React.useRef(false)
+
+    const handleSplitMouseDown = React.useCallback(() => {
+        researchDraggingRef.current = true
+        document.body.style.cursor = "col-resize"
+        document.body.style.userSelect = "none"
+    }, [])
+
+    React.useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (!researchDraggingRef.current || !researchContainerRef.current) return
+            const rect = researchContainerRef.current.getBoundingClientRect()
+            const pct = ((e.clientX - rect.left) / rect.width) * 100
+            const clamped = Math.max(15, Math.min(85, pct))
+            setResearchSplit(clamped)
+            localStorage.setItem("doc_split_research", String(Math.round(clamped)))
+        }
+        const onUp = () => {
+            if (researchDraggingRef.current) {
+                researchDraggingRef.current = false
+                document.body.style.cursor = ""
+                document.body.style.userSelect = ""
+            }
+        }
+        window.addEventListener("mousemove", onMove)
+        window.addEventListener("mouseup", onUp)
+        return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp) }
+    }, [])
+
     return (
         <RoleRedirect>
             <div className="flex h-screen overflow-hidden bg-background">
                 <Sidebar />
-                <main className="flex-1 flex overflow-hidden">
-                    {/* Left: Research Chat (65%) */}
-                    <div className="flex-[65] min-w-0 border-r border-border">
+                <main ref={researchContainerRef} className="flex-1 flex overflow-hidden">
+                    {/* Left: Research Chat */}
+                    <div style={{ width: `${researchSplit}%` }} className="min-w-0 border-r border-border shrink-0">
                         <ResearchChat onCitationClick={handleCitationClick} continueConvId={continueConvId} />
                     </div>
 
-                    {/* Right: Corpus Panel or PDF Viewer (35%) */}
-                    <div className="flex-[35] min-w-0 flex flex-col">
+                    {/* Drag Handle */}
+                    <div
+                        onMouseDown={handleSplitMouseDown}
+                        className="w-1 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors relative group"
+                    >
+                        <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+                    </div>
+
+                    {/* Right: Corpus Panel or PDF Viewer */}
+                    <div className="flex-1 min-w-0 flex flex-col">
                         {rightPanel === "pdf" && pdfDocId ? (
                             <>
                                 {/* PDF Header */}

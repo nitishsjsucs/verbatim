@@ -61,6 +61,59 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
     const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
     const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
+    // Resizable panels — left panel width as percentage (persisted per view mode)
+    const [docSplit, setDocSplit] = React.useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("doc_split_doc")
+            if (saved) return Math.max(15, Math.min(85, Number(saved)))
+        }
+        return 40
+    })
+    const [chatSplit, setChatSplit] = React.useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("doc_split_chat")
+            if (saved) return Math.max(15, Math.min(85, Number(saved)))
+        }
+        return 60
+    })
+    const containerRef = React.useRef<HTMLDivElement>(null)
+    const draggingRef = React.useRef<"doc" | "chat" | null>(null)
+
+    const handleMouseDown = React.useCallback((mode: "doc" | "chat") => {
+        draggingRef.current = mode
+        document.body.style.cursor = "col-resize"
+        document.body.style.userSelect = "none"
+    }, [])
+
+    React.useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!draggingRef.current || !containerRef.current) return
+            const rect = containerRef.current.getBoundingClientRect()
+            const pct = ((e.clientX - rect.left) / rect.width) * 100
+            const clamped = Math.max(15, Math.min(85, pct))
+            if (draggingRef.current === "doc") {
+                setDocSplit(clamped)
+                localStorage.setItem("doc_split_doc", String(Math.round(clamped)))
+            } else {
+                setChatSplit(clamped)
+                localStorage.setItem("doc_split_chat", String(Math.round(clamped)))
+            }
+        }
+        const handleMouseUp = () => {
+            if (draggingRef.current) {
+                draggingRef.current = null
+                document.body.style.cursor = ""
+                document.body.style.userSelect = ""
+            }
+        }
+        window.addEventListener("mousemove", handleMouseMove)
+        window.addEventListener("mouseup", handleMouseUp)
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove)
+            window.removeEventListener("mouseup", handleMouseUp)
+        }
+    }, [])
+
     React.useEffect(() => {
         fetchDocument(id)
             .then(setDoc)
@@ -142,12 +195,12 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 flex overflow-hidden min-h-0">
+                <div ref={containerRef} className="flex-1 flex overflow-hidden min-h-0">
                     {viewMode === "document" ? (
                         /* ===== DOCUMENT VIEW: Tree + PDF ===== */
                         <>
-                            {/* Tree Explorer Panel — 40% width */}
-                            <div className="w-[40%] min-w-[260px] border-r border-border flex flex-col bg-sidebar/50">
+                            {/* Tree Explorer Panel — resizable */}
+                            <div style={{ width: `${docSplit}%` }} className="min-w-0 border-r border-border flex flex-col bg-sidebar/50 shrink-0">
                                 <div className="p-3 border-b border-border/40 flex-shrink-0">
                                     <h2 className="font-semibold text-sm truncate" title={doc.doc_name}>
                                         Document Structure
@@ -176,8 +229,16 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                                 </div>
                             </div>
 
-                            {/* PDF Viewer — 60% width */}
-                            <div className="w-[60%] min-w-0 h-full">
+                            {/* Drag Handle */}
+                            <div
+                                onMouseDown={() => handleMouseDown("doc")}
+                                className="w-1 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors relative group"
+                            >
+                                <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+                            </div>
+
+                            {/* PDF Viewer — fills remaining */}
+                            <div className="flex-1 min-w-0 h-full">
                                 <PdfViewer
                                     fileUrl={pdfUrl}
                                     jumpToPage={pdfJumpPage}
@@ -186,15 +247,23 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                             </div>
                         </>
                     ) : (
-                        /* ===== CHAT VIEW: Chat 60% + PDF 40% ===== */
+                        /* ===== CHAT VIEW: Chat + PDF ===== */
                         <>
-                            {/* Chat Interface (left side — 60%) */}
-                            <div className="w-[60%] min-w-[300px] h-full border-r border-border bg-background overflow-hidden">
+                            {/* Chat Interface — resizable */}
+                            <div style={{ width: `${chatSplit}%` }} className="min-w-0 h-full border-r border-border bg-background overflow-hidden shrink-0">
                                 <ChatInterface docId={id} onCitationClick={handleCitationClick} continueConvId={continueConvId} />
                             </div>
 
-                            {/* PDF Viewer (right side — 40%) */}
-                            <div className="w-[40%] min-w-0 h-full">
+                            {/* Drag Handle */}
+                            <div
+                                onMouseDown={() => handleMouseDown("chat")}
+                                className="w-1 shrink-0 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors relative group"
+                            >
+                                <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-primary/10" />
+                            </div>
+
+                            {/* PDF Viewer — fills remaining */}
+                            <div className="flex-1 min-w-0 h-full">
                                 <PdfViewer
                                     fileUrl={pdfUrl}
                                     jumpToPage={pdfJumpPage}
