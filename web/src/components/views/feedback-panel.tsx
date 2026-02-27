@@ -32,7 +32,7 @@ export function FeedbackPanel({ recordId }: FeedbackPanelProps) {
 
     if (submitted) {
         return (
-            <div className="flex items-center gap-2 text-xs text-green-400 py-2">
+            <div className="flex items-center gap-2 text-xs text-[color:var(--color-success)] py-2">
                 <Check className="h-3.5 w-3.5" />
                 <span>Feedback submitted</span>
             </div>
@@ -64,8 +64,8 @@ export function FeedbackPanel({ recordId }: FeedbackPanelProps) {
                             className={cn(
                                 "h-4 w-4 transition-colors",
                                 rating !== null && n <= rating
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "text-muted-foreground/30 hover:text-amber-400/50"
+                                    ? "fill-[color:var(--color-warning)] text-[color:var(--color-warning)]"
+                                    : "text-muted-foreground/30 hover:text-[color:var(--color-warning)]/50"
                             )}
                         />
                     </button>

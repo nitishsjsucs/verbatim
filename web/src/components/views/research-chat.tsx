@@ -77,13 +77,13 @@ function CollapsibleSection({ title, icon, children, defaultOpen = false, badge 
 
 function VerificationBadge({ status }: { status: string }) {
     const config = {
-        verified: { icon: ShieldCheck, color: "text-green-400 bg-green-400/10", label: "Verified" },
-        partially_verified: { icon: ShieldQuestion, color: "text-amber-400 bg-amber-400/10", label: "Partially Verified" },
-        unverified: { icon: ShieldAlert, color: "text-red-400 bg-red-400/10", label: "Unverified" },
+        verified: { icon: ShieldCheck, color: "text-[color:var(--color-success)] bg-[color:var(--color-success)]/10", label: "Verified" },
+        partially_verified: { icon: ShieldQuestion, color: "text-[color:var(--color-warning)] bg-[color:var(--color-warning)]/10", label: "Partially Verified" },
+        unverified: { icon: ShieldAlert, color: "text-[color:var(--color-danger)] bg-[color:var(--color-danger)]/10", label: "Unverified" },
     }[status] || { icon: ShieldQuestion, color: "text-muted-foreground bg-muted", label: status || "Unknown" }
     const Icon = config.icon
     return (
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", config.color)}>
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium", config.color)}>
             <Icon className="h-3 w-3" />
             {config.label}
         </span>
@@ -163,7 +163,7 @@ function ResearchConversationList({
                 {conversations.length === 0 && (
                     <div className="px-3 py-8 text-center">
                         <MessageSquare className="h-5 w-5 mx-auto text-muted-foreground/30 mb-2" />
-                        <p className="text-[10px] text-muted-foreground/40">No research chats yet</p>
+                        <p className="text-[11px] text-muted-foreground/40">No research chats yet</p>
                     </div>
                 )}
                 {conversations.map((conv) => (
@@ -180,17 +180,17 @@ function ResearchConversationList({
                         <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
                         <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-medium truncate">{conv.title || conv.last_message_preview || "New research"}</p>
-                            <p className="text-[9px] text-muted-foreground/50 mt-0.5">{conv.message_count} msgs</p>
+                            <p className="text-[11px] text-muted-foreground/50 mt-0.5">{conv.message_count} msgs</p>
                         </div>
                         {confirmDeleteId === conv.conv_id ? (
                             <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <button onClick={() => { onDelete(conv.conv_id); setConfirmDeleteId(null) }} className="text-[9px] text-red-400 hover:text-red-300 px-1 py-0.5 rounded bg-red-400/10">Del</button>
-                                <button onClick={() => setConfirmDeleteId(null)} className="text-[9px] text-muted-foreground px-1 py-0.5">No</button>
+                                <button onClick={() => { onDelete(conv.conv_id); setConfirmDeleteId(null) }} className="text-[11px] text-[color:var(--color-danger)] hover:text-[color:var(--color-danger)]/70 px-1 py-0.5 rounded bg-[color:var(--color-danger)]/10">Del</button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="text-[11px] text-muted-foreground px-1 py-0.5">No</button>
                             </div>
                         ) : (
                             <button
                                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(conv.conv_id) }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground/30 hover:text-red-400 shrink-0"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground/30 hover:text-[color:var(--color-danger)] shrink-0"
                             >
                                 <Trash2 className="h-3 w-3" />
                             </button>
@@ -437,7 +437,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                                 <Library className="h-8 w-8 text-foreground" />
                             </div>
-                            <h3 className="text-lg font-medium mb-2">Cross-Document Research</h3>
+                            <h3 className="text-sm font-medium mb-2">Cross-Document Research</h3>
                             <p className="text-sm text-balance max-w-md">
                                 Ask questions that span multiple documents. I&apos;ll automatically select the relevant
                                 documents, retrieve from each, and synthesize a comprehensive answer with per-document citations.
@@ -460,18 +460,18 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                 {/* Header badges */}
                                 {msg.role === "assistant" && msg.queryType && (
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/10 text-purple-400">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[color:var(--color-ingest)]/10 text-[color:var(--color-ingest)]">
                                             Cross-Doc
                                         </span>
                                         {msg.verificationStatus && <VerificationBadge status={msg.verificationStatus} />}
                                         {msg.selectedDocuments && msg.selectedDocuments.length > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60">
                                                 <FileText className="h-3 w-3" />
                                                 {msg.selectedDocuments.length} docs
                                             </span>
                                         )}
                                         {msg.totalTimeSeconds !== undefined && msg.totalTimeSeconds > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                                            <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60">
                                                 <Clock className="h-3 w-3" />
                                                 {msg.totalTimeSeconds.toFixed(1)}s
                                             </span>
@@ -494,7 +494,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                     <div className="mt-3 w-full space-y-3">
                                         <div className="flex items-center gap-2">
                                             <div className="h-px bg-border w-4" />
-                                            <span className="text-[10px] font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
+                                            <span className="text-[11px] font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
                                             <div className="h-px bg-border flex-1" />
                                         </div>
                                         <div className="grid gap-2">
@@ -541,19 +541,19 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                     <CardContent className="p-3">
                                                         <div className="flex items-start justify-between gap-3 mb-1.5">
                                                             <div className="flex items-center gap-2 min-w-0">
-                                                                <div className="h-5 w-5 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-                                                                    <FileText className="h-3 w-3 text-blue-500" />
+                                                                <div className="h-5 w-5 rounded bg-[color:var(--color-info)]/10 flex items-center justify-center shrink-0">
+                                                                    <FileText className="h-3 w-3 text-[color:var(--color-info)]" />
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <span className="text-xs font-medium truncate text-foreground/90 block">{cite.title}</span>
                                                                     {cite.doc_name && (
-                                                                        <span className="text-[10px] text-muted-foreground/60 truncate block">
+                                                                        <span className="text-[11px] text-muted-foreground/60 truncate block">
                                                                             {cite.doc_name}
                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                                            <span className="text-[11px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
                                                                 {cite.page_range}
                                                             </span>
                                                         </div>
@@ -576,7 +576,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Selected Documents"
                                                 icon={<FileText className="h-3 w-3" />}
-                                                badge={<span className="text-[10px] text-muted-foreground/60">{msg.selectedDocuments.length}</span>}
+                                                badge={<span className="text-[11px] text-muted-foreground/60">{msg.selectedDocuments.length}</span>}
                                             >
                                                 <div className="space-y-2">
                                                     {msg.selectedDocuments.map((doc, i) => {
@@ -588,7 +588,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                                     <span className="font-medium text-foreground/80 truncate">{d.doc_name as string || d.doc_id as string}</span>
                                                                     <div className="flex items-center gap-2 shrink-0">
                                                                         {conf !== null && (
-                                                                            <span className={cn("font-mono text-[10px]", conf >= 70 ? "text-green-400" : conf >= 40 ? "text-amber-400" : "text-red-400")}>
+                                                                            <span className={cn("font-mono text-[11px]", conf >= 70 ? "text-[color:var(--color-success)]" : conf >= 40 ? "text-[color:var(--color-warning)]" : "text-[color:var(--color-danger)]")}>
                                                                                 {conf}%
                                                                             </span>
                                                                         )}
@@ -612,7 +612,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Inferred Points"
                                                 icon={<Brain className="h-3 w-3" />}
-                                                badge={<span className="text-[10px] text-muted-foreground/60">{msg.inferredPoints.length}</span>}
+                                                badge={<span className="text-[11px] text-muted-foreground/60">{msg.inferredPoints.length}</span>}
                                             >
                                                 <div className="space-y-3">
                                                     {msg.inferredPoints.map((ip, i) => (
@@ -627,7 +627,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                             {ip.supporting_definitions.length > 0 && (
                                                                 <div className="pl-4 space-y-0.5">
                                                                     {ip.supporting_definitions.map((def, j) => (
-                                                                        <p key={j} className="text-[10px] text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
+                                                                        <p key={j} className="text-[11px] text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -652,7 +652,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Retrieved Sections"
                                                 icon={<Search className="h-3 w-3" />}
-                                                badge={<span className="text-[10px] text-muted-foreground/60">{msg.retrievedSections.length}</span>}
+                                                badge={<span className="text-[11px] text-muted-foreground/60">{msg.retrievedSections.length}</span>}
                                             >
                                                 <div className="space-y-2">
                                                     {msg.retrievedSections.map((section, i) => (
@@ -660,12 +660,12 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                             <div className="flex items-center justify-between gap-2 mb-1">
                                                                 <span className="font-medium text-foreground/80 truncate">{section.title}</span>
                                                                 <div className="flex items-center gap-2 shrink-0">
-                                                                    <span className="text-[10px] text-muted-foreground/50 font-mono">{section.page_range}</span>
-                                                                    <span className="text-[10px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
+                                                                    <span className="text-[11px] text-muted-foreground/50 font-mono">{section.page_range}</span>
+                                                                    <span className="text-[11px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
                                                                 </div>
                                                             </div>
                                                             {section.doc_name && (
-                                                                <p className="text-[10px] text-muted-foreground/50 mb-1">{section.doc_name}</p>
+                                                                <p className="text-[11px] text-muted-foreground/50 mb-1">{section.doc_name}</p>
                                                             )}
                                                             <p className="text-muted-foreground/70 line-clamp-2">{section.text.slice(0, 300)}</p>
                                                         </div>
@@ -683,25 +683,25 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                 <div className="space-y-3">
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">Response Time</p>
+                                                            <p className="text-[11px] text-muted-foreground">Response Time</p>
                                                             <p className="text-sm font-medium font-mono">{msg.totalTimeSeconds?.toFixed(1)}s</p>
                                                         </div>
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">Total Tokens</p>
+                                                            <p className="text-[11px] text-muted-foreground">Total Tokens</p>
                                                             <p className="text-sm font-medium font-mono">{msg.totalTokens?.toLocaleString()}</p>
                                                         </div>
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">LLM Calls</p>
+                                                            <p className="text-[11px] text-muted-foreground">LLM Calls</p>
                                                             <p className="text-sm font-medium font-mono">{msg.llmCalls}</p>
                                                         </div>
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">Docs Searched</p>
+                                                            <p className="text-[11px] text-muted-foreground">Docs Searched</p>
                                                             <p className="text-sm font-medium font-mono">{msg.selectedDocuments?.length || 0}</p>
                                                         </div>
                                                     </div>
                                                     {msg.stageTimings && Object.keys(msg.stageTimings).length > 0 && (
                                                         <div className="space-y-1.5">
-                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
+                                                            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
                                                             {(() => {
                                                                 const entries = Object.entries(msg.stageTimings)
                                                                 const maxVal = Math.max(...entries.map(([, v]) => v), 0.1)

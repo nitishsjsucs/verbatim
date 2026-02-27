@@ -76,14 +76,14 @@ function CollapsibleSection({ title, icon, children, defaultOpen = false, badge 
 
 function VerificationBadge({ status }: { status: string }) {
     const config = {
-        verified: { icon: ShieldCheck, color: "text-green-400 bg-green-400/10", label: "Verified" },
-        partially_verified: { icon: ShieldQuestion, color: "text-amber-400 bg-amber-400/10", label: "Partially Verified" },
-        unverified: { icon: ShieldAlert, color: "text-red-400 bg-red-400/10", label: "Unverified" },
+        verified: { icon: ShieldCheck, color: "text-[color:var(--color-success)] bg-[color:var(--color-success)]/10", label: "Verified" },
+        partially_verified: { icon: ShieldQuestion, color: "text-[color:var(--color-warning)] bg-[color:var(--color-warning)]/10", label: "Partially Verified" },
+        unverified: { icon: ShieldAlert, color: "text-[color:var(--color-danger)] bg-[color:var(--color-danger)]/10", label: "Unverified" },
     }[status] || { icon: ShieldQuestion, color: "text-muted-foreground bg-muted", label: status || "Unknown" }
 
     const Icon = config.icon
     return (
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", config.color)}>
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium", config.color)}>
             <Icon className="h-3 w-3" />
             {config.label}
         </span>
@@ -98,7 +98,7 @@ function QueryTypeBadge({ type }: { type: QueryType }) {
         definitional: "Definitional",
     }
     return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
             {labels[type] || type}
         </span>
     )
@@ -196,7 +196,7 @@ function ConversationList({
                 {conversations.length === 0 && (
                     <div className="px-3 py-8 text-center">
                         <MessageSquare className="h-5 w-5 mx-auto text-muted-foreground/30 mb-2" />
-                        <p className="text-[10px] text-muted-foreground/40">No conversations yet</p>
+                        <p className="text-[11px] text-muted-foreground/40">No conversations yet</p>
                     </div>
                 )}
                 {conversations.map((conv) => (
@@ -215,7 +215,7 @@ function ConversationList({
                             <p className="text-[11px] font-medium truncate">
                                 {conv.title || conv.last_message_preview || "New conversation"}
                             </p>
-                            <p className="text-[9px] text-muted-foreground/50 mt-0.5">
+                            <p className="text-[11px] text-muted-foreground/50 mt-0.5">
                                 {conv.message_count} msgs
                             </p>
                         </div>
@@ -224,13 +224,13 @@ function ConversationList({
                             <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <button
                                     onClick={() => { onDelete(conv.conv_id); setConfirmDeleteId(null) }}
-                                    className="text-[9px] text-red-400 hover:text-red-300 px-1 py-0.5 rounded bg-red-400/10"
+                                    className="text-[11px] text-[color:var(--color-danger)] hover:text-[color:var(--color-danger)]/70 px-1 py-0.5 rounded bg-[color:var(--color-danger)]/10"
                                 >
                                     Del
                                 </button>
                                 <button
                                     onClick={() => setConfirmDeleteId(null)}
-                                    className="text-[9px] text-muted-foreground px-1 py-0.5"
+                                    className="text-[11px] text-muted-foreground px-1 py-0.5"
                                 >
                                     No
                                 </button>
@@ -238,7 +238,7 @@ function ConversationList({
                         ) : (
                             <button
                                 onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(conv.conv_id) }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground/30 hover:text-red-400 shrink-0"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground/30 hover:text-[color:var(--color-danger)] shrink-0"
                             >
                                 <Trash2 className="h-3 w-3" />
                             </button>
@@ -505,7 +505,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                 <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
                                     <BookOpen className="h-8 w-8 text-foreground" />
                                 </div>
-                                <h3 className="text-lg font-medium mb-2">Ask questions about this document</h3>
+                                <h3 className="text-sm font-medium mb-2">Ask questions about this document</h3>
                                 <p className="text-sm text-balance max-w-md">
                                     Try asking about specific clauses, definitions, or summaries.
                                     I&apos;ll trace headers and follow cross-references to find the answer.
@@ -531,7 +531,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                             <QueryTypeBadge type={msg.queryType} />
                                             {msg.verificationStatus && <VerificationBadge status={msg.verificationStatus} />}
                                             {msg.totalTimeSeconds !== undefined && msg.totalTimeSeconds > 0 && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60">
                                                     <Clock className="h-3 w-3" />
                                                     {msg.totalTimeSeconds.toFixed(1)}s
                                                 </span>
@@ -558,7 +558,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                         <div className="mt-3 w-full space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-px bg-border w-4" />
-                                                <span className="text-[10px] font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
+                                                <span className="text-[11px] font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
                                                 <div className="h-px bg-border flex-1" />
                                             </div>
                                             <div className="grid gap-2">
@@ -577,12 +577,12 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                         <CardContent className="p-3">
                                                             <div className="flex items-start justify-between gap-3 mb-1.5">
                                                                 <div className="flex items-center gap-2 min-w-0">
-                                                                    <div className="h-5 w-5 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-                                                                        <FileText className="h-3 w-3 text-blue-500" />
+                                                                    <div className="h-5 w-5 rounded bg-[color:var(--color-info)]/10 flex items-center justify-center shrink-0">
+                                                                        <FileText className="h-3 w-3 text-[color:var(--color-info)]" />
                                                                     </div>
                                                                     <span className="text-xs font-medium truncate text-foreground/90">{cite.title}</span>
                                                                 </div>
-                                                                <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
+                                                                <span className="text-[11px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
                                                                     {cite.page_range}
                                                                 </span>
                                                             </div>
@@ -605,7 +605,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                 <CollapsibleSection
                                                     title="Inferred Points"
                                                     icon={<Brain className="h-3 w-3" />}
-                                                    badge={<span className="text-[10px] text-muted-foreground/60">{msg.inferredPoints.length}</span>}
+                                                    badge={<span className="text-[11px] text-muted-foreground/60">{msg.inferredPoints.length}</span>}
                                                 >
                                                     <div className="space-y-3">
                                                         {msg.inferredPoints.map((ip, i) => (
@@ -620,7 +620,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                 {ip.supporting_definitions.length > 0 && (
                                                                     <div className="pl-4 space-y-0.5">
                                                                         {ip.supporting_definitions.map((def, j) => (
-                                                                            <p key={j} className="text-[10px] text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
+                                                                            <p key={j} className="text-[11px] text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
                                                                         ))}
                                                                     </div>
                                                                 )}
@@ -645,7 +645,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                 <CollapsibleSection
                                                     title="Retrieved Sections"
                                                     icon={<Search className="h-3 w-3" />}
-                                                    badge={<span className="text-[10px] text-muted-foreground/60">{msg.retrievedSections.length}</span>}
+                                                    badge={<span className="text-[11px] text-muted-foreground/60">{msg.retrievedSections.length}</span>}
                                                 >
                                                     <div className="space-y-2">
                                                         {msg.retrievedSections
@@ -671,7 +671,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                 }
                                                                 const confPct = confidence !== null ? Math.round(confidence * 100) : null
                                                                 const confColor = confPct !== null
-                                                                    ? confPct >= 70 ? "text-green-400" : confPct >= 40 ? "text-amber-400" : "text-red-400"
+                                                                    ? confPct >= 70 ? "text-[color:var(--color-success)]" : confPct >= 40 ? "text-[color:var(--color-warning)]" : "text-[color:var(--color-danger)]"
                                                                     : ""
                                                                 return (
                                                                     <div key={i} className="border border-border/20 rounded-md p-2 text-xs">
@@ -679,10 +679,10 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                             <span className="font-medium text-foreground/80 truncate">{section.title}</span>
                                                                             <div className="flex items-center gap-2 shrink-0">
                                                                                 {confPct !== null && (
-                                                                                    <span className={cn("font-mono text-[10px]", confColor)}>{confPct}%</span>
+                                                                                    <span className={cn("font-mono text-[11px]", confColor)}>{confPct}%</span>
                                                                                 )}
-                                                                                <span className="text-[10px] text-muted-foreground/50 font-mono">{section.page_range}</span>
-                                                                                <span className="text-[10px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
+                                                                                <span className="text-[11px] text-muted-foreground/50 font-mono">{section.page_range}</span>
+                                                                                <span className="text-[11px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
                                                                             </div>
                                                                         </div>
                                                                         <p className="text-muted-foreground/70 line-clamp-2">{section.text.slice(0, 300)}</p>
@@ -702,25 +702,25 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                     <div className="space-y-3">
                                                         <div className="grid grid-cols-2 gap-2">
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-[10px] text-muted-foreground">Response Time</p>
+                                                                <p className="text-[11px] text-muted-foreground">Response Time</p>
                                                                 <p className="text-sm font-medium font-mono">{msg.totalTimeSeconds?.toFixed(1)}s</p>
                                                             </div>
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-[10px] text-muted-foreground">Total Tokens</p>
+                                                                <p className="text-[11px] text-muted-foreground">Total Tokens</p>
                                                                 <p className="text-sm font-medium font-mono">{msg.totalTokens?.toLocaleString()}</p>
                                                             </div>
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-[10px] text-muted-foreground">LLM Calls</p>
+                                                                <p className="text-[11px] text-muted-foreground">LLM Calls</p>
                                                                 <p className="text-sm font-medium font-mono">{msg.llmCalls}</p>
                                                             </div>
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-[10px] text-muted-foreground">Sections Read</p>
+                                                                <p className="text-[11px] text-muted-foreground">Sections Read</p>
                                                                 <p className="text-sm font-medium font-mono">{msg.retrievedSections?.length || 0}</p>
                                                             </div>
                                                         </div>
                                                         {msg.stageTimings && Object.keys(msg.stageTimings).length > 0 && (
                                                             <div className="space-y-1.5">
-                                                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
+                                                                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
                                                                 {(() => {
                                                                     const entries = Object.entries(msg.stageTimings)
                                                                     const maxVal = Math.max(...entries.map(([, v]) => v), 0.1)
@@ -743,7 +743,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                     <div className="space-y-3 text-xs">
                                                         {msg.subQueries && msg.subQueries.length > 0 && (
                                                             <div>
-                                                                <p className="text-[10px] font-medium text-muted-foreground mb-1">Sub-queries</p>
+                                                                <p className="text-[11px] font-medium text-muted-foreground mb-1">Sub-queries</p>
                                                                 <div className="space-y-0.5">
                                                                     {msg.subQueries.map((sq, i) => (
                                                                         <p key={i} className="text-muted-foreground/70 pl-2 border-l-2 border-primary/10">{sq}</p>
@@ -753,17 +753,17 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                         )}
                                                         {msg.keyTerms && msg.keyTerms.length > 0 && (
                                                             <div>
-                                                                <p className="text-[10px] font-medium text-muted-foreground mb-1">Key Terms</p>
+                                                                <p className="text-[11px] font-medium text-muted-foreground mb-1">Key Terms</p>
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {msg.keyTerms.map((term, i) => (
-                                                                        <span key={i} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px]">{term}</span>
+                                                                        <span key={i} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[11px]">{term}</span>
                                                                     ))}
                                                                 </div>
                                                             </div>
                                                         )}
                                                         {msg.routingLog.locate_results.length > 0 && (
                                                             <div>
-                                                                <p className="text-[10px] font-medium text-muted-foreground mb-1">
+                                                                <p className="text-[11px] font-medium text-muted-foreground mb-1">
                                                                     Located Nodes ({msg.routingLog.total_nodes_located})
                                                                 </p>
                                                                 <div className="space-y-1">
@@ -772,9 +772,9 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                         const conf = typeof rec.confidence === "number" ? Math.round((rec.confidence as number) * 100) : null
                                                                         return (
                                                                             <div key={i} className="flex items-center gap-2 text-muted-foreground/70">
-                                                                                <span className="font-mono text-[10px] text-muted-foreground/50">{rec.node_id as string}</span>
+                                                                                <span className="font-mono text-[11px] text-muted-foreground/50">{rec.node_id as string}</span>
                                                                                 <span className="truncate flex-1">{rec.title as string || rec.relevance_reason as string || ""}</span>
-                                                                                {conf !== null && <span className="font-mono text-[10px]">{conf}%</span>}
+                                                                                {conf !== null && <span className="font-mono text-[11px]">{conf}%</span>}
                                                                             </div>
                                                                         )
                                                                     })}
@@ -783,14 +783,14 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                         )}
                                                         {msg.routingLog.cross_ref_follows.length > 0 && (
                                                             <div>
-                                                                <p className="text-[10px] font-medium text-muted-foreground mb-1">Cross-Reference Follows</p>
+                                                                <p className="text-[11px] font-medium text-muted-foreground mb-1">Cross-Reference Follows</p>
                                                                 <div className="space-y-1">
                                                                     {msg.routingLog.cross_ref_follows.map((cr, i) => {
                                                                         const rec = cr as Record<string, unknown>
                                                                         return (
                                                                             <div key={i} className="flex items-center gap-1.5 text-muted-foreground/70">
-                                                                                {rec.resolved ? <CheckCircle2 className="h-3 w-3 text-green-400" /> : <XCircle className="h-3 w-3 text-red-400" />}
-                                                                                <span className="font-mono text-[10px]">{rec.source_node_id as string}</span>
+                                                                                {rec.resolved ? <CheckCircle2 className="h-3 w-3 text-[color:var(--color-success)]" /> : <XCircle className="h-3 w-3 text-[color:var(--color-danger)]" />}
+                                                                                <span className="font-mono text-[11px]">{rec.source_node_id as string}</span>
                                                                                 <span className="text-muted-foreground/40">→</span>
                                                                                 <span>{rec.target_identifier as string}</span>
                                                                             </div>
@@ -799,7 +799,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                 </div>
                                                             </div>
                                                         )}
-                                                        <div className="flex gap-4 text-[10px] text-muted-foreground/50 pt-1 border-t border-border/20">
+                                                        <div className="flex gap-4 text-[11px] text-muted-foreground/50 pt-1 border-t border-border/20">
                                                             <span>{msg.routingLog.total_nodes_located} nodes located</span>
                                                             <span>{msg.routingLog.total_sections_read} sections read</span>
                                                             <span>{msg.routingLog.total_tokens_retrieved.toLocaleString()} tokens retrieved</span>

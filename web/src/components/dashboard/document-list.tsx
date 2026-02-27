@@ -204,7 +204,7 @@ export function DocumentList() {
         return (
             <div className="flex flex-col items-center justify-center h-[400px] border border-dashed rounded-lg bg-card/50">
                 <FileText className="h-10 w-10 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium">No documents yet</h3>
+                <h3 className="text-sm font-medium">No documents yet</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                     Upload a PDF to get started.
                 </p>
@@ -307,7 +307,7 @@ export function DocumentList() {
                                 className="flex items-center gap-2 group/link"
                             >
                                 <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
-                                <span className="text-[13px] font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
+                                <span className="text-xs font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
                             </Link>
                             {doc.description && (
                                 <button
@@ -319,8 +319,8 @@ export function DocumentList() {
                                 </button>
                             )}
                         </TableCell>
-                        <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
-                        <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
+                        <TableCell className="text-right text-[11px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
+                        <TableCell className="text-right text-[11px] text-muted-foreground py-2.5">
                             {doc.ingested_at ? (
                                 <span className="text-muted-foreground/70">
                                     {new Date(doc.ingested_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
@@ -334,7 +334,7 @@ export function DocumentList() {
                                 {doc.description && (
                                     <button
                                         onClick={() => setExpandedDoc(doc)}
-                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-[11px] font-medium"
+                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
                                         title="Read full summary"
                                     >
                                         <BookOpen className="h-3 w-3" />
@@ -351,7 +351,7 @@ export function DocumentList() {
                                 </Link>
                                 <button
                                     onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-[11px] font-medium"
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
                                     title="Rename document"
                                 >
                                     <Pencil className="h-3 w-3" />
@@ -359,7 +359,7 @@ export function DocumentList() {
                                 </button>
                                 {doc.has_actionables ? (
                                     <span
-                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-emerald-500/10 text-emerald-500 text-[11px] font-medium cursor-default"
+                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-[color:var(--color-success)]/10 text-[color:var(--color-success)] text-[11px] font-medium cursor-default"
                                         title="Actionables already extracted"
                                     >
                                         <CheckCircle2 className="h-3 w-3" />
@@ -369,7 +369,7 @@ export function DocumentList() {
                                     <button
                                         onClick={() => setExtractConfirmDocId(doc.id)}
                                         disabled={extractingDocId === doc.id}
-                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)] hover:bg-[color:var(--color-warning)]/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                                         title="Extract actionables from document"
                                     >
                                         {extractingDocId === doc.id
@@ -380,7 +380,7 @@ export function DocumentList() {
                                 )}
                                 <button
                                     onClick={() => setDeletingDocId(doc.id)}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-[11px] font-medium"
+                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md bg-[color:var(--color-danger)]/10 text-[color:var(--color-danger)] hover:bg-[color:var(--color-danger)]/20 transition-colors text-[11px] font-medium"
                                     title="Delete document"
                                 >
                                     <Trash2 className="h-3 w-3" />
@@ -399,12 +399,12 @@ export function DocumentList() {
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             >
                 <div
-                    className="bg-background border border-border rounded-xl shadow-2xl w-[420px] p-6 space-y-4"
+                    className="bg-background border border-border rounded-xl w-[420px] p-6 space-y-4" style={{ boxShadow: 'var(--shadow-modal)' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                            <Shield className="h-5 w-5 text-amber-500" />
+                        <div className="h-10 w-10 rounded-lg bg-[color:var(--color-warning)]/15 flex items-center justify-center">
+                            <Shield className="h-5 w-5 text-[color:var(--color-warning)]" />
                         </div>
                         <div>
                             <h2 className="text-sm font-semibold text-foreground">Extract Actionables</h2>
@@ -420,7 +420,7 @@ export function DocumentList() {
                         <Button variant="ghost" size="sm" onClick={() => setExtractConfirmDocId(null)}>Cancel</Button>
                         <Button
                             size="sm"
-                            className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
+                            className="gap-1.5 bg-[color:var(--color-warning)] hover:bg-[color:var(--color-warning)]/90 text-white"
                             onClick={() => {
                                 const doc = documents.find(d => d.id === extractConfirmDocId)
                                 handleExtract(extractConfirmDocId, doc?.name || extractConfirmDocId)
@@ -451,11 +451,11 @@ export function DocumentList() {
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
-                    <div className="bg-background border border-border rounded-xl shadow-2xl w-[480px] p-6 space-y-5">
+                    <div className="bg-background border border-border rounded-xl shadow-modal w-[480px] p-6 space-y-5">
                         {/* Header */}
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                                <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
+                            <div className="h-10 w-10 rounded-lg bg-[color:var(--color-warning)]/15 flex items-center justify-center">
+                                <Loader2 className="h-5 w-5 text-[color:var(--color-warning)] animate-spin" />
                             </div>
                             <div>
                                 <h2 className="text-sm font-semibold text-foreground">Extracting Actionables</h2>
@@ -472,11 +472,11 @@ export function DocumentList() {
                         <div className="space-y-1.5">
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-amber-500/70 rounded-full transition-all duration-700 ease-out"
+                                    className="h-full bg-[color:var(--color-warning)]/70 rounded-full transition-all duration-700 ease-out"
                                     style={{ width: `${overallPct}%` }}
                                 />
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                                 <span>{overallPct}% complete</span>
                                 {extStage === "extracting" && extTotalBatches > 0 && (
                                     <span>Batch {extCurrentBatch}/{extTotalBatches}</span>
@@ -487,25 +487,25 @@ export function DocumentList() {
                         {/* Stats grid */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-lg font-semibold font-mono">
+                                <p className="text-sm font-semibold font-mono">
                                     {extCandidates > 0 ? extCandidates : "..."}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">Sections scanned</p>
+                                <p className="text-[11px] text-muted-foreground">Sections scanned</p>
                                 {extTotalNodes > 0 && (
-                                    <p className="text-[9px] text-muted-foreground/50">of {extTotalNodes} total</p>
+                                    <p className="text-[11px] text-muted-foreground/50">of {extTotalNodes} total</p>
                                 )}
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-lg font-semibold font-mono text-amber-500">
+                                <p className="text-sm font-semibold font-mono text-[color:var(--color-warning)]">
                                     {extCumulative}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">Found so far</p>
+                                <p className="text-[11px] text-muted-foreground">Found so far</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-lg font-semibold font-mono">
+                                <p className="text-sm font-semibold font-mono">
                                     {extStage === "done" ? `${extValidated}/${extFlagged}` : "..."}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">
+                                <p className="text-[11px] text-muted-foreground">
                                     {extStage === "done" ? "Valid / Flagged" : "Validation"}
                                 </p>
                             </div>
@@ -514,11 +514,11 @@ export function DocumentList() {
                         {/* Validation indeterminate bar */}
                         {extStage === "validating" && (
                             <div className="w-full h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                                <div className="h-full bg-amber-500/40 rounded-full animate-pulse w-full" />
+                                <div className="h-full bg-[color:var(--color-warning)]/40 rounded-full animate-pulse w-full" />
                             </div>
                         )}
 
-                        <p className="text-[10px] text-muted-foreground/50 text-center">
+                        <p className="text-[11px] text-muted-foreground/50 text-center">
                             This may take several minutes depending on document size.
                         </p>
                     </div>
@@ -533,12 +533,12 @@ export function DocumentList() {
                 onClick={() => setDeletingDocId(null)}
             >
                 <div
-                    className="bg-background border border-border rounded-xl shadow-2xl w-[400px] p-6 space-y-4"
+                    className="bg-background border border-border rounded-xl w-[400px] p-6 space-y-4" style={{ boxShadow: 'var(--shadow-modal)' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-red-500/15 flex items-center justify-center">
-                            <Trash2 className="h-5 w-5 text-red-500" />
+                        <div className="h-10 w-10 rounded-lg bg-[color:var(--color-danger)]/15 flex items-center justify-center">
+                            <Trash2 className="h-5 w-5 text-[color:var(--color-danger)]" />
                         </div>
                         <div>
                             <h2 className="text-sm font-semibold text-foreground">Delete Document</h2>
@@ -573,7 +573,7 @@ export function DocumentList() {
                 onClick={() => setRenamingDocId(null)}
             >
                 <div
-                    className="bg-background border border-border rounded-xl shadow-2xl w-[400px] p-6 space-y-4"
+                    className="bg-background border border-border rounded-xl w-[400px] p-6 space-y-4" style={{ boxShadow: 'var(--shadow-modal)' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <h2 className="text-sm font-semibold text-foreground">Rename Document</h2>
@@ -600,7 +600,7 @@ export function DocumentList() {
                 onClick={() => setExpandedDoc(null)}
             >
                 <div
-                    className="bg-background border border-border rounded-xl shadow-2xl max-w-2xl w-[90vw] max-h-[80vh] flex flex-col"
+                    className="bg-background border border-border rounded-xl max-w-2xl w-[90vw] max-h-[80vh] flex flex-col" style={{ boxShadow: 'var(--shadow-modal)' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
@@ -608,14 +608,14 @@ export function DocumentList() {
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-primary shrink-0" />
-                                <h2 className="text-base font-semibold text-foreground truncate">
+                                <h2 className="text-sm font-semibold text-foreground truncate">
                                     {expandedDoc.name}
                                 </h2>
                             </div>
                             <div className="flex items-center gap-3 mt-1.5 pl-6">
-                                <span className="text-[10px] font-mono text-muted-foreground/50">{expandedDoc.id}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.pages} pages</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.nodes} nodes</span>
+                                <span className="text-[11px] font-mono text-muted-foreground/50">{expandedDoc.id}</span>
+                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.pages} pages</span>
+                                <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.nodes} nodes</span>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setExpandedDoc(null)}>
