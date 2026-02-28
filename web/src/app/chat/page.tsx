@@ -9,6 +9,7 @@ import {
     fetchChatMessages,
     postChatMessage,
     markChatRead,
+    renameChatChannel,
     ChatChannel,
     ChatMessage,
 } from "@/lib/api"
@@ -20,8 +21,12 @@ import {
     Shield,
     Hash,
     ChevronRight,
+    Pencil,
+    Check,
+    X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 // ─── Role labels & colors ────────────────────────────────────────────────────
 
@@ -169,6 +174,17 @@ function ChatContent() {
         }
     }, [messageText, activeChannel, sending, userName, role, team])
 
+    // Rename channel (team_lead only)
+    const handleRename = React.useCallback(async (channel: string, newName: string) => {
+        try {
+            await renameChatChannel(channel, newName, role, team)
+            toast.success("Channel renamed successfully")
+            await loadChannels()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to rename channel")
+        }
+    }, [role, team, loadChannels])
+
     // Group channels by type for compliance view
     const isComplianceView = role === "compliance_officer" || role === "admin"
     const complianceInternalChannels = channels.filter(c => c.type === "compliance_internal")
@@ -239,6 +255,8 @@ function ChatContent() {
                                         channel={ch}
                                         active={activeChannel === ch.channel}
                                         onClick={() => setActiveChannel(ch.channel)}
+                                        canRename={role === "team_lead"}
+                                        onRename={handleRename}
                                     />
                                 ))}
                                 {teamComplianceChannels.map(ch => (
@@ -247,6 +265,8 @@ function ChatContent() {
                                         channel={ch}
                                         active={activeChannel === ch.channel}
                                         onClick={() => setActiveChannel(ch.channel)}
+                                        canRename={role === "team_lead"}
+                                        onRename={handleRename}
                                     />
                                 ))}
                             </>
@@ -379,11 +399,70 @@ function ChatContent() {
 
 // ─── Channel Button ──────────────────────────────────────────────────────────
 
-function ChannelButton({ channel, active, onClick }: {
+function ChannelButton({ channel, active, onClick, canRename, onRename }: {
     channel: ChatChannel
     active: boolean
     onClick: () => void
+    canRename?: boolean
+    onRename?: (channel: string, newName: string) => void
 }) {
+    const [isEditing, setIsEditing] = React.useState(false)
+    const [editValue, setEditValue] = React.useState(channel.label)
+    const inputRef = React.useRef<HTMLInputElement>(null)
+
+    React.useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus()
+            inputRef.current.select()
+        }
+    }, [isEditing])
+
+    const handleRename = () => {
+        if (editValue.trim() && editValue !== channel.label && onRename) {
+            onRename(channel.channel, editValue.trim())
+        }
+        setIsEditing(false)
+    }
+
+    const handleCancel = () => {
+        setEditValue(channel.label)
+        setIsEditing(false)
+    }
+
+    if (isEditing) {
+        return (
+            <div className="w-full flex items-center gap-1.5 rounded-md px-2.5 py-2 bg-primary/10 border border-primary/20">
+                <ChannelIcon type={channel.type} />
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRename()
+                        if (e.key === 'Escape') handleCancel()
+                    }}
+                    className="flex-1 bg-transparent border-none outline-none text-[12px] font-medium text-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleRename() }}
+                    className="p-1 hover:bg-green-500/20 rounded"
+                    title="Save"
+                >
+                    <Check className="h-3 w-3 text-green-500" />
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); handleCancel() }}
+                    className="p-1 hover:bg-red-500/20 rounded"
+                    title="Cancel"
+                >
+                    <X className="h-3 w-3 text-red-500" />
+                </button>
+            </div>
+        )
+    }
+
     return (
         <button
             onClick={onClick}
@@ -401,6 +480,18 @@ function ChannelButton({ channel, active, onClick }: {
             )}>
                 {channel.label}
             </span>
+            {canRename && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        setIsEditing(true)
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-primary/20 rounded transition-opacity"
+                    title="Rename channel"
+                >
+                    <Pencil className="h-3 w-3 text-primary" />
+                </button>
+            )}
             {channel.unread > 0 && (
                 <span className="bg-primary text-primary-foreground text-[9px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
                     {channel.unread}

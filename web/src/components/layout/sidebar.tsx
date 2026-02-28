@@ -209,14 +209,7 @@ export function Sidebar({ className }: SidebarProps) {
                 collapsed={collapsed}
               />
               <div className="my-2 border-t border-sidebar-border/50" />
-              <NavItem
-                href="/admin"
-                icon={<Lock className="h-4 w-4" />}
-                iconClassName="text-red-500"
-                label="Admin"
-                active={pathname === "/admin"}
-                collapsed={collapsed}
-              />
+              
               <NavItem
                 href="/chat"
                 icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
@@ -225,6 +218,15 @@ export function Sidebar({ className }: SidebarProps) {
                 active={pathname === "/chat"}
                 collapsed={collapsed}
               />
+              <NavItem
+                href="/admin"
+                icon={<Lock className="h-4 w-4" />}
+                iconClassName="text-red-500"
+                label="Admin"
+                active={pathname === "/admin"}
+                collapsed={collapsed}
+              />
+              <div className="my-2 border-t border-sidebar-border/50" />
             </div>
           </>
         )}

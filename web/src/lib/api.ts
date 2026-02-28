@@ -515,6 +515,7 @@ export interface ChatChannel {
     label: string;
     type: 'team_internal' | 'team_compliance' | 'compliance_internal';
     unread: number;
+    has_custom_name?: boolean;
 }
 
 export interface ChatMessage {
@@ -585,6 +586,24 @@ export async function fetchChatUnreadTotal(
     const res = await apiFetch(`/chat/unread-total?${params}`);
     if (!res.ok) return { unread: 0 };
     return res.json();
+}
+
+export async function renameChatChannel(
+    channel: string,
+    customName: string,
+    role: string,
+    team: string,
+): Promise<void> {
+    const params = new URLSearchParams({ role, team });
+    const res = await apiFetch(`/chat/rename/${encodeURIComponent(channel)}?${params}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ custom_name: customName }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to rename channel' }));
+        throw new Error(err.detail || 'Failed to rename channel');
+    }
 }
 
 // ---------------------------------------------------------------------------

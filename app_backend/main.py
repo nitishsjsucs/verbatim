@@ -2502,8 +2502,21 @@ def list_chat_channels(role: str = Query(...), team: str = Query("")):
     ) or {}
     cursors = read_cursors.get("cursors", {})
 
+    # Fetch custom channel names
+    custom_names = {}
+    name_docs = db["chat_channel_names"].find()
+    for doc in name_docs:
+        custom_names[doc["channel"]] = doc["custom_name"]
+
     for ch in channels:
         cid = ch["channel"]
+        # Use custom name if available
+        if cid in custom_names:
+            ch["label"] = custom_names[cid]
+            ch["has_custom_name"] = True
+        else:
+            ch["has_custom_name"] = False
+        
         last_read = cursors.get(cid, "")
         doc = db[CHAT_COLLECTION].find_one({"channel": cid})
         msgs = doc.get("messages", []) if doc else []
@@ -2608,6 +2621,38 @@ def get_chat_unread_total(role: str = Query(...), team: str = Query("")):
             total += len(msgs)
 
     return {"unread": total}
+
+
+class RenameChatChannelRequest(BaseModel):
+    custom_name: str
+
+
+@app.post("/chat/rename/{channel:path}")
+def rename_chat_channel(channel: str, body: RenameChatChannelRequest, role: str = Query(...), team: str = Query("")):
+    """Allow team_lead to rename their team's chat channels."""
+    # Only team_lead can rename channels
+    if role != "team_lead":
+        raise HTTPException(status_code=403, detail="Only Team Leads can rename channels")
+    
+    # Verify permission to rename this channel
+    if not _chat_channel_allowed(channel, role, team):
+        raise HTTPException(status_code=403, detail="Access denied to this channel")
+    
+    # Only allow renaming team_internal and team_compliance channels
+    if not (channel.startswith("team_internal:") or channel.startswith("team_compliance:")):
+        raise HTTPException(status_code=400, detail="Cannot rename this channel type")
+    
+    from utils.mongo import get_db
+    db = get_db()
+    
+    # Store custom name in chat_channel_names collection
+    db["chat_channel_names"].update_one(
+        {"channel": channel},
+        {"$set": {"custom_name": body.custom_name, "renamed_by": role, "team": team}},
+        upsert=True,
+    )
+    
+    return {"ok": True, "channel": channel, "custom_name": body.custom_name}
 
 
 if __name__ == "__main__":
