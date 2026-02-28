@@ -31,7 +31,7 @@ const PdfViewer = dynamic(
     { ssr: false }
 )
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
 
 // --- Constants ---
 

@@ -18,7 +18,7 @@ import {
 import { fetchDocuments, extractActionablesStreaming, ExtractionProgressEvent } from "@/lib/api"
 import { DocumentMeta } from "@/lib/types"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
 
 export function DocumentList() {
     const [documents, setDocuments] = useState<DocumentMeta[]>([])

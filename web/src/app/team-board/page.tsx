@@ -142,7 +142,7 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
         return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
     }
 
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
 
     return (
         <div className="relative" ref={popoverRef}>
@@ -446,7 +446,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                         ) : (
                             <div className="space-y-2">
                                 {files.map((file, idx) => {
-                                    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+                                    const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
                                     const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
                                     return (
                                         <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-4 py-3 border border-border/30 group/file hover:border-border/60 transition-colors">
