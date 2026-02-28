@@ -75,15 +75,16 @@ const RISK_STYLES: Record<string, { bg: string; text: string }> = {
 const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: string }> = {
     assigned:    { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
     in_progress: { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
+    team_review: { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
     review:      { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
     completed:   { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
     reworking:   { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking"]
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    review: 0, reworking: 1, in_progress: 2, assigned: 3, completed: 4,
+    team_review: 0, review: 1, reworking: 2, in_progress: 3, assigned: 4, completed: 5,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -327,6 +328,7 @@ export default function DashboardPage() {
         const completed = allRows.filter(r => r.item.task_status === "completed").length
         const inProgress = allRows.filter(r => r.item.task_status === "in_progress").length
         const reworking = allRows.filter(r => r.item.task_status === "reworking").length
+        const teamReview = allRows.filter(r => r.item.task_status === "team_review").length
         const review = allRows.filter(r => r.item.task_status === "review").length
         const assigned = allRows.filter(r => !r.item.task_status || r.item.task_status === "assigned").length
         const highRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "High Risk").length
@@ -336,7 +338,7 @@ export default function DashboardPage() {
         const delayed30 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d30").length
         const delayed60 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d60").length
         const delayed90 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d90").length
-        return { total, completed, inProgress, reworking, review, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
+        return { total, completed, inProgress, teamReview, reworking, review, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
     }, [allRows])
 
     const toggleGroup = (ws: string) => {
@@ -381,6 +383,10 @@ export default function DashboardPage() {
                         <div className="text-center">
                             <p className="text-[15px] font-bold text-amber-400">{stats.inProgress}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[15px] font-bold text-teal-400">{stats.teamReview}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Team Review</p>
                         </div>
                         <div className="text-center">
                             <p className="text-[15px] font-bold text-blue-400">{stats.review}</p>
@@ -679,6 +685,9 @@ export default function DashboardPage() {
                                                     {taskStatus === "reworking" && (
                                                         <span className="text-[9px] text-orange-400 italic">Reworking</span>
                                                     )}
+                                                    {taskStatus === "team_review" && (
+                                                        <span className="text-[9px] text-teal-400 italic">Team Review</span>
+                                                    )}
                                                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[9px] text-muted-foreground/30">—</span>
                                                     )}
@@ -819,7 +828,7 @@ export default function DashboardPage() {
 
 function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
     // Evidence only visible once the team member submits for review
-    const reviewedStatuses = ["review", "completed", "reworking"]
+    const reviewedStatuses = ["team_review", "review", "completed", "reworking"]
     const canView = taskStatus ? reviewedStatuses.includes(taskStatus) : true
     const [open, setOpen] = React.useState(false)
     const popoverRef = React.useRef<HTMLDivElement>(null)

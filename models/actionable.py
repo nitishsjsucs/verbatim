@@ -68,11 +68,15 @@ class ActionableItem:
     is_manual: bool = False  # True if manually created by user
     published_at: str = ""  # ISO timestamp when published to tracker
     deadline: str = ""  # ISO datetime deadline for completion
-    task_status: str = ""  # assigned, in_progress, review, completed, reworking
+    task_status: str = ""  # assigned, in_progress, team_review, review, completed, reworking
     completion_date: str = ""  # ISO timestamp when completed
     reviewer_comments: str = ""  # Comments from reviewer or team member
     evidence_files: list = field(default_factory=list)  # List of {name, url, uploaded_at}
     comments: list = field(default_factory=list)  # List of {id, author, role, text, timestamp}
+    submitted_at: str = ""  # ISO timestamp when team member submitted for review
+    team_reviewer_name: str = ""  # Name of the team reviewer who acted
+    team_reviewer_approved_at: str = ""  # ISO timestamp when team reviewer approved
+    team_reviewer_rejected_at: str = ""  # ISO timestamp when team reviewer rejected
 
     def to_dict(self) -> dict:
         return {
@@ -103,6 +107,10 @@ class ActionableItem:
             "reviewer_comments": self.reviewer_comments,
             "evidence_files": self.evidence_files,
             "comments": self.comments,
+            "submitted_at": self.submitted_at,
+            "team_reviewer_name": self.team_reviewer_name,
+            "team_reviewer_approved_at": self.team_reviewer_approved_at,
+            "team_reviewer_rejected_at": self.team_reviewer_rejected_at,
         }
 
     @classmethod
@@ -147,6 +155,10 @@ class ActionableItem:
             reviewer_comments=data.get("reviewer_comments", ""),
             evidence_files=data.get("evidence_files", []),
             comments=data.get("comments", []),
+            submitted_at=data.get("submitted_at", ""),
+            team_reviewer_name=data.get("team_reviewer_name", ""),
+            team_reviewer_approved_at=data.get("team_reviewer_approved_at", ""),
+            team_reviewer_rejected_at=data.get("team_reviewer_rejected_at", ""),
         )
 
 

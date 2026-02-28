@@ -43,16 +43,17 @@ function normalizeRisk(modality: string): string {
 const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: string }> = {
     assigned:    { label: "Assigned",    bg: "bg-slate-500",   text: "text-white" },
     in_progress: { label: "In Progress", bg: "bg-amber-500",   text: "text-white" },
+    team_review: { label: "Team Review", bg: "bg-teal-500",    text: "text-white" },
     review:      { label: "Under Review", bg: "bg-blue-500",   text: "text-white" },
     completed:   { label: "Completed",   bg: "bg-emerald-500", text: "text-white" },
     reworking:   { label: "Reworking",   bg: "bg-orange-500",  text: "text-white" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    review: 0, reworking: 1, in_progress: 2, assigned: 3, completed: 4,
+    team_review: 0, review: 1, reworking: 2, in_progress: 3, assigned: 4, completed: 5,
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking"]
 const RISK_OPTIONS = ["High Risk", "Medium Risk", "Low Risk"]
 
 const RISK_STYLES: Record<string, { bg: string; text: string }> = {
@@ -220,15 +221,16 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
     const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
     const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking"
     const isCompleted = taskStatus === "completed"
+    const isUnderTeamReview = taskStatus === "team_review"
     const isUnderReview = taskStatus === "review"
-    const isReadOnly = isCompleted || isUnderReview
+    const isReadOnly = isCompleted || isUnderTeamReview || isUnderReview
     const files = item.evidence_files || []
 
     // Check if revert is allowed (within 10 minutes of submission)
     // Use a tick state to force re-render when the 10-min window expires
     const [, setRevertTick] = React.useState(0)
     const canRevert = React.useMemo(() => {
-        if (taskStatus !== "review") return false
+        if (taskStatus !== "team_review") return false
         const submittedAt = (item as any).submitted_at
         if (submittedAt) {
             const elapsed = Date.now() - new Date(submittedAt).getTime()
@@ -239,7 +241,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
 
     // Auto-disable revert after 10 minutes by scheduling a re-render
     React.useEffect(() => {
-        if (taskStatus !== "review") return
+        if (taskStatus !== "team_review") return
         const submittedAt = (item as any).submitted_at
         if (!submittedAt) return
         const elapsed = Date.now() - new Date(submittedAt).getTime()
@@ -366,7 +368,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                             {taskStatus === "reworking" && <><RotateCcw className="h-2.5 w-2.5" /> Resubmit</>}
                         </button>
                     )}
-                    {isUnderReview && (
+                    {isUnderTeamReview && (
                         <div className="flex items-center justify-center gap-1">
                             {canRevert && (
                                 <button
@@ -378,6 +380,9 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                                 </button>
                             )}
                         </div>
+                    )}
+                    {isUnderReview && (
+                        <span className="text-[9px] text-blue-400 italic">CO Review</span>
                     )}
                     {isCompleted && (
                         <span className="text-[9px] text-emerald-400 italic">Done</span>
@@ -583,11 +588,11 @@ function TeamBoardContent() {
 
         if (currentStatus === "assigned") nextStatus = "in_progress"
         else if (currentStatus === "in_progress") {
-            nextStatus = "review"
+            nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
         }
         else if (currentStatus === "reworking") {
-            nextStatus = "review"
+            nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
         }
 
@@ -602,11 +607,13 @@ function TeamBoardContent() {
         toast.success("Task reverted to In Progress")
     }, [handleUpdate])
 
+
     // Stats (team-scoped from allItems which is already team-filtered)
     const stats = React.useMemo(() => {
         const total = allItems.length
         const completed = allItems.filter(e => e.item.task_status === "completed").length
         const inProgress = allItems.filter(e => e.item.task_status === "in_progress").length
+        const teamReview = allItems.filter(e => e.item.task_status === "team_review").length
         const review = allItems.filter(e => e.item.task_status === "review").length
         const reworking = allItems.filter(e => e.item.task_status === "reworking").length
         const assigned = allItems.filter(e => !e.item.task_status || e.item.task_status === "assigned").length
@@ -617,7 +624,7 @@ function TeamBoardContent() {
         const delayed30 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d30").length
         const delayed60 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d60").length
         const delayed90 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d90").length
-        return { total, completed, inProgress, review, reworking, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
+        return { total, completed, inProgress, teamReview, review, reworking, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
     }, [allItems])
 
     // Filter + Sort
@@ -745,8 +752,12 @@ function TeamBoardContent() {
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
                         </div>
                         <div className="text-center">
+                            <p className="text-[15px] font-bold text-teal-400">{stats.teamReview}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Team Review</p>
+                        </div>
+                        <div className="text-center">
                             <p className="text-[15px] font-bold text-blue-400">{stats.review}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">CO Review</p>
                         </div>
                         <div className="text-center">
                             <p className="text-[15px] font-bold text-orange-400">{stats.reworking}</p>

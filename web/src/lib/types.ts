@@ -265,7 +265,7 @@ export type ActionableWorkstream =
     | "Legal"
     | "Other";
 
-export type TaskStatus = "assigned" | "in_progress" | "review" | "completed" | "reworking";
+export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking";
 
 export interface ActionableItem {
     id: string;
@@ -287,6 +287,11 @@ export interface ActionableItem {
     reviewer_comments?: string;  // Comments from compliance officer on rejection/rework
     evidence_files?: { name: string; url: string; uploaded_at: string }[];
     comments?: ActionableComment[];  // Thread of comments between team & compliance officer
+    // Team reviewer audit fields
+    submitted_at?: string;           // ISO datetime when team member submitted for review
+    team_reviewer_name?: string;     // Name of team reviewer who acted
+    team_reviewer_approved_at?: string;  // ISO datetime when team reviewer approved
+    team_reviewer_rejected_at?: string;  // ISO datetime when team reviewer rejected
     // Legacy fields kept for backward compat with existing data
     actor?: string;
     object?: string;
@@ -307,7 +312,7 @@ export interface ActionableItem {
 export interface ActionableComment {
     id: string;
     author: string;
-    role: "compliance_officer" | "team_member";
+    role: "compliance_officer" | "team_member" | "team_reviewer";
     text: string;
     timestamp: string;  // ISO datetime
 }

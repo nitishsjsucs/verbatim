@@ -8,7 +8,7 @@ import type { ActionableComment } from "@/lib/types"
 interface CommentThreadProps {
     comments: ActionableComment[]
     currentUser: string
-    currentRole: "compliance_officer" | "team_member"
+    currentRole: "compliance_officer" | "team_member" | "team_reviewer"
     onAddComment?: (text: string) => Promise<void>
 }
 
@@ -107,9 +107,11 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                                     "text-[8px] px-1 py-0 rounded font-medium",
                                     c.role === "compliance_officer"
                                         ? "bg-purple-500/15 text-purple-500"
+                                        : c.role === "team_reviewer"
+                                        ? "bg-teal-500/15 text-teal-500"
                                         : "bg-blue-500/15 text-blue-500"
                                 )}>
-                                    {c.role === "compliance_officer" ? "Officer" : "Team"}
+                                    {c.role === "compliance_officer" ? "Officer" : c.role === "team_reviewer" ? "Reviewer" : "Team"}
                                 </span>
                                 <span className="text-[8px] text-muted-foreground/30">{formatTimestamp(c.timestamp)}</span>
                             </div>

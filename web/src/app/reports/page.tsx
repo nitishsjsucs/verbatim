@@ -36,6 +36,7 @@ function normalizeRisk(modality: string): string {
 const STATUS_LABELS: Record<TaskStatus, string> = {
     assigned: "Assigned",
     in_progress: "In Progress",
+    team_review: "Team Review",
     review: "Under Review",
     completed: "Completed",
     reworking: "Reworking",
@@ -44,6 +45,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 const STATUS_COLORS: Record<TaskStatus, string> = {
     assigned: "#94a3b8",
     in_progress: "#f59e0b",
+    team_review: "#14b8a6",
     review: "#3b82f6",
     completed: "#22c55e",
     reworking: "#f97316",
@@ -55,7 +57,7 @@ const RISK_COLORS: Record<string, string> = {
     "Low Risk": "#22c55e",
 }
 
-const PIE_COLORS = ["#94a3b8", "#f59e0b", "#3b82f6", "#22c55e", "#f97316"]
+const PIE_COLORS = ["#94a3b8", "#f59e0b", "#14b8a6", "#3b82f6", "#22c55e", "#f97316"]
 const RISK_PIE_COLORS = ["#ef4444", "#eab308", "#22c55e"]
 
 const WORKSTREAM_BAR_COLORS = [
@@ -310,7 +312,7 @@ function ReportsContent() {
         const pending = allActionables.filter(a => a.approval_status === "pending").length
 
         // By status
-        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, review: 0, completed: 0, reworking: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0 }
         for (const a of items) {
             const s = (a.task_status || "assigned") as TaskStatus
             byStatus[s] = (byStatus[s] || 0) + 1
@@ -371,10 +373,10 @@ function ReportsContent() {
         const highRiskOpen = openByRisk["High Risk"] || 0
 
         // Workload by team (detailed)
-        const workload: Record<string, { assigned: number; in_progress: number; review: number; completed: number; reworking: number; total: number; avgDays: number; reworkCount: number }> = {}
+        const workload: Record<string, { assigned: number; in_progress: number; team_review: number; review: number; completed: number; reworking: number; total: number; avgDays: number; reworkCount: number }> = {}
         for (const a of items) {
             const team = safeStr(a.workstream) || "Other"
-            if (!workload[team]) workload[team] = { assigned: 0, in_progress: 0, review: 0, completed: 0, reworking: 0, total: 0, avgDays: 0, reworkCount: 0 }
+            if (!workload[team]) workload[team] = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, total: 0, avgDays: 0, reworkCount: 0 }
             const s = (a.task_status || "assigned") as TaskStatus
             workload[team][s] = (workload[team][s] || 0) + 1
             workload[team].total++
@@ -412,7 +414,7 @@ function ReportsContent() {
 
     // Chart data
     const statusPieData = React.useMemo(() => {
-        const statuses: TaskStatus[] = ["assigned", "in_progress", "review", "completed", "reworking"]
+        const statuses: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking"]
         return statuses.map((s, i) => ({ label: STATUS_LABELS[s], value: stats.byStatus[s], color: PIE_COLORS[i] }))
     }, [stats.byStatus])
 
@@ -457,7 +459,7 @@ function ReportsContent() {
         if (isOfficer || !userTeam) return null
         const teamItems = allItems.filter(a => safeStr(a.workstream) === userTeam)
         const total = teamItems.length
-        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, review: 0, completed: 0, reworking: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0 }
         for (const a of teamItems) { const s = (a.task_status || "assigned") as TaskStatus; byStatus[s]++ }
         const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
         for (const a of teamItems) { byRisk[normalizeRisk(a.modality)]++ }
@@ -758,7 +760,7 @@ function ReportsContent() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
                                     <h3 className="text-sm font-medium mb-3">Tasks by Status</h3>
-                                    <PieChart data={(["assigned", "in_progress", "review", "completed", "reworking"] as TaskStatus[]).map((s, i) => ({
+                                    <PieChart data={(["assigned", "in_progress", "team_review", "review", "completed", "reworking"] as TaskStatus[]).map((s, i) => ({
                                         label: STATUS_LABELS[s], value: myStats.byStatus[s], color: PIE_COLORS[i],
                                     }))} />
                                 </div>

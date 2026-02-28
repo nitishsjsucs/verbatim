@@ -19,6 +19,11 @@ const OFFICER_ONLY_PATHS = [
     "/dashboard",
 ]
 
+/** Pages only for team reviewers */
+const REVIEWER_ONLY_PATHS = [
+    "/team-review",
+]
+
 /**
  * Wrap any page with this component to enforce:
  *  1. Must be signed in  → redirect to /sign-in
@@ -40,14 +45,29 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
 
         const role = getUserRole(session)
         const isTeamMember = role === "team_member"
+        const isTeamReviewer = role === "team_reviewer"
 
-        // Team member trying to access an officer-only page → redirect
+        // Team member trying to access an officer-only or reviewer-only page → redirect
         if (isTeamMember) {
             const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
                 pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
             )
-            if (isOfficerOnly) {
+            const isReviewerOnly = REVIEWER_ONLY_PATHS.some(p =>
+                pathname === p || pathname.startsWith(p + "/")
+            )
+            if (isOfficerOnly || isReviewerOnly) {
                 router.replace("/team-board")
+                return
+            }
+        }
+
+        // Team reviewer trying to access an officer-only page → redirect
+        if (isTeamReviewer) {
+            const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
+                pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
+            )
+            if (isOfficerOnly) {
+                router.replace("/team-review")
                 return
             }
         }
@@ -65,9 +85,18 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
     // Not signed in — show nothing while redirecting
     if (!session) return null
 
-    // Team member on officer-only page — show nothing while redirecting
+    // Team member / reviewer on restricted page — show nothing while redirecting
     const role = getUserRole(session)
     if (role === "team_member") {
+        const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
+            pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
+        )
+        const isReviewerOnly = REVIEWER_ONLY_PATHS.some(p =>
+            pathname === p || pathname.startsWith(p + "/")
+        )
+        if (isOfficerOnly || isReviewerOnly) return null
+    }
+    if (role === "team_reviewer") {
         const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
             pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
         )

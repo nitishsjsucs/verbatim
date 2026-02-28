@@ -5,6 +5,7 @@ import { createAccessControl } from "better-auth/plugins/access"
  *
  * Roles:
  *   - compliance_officer: Full access to everything (documents, research, actionables, dashboards, admin)
+ *   - team_reviewer: Intermediate reviewer — can approve/reject team submissions before compliance officer
  *   - team_member: Can only see their team's Monday.com board and submit evidence
  */
 
@@ -24,6 +25,12 @@ export const complianceOfficer = ac.newRole({
     dashboard: ["view", "manage"],
     evidence: ["view", "submit"],
     admin: ["manage_users", "manage_roles"],
+})
+
+export const teamReviewer = ac.newRole({
+    actionable: ["view", "approve", "reject"],
+    dashboard: ["view"],
+    evidence: ["view", "submit"],
 })
 
 export const teamMember = ac.newRole({
