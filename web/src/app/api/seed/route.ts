@@ -35,6 +35,7 @@ const ADMIN_USER: SeedUser = {
     team: ""
 };
 
+<<<<<<< HEAD
 const COMPLIANCE_OFFICER_USER: SeedUser = {
     name: "Compliance Officer",
     email: "compliance@govinda.com",
@@ -42,6 +43,77 @@ const COMPLIANCE_OFFICER_USER: SeedUser = {
     role: "compliance_officer",
     team: ""
 };
+=======
+// Team Lead users — oversight role, one per team
+const TEAM_LEAD_USERS: SeedUser[] = [
+    {
+        name: "Policy Lead",
+        email: "policy.lead@regtech.com",
+        password: "PolicyLead2024!",
+        role: "team_lead",
+        team: "Policy",
+    },
+    {
+        name: "Technology Lead",
+        email: "technology.lead@regtech.com",
+        password: "TechLead2024!",
+        role: "team_lead",
+        team: "Technology",
+    },
+    {
+        name: "Operations Lead",
+        email: "operations.lead@regtech.com",
+        password: "OpsLead2024!",
+        role: "team_lead",
+        team: "Operations",
+    },
+    {
+        name: "Training Lead",
+        email: "training.lead@regtech.com",
+        password: "TrainLead2024!",
+        role: "team_lead",
+        team: "Training",
+    },
+    {
+        name: "Reporting Lead",
+        email: "reporting.lead@regtech.com",
+        password: "ReportLead2024!",
+        role: "team_lead",
+        team: "Reporting",
+    },
+    {
+        name: "Customer Communication Lead",
+        email: "customer_communication.lead@regtech.com",
+        password: "CustCommLead2024!",
+        role: "team_lead",
+        team: "Customer Communication",
+    },
+    {
+        name: "Governance Lead",
+        email: "governance.lead@regtech.com",
+        password: "GovLead2024!",
+        role: "team_lead",
+        team: "Governance",
+    },
+    {
+        name: "Legal Lead",
+        email: "legal.lead@regtech.com",
+        password: "LegalLead2024!",
+        role: "team_lead",
+        team: "Legal",
+    },
+]
+
+const SEED_USERS: SeedUser[] = [
+    // ── Compliance Officer ──
+    {
+        name: "Nitish (Compliance Officer)",
+        email: "compliance@regtech.com",
+        password: "Compliance2024!",
+        role: "compliance_officer",
+        team: "",
+    },
+>>>>>>> 5860cc5ef9a87de0fb9e6727d22dd9bb4f22edb5
 
 // List of teams (from previous hardcoded teams)
 const TEAMS = [
@@ -99,8 +171,13 @@ export async function POST(req: Request) {
 
         const results: { email: string; status: string; error?: string }[] = []
 
+<<<<<<< HEAD
         // Only seed admin, compliance officer, and one lead/executor/checker per team
         const allUsers = SEED_USERS;
+=======
+        // Combine all users: compliance officer, team members, team reviewers, and team leads
+        const allUsers = [...SEED_USERS, ...TEAM_REVIEWER_USERS, ...TEAM_LEAD_USERS]
+>>>>>>> 5860cc5ef9a87de0fb9e6727d22dd9bb4f22edb5
 
         for (const user of allUsers) {
             try {
