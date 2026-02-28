@@ -266,7 +266,7 @@ export type ActionableWorkstream =
     | "Legal"
     | "Other";
 
-export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking";
+export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected";
 
 export interface ActionableItem {
     id: string;
@@ -300,7 +300,7 @@ export interface ActionableItem {
     delay_justification?: string;        // Team Lead's justification for the delay
     delay_justification_by?: string;     // Name of team lead who justified
     delay_justification_at?: string;     // ISO datetime of justification
-    delay_chat?: DelayChatMessage[];     // Discussion thread for delayed tasks
+    delay_justification_status?: "pending_review" | "reviewed";  // CO must review before final
     audit_trail?: AuditTrailEntry[];     // Full audit trail
     // Legacy fields kept for backward compat with existing data
     actor?: string;
@@ -323,15 +323,6 @@ export interface ActionableComment {
     id: string;
     author: string;
     role: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead";
-    text: string;
-    timestamp: string;  // ISO datetime
-}
-
-export interface DelayChatMessage {
-    id: string;
-    author: string;
-    role: "team_member" | "team_reviewer" | "team_lead";
-    team: string;
     text: string;
     timestamp: string;  // ISO datetime
 }

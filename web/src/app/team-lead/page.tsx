@@ -7,8 +7,6 @@ import {
     fetchDelayedActionables,
     submitDelayJustification,
     updateActionable,
-    postDelayChatMessage,
-    fetchDelayChatMessages,
     fetchAuditTrail,
 } from "@/lib/api"
 import {
@@ -17,10 +15,10 @@ import {
     ActionableWorkstream,
     ActionableComment,
     TaskStatus,
-    DelayChatMessage,
     AuditTrailEntry,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
+import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { AuthGuard } from "@/components/auth/auth-guard"
@@ -76,16 +74,17 @@ const RISK_STYLES: Record<string, { bg: string; text: string }> = {
 }
 
 const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: string }> = {
-    assigned:    { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
-    in_progress: { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
-    team_review: { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
-    review:      { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
-    completed:   { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
-    reworking:   { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
+    assigned:           { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
+    in_progress:        { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
+    team_review:        { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
+    review:             { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
+    completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
+    reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
+    reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, review: 1, reworking: 2, in_progress: 3, assigned: 4, completed: 5,
+    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -247,116 +246,6 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
     )
 }
 
-// ─── Delay Chat Panel ────────────────────────────────────────────────────────
-
-function DelayChatPanel({
-    docId,
-    itemId,
-    userName,
-    userTeam,
-}: {
-    docId: string
-    itemId: string
-    userName: string
-    userTeam: string
-}) {
-    const [messages, setMessages] = React.useState<DelayChatMessage[]>([])
-    const [loading, setLoading] = React.useState(true)
-    const [text, setText] = React.useState("")
-    const [sending, setSending] = React.useState(false)
-    const scrollRef = React.useRef<HTMLDivElement>(null)
-
-    const loadMessages = React.useCallback(async () => {
-        try {
-            const result = await fetchDelayChatMessages(docId, itemId)
-            setMessages(result.messages || [])
-        } catch {
-            // silently fail
-        } finally {
-            setLoading(false)
-        }
-    }, [docId, itemId])
-
-    React.useEffect(() => { loadMessages() }, [loadMessages])
-
-    React.useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-        }
-    }, [messages])
-
-    const handleSend = async () => {
-        if (!text.trim() || sending) return
-        setSending(true)
-        try {
-            await postDelayChatMessage(docId, itemId, userName, "team_lead", text.trim(), userTeam)
-            setText("")
-            await loadMessages()
-        } catch {
-            toast.error("Failed to send message")
-        } finally {
-            setSending(false)
-        }
-    }
-
-    return (
-        <div className="border border-border/30 rounded-lg bg-muted/5 overflow-hidden">
-            <div className="px-3 py-2 border-b border-border/20 bg-muted/10">
-                <span className="text-[11px] font-semibold text-foreground/70 flex items-center gap-1.5">
-                    <MessageSquare className="h-3 w-3 text-indigo-400" />
-                    Delay Discussion
-                </span>
-            </div>
-
-            <div ref={scrollRef} className="max-h-48 overflow-y-auto p-3 space-y-2">
-                {loading && (
-                    <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    </div>
-                )}
-                {!loading && messages.length === 0 && (
-                    <p className="text-[10px] text-muted-foreground/40 italic text-center py-3">No messages yet. Start the discussion about this delay.</p>
-                )}
-                {messages.map((msg, idx) => (
-                    <div key={msg.id || idx} className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-semibold text-foreground/80">{msg.author}</span>
-                            <span className={cn(
-                                "text-[8px] px-1 py-0.5 rounded font-medium",
-                                msg.role === "team_lead" ? "bg-indigo-500/15 text-indigo-400" :
-                                msg.role === "team_reviewer" ? "bg-teal-500/15 text-teal-400" :
-                                msg.role === "team_member" ? "bg-amber-500/15 text-amber-400" :
-                                "bg-muted/30 text-muted-foreground"
-                            )}>
-                                {msg.role === "team_lead" ? "Lead" : msg.role === "team_reviewer" ? "Reviewer" : "Member"}
-                            </span>
-                            <span className="text-[8px] text-muted-foreground/30">{formatDate(msg.timestamp)}</span>
-                        </div>
-                        <p className="text-[11px] text-foreground/70 pl-0.5">{msg.text}</p>
-                    </div>
-                ))}
-            </div>
-
-            <div className="border-t border-border/20 p-2 flex items-center gap-2">
-                <input
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-border/40 focus:border-indigo-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                />
-                <button
-                    onClick={handleSend}
-                    disabled={!text.trim() || sending}
-                    className="p-1.5 rounded bg-indigo-500/15 text-indigo-500 hover:bg-indigo-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                    <Send className="h-3 w-3" />
-                </button>
-            </div>
-        </div>
-    )
-}
-
 // ─── Audit Trail Panel ───────────────────────────────────────────────────────
 
 function AuditTrailPanel({ docId, itemId }: { docId: string; itemId: string }) {
@@ -446,6 +335,7 @@ function TeamLeadContent() {
     const [delayedCollapsed, setDelayedCollapsed] = React.useState(false)
     // Tab: "overview" shows all items, "delayed" shows only delayed items
     const [tab, setTab] = React.useState<"overview" | "delayed">("overview")
+    const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -918,6 +808,25 @@ function TeamLeadContent() {
                     )}
                 </div>
             </main>
+
+            {userTeam && (
+                <button
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
+                    title="Team Chat"
+                >
+                    <MessageSquare className="h-5 w-5" />
+                </button>
+            )}
+            {userTeam && (
+                <TeamChatPanel
+                    team={userTeam}
+                    userName={userName}
+                    userRole={role || "team_lead"}
+                    open={chatOpen}
+                    onClose={() => setChatOpen(false)}
+                />
+            )}
         </div>
     )
 
@@ -965,7 +874,7 @@ function OversightRow({
     const [showJustifyInput, setShowJustifyInput] = React.useState(false)
     const [justifyText, setJustifyText] = React.useState("")
     // Tabs in expanded section
-    const [expandTab, setExpandTab] = React.useState<"comments" | "delay_chat" | "audit">("comments")
+    const [expandTab, setExpandTab] = React.useState<"comments" | "audit">("comments")
 
     const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
 
@@ -1048,8 +957,11 @@ function OversightRow({
 
                 {/* Delay indicator */}
                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-                    {isDelayed && hasJustification && (
+                    {isDelayed && hasJustification && item.delay_justification_status === "reviewed" && (
                         <span className="text-[9px] text-indigo-400 italic font-medium" title={`Justified: ${item.delay_justification}`}>Justified</span>
+                    )}
+                    {isDelayed && hasJustification && item.delay_justification_status !== "reviewed" && (
+                        <span className="text-[9px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.delay_justification}`}>Pending Review</span>
                     )}
                     {isDelayed && !hasJustification && (
                         <button
@@ -1150,19 +1062,6 @@ function OversightRow({
                         >
                             Comments ({commentCount})
                         </button>
-                        {isDelayed && (
-                            <button
-                                onClick={() => setExpandTab("delay_chat")}
-                                className={cn(
-                                    "px-2.5 py-1 text-[10px] rounded font-medium transition-colors",
-                                    expandTab === "delay_chat"
-                                        ? "bg-indigo-500/10 text-indigo-400"
-                                        : "text-muted-foreground/50 hover:text-foreground"
-                                )}
-                            >
-                                Delay Chat
-                            </button>
-                        )}
                         <button
                             onClick={() => setExpandTab("audit")}
                             className={cn(
@@ -1187,9 +1086,6 @@ function OversightRow({
                                 : undefined
                             }
                         />
-                    )}
-                    {expandTab === "delay_chat" && isDelayed && (
-                        <DelayChatPanel docId={docId} itemId={item.id} userName={userName} userTeam={userTeam} />
                     )}
                     {expandTab === "audit" && (
                         <AuditTrailPanel docId={docId} itemId={item.id} />

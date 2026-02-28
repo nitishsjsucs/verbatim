@@ -14,6 +14,7 @@ import {
     ActionableComment,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
+import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { AuthGuard } from "@/components/auth/auth-guard"
@@ -74,16 +75,17 @@ const RISK_STYLES: Record<string, { bg: string; text: string }> = {
 }
 
 const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: string }> = {
-    assigned:    { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
-    in_progress: { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
-    team_review: { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
-    review:      { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
-    completed:   { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
-    reworking:   { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
+    assigned:           { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
+    in_progress:        { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
+    team_review:        { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
+    review:             { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
+    completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
+    reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
+    reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, review: 1, reworking: 2, in_progress: 3, assigned: 4, completed: 5,
+    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -276,6 +278,7 @@ function TeamReviewContent() {
     const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
     // Tab: "pending" shows team_review items, "all" shows all published items for the reviewer's team
     const [tab, setTab] = React.useState<"pending" | "all">("pending")
+    const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -352,13 +355,13 @@ function TeamReviewContent() {
         }
         const existing = item.comments || []
         await handleUpdate(docId, item.id, {
-            task_status: "in_progress",
+            task_status: "reviewer_rejected",
             rejection_reason: reason,
             team_reviewer_rejected_at: new Date().toISOString(),
             team_reviewer_name: userName,
             comments: [...existing, rejectComment],
         })
-        toast.success("Task rejected — returned to Team Member for rework")
+        toast.success("Task rejected — returned to Team Member with 'Rejected by Reviewer' status")
     }, [userName, handleUpdate])
 
     // Build flat rows — only published items for the reviewer's team
@@ -696,6 +699,26 @@ function TeamReviewContent() {
                     )}
                 </div>
             </main>
+
+            {/* Team Chat floating button */}
+            {userTeam && (
+                <button
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
+                    title="Team Chat"
+                >
+                    <MessageSquare className="h-5 w-5" />
+                </button>
+            )}
+            {userTeam && (
+                <TeamChatPanel
+                    team={userTeam}
+                    userName={userName}
+                    userRole={role || "team_reviewer"}
+                    open={chatOpen}
+                    onClose={() => setChatOpen(false)}
+                />
+            )}
         </div>
     )
 }

@@ -14,6 +14,7 @@ import {
     ActionableComment,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
+import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import { useSession } from "@/lib/auth-client"
 import {
     LayoutDashboard, ChevronDown, ChevronRight,
@@ -73,18 +74,19 @@ const RISK_STYLES: Record<string, { bg: string; text: string }> = {
 }
 
 const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: string }> = {
-    assigned:    { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
-    in_progress: { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
-    team_review: { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
-    review:      { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
-    completed:   { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
-    reworking:   { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
+    assigned:           { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
+    in_progress:        { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
+    team_review:        { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
+    review:             { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
+    completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
+    reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
+    reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected"]
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, review: 1, reworking: 2, in_progress: 3, assigned: 4, completed: 5,
+    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -176,6 +178,9 @@ export default function DashboardPage() {
     const [activeCollapsed, setActiveCollapsed] = React.useState(false)
     const [completedCollapsed, setCompletedCollapsed] = React.useState(false)
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
+    const [chatOpen, setChatOpen] = React.useState(false)
+    const [chatTeam, setChatTeam] = React.useState<string>(WORKSTREAM_OPTIONS[0])
+    const [chatPickerOpen, setChatPickerOpen] = React.useState(false)
 
     const userName = session?.user?.name || "Compliance Officer"
 
@@ -708,6 +713,9 @@ export default function DashboardPage() {
                                                     {taskStatus === "team_review" && (
                                                         <span className="text-[9px] text-teal-400 italic">Team Review</span>
                                                     )}
+                                                    {taskStatus === "reviewer_rejected" && (
+                                                        <span className="text-[9px] text-rose-400 italic">Rejected by Reviewer</span>
+                                                    )}
                                                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[9px] text-muted-foreground/30">—</span>
                                                     )}
@@ -760,6 +768,34 @@ export default function DashboardPage() {
                                             {/* Expanded: Comment thread */}
                                             {isExpanded && (
                                                 <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
+                                                    {/* Pending justification review banner */}
+                                                    {item.delay_justification && item.delay_justification_status === "pending_review" && (
+                                                        <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
+                                                            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                                            <div className="flex-1">
+                                                                <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Delay Justification — Pending Your Review</p>
+                                                                <p className="text-xs text-foreground/80 mb-1">{item.delay_justification}</p>
+                                                                <p className="text-[9px] text-muted-foreground/50 mb-2">Submitted by {item.delay_justification_by}{item.delay_justification_at ? ` on ${formatDate(item.delay_justification_at)}` : ""}</p>
+                                                                <button
+                                                                    onClick={() => handleUpdate(docId, item.id, { delay_justification_status: "reviewed" })}
+                                                                    className="inline-flex items-center gap-1 text-[9px] px-2 py-1 rounded bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-colors font-medium"
+                                                                >
+                                                                    <CheckCircle2 className="h-2.5 w-2.5" /> Acknowledge Justification
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {/* Reviewed justification info */}
+                                                    {item.delay_justification && item.delay_justification_status === "reviewed" && (
+                                                        <div className="flex items-start gap-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-4 py-3">
+                                                            <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Delay Justification — Reviewed</p>
+                                                                <p className="text-xs text-foreground/80">{item.delay_justification}</p>
+                                                                <p className="text-[9px] text-muted-foreground/50 mt-1">By {item.delay_justification_by}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {/* Rejection reason banner */}
                                                     {taskStatus === "reworking" && item.rejection_reason && (
                                                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
@@ -892,6 +928,42 @@ export default function DashboardPage() {
                     )}
                 </div>
             </main>
+
+            {/* Team Chat floating button with team selector */}
+            <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+                {chatPickerOpen && !chatOpen && (
+                    <div className="bg-card border border-border rounded-lg shadow-xl p-2 min-w-[160px] max-h-[240px] overflow-y-auto">
+                        <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider px-2 py-1">Select Team</p>
+                        {WORKSTREAM_OPTIONS.map(ws => (
+                            <button
+                                key={ws}
+                                onClick={() => { setChatTeam(ws); setChatPickerOpen(false); setChatOpen(true) }}
+                                className={cn(
+                                    "w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted/60 transition-colors",
+                                    chatTeam === ws && "bg-primary/10 text-primary"
+                                )}
+                            >
+                                {ws}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <button
+                    onClick={() => chatOpen ? setChatOpen(false) : setChatPickerOpen(!chatPickerOpen)}
+                    className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
+                    title="Team Chat"
+                >
+                    <MessageSquare className="h-5 w-5" />
+                </button>
+            </div>
+
+            <TeamChatPanel
+                team={chatTeam}
+                userName={userName}
+                userRole="compliance_officer"
+                open={chatOpen}
+                onClose={() => setChatOpen(false)}
+            />
         </div>
         </RoleRedirect>
     )

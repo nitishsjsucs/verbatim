@@ -83,7 +83,7 @@ class ActionableItem:
     delay_justification: str = ""  # Team Lead's explanation for the delay
     delay_justification_by: str = ""  # Name of team lead who provided justification
     delay_justification_at: str = ""  # ISO timestamp when justification was provided
-    delay_chat: list = field(default_factory=list)  # List of {id, author, role, team, text, timestamp}
+    delay_justification_status: str = ""  # "pending_review" or "reviewed"
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
 
     def to_dict(self) -> dict:
@@ -124,7 +124,7 @@ class ActionableItem:
             "delay_justification": self.delay_justification,
             "delay_justification_by": self.delay_justification_by,
             "delay_justification_at": self.delay_justification_at,
-            "delay_chat": self.delay_chat,
+            "delay_justification_status": self.delay_justification_status,
             "audit_trail": self.audit_trail,
         }
 
@@ -179,7 +179,7 @@ class ActionableItem:
             delay_justification=data.get("delay_justification", ""),
             delay_justification_by=data.get("delay_justification_by", ""),
             delay_justification_at=data.get("delay_justification_at", ""),
-            delay_chat=data.get("delay_chat", []),
+            delay_justification_status=data.get("delay_justification_status", ""),
             audit_trail=data.get("audit_trail", []),
         )
 

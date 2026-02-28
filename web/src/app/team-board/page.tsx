@@ -12,6 +12,7 @@ import {
 } from "@/lib/api"
 import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
+import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
     FileText, Paperclip, Calendar, CheckCircle2,
@@ -41,19 +42,20 @@ function normalizeRisk(modality: string): string {
 }
 
 const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: string }> = {
-    assigned:    { label: "Assigned",    bg: "bg-slate-500",   text: "text-white" },
-    in_progress: { label: "In Progress", bg: "bg-amber-500",   text: "text-white" },
-    team_review: { label: "Team Review", bg: "bg-teal-500",    text: "text-white" },
-    review:      { label: "Under Review", bg: "bg-blue-500",   text: "text-white" },
-    completed:   { label: "Completed",   bg: "bg-emerald-500", text: "text-white" },
-    reworking:   { label: "Reworking",   bg: "bg-orange-500",  text: "text-white" },
+    assigned:           { label: "Assigned",              bg: "bg-slate-500",   text: "text-white" },
+    in_progress:        { label: "In Progress",           bg: "bg-amber-500",   text: "text-white" },
+    team_review:        { label: "Team Review",           bg: "bg-teal-500",    text: "text-white" },
+    review:             { label: "Under Review",          bg: "bg-blue-500",    text: "text-white" },
+    completed:          { label: "Completed",             bg: "bg-emerald-500", text: "text-white" },
+    reworking:          { label: "Reworking",             bg: "bg-orange-500",  text: "text-white" },
+    reviewer_rejected:  { label: "Rejected by Reviewer",  bg: "bg-rose-500",    text: "text-white" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, review: 1, reworking: 2, in_progress: 3, assigned: 4, completed: 5,
+    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected"]
 const RISK_OPTIONS = ["High Risk", "Medium Risk", "Low Risk"]
 
 const RISK_STYLES: Record<string, { bg: string; text: string }> = {
@@ -219,7 +221,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
     const taskStatus = (item.task_status || "assigned") as TaskStatus
     const statusCfg = TASK_STATUS_CONFIG[taskStatus] || TASK_STATUS_CONFIG.assigned
     const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
-    const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking"
+    const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking" || taskStatus === "reviewer_rejected"
     const isCompleted = taskStatus === "completed"
     const isUnderTeamReview = taskStatus === "team_review"
     const isUnderReview = taskStatus === "review"
@@ -361,11 +363,17 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                     {canAdvance && (
                         <button
                             onClick={() => onStatusTransition(docId, item)}
-                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                            className={cn(
+                                "inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded transition-colors font-medium",
+                                taskStatus === "assigned"
+                                    ? "bg-slate-500/15 text-slate-400 hover:bg-slate-500/25"
+                                    : "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                            )}
                         >
                             {taskStatus === "assigned" && <><ArrowRight className="h-2.5 w-2.5" /> Start</>}
                             {taskStatus === "in_progress" && <><CheckCircle2 className="h-2.5 w-2.5" /> Submit</>}
                             {taskStatus === "reworking" && <><RotateCcw className="h-2.5 w-2.5" /> Resubmit</>}
+                            {taskStatus === "reviewer_rejected" && <><RotateCcw className="h-2.5 w-2.5" /> Rework</>}
                         </button>
                     )}
                     {isUnderTeamReview && (
@@ -546,6 +554,7 @@ function TeamBoardContent() {
     const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
+    const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadData = React.useCallback(async () => {
         try {
@@ -606,6 +615,9 @@ function TeamBoardContent() {
             nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
         }
+        else if (currentStatus === "reviewer_rejected") {
+            nextStatus = "in_progress"
+        }
 
         if (nextStatus) {
             await handleUpdate(docId, item.id, { task_status: nextStatus, ...extraUpdates })
@@ -627,6 +639,7 @@ function TeamBoardContent() {
         const teamReview = allItems.filter(e => e.item.task_status === "team_review").length
         const review = allItems.filter(e => e.item.task_status === "review").length
         const reworking = allItems.filter(e => e.item.task_status === "reworking").length
+        const reviewerRejected = allItems.filter(e => e.item.task_status === "reviewer_rejected").length
         const assigned = allItems.filter(e => !e.item.task_status || e.item.task_status === "assigned").length
         const highRisk = allItems.filter(e => normalizeRisk(e.item.modality) === "High Risk").length
         const midRisk = allItems.filter(e => normalizeRisk(e.item.modality) === "Medium Risk").length
@@ -635,7 +648,7 @@ function TeamBoardContent() {
         const delayed30 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d30").length
         const delayed60 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d60").length
         const delayed90 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d90").length
-        return { total, completed, inProgress, teamReview, review, reworking, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
+        return { total, completed, inProgress, teamReview, review, reworking, reviewerRejected, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
     }, [allItems])
 
     // Filter + Sort
@@ -955,6 +968,26 @@ function TeamBoardContent() {
                     )}
                 </div>
             </main>
+
+            {/* Team Chat floating button */}
+            {userTeam && (
+                <button
+                    onClick={() => setChatOpen(!chatOpen)}
+                    className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
+                    title="Team Chat"
+                >
+                    <MessageSquare className="h-5 w-5" />
+                </button>
+            )}
+            {userTeam && (
+                <TeamChatPanel
+                    team={userTeam}
+                    userName={userName}
+                    userRole={role || "team_member"}
+                    open={chatOpen}
+                    onClose={() => setChatOpen(false)}
+                />
+            )}
         </div>
     )
 }

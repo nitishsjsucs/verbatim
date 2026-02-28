@@ -1236,7 +1236,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
         "team_reviewer_approved_at", "team_reviewer_rejected_at",
         "is_delayed", "delay_detected_at",
         "delay_justification", "delay_justification_by", "delay_justification_at",
-        "delay_chat", "audit_trail",
+        "delay_justification_status", "audit_trail",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -1827,8 +1827,8 @@ def export_training_data():
 # Admin Dashboard API Endpoints
 # ---------------------------------------------------------------------------
 
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "govinda@admin2025")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin@govinda.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Govinda@2026")
 
 
 class AdminLoginRequest(BaseModel):
@@ -2296,94 +2296,18 @@ def submit_delay_justification(doc_id: str, item_id: str, body: DelayJustificati
     target.delay_justification = body.justification
     target.delay_justification_by = body.justifier_name
     target.delay_justification_at = now_iso
+    target.delay_justification_status = "pending_review"
     target.audit_trail.append({
-        "event": "delay_justification",
+        "event": "delay_justification_submitted",
         "actor": body.justifier_name,
         "role": "team_lead",
         "timestamp": now_iso,
-        "details": body.justification,
+        "details": f"Justification pending CO review: {body.justification}",
     })
 
     result.compute_stats()
     store.save(result)
     return target.to_dict()
-
-
-class DelayChatMessage(BaseModel):
-    author: str
-    role: str
-    team: str = ""
-    text: str
-
-
-@app.post("/documents/{doc_id}/actionables/{item_id}/delay-chat")
-def post_delay_chat_message(doc_id: str, item_id: str, body: DelayChatMessage):
-    """
-    Post a message to the delay discussion for a delayed task.
-    Participants: team_member, team_reviewer, team_lead.
-    Compliance officer has read-only access (via GET).
-    """
-    store = get_actionable_store()
-    result = store.load(doc_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Actionables not found for this document")
-
-    target = None
-    for a in result.actionables:
-        if a.id == item_id:
-            target = a
-            break
-    if not target:
-        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
-
-    if not target.is_delayed:
-        raise HTTPException(status_code=400, detail="Task is not delayed — chat not available")
-
-    # Only team_member, team_reviewer, team_lead can post
-    allowed_roles = ("team_member", "team_reviewer", "team_lead")
-    if body.role not in allowed_roles:
-        raise HTTPException(status_code=403, detail="Only team members, reviewers, and leads can post to delay chat")
-
-    now_iso = datetime.now(timezone.utc).isoformat()
-    msg = {
-        "id": str(uuid.uuid4()),
-        "author": body.author,
-        "role": body.role,
-        "team": body.team,
-        "text": body.text,
-        "timestamp": now_iso,
-    }
-    target.delay_chat.append(msg)
-    target.audit_trail.append({
-        "event": "delay_chat_message",
-        "actor": body.author,
-        "role": body.role,
-        "timestamp": now_iso,
-        "details": body.text[:200],
-    })
-
-    result.compute_stats()
-    store.save(result)
-    return msg
-
-
-@app.get("/documents/{doc_id}/actionables/{item_id}/delay-chat")
-def get_delay_chat(doc_id: str, item_id: str):
-    """Get all delay chat messages for a task. Available to all roles (read-only for compliance)."""
-    store = get_actionable_store()
-    result = store.load(doc_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Actionables not found for this document")
-
-    target = None
-    for a in result.actionables:
-        if a.id == item_id:
-            target = a
-            break
-    if not target:
-        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
-
-    return {"item_id": item_id, "doc_id": doc_id, "messages": target.delay_chat}
 
 
 @app.get("/documents/{doc_id}/actionables/{item_id}/audit-trail")
@@ -2403,6 +2327,72 @@ def get_audit_trail(doc_id: str, item_id: str):
         raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
 
     return {"item_id": item_id, "doc_id": doc_id, "audit_trail": target.audit_trail}
+
+
+# ---------------------------------------------------------------------------
+# Team Chat Endpoints
+# ---------------------------------------------------------------------------
+
+
+class TeamChatMessageRequest(BaseModel):
+    author: str
+    role: str
+    text: str
+
+
+@app.get("/team-chat/{team}/{channel}")
+def get_team_chat(team: str, channel: str):
+    """
+    Get messages for a team chat channel.
+    channel: "internal" (team only) or "compliance" (team + CO).
+    """
+    if channel not in ("internal", "compliance"):
+        raise HTTPException(status_code=400, detail="Channel must be 'internal' or 'compliance'")
+
+    from utils.mongo import get_db
+    db = get_db()
+    doc = db["team_chats"].find_one({"team": team, "channel": channel})
+    messages = doc.get("messages", []) if doc else []
+    return {"team": team, "channel": channel, "messages": messages}
+
+
+@app.post("/team-chat/{team}/{channel}")
+def post_team_chat_message(team: str, channel: str, body: TeamChatMessageRequest):
+    """
+    Post a message to a team chat channel.
+    internal: team_member, team_reviewer, team_lead can post.
+    compliance: team_member, team_reviewer, team_lead, compliance_officer can post.
+    """
+    if channel not in ("internal", "compliance"):
+        raise HTTPException(status_code=400, detail="Channel must be 'internal' or 'compliance'")
+
+    internal_roles = ("team_member", "team_reviewer", "team_lead")
+    compliance_roles = ("team_member", "team_reviewer", "team_lead", "compliance_officer")
+    allowed = compliance_roles if channel == "compliance" else internal_roles
+
+    if body.role not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{body.role}' cannot post to '{channel}' channel"
+        )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    msg = {
+        "id": str(uuid.uuid4()),
+        "author": body.author,
+        "role": body.role,
+        "text": body.text,
+        "timestamp": now_iso,
+    }
+
+    from utils.mongo import get_db
+    db = get_db()
+    db["team_chats"].update_one(
+        {"team": team, "channel": channel},
+        {"$push": {"messages": msg}, "$setOnInsert": {"team": team, "channel": channel}},
+        upsert=True,
+    )
+    return msg
 
 
 if __name__ == "__main__":

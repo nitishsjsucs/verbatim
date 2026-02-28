@@ -16,7 +16,6 @@ import {
     Conversation,
     ConversationMeta,
     StorageStats,
-    DelayChatMessage,
     AuditTrailEntry,
 } from './types';
 
@@ -433,35 +432,6 @@ export async function submitDelayJustification(
     return res.json();
 }
 
-export async function postDelayChatMessage(
-    docId: string,
-    itemId: string,
-    author: string,
-    role: string,
-    text: string,
-    team?: string,
-): Promise<DelayChatMessage> {
-    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/delay-chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ author, role, team: team || '', text }),
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to post delay chat message');
-    }
-    return res.json();
-}
-
-export async function fetchDelayChatMessages(
-    docId: string,
-    itemId: string,
-): Promise<{ item_id: string; doc_id: string; messages: DelayChatMessage[] }> {
-    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/delay-chat`);
-    if (!res.ok) throw new Error('Failed to fetch delay chat');
-    return res.json();
-}
-
 export async function fetchAuditTrail(
     docId: string,
     itemId: string,
@@ -494,6 +464,46 @@ export async function exportTrainingData(): Promise<void> {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// Team Chat API
+// ---------------------------------------------------------------------------
+
+export interface TeamChatMessage {
+    id: string;
+    author: string;
+    role: string;
+    text: string;
+    timestamp: string;
+}
+
+export async function fetchTeamChatMessages(
+    team: string,
+    channel: 'internal' | 'compliance',
+): Promise<{ team: string; channel: string; messages: TeamChatMessage[] }> {
+    const res = await apiFetch(`/team-chat/${encodeURIComponent(team)}/${channel}`);
+    if (!res.ok) throw new Error('Failed to fetch team chat');
+    return res.json();
+}
+
+export async function postTeamChatMessage(
+    team: string,
+    channel: 'internal' | 'compliance',
+    author: string,
+    role: string,
+    text: string,
+): Promise<TeamChatMessage> {
+    const res = await apiFetch(`/team-chat/${encodeURIComponent(team)}/${channel}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author, role, text }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to post message');
+    }
+    return res.json();
 }
 
 // ---------------------------------------------------------------------------
