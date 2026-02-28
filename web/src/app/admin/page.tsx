@@ -800,70 +800,79 @@ function QueriesTab({
 }
 
 function QueryDetailPanel({ detail }: { detail: Record<string, unknown> }) {
+  const answerText: string = String(detail.answer_text || detail.answer || "—")
+  const verificationStatus: string = String(detail.verification_status || "—")
+  const verificationNotes: string = detail.verification_notes ? String(detail.verification_notes) : ""
+  const feedbackObj = (detail.feedback && typeof detail.feedback === "object") ? detail.feedback as Record<string, unknown> : null
+  const feedbackRating: string = feedbackObj ? String(feedbackObj.rating ?? "—") : ""
+  const feedbackText: string = feedbackObj?.text ? String(feedbackObj.text) : ""
+  const citationsList = Array.isArray(detail.citations) ? (detail.citations as Array<Record<string, string>>) : []
+  const stageTimings = (detail.stage_timings && typeof detail.stage_timings === "object") ? detail.stage_timings as Record<string, number> : null
+
   return (
     <div className="space-y-3">
       {/* Answer */}
       <div>
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Answer</p>
-        <p className="text-[13px] text-foreground whitespace-pre-wrap max-h-[200px] overflow-auto">{String((detail.answer_text as string) || (detail.answer as string) || "—")}</p>
+        <p className="text-[13px] text-foreground whitespace-pre-wrap max-h-[200px] overflow-auto">{answerText}</p>
       </div>
 
       {/* Stage Timings */}
-      {detail.stage_timings && typeof detail.stage_timings === "object" && Object.keys(detail.stage_timings as Record<string, number>).length > 0 && (
+      {stageTimings && Object.keys(stageTimings).length > 0 ? (
         <div>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Stage Timings</p>
           <div className="flex flex-wrap gap-2">
-            {Object.entries(detail.stage_timings as Record<string, number>).map(([stage, time]) => (
+            {Object.entries(stageTimings).map(([stage, time]) => (
               <span key={stage} className="rounded bg-muted px-2 py-0.5 text-[11px] font-mono">
                 {stage}: {fmtMs(time)}
               </span>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Citations */}
-      {Array.isArray(detail.citations) && (detail.citations as Array<Record<string, string>>).length > 0 && (
+      {citationsList.length > 0 ? (
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Citations ({(detail.citations as Array<Record<string, string>>).length})</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Citations ({citationsList.length})</p>
           <div className="flex flex-wrap gap-1">
-            {(detail.citations as Array<Record<string, string>>).map((c, i) => (
+            {citationsList.map((c, i) => (
               <span key={i} className="rounded bg-muted px-2 py-0.5 text-[11px]">
                 [{String(c.citation_id)}] {String(c.title || "").slice(0, 40)}
               </span>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Verification */}
       <div className="flex items-center gap-4 text-[12px]">
-        <span className="text-muted-foreground">Verification: <span className="font-medium text-foreground">{String(detail.verification_status || "—")}</span></span>
-        {detail.verification_notes ? <span className="text-muted-foreground italic">{String(detail.verification_notes).slice(0, 120)}</span> : null}
+        <span className="text-muted-foreground">Verification: <span className="font-medium text-foreground">{verificationStatus}</span></span>
+        {verificationNotes ? <span className="text-muted-foreground italic">{verificationNotes.slice(0, 120)}</span> : null}
       </div>
 
       {/* Routing Log */}
-      {detail.routing_log && typeof detail.routing_log === "object" && (
+      {(detail.routing_log && typeof detail.routing_log === "object") ? (
         <div>
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Routing</p>
           <div className="text-[11px] font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[150px] overflow-auto">
             <pre className="whitespace-pre-wrap">{JSON.stringify(detail.routing_log, null, 2)}</pre>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Feedback */}
-      {detail.feedback && typeof detail.feedback === "object" && (
+      {feedbackObj ? (
         <div className="flex items-center gap-2 text-[12px]">
           <Star className="h-3.5 w-3.5 text-yellow-500" />
           <span className="text-muted-foreground">
-            Rating: <span className="font-medium text-foreground">{String((detail.feedback as Record<string, unknown>).rating ?? "—")}</span>
+            Rating: <span className="font-medium text-foreground">{feedbackRating}</span>
           </span>
-          {(detail.feedback as Record<string, unknown>).text ? (
-            <span className="text-muted-foreground ml-2">&ldquo;{String((detail.feedback as Record<string, unknown>).text)}&rdquo;</span>
+          {feedbackText ? (
+            <span className="text-muted-foreground ml-2">&ldquo;{feedbackText}&rdquo;</span>
           ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
