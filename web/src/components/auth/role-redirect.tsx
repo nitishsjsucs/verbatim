@@ -25,10 +25,16 @@ const REVIEWER_ONLY_PATHS = [
     "/team-review",
 ]
 
+/** Pages only for team leads */
+const LEAD_ONLY_PATHS = [
+    "/team-lead",
+]
+
 /**
  * Wrap any page with this component to enforce:
  *  1. Must be signed in  → redirect to /sign-in
  *  2. If officer-only page + team_member role → redirect to /team-board
+ *  3. If officer-only page + team_lead role → redirect to /team-lead
  */
 export function RoleRedirect({ children }: { children: React.ReactNode }) {
     const { data: session, isPending } = useSession()
@@ -47,8 +53,9 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
         const role = getUserRole(session)
         const isTeamMember = role === "team_member"
         const isTeamReviewer = role === "team_reviewer"
+        const isTeamLead = role === "team_lead"
 
-        // Team member trying to access an officer-only or reviewer-only page → redirect
+        // Team member trying to access an officer-only, reviewer-only, or lead-only page → redirect
         if (isTeamMember) {
             const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
                 pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
@@ -56,19 +63,39 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
             const isReviewerOnly = REVIEWER_ONLY_PATHS.some(p =>
                 pathname === p || pathname.startsWith(p + "/")
             )
-            if (isOfficerOnly || isReviewerOnly) {
+            const isLeadOnly = LEAD_ONLY_PATHS.some(p =>
+                pathname === p || pathname.startsWith(p + "/")
+            )
+            if (isOfficerOnly || isReviewerOnly || isLeadOnly) {
                 router.replace("/team-board")
                 return
             }
         }
 
-        // Team reviewer trying to access an officer-only page → redirect
+        // Team reviewer trying to access an officer-only or lead-only page → redirect
         if (isTeamReviewer) {
             const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
                 pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
             )
-            if (isOfficerOnly) {
+            const isLeadOnly = LEAD_ONLY_PATHS.some(p =>
+                pathname === p || pathname.startsWith(p + "/")
+            )
+            if (isOfficerOnly || isLeadOnly) {
                 router.replace("/team-review")
+                return
+            }
+        }
+
+        // Team lead trying to access an officer-only or reviewer-only page → redirect
+        if (isTeamLead) {
+            const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
+                pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
+            )
+            const isReviewerOnly = REVIEWER_ONLY_PATHS.some(p =>
+                pathname === p || pathname.startsWith(p + "/")
+            )
+            if (isOfficerOnly || isReviewerOnly) {
+                router.replace("/team-lead")
                 return
             }
         }
@@ -86,7 +113,7 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
     // Not signed in — show nothing while redirecting
     if (!session) return null
 
-    // Team member / reviewer on restricted page — show nothing while redirecting
+    // Team member / reviewer / lead on restricted page — show nothing while redirecting
     const role = getUserRole(session)
     if (role === "team_member") {
         const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
@@ -95,13 +122,28 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
         const isReviewerOnly = REVIEWER_ONLY_PATHS.some(p =>
             pathname === p || pathname.startsWith(p + "/")
         )
-        if (isOfficerOnly || isReviewerOnly) return null
+        const isLeadOnly = LEAD_ONLY_PATHS.some(p =>
+            pathname === p || pathname.startsWith(p + "/")
+        )
+        if (isOfficerOnly || isReviewerOnly || isLeadOnly) return null
     }
     if (role === "team_reviewer") {
         const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
             pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
         )
-        if (isOfficerOnly) return null
+        const isLeadOnly = LEAD_ONLY_PATHS.some(p =>
+            pathname === p || pathname.startsWith(p + "/")
+        )
+        if (isOfficerOnly || isLeadOnly) return null
+    }
+    if (role === "team_lead") {
+        const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
+            pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
+        )
+        const isReviewerOnly = REVIEWER_ONLY_PATHS.some(p =>
+            pathname === p || pathname.startsWith(p + "/")
+        )
+        if (isOfficerOnly || isReviewerOnly) return null
     }
 
     return <>{children}</>

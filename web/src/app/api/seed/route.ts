@@ -94,6 +94,66 @@ const TEAM_REVIEWER_USERS: SeedUser[] = [
     },
 ]
 
+// Team Lead users — oversight role, one per team
+const TEAM_LEAD_USERS: SeedUser[] = [
+    {
+        name: "Policy Lead",
+        email: "policy.lead@regtech.com",
+        password: "PolicyLead2024!",
+        role: "team_lead",
+        team: "Policy",
+    },
+    {
+        name: "Technology Lead",
+        email: "technology.lead@regtech.com",
+        password: "TechLead2024!",
+        role: "team_lead",
+        team: "Technology",
+    },
+    {
+        name: "Operations Lead",
+        email: "operations.lead@regtech.com",
+        password: "OpsLead2024!",
+        role: "team_lead",
+        team: "Operations",
+    },
+    {
+        name: "Training Lead",
+        email: "training.lead@regtech.com",
+        password: "TrainLead2024!",
+        role: "team_lead",
+        team: "Training",
+    },
+    {
+        name: "Reporting Lead",
+        email: "reporting.lead@regtech.com",
+        password: "ReportLead2024!",
+        role: "team_lead",
+        team: "Reporting",
+    },
+    {
+        name: "Customer Communication Lead",
+        email: "customer_communication.lead@regtech.com",
+        password: "CustCommLead2024!",
+        role: "team_lead",
+        team: "Customer Communication",
+    },
+    {
+        name: "Governance Lead",
+        email: "governance.lead@regtech.com",
+        password: "GovLead2024!",
+        role: "team_lead",
+        team: "Governance",
+    },
+    {
+        name: "Legal Lead",
+        email: "legal.lead@regtech.com",
+        password: "LegalLead2024!",
+        role: "team_lead",
+        team: "Legal",
+    },
+]
+
 const SEED_USERS: SeedUser[] = [
     // ── Compliance Officer ──
     {
@@ -212,8 +272,8 @@ export async function POST(req: Request) {
 
         const results: { email: string; status: string; error?: string }[] = []
 
-        // Combine all users: compliance officer, team members, and team reviewers
-        const allUsers = [...SEED_USERS, ...TEAM_REVIEWER_USERS]
+        // Combine all users: compliance officer, team members, team reviewers, and team leads
+        const allUsers = [...SEED_USERS, ...TEAM_REVIEWER_USERS, ...TEAM_LEAD_USERS]
 
         for (const user of allUsers) {
             try {

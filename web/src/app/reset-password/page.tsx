@@ -11,6 +11,7 @@ import { getUserRole } from "@/components/auth/auth-guard"
 function redirectForRole(role: string): string {
     if (role === "compliance_officer" || role === "admin") return "/"
     if (role === "team_reviewer") return "/team-review"
+    if (role === "team_lead") return "/team-lead"
     return "/team-board"
 }
 

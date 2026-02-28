@@ -1234,6 +1234,9 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
         "reviewer_comments", "evidence_files", "comments",
         "submitted_at", "team_reviewer_name",
         "team_reviewer_approved_at", "team_reviewer_rejected_at",
+        "is_delayed", "delay_detected_at",
+        "delay_justification", "delay_justification_by", "delay_justification_at",
+        "delay_chat", "audit_trail",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -2192,6 +2195,214 @@ def admin_runtime_config():
         "config": _runtime_config,
         "persisted": _load_persisted_runtime_config(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Delay Monitoring Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/actionables/check-delays")
+def check_delays():
+    """
+    Scan all actionables and mark those past deadline as delayed.
+    Adds audit trail entries for newly detected delays.
+    Called periodically or on-demand.
+    """
+    store = get_actionable_store()
+    db = store._collection
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    updated_count = 0
+
+    for raw in db.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        result = store.load(doc_id)
+        if not result:
+            continue
+        changed = False
+        for a in result.actionables:
+            if a.deadline and a.task_status not in ("completed", "") and not a.is_delayed:
+                try:
+                    dl = datetime.fromisoformat(a.deadline.replace("Z", "+00:00"))
+                    if now > dl:
+                        a.is_delayed = True
+                        a.delay_detected_at = now_iso
+                        a.audit_trail.append({
+                            "event": "delay_detected",
+                            "actor": "system",
+                            "role": "system",
+                            "timestamp": now_iso,
+                            "details": f"Task missed deadline {a.deadline}",
+                        })
+                        changed = True
+                        updated_count += 1
+                except (ValueError, TypeError):
+                    pass
+        if changed:
+            result.compute_stats()
+            store.save(result)
+
+    return {"checked_at": now_iso, "newly_delayed": updated_count}
+
+
+@app.get("/actionables/delayed")
+def get_delayed_actionables(team: str = Query("")):
+    """Get all delayed actionables, optionally filtered by team (workstream)."""
+    store = get_actionable_store()
+    db = store._collection
+    delayed = []
+    for raw in db.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        doc_name = raw.get("doc_name", doc_id)
+        for a in raw.get("actionables", []):
+            if a.get("is_delayed"):
+                if team and a.get("workstream", "") != team:
+                    continue
+                a["doc_id"] = doc_id
+                a["doc_name"] = doc_name
+                delayed.append(a)
+    return delayed
+
+
+class DelayJustificationRequest(BaseModel):
+    justification: str
+    justifier_name: str
+
+
+@app.post("/documents/{doc_id}/actionables/{item_id}/delay-justification")
+def submit_delay_justification(doc_id: str, item_id: str, body: DelayJustificationRequest):
+    """
+    Team Lead submits a delay justification for a delayed task.
+    Does not change task status — purely governance/accountability.
+    """
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    if not target.is_delayed:
+        raise HTTPException(status_code=400, detail="Task is not delayed")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    target.delay_justification = body.justification
+    target.delay_justification_by = body.justifier_name
+    target.delay_justification_at = now_iso
+    target.audit_trail.append({
+        "event": "delay_justification",
+        "actor": body.justifier_name,
+        "role": "team_lead",
+        "timestamp": now_iso,
+        "details": body.justification,
+    })
+
+    result.compute_stats()
+    store.save(result)
+    return target.to_dict()
+
+
+class DelayChatMessage(BaseModel):
+    author: str
+    role: str
+    team: str = ""
+    text: str
+
+
+@app.post("/documents/{doc_id}/actionables/{item_id}/delay-chat")
+def post_delay_chat_message(doc_id: str, item_id: str, body: DelayChatMessage):
+    """
+    Post a message to the delay discussion for a delayed task.
+    Participants: team_member, team_reviewer, team_lead.
+    Compliance officer has read-only access (via GET).
+    """
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    if not target.is_delayed:
+        raise HTTPException(status_code=400, detail="Task is not delayed — chat not available")
+
+    # Only team_member, team_reviewer, team_lead can post
+    allowed_roles = ("team_member", "team_reviewer", "team_lead")
+    if body.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only team members, reviewers, and leads can post to delay chat")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    msg = {
+        "id": str(uuid.uuid4()),
+        "author": body.author,
+        "role": body.role,
+        "team": body.team,
+        "text": body.text,
+        "timestamp": now_iso,
+    }
+    target.delay_chat.append(msg)
+    target.audit_trail.append({
+        "event": "delay_chat_message",
+        "actor": body.author,
+        "role": body.role,
+        "timestamp": now_iso,
+        "details": body.text[:200],
+    })
+
+    result.compute_stats()
+    store.save(result)
+    return msg
+
+
+@app.get("/documents/{doc_id}/actionables/{item_id}/delay-chat")
+def get_delay_chat(doc_id: str, item_id: str):
+    """Get all delay chat messages for a task. Available to all roles (read-only for compliance)."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    return {"item_id": item_id, "doc_id": doc_id, "messages": target.delay_chat}
+
+
+@app.get("/documents/{doc_id}/actionables/{item_id}/audit-trail")
+def get_audit_trail(doc_id: str, item_id: str):
+    """Get full audit trail for a single actionable."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    return {"item_id": item_id, "doc_id": doc_id, "audit_trail": target.audit_trail}
 
 
 if __name__ == "__main__":

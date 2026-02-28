@@ -293,6 +293,14 @@ export interface ActionableItem {
     team_reviewer_name?: string;     // Name of team reviewer who acted
     team_reviewer_approved_at?: string;  // ISO datetime when team reviewer approved
     team_reviewer_rejected_at?: string;  // ISO datetime when team reviewer rejected
+    // Delay monitoring & Team Lead fields
+    is_delayed?: boolean;                // True if deadline passed and task not completed
+    delay_detected_at?: string;          // ISO datetime when delay was detected
+    delay_justification?: string;        // Team Lead's justification for the delay
+    delay_justification_by?: string;     // Name of team lead who justified
+    delay_justification_at?: string;     // ISO datetime of justification
+    delay_chat?: DelayChatMessage[];     // Discussion thread for delayed tasks
+    audit_trail?: AuditTrailEntry[];     // Full audit trail
     // Legacy fields kept for backward compat with existing data
     actor?: string;
     object?: string;
@@ -313,9 +321,26 @@ export interface ActionableItem {
 export interface ActionableComment {
     id: string;
     author: string;
-    role: "compliance_officer" | "team_member" | "team_reviewer";
+    role: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead";
     text: string;
     timestamp: string;  // ISO datetime
+}
+
+export interface DelayChatMessage {
+    id: string;
+    author: string;
+    role: "team_member" | "team_reviewer" | "team_lead";
+    team: string;
+    text: string;
+    timestamp: string;  // ISO datetime
+}
+
+export interface AuditTrailEntry {
+    event: string;
+    actor: string;
+    role: string;
+    timestamp: string;  // ISO datetime
+    details: string;
 }
 
 export interface ActionablesResult {
