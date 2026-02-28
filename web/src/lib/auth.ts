@@ -15,7 +15,7 @@ export const auth = betterAuth({
 
     // Auto-detect origin from proxy headers (ngrok, Vercel, etc.)
     advanced: {
-        trustedProxyHeaders: ["x-forwarded-host", "x-forwarded-proto"],
+        trustedProxyHeaders: true,
     },
 
     emailAndPassword: {
