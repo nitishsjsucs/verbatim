@@ -420,3 +420,75 @@ export async function exportTrainingData(): Promise<void> {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
+
+// ---------------------------------------------------------------------------
+// Admin Dashboard API
+// ---------------------------------------------------------------------------
+
+export async function adminLogin(username: string, password: string): Promise<{ authenticated: boolean; token: string; username: string }> {
+    const res = await apiFetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Invalid credentials' }));
+        throw new Error(err.detail || 'Invalid credentials');
+    }
+    return res.json();
+}
+
+export async function fetchAdminOverview(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/overview');
+    if (!res.ok) throw new Error('Failed to fetch admin overview');
+    return res.json();
+}
+
+export async function fetchAdminQueries(params: {
+    skip?: number;
+    limit?: number;
+    doc_id?: string;
+    sort_by?: string;
+    sort_order?: number;
+} = {}): Promise<{ total: number; skip: number; limit: number; records: Record<string, unknown>[] }> {
+    const searchParams = new URLSearchParams();
+    if (params.skip !== undefined) searchParams.set('skip', String(params.skip));
+    if (params.limit !== undefined) searchParams.set('limit', String(params.limit));
+    if (params.doc_id) searchParams.set('doc_id', params.doc_id);
+    if (params.sort_by) searchParams.set('sort_by', params.sort_by);
+    if (params.sort_order !== undefined) searchParams.set('sort_order', String(params.sort_order));
+    const res = await apiFetch(`/admin/queries?${searchParams}`);
+    if (!res.ok) throw new Error('Failed to fetch admin queries');
+    return res.json();
+}
+
+export async function fetchAdminQueryFull(recordId: string): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/admin/query/${recordId}/full`);
+    if (!res.ok) throw new Error('Failed to fetch query details');
+    return res.json();
+}
+
+export async function fetchAdminBenchmarks(lastN: number = 100): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/admin/benchmarks?last_n=${lastN}`);
+    if (!res.ok) throw new Error('Failed to fetch benchmarks');
+    return res.json();
+}
+
+export async function fetchAdminMemoryDetailed(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/memory/detailed');
+    if (!res.ok) throw new Error('Failed to fetch memory details');
+    return res.json();
+}
+
+export async function fetchAdminSystemLogs(lines: number = 200): Promise<{ total_lines: number; entries: string[] }> {
+    const res = await apiFetch(`/admin/system/logs?lines=${lines}`);
+    if (!res.ok) throw new Error('Failed to fetch system logs');
+    return res.json();
+}
+
+export async function fetchAdminRuntimeConfig(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/runtime-config');
+    if (!res.ok) throw new Error('Failed to fetch runtime config');
+    return res.json();
+}
+

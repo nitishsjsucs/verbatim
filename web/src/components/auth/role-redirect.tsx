@@ -17,6 +17,7 @@ const OFFICER_ONLY_PATHS = [
     "/history",
     "/actionables",
     "/dashboard",
+    "/admin",
 ]
 
 /** Pages only for team reviewers */

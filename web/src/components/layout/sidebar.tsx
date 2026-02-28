@@ -16,6 +16,7 @@ import {
   LogOut,
   Send,
   Users,
+  Lock,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -185,6 +186,15 @@ export function Sidebar({ className }: SidebarProps) {
                 iconClassName="text-pink-500"
                 label="Risk"
                 active={pathname === "/risk"}
+                collapsed={collapsed}
+              />
+              <div className="my-2 border-t border-sidebar-border/50" />
+              <NavItem
+                href="/admin"
+                icon={<Lock className="h-4 w-4" />}
+                iconClassName="text-red-500"
+                label="Admin"
+                active={pathname === "/admin"}
                 collapsed={collapsed}
               />
             </div>
