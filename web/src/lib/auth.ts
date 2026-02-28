@@ -36,11 +36,7 @@ export const auth = betterAuth({
                 required: false,
                 defaultValue: "",
             },
-            forcePasswordReset: {
-                type: "boolean",
-                required: false,
-                defaultValue: false,
-            },
+                // forcePasswordReset removed
         },
     },
 
