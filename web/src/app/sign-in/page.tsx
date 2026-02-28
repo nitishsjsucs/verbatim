@@ -8,8 +8,10 @@ import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { cn } from "@/lib/utils"
 import { getUserRole } from "@/components/auth/auth-guard"
 
-function redirectForRole(role: string): string {
+function redirectForRole(role: string, forcePasswordReset?: boolean): string {
+    if (forcePasswordReset) return "/reset-password"
     if (role === "compliance_officer" || role === "admin") return "/"
+    if (role === "team_reviewer") return "/team-review"
     return "/team-board"
 }
 
@@ -25,7 +27,8 @@ export default function SignInPage() {
     React.useEffect(() => {
         if (!isPending && session) {
             const role = getUserRole(session)
-            router.replace(redirectForRole(role))
+            const forcePasswordReset = (session.user as { forcePasswordReset?: boolean })?.forcePasswordReset
+            router.replace(redirectForRole(role, forcePasswordReset))
         }
     }, [isPending, session, router])
 

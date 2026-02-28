@@ -29,6 +29,12 @@ export function getUserTeam(session: any): string {
     return session?.user?.team || ""
 }
 
+/** Check if user needs to reset password */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getForcePasswordReset(session: any): boolean {
+    return session?.user?.forcePasswordReset === true
+}
+
 export function AuthGuard({ children, fallback, allowedRoles }: AuthGuardProps) {
     const { data: session, isPending } = useSession()
     const router = useRouter()
@@ -36,6 +42,13 @@ export function AuthGuard({ children, fallback, allowedRoles }: AuthGuardProps) 
     React.useEffect(() => {
         if (!isPending && !session) {
             router.replace("/sign-in")
+        }
+    }, [isPending, session, router])
+
+    // Force password reset redirect
+    React.useEffect(() => {
+        if (!isPending && session && getForcePasswordReset(session)) {
+            router.replace("/reset-password")
         }
     }, [isPending, session, router])
 

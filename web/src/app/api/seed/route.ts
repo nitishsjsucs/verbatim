@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { MongoClient } from "mongodb"
+import crypto from "crypto"
 
 /**
  * POST /api/seed
@@ -23,6 +24,71 @@ interface SeedUser {
     password: string
     role: string
     team: string
+    forcePasswordReset?: boolean
+}
+
+// Generate a secure random password
+function generateSecurePassword(length: number = 16): string {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+    const randomBytes = crypto.randomBytes(length)
+    let password = ""
+    for (let i = 0; i < length; i++) {
+        password += charset[randomBytes[i] % charset.length]
+    }
+    // Ensure at least one of each type
+    const lower = "abcdefghijklmnopqrstuvwxyz"
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    const digits = "0123456789"
+    const special = "!@#$%^&*"
+    password = password.slice(0, -4) +
+        lower[crypto.randomInt(lower.length)] +
+        upper[crypto.randomInt(upper.length)] +
+        digits[crypto.randomInt(digits.length)] +
+        special[crypto.randomInt(special.length)]
+    return password
+}
+
+// All teams in the system
+const TEAMS = [
+    "Policy",
+    "Technology",
+    "Operations",
+    "Training",
+    "Reporting",
+    "Customer Communication",
+    "Governance",
+    "Legal",
+]
+
+// Generate Team Reviewer users dynamically
+function generateTeamReviewers(): { users: SeedUser[]; credentials: { team: string; username: string; email: string; password: string }[] } {
+    const users: SeedUser[] = []
+    const credentials: { team: string; username: string; email: string; password: string }[] = []
+
+    for (const team of TEAMS) {
+        const teamSlug = team.toLowerCase().replace(/\s+/g, "_")
+        const password = generateSecurePassword()
+        const email = `${teamSlug}.reviewer@regtech.com`
+        const name = `${team} Reviewer`
+
+        users.push({
+            name,
+            email,
+            password,
+            role: "team_reviewer",
+            team,
+            forcePasswordReset: true,
+        })
+
+        credentials.push({
+            team,
+            username: `${teamSlug}_reviewer`,
+            email,
+            password,
+        })
+    }
+
+    return { users, credentials }
 }
 
 const SEED_USERS: SeedUser[] = [
@@ -143,15 +209,19 @@ export async function POST(req: Request) {
 
         const results: { email: string; status: string; error?: string }[] = []
 
-        for (const user of SEED_USERS) {
+        // Generate Team Reviewer users and credentials
+        const { users: teamReviewerUsers, credentials: reviewerCredentials } = generateTeamReviewers()
+        const allUsers = [...SEED_USERS, ...teamReviewerUsers]
+
+        for (const user of allUsers) {
             try {
                 // Check if user already exists
                 const existing = await userCollection.findOne({ email: user.email })
                 if (existing) {
-                    // Update role and team if they differ
+                    // Update role, team, and forcePasswordReset if they differ
                     await userCollection.updateOne(
                         { email: user.email },
-                        { $set: { role: user.role, team: user.team } }
+                        { $set: { role: user.role, team: user.team, forcePasswordReset: user.forcePasswordReset || false } }
                     )
                     results.push({ email: user.email, status: "already_exists (role/team updated)" })
                     continue
@@ -166,21 +236,21 @@ export async function POST(req: Request) {
                     },
                 })
 
-                // Set role and team directly in MongoDB
+                // Set role, team, and forcePasswordReset directly in MongoDB
                 await userCollection.updateOne(
                     { email: user.email },
-                    { $set: { role: user.role, team: user.team } }
+                    { $set: { role: user.role, team: user.team, forcePasswordReset: user.forcePasswordReset || false } }
                 )
 
                 results.push({ email: user.email, status: "created" })
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err)
                 if (msg.includes("already") || msg.includes("exists") || msg.includes("duplicate")) {
-                    // Still try to update role/team
+                    // Still try to update role/team/forcePasswordReset
                     try {
                         await userCollection.updateOne(
                             { email: user.email },
-                            { $set: { role: user.role, team: user.team } }
+                            { $set: { role: user.role, team: user.team, forcePasswordReset: user.forcePasswordReset || false } }
                         )
                     } catch { /* ignore */ }
                     results.push({ email: user.email, status: "already_exists" })
@@ -195,6 +265,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
             message: "Seed completed",
             results,
+            teamReviewerCredentials: reviewerCredentials,
         })
     } catch (err) {
         return NextResponse.json(
