@@ -157,8 +157,6 @@ function formatTime(iso: string | undefined): string {
 // ─── Evidence Popover (read-only) ────────────────────────────────────────────
 
 function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
-    const reviewedStatuses = ["team_review", "review", "completed", "reworking"]
-    const canView = taskStatus ? reviewedStatuses.includes(taskStatus) : true
     const [open, setOpen] = React.useState(false)
     const popoverRef = React.useRef<HTMLDivElement>(null)
 
@@ -173,14 +171,6 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
 
     if (files.length === 0) {
         return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
-    }
-
-    if (!canView) {
-        return (
-            <span className="text-[10px] text-muted-foreground/30 italic flex items-center gap-1" title="Evidence visible after team submits for review">
-                <Paperclip className="h-2.5 w-2.5" /> pending
-            </span>
-        )
     }
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
@@ -335,7 +325,7 @@ function TeamLeadContent() {
     const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
     const [delayedCollapsed, setDelayedCollapsed] = React.useState(false)
     // Tab: "overview" shows all items, "delayed" shows only delayed items
-    const [tab, setTab] = React.useState<"overview" | "delayed">("overview")
+    const [tab, setTab] = React.useState<"overview" | "delayed">("delayed")
     const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadAll = React.useCallback(async () => {
@@ -522,17 +512,6 @@ function TeamLeadContent() {
                     {/* Tabs */}
                     <div className="flex items-center gap-1 mr-3">
                         <button
-                            onClick={() => setTab("overview")}
-                            className={cn(
-                                "px-3 py-1 text-xs rounded-md font-medium transition-colors",
-                                tab === "overview"
-                                    ? "bg-indigo-500/15 text-indigo-500 border border-indigo-500/30"
-                                    : "bg-muted/30 text-muted-foreground hover:text-foreground border border-border/40"
-                            )}
-                        >
-                            Overview ({stats.total})
-                        </button>
-                        <button
                             onClick={() => setTab("delayed")}
                             className={cn(
                                 "px-3 py-1 text-xs rounded-md font-medium transition-colors",
@@ -542,6 +521,17 @@ function TeamLeadContent() {
                             )}
                         >
                             Delayed ({stats.delayed})
+                        </button>
+                        <button
+                            onClick={() => setTab("overview")}
+                            className={cn(
+                                "px-3 py-1 text-xs rounded-md font-medium transition-colors",
+                                tab === "overview"
+                                    ? "bg-indigo-500/15 text-indigo-500 border border-indigo-500/30"
+                                    : "bg-muted/30 text-muted-foreground hover:text-foreground border border-border/40"
+                            )}
+                        >
+                            Overview ({stats.total})
                         </button>
                     </div>
 

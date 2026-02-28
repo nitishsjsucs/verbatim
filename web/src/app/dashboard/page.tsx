@@ -981,9 +981,6 @@ export default function DashboardPage() {
 // ─── Evidence popover (compliance officer can view/download evidence) ────────
 
 function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
-    // Evidence only visible once the team member submits for review
-    const reviewedStatuses = ["team_review", "review", "completed", "reworking"]
-    const canView = taskStatus ? reviewedStatuses.includes(taskStatus) : true
     const [open, setOpen] = React.useState(false)
     const popoverRef = React.useRef<HTMLDivElement>(null)
 
@@ -999,14 +996,6 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
 
     if (files.length === 0) {
         return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
-    }
-
-    if (!canView) {
-        return (
-            <span className="text-[10px] text-muted-foreground/30 italic flex items-center gap-1" title="Evidence visible after team submits for review">
-                <Paperclip className="h-2.5 w-2.5" /> pending
-            </span>
-        )
     }
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
