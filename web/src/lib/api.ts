@@ -19,7 +19,7 @@ import {
     AuditTrailEntry,
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
 
 function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
     return fetch(`${API_BASE_URL}${path}`, {

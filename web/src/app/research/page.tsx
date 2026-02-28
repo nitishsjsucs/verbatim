@@ -176,7 +176,7 @@ function ResearchPageContent() {
                                 {/* PDF Viewer */}
                                 <div className="flex-1 min-h-0 overflow-hidden">
                                     <PdfViewer
-                                        fileUrl={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${pdfDocId}/raw`}
+                                        fileUrl={`${process.env.NEXT_PUBLIC_API_URL || '/api/backend'}/documents/${pdfDocId}/raw`}
                                         jumpToPage={pdfJumpPage}
                                         jumpKey={pdfJumpKey}
                                     />

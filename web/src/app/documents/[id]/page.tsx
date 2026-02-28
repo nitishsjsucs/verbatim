@@ -173,7 +173,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
         }
     }, [])
 
-    const pdfUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/documents/${id}/raw`
+    const pdfUrl = `${process.env.NEXT_PUBLIC_API_URL || '/api/backend'}/documents/${id}/raw`
 
     if (loading) {
         return (

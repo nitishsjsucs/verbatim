@@ -13,6 +13,11 @@ export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
     secret: process.env.BETTER_AUTH_SECRET, // min 32 chars — generate with: openssl rand -base64 32
 
+    // Auto-detect origin from proxy headers (ngrok, Vercel, etc.)
+    advanced: {
+        trustedProxyHeaders: ["x-forwarded-host", "x-forwarded-proto"],
+    },
+
     emailAndPassword: {
         enabled: true,
         minPasswordLength: 8,
@@ -57,6 +62,10 @@ export const auth = betterAuth({
         "http://localhost:3000",
         "http://localhost:3001",
         "https://govinda-is-my-god.vercel.app",
+        "https://*.ngrok-free.app",
+        "https://*.ngrok-free.dev",
+        "https://*.ngrok.io",
+        "https://*.vercel.app",
         process.env.NEXT_PUBLIC_APP_URL || "",
     ].filter(Boolean),
 })

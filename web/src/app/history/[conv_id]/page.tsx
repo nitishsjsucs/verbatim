@@ -259,7 +259,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
 
     const isResearch = conv?.type === "research"
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
 
     // For document conversations, use the conversation's doc_id.
     // For research conversations, dynamically load based on citation doc_id.
