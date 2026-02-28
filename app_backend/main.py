@@ -155,6 +155,21 @@ def _init_singletons():
     from tree.benchmark_store import BenchmarkStore
     _benchmark_store = BenchmarkStore()
     logger.info("  ✓ BenchmarkStore initialized")
+
+    # Phase 3: Initialize Memory Manager (self-evolving system)
+    try:
+        from memory.memory_manager import get_memory_manager
+        from utils.mongo import get_db
+        from utils.embedding_client import EmbeddingClient
+        mm = get_memory_manager()
+        mm.initialize(
+            db=get_db(),
+            embedding_client=EmbeddingClient(),
+            llm_client=_qa_engine._llm if _qa_engine else None,
+        )
+        logger.info("  ✓ MemoryManager initialized")
+    except Exception as e:
+        logger.warning("  ⚠ MemoryManager init failed (non-fatal): %s", e)
     
     logger.info("All singletons initialized successfully")
 
@@ -676,6 +691,16 @@ def run_query(request: QueryRequest):
         )
         query_store.save(record)
 
+        # Phase 3: Periodic memory persistence (save after each query)
+        try:
+            if get_retrieval_mode() == "optimized":
+                from memory.memory_manager import get_memory_manager
+                mm = get_memory_manager()
+                if mm._initialized:
+                    mm.save_all(doc_id=request.doc_id)
+        except Exception as mem_err:
+            logger.warning("Memory save failed (non-fatal): %s", mem_err)
+
         # 4. Auto-persist conversation messages
         active_conv_id = ""
         try:
@@ -841,6 +866,7 @@ def get_config():
             "enable_verification_skip": opt.enable_verification_skip,
             "enable_synthesis_prealloc": opt.enable_synthesis_prealloc,
             "enable_reflection_tuning": opt.enable_reflection_tuning,
+            "enable_fast_synthesis": opt.enable_fast_synthesis,
         },
     }
 
@@ -881,6 +907,10 @@ def set_optimization_features(body: dict = Body(...)):
     valid_keys = {
         "enable_locator_cache", "enable_embedding_prefilter", "enable_query_cache",
         "enable_verification_skip", "enable_synthesis_prealloc", "enable_reflection_tuning",
+        "enable_fast_synthesis",
+        # Phase 3: Self-evolving memory toggles
+        "enable_raptor_index", "enable_user_memory", "enable_query_intelligence",
+        "enable_retrieval_feedback", "enable_r2r_fallback",
     }
     updates = {k: v for k, v in body.items() if k in valid_keys and isinstance(v, bool)}
     for k, v in updates.items():
@@ -923,6 +953,109 @@ def invalidate_cache(body: dict = Body(...)):
     reason = body.get("reason", "manual")
     count = _invalidate_query_caches(reason=reason)
     return {"invalidated": count, "reason": reason}
+
+
+# ---------------------------------------------------------------------------
+# Memory / Self-Evolving Endpoints (Phase 3)
+# ---------------------------------------------------------------------------
+
+@app.get("/memory/stats")
+def memory_stats(doc_id: str = ""):
+    """Get stats from all memory subsystems."""
+    try:
+        from memory.memory_manager import get_memory_manager
+        mm = get_memory_manager()
+        if not mm._initialized:
+            return {"error": "MemoryManager not initialized", "retrieval_mode": get_retrieval_mode()}
+        return mm.get_stats(doc_id=doc_id or None)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/raptor/build/{doc_id}")
+def build_raptor_index(doc_id: str):
+    """Build RAPTOR multi-resolution index for a document."""
+    try:
+        from memory.memory_manager import get_memory_manager
+        mm = get_memory_manager()
+        if not mm._initialized:
+            raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+
+        tree_store = get_tree_store()
+        tree = tree_store.load(doc_id)
+        if not tree:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+
+        success = mm.build_raptor_index(tree, doc_id)
+        return {"doc_id": doc_id, "success": success}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/r2r/build/{doc_id}")
+def build_r2r_index(doc_id: str):
+    """Build R2R hybrid search fallback index for a document."""
+    try:
+        from memory.memory_manager import get_memory_manager
+        mm = get_memory_manager()
+        if not mm._initialized:
+            raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+
+        tree_store = get_tree_store()
+        tree = tree_store.load(doc_id)
+        if not tree:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+
+        success = mm.build_r2r_index(tree, doc_id)
+        return {"doc_id": doc_id, "success": success}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/build-all/{doc_id}")
+def build_all_indexes(doc_id: str):
+    """Build both RAPTOR and R2R indexes for a document."""
+    try:
+        from memory.memory_manager import get_memory_manager
+        mm = get_memory_manager()
+        if not mm._initialized:
+            raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+
+        tree_store = get_tree_store()
+        tree = tree_store.load(doc_id)
+        if not tree:
+            raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+
+        results = {
+            "doc_id": doc_id,
+            "raptor": mm.build_raptor_index(tree, doc_id),
+            "r2r": mm.build_r2r_index(tree, doc_id),
+        }
+        return results
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/memory/save")
+def save_memory(doc_id: str = ""):
+    """Force-save all memory subsystems to MongoDB."""
+    try:
+        from memory.memory_manager import get_memory_manager
+        mm = get_memory_manager()
+        if not mm._initialized:
+            raise HTTPException(status_code=503, detail="MemoryManager not initialized")
+        mm.save_all(doc_id=doc_id or None)
+        return {"saved": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------

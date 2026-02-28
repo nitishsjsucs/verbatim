@@ -161,6 +161,18 @@ class OptimizationConfig(BaseSettings):
     # Verification skip confidence threshold
     verification_skip_min_citations: int = 2
 
+    # Fast synthesis settings (Phase 2 optimization)
+    enable_fast_synthesis: bool = Field(default=True, alias="OPT_FAST_SYNTHESIS")
+    synthesis_token_budget: int = 25000  # Max section tokens sent to synthesizer
+    synthesis_reasoning_effort: str = "medium"  # Override reasoning effort in optimized mode
+
+    # Self-evolving memory toggles (Phase 3 — only active when retrieval_mode="optimized")
+    enable_raptor_index: bool = Field(default=True, alias="OPT_RAPTOR_INDEX")
+    enable_user_memory: bool = Field(default=True, alias="OPT_USER_MEMORY")
+    enable_query_intelligence: bool = Field(default=True, alias="OPT_QUERY_INTELLIGENCE")
+    enable_retrieval_feedback: bool = Field(default=True, alias="OPT_RETRIEVAL_FEEDBACK")
+    enable_r2r_fallback: bool = Field(default=True, alias="OPT_R2R_FALLBACK")
+
 
 class AppConfig(BaseSettings):
     """Top-level application configuration."""

@@ -16,6 +16,7 @@ const FEATURE_LABELS: { key: keyof OptimizationFeatures; label: string; descript
     { key: "enable_verification_skip", label: "Smart Verification Skip", description: "Skip verification for high-confidence answers" },
     { key: "enable_synthesis_prealloc", label: "Synthesis Pre-Allocation", description: "Pre-calculate output tokens to avoid truncation" },
     { key: "enable_reflection_tuning", label: "Reflection Tuning", description: "Lower thresholds to skip unnecessary reflection rounds" },
+    { key: "enable_fast_synthesis", label: "Fast Synthesis", description: "Trim sections to token budget + reduce reasoning effort for faster answers" },
 ]
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -30,6 +31,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         enable_verification_skip: true,
         enable_synthesis_prealloc: true,
         enable_reflection_tuning: true,
+        enable_fast_synthesis: true,
     })
     const [savingMode, setSavingMode] = React.useState(false)
 

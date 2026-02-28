@@ -77,6 +77,8 @@ class Locator:
         tree: DocumentTree,
         embedding_index: Optional["EmbeddingIndex"] = None,
         embedding_client=None,
+        memory_candidates: Optional[list[str]] = None,
+        reliability_scores: Optional[dict[str, float]] = None,
     ) -> list[LocatedNode]:
         """
         Locate relevant nodes in the document tree.
@@ -86,6 +88,8 @@ class Locator:
             tree: The document tree to search.
             embedding_index: Optional pre-built embedding index for pre-filtering.
             embedding_client: Optional EmbeddingClient for query embedding.
+            memory_candidates: Optional node_ids from RAPTOR/memory pre-filter.
+            reliability_scores: Optional node reliability scores from retrieval feedback.
 
         Returns:
             List of LocatedNode objects with relevance reasoning.
@@ -114,6 +118,15 @@ class Locator:
                 query_embedding = embedding_client.embed(query.text)
                 top_k = self._settings.optimization.prefilter_top_k
                 candidate_ids = set(embedding_index.search(query_embedding, top_k=top_k))
+
+                # Merge memory candidates (RAPTOR pre-filter) into candidate set
+                if memory_candidates:
+                    candidate_ids.update(memory_candidates)
+                    logger.info(
+                        "[BENCHMARK][memory_merge] Added %d memory candidates to pre-filter",
+                        len(memory_candidates),
+                    )
+
                 tree_index = json.dumps(tree.to_compressed_index(candidate_ids), indent=2)
                 _used_prefilter = True
                 logger.info(
@@ -122,6 +135,19 @@ class Locator:
                 )
             except Exception as e:
                 logger.warning("[BENCHMARK][prefilter] Failed, falling back to full index: %s", e)
+                tree_index = json.dumps(tree.to_index(), indent=2)
+        elif memory_candidates:
+            # No embedding pre-filter but we have memory candidates — use compressed index
+            try:
+                candidate_ids = set(memory_candidates)
+                tree_index = json.dumps(tree.to_compressed_index(candidate_ids), indent=2)
+                _used_prefilter = True
+                logger.info(
+                    "[BENCHMARK][memory_only] Using memory-only compressed index: %d candidates / %d total nodes",
+                    len(candidate_ids), tree.node_count,
+                )
+            except Exception as e:
+                logger.warning("[BENCHMARK][memory_only] Failed, falling back to full index: %s", e)
                 tree_index = json.dumps(tree.to_index(), indent=2)
         else:
             tree_index = json.dumps(tree.to_index(), indent=2)
@@ -174,6 +200,18 @@ class Locator:
 
             # Sort by confidence (highest first)
             located.sort(key=lambda n: n.confidence, reverse=True)
+
+            # Phase 3: Adjust confidence with reliability scores
+            if reliability_scores:
+                for node in located:
+                    score = reliability_scores.get(node.node_id)
+                    if score is not None:
+                        # Boost/penalize confidence based on reliability
+                        # Neutral = 0.5, above = boost, below = penalize
+                        adjustment = (score - 0.5) * 0.2  # ±10% max adjustment
+                        node.confidence = max(0.1, min(1.0, node.confidence + adjustment))
+                # Re-sort after adjustment
+                located.sort(key=lambda n: n.confidence, reverse=True)
 
             # Limit to max
             located = located[: self._settings.retrieval.max_located_nodes]

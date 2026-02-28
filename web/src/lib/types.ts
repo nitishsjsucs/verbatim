@@ -98,6 +98,7 @@ export interface OptimizationFeatures {
     enable_verification_skip: boolean;
     enable_synthesis_prealloc: boolean;
     enable_reflection_tuning: boolean;
+    enable_fast_synthesis: boolean;
 }
 
 export interface AppConfig {

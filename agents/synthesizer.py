@@ -52,6 +52,53 @@ class Synthesizer:
                 return False
             return self._settings.optimization.enable_synthesis_prealloc
 
+    def _is_fast_synthesis_enabled(self) -> bool:
+        """Check if fast synthesis is enabled via optimization toggle."""
+        try:
+            from app_backend.main import _runtime_config, get_retrieval_mode
+            if get_retrieval_mode() != "optimized":
+                return False
+            return _runtime_config.get("enable_fast_synthesis", self._settings.optimization.enable_fast_synthesis)
+        except Exception:
+            if self._settings.optimization.retrieval_mode != "optimized":
+                return False
+            return self._settings.optimization.enable_fast_synthesis
+
+    def _trim_sections_to_budget(
+        self,
+        sections: list[RetrievedSection],
+        budget: int,
+    ) -> list[RetrievedSection]:
+        """
+        Trim sections to fit within a token budget.
+
+        Strategy: keep sections in order (highest relevance first from locator),
+        drop from the tail (lowest relevance) until under budget.
+        Prioritizes 'direct' source sections over expansions/cross-refs.
+        """
+        total = sum(s.token_count for s in sections)
+        if total <= budget:
+            return sections
+
+        # Partition: direct sections first, then others
+        direct = [s for s in sections if s.source in ("direct", "direct_read")]
+        other = [s for s in sections if s.source not in ("direct", "direct_read")]
+
+        # Drop 'other' sections from the end first
+        kept = list(direct) + list(other)
+        while sum(s.token_count for s in kept) > budget and kept:
+            removed = kept.pop()
+            logger.debug("[fast_synthesis] Trimmed section: %s (%d tokens)", removed.title[:50], removed.token_count)
+
+        trimmed_count = len(sections) - len(kept)
+        trimmed_tokens = total - sum(s.token_count for s in kept)
+        if trimmed_count > 0:
+            logger.info(
+                "[BENCHMARK][fast_synthesis] Trimmed %d sections (%d tokens) to fit budget=%d",
+                trimmed_count, trimmed_tokens, budget,
+            )
+        return kept
+
     def synthesize(
         self,
         query: Query,
@@ -73,6 +120,12 @@ class Synthesizer:
                 text="No relevant sections were found to answer this query.",
                 query_type=query.query_type,
             )
+
+        # Phase 2 optimization: trim sections to token budget
+        _fast = self._is_fast_synthesis_enabled()
+        if _fast:
+            budget = self._settings.optimization.synthesis_token_budget
+            sections = self._trim_sections_to_budget(sections, budget)
 
         prompt_data = load_prompt("answering", "synthesis")
         system_prompt = prompt_data["system"]
@@ -104,13 +157,21 @@ class Synthesizer:
 
         try:
             # Adaptive reasoning effort based on query complexity
-            _effort_map = {
-                "definitional": "medium",
-                "single_hop": "medium",
-                "multi_hop": "high",
-                "global": "high",
-            }
-            effort = _effort_map.get(query.query_type.value, "medium")
+            if _fast:
+                # Fast synthesis: use configured effort for all query types
+                effort = self._settings.optimization.synthesis_reasoning_effort
+                logger.info(
+                    "[BENCHMARK][fast_synthesis] effort=%s (overridden from high) sections=%d tokens=%d",
+                    effort, len(sections), sum(s.token_count for s in sections),
+                )
+            else:
+                _effort_map = {
+                    "definitional": "medium",
+                    "single_hop": "medium",
+                    "multi_hop": "high",
+                    "global": "high",
+                }
+                effort = _effort_map.get(query.query_type.value, "medium")
 
             # Phase 0C: Synthesis token pre-allocation
             max_tokens_for_call = self._settings.llm.max_tokens_long

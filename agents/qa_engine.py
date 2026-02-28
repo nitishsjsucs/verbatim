@@ -198,11 +198,36 @@ class QAEngine:
         doc_id: str,
         reflect: bool = False,
     ) -> RetrievalResult:
-        """Optimized retrieval path — with benchmarking, caching, and pre-filter."""
+        """Optimized retrieval path — with benchmarking, caching, pre-filter, and memory."""
         start = time.time()
         self._llm.reset_usage()
         timings: dict[str, float] = {}
         tracker = self._tracker
+
+        # Phase 0: Memory pre-query — gather context from all learning loops
+        memory_context: dict = {}
+        t_mem = time.time()
+        try:
+            from memory.memory_manager import get_memory_manager
+            mm = get_memory_manager()
+            if mm._initialized:
+                memory_context = mm.pre_query(
+                    query_text=query_text,
+                    doc_id=doc_id,
+                    user_id=getattr(self, "_current_user_id", "default"),
+                )
+        except Exception as e:
+            logger.warning("[QA] Memory pre-query failed (non-fatal): %s", e)
+        timings["0_memory_prequery"] = time.time() - t_mem
+        if memory_context:
+            logger.info(
+                "[QA 0/6] Memory context: raptor=%d user_ctx=%s hints=%d r2r=%d (%.2fs)",
+                len(memory_context.get("raptor_candidates", [])),
+                bool(memory_context.get("user_context")),
+                memory_context.get("retrieval_hints", {}).get("similar_facts_found", 0),
+                len(memory_context.get("r2r_results", [])),
+                timings["0_memory_prequery"],
+            )
 
         # Step 1: Load tree + embedding index
         with tracker.stage("load_tree") as s:
@@ -224,15 +249,84 @@ class QAEngine:
                     s.set_metadata("embedding_index_entries", 0)
                     logger.info("[QA] No embedding index found for %s — using full tree index", doc_id)
 
+            # Inject RAPTOR candidates as additional pre-filter candidates
+            raptor_candidates = memory_context.get("raptor_candidates", [])
+            if raptor_candidates:
+                self._router.set_memory_candidates(raptor_candidates)
+                s.set_metadata("raptor_candidates", len(raptor_candidates))
+
+            # Inject reliability scores for node weighting
+            reliability_scores = memory_context.get("reliability_scores", {})
+            if reliability_scores:
+                self._router.set_reliability_scores(reliability_scores)
+                s.set_metadata("reliability_scored_nodes", len(reliability_scores))
+
         timings["1_load_tree"] = tracker._stages[-1].duration_seconds
         logger.info("  -> %d nodes, %d pages (%.1fs)", tree.node_count, tree.total_pages, timings["1_load_tree"])
 
         # Step 2: Classify + Retrieve (with benchmark wrapping)
         with tracker.stage("retrieval") as s:
-            query, sections, routing_log = self._router.retrieve(query_text, tree)
+            # Inject user context into query text supplement if available
+            user_context = memory_context.get("user_context", "")
+            effective_query = query_text
+            if user_context and self._is_feature_enabled("enable_user_memory"):
+                effective_query = f"{query_text}\n\n[User Context]: {user_context}"
+                s.set_metadata("user_context_injected", True)
+
+            query, sections, routing_log = self._router.retrieve(effective_query, tree)
+
+            # Restore original query text on the Query object
+            query.text = query_text
+
             s.set_metadata("query_type", query.query_type.value)
             s.set_metadata("sections_count", len(sections))
             s.set_metadata("tokens_retrieved", sum(sec.token_count for sec in sections))
+
+            # R2R fallback merge: add high-confidence fallback nodes
+            r2r_results = memory_context.get("r2r_results", [])
+            if r2r_results and self._is_feature_enabled("enable_r2r_fallback"):
+                try:
+                    from memory.r2r_fallback import R2RFallback, SearchResult
+                    from memory.memory_manager import get_memory_manager
+                    mm = get_memory_manager()
+                    r2r = mm._get_r2r(doc_id)
+                    if r2r:
+                        locator_node_ids = [sec.node_id for sec in sections]
+                        fallback_objs = [
+                            SearchResult(
+                                node_id=r["node_id"],
+                                score=r["score"],
+                                source=r["source"],
+                            )
+                            for r in r2r_results
+                        ]
+                        merge_result = r2r.merge_with_locator(
+                            locator_node_ids, fallback_objs,
+                            max_fallback_additions=3,
+                        )
+                        # Read fallback-only nodes and add them as sections
+                        fallback_additions = merge_result.get("fallback_additions", [])
+                        if fallback_additions and tree:
+                            for nid in fallback_additions:
+                                node = tree.get_node(nid)
+                                if node and node.text:
+                                    from models.query import RetrievedSection
+                                    fb_section = RetrievedSection(
+                                        node_id=nid,
+                                        title=node.title,
+                                        text=node.text,
+                                        page_range=node.page_range_str,
+                                        token_count=node.token_count,
+                                        source="r2r_fallback",
+                                    )
+                                    sections.append(fb_section)
+                            s.set_metadata("r2r_fallback_added", len(fallback_additions))
+                            logger.info(
+                                "[QA] R2R fallback added %d sections", len(fallback_additions)
+                            )
+                except Exception as e:
+                    logger.warning("[QA] R2R fallback merge failed: %s", e)
+
         timings["2_retrieval"] = tracker._stages[-1].duration_seconds
         logger.info(
             "  -> Type: %s, %d sections, %d tokens (%.1fs)",
@@ -367,7 +461,63 @@ class QAEngine:
                 logger.warning("Failed to save benchmark: %s", e)
             self._tracker = None
 
+        # Phase 3: Memory post-query learning (optimized mode only)
+        if self._get_retrieval_mode() == "optimized":
+            self._learn_from_answer(answer, query_text, rr)
+
         return answer
+
+    # ------------------------------------------------------------------
+    # Phase 3 — Memory Learning (non-blocking, after answer)
+    # ------------------------------------------------------------------
+
+    def _learn_from_answer(
+        self,
+        answer: Answer,
+        query_text: str,
+        rr: RetrievalResult,
+    ) -> None:
+        """
+        Feed the completed query back into all memory subsystems.
+
+        This is called in optimized mode after the answer is finalized.
+        It constructs a lightweight QueryRecord-like object for the
+        memory manager, so learning happens without depending on the
+        full persistence layer.
+        """
+        try:
+            from memory.memory_manager import get_memory_manager
+            mm = get_memory_manager()
+            if not mm._initialized:
+                return
+
+            # Build a lightweight record-like object for the learning hooks
+            _Record = type("_Record", (), {})
+            record = _Record()
+            record.query_text = query_text
+            record.answer_text = answer.text
+            record.citations = answer.citations
+            record.routing_log = rr.routing_log
+            record.query_type = rr.query.query_type
+            record.key_terms = rr.query.key_terms
+            record.verification_status = answer.verification_status
+            record.total_time_seconds = answer.total_time_seconds
+            record.feedback = None  # No feedback yet at this point
+
+            doc_id = getattr(rr.query, "doc_id", "") or ""
+            if not doc_id and rr.tree:
+                doc_id = rr.tree.doc_id
+
+            mm.post_query(
+                record=record,
+                doc_id=doc_id,
+                user_id=getattr(self, "_current_user_id", "default"),
+            )
+
+            logger.info("[QA] Memory learning completed for doc=%s", doc_id)
+
+        except Exception as e:
+            logger.warning("[QA] Memory learning failed (non-fatal): %s", e)
 
     # ------------------------------------------------------------------
     # Convenience wrapper (backward-compatible)

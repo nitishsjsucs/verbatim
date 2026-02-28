@@ -62,10 +62,22 @@ class StructuralRouter:
         self._embedding_index = None
         self._embedding_client = None
 
+        # Phase 3: Memory-driven candidates and reliability scores
+        self._memory_candidates: list[str] = []
+        self._reliability_scores: dict[str, float] = {}
+
     def set_embedding_context(self, embedding_index, embedding_client) -> None:
         """Set embedding index and client for pre-filter support."""
         self._embedding_index = embedding_index
         self._embedding_client = embedding_client
+
+    def set_memory_candidates(self, candidate_node_ids: list[str]) -> None:
+        """Set RAPTOR/memory pre-filter candidate node IDs."""
+        self._memory_candidates = candidate_node_ids
+
+    def set_reliability_scores(self, scores: dict[str, float]) -> None:
+        """Set node reliability scores from retrieval feedback."""
+        self._reliability_scores = scores
 
     def retrieve(
         self, query_text: str, tree: DocumentTree
@@ -119,6 +131,8 @@ class StructuralRouter:
             query, tree,
             embedding_index=self._embedding_index,
             embedding_client=self._embedding_client,
+            memory_candidates=self._memory_candidates or None,
+            reliability_scores=self._reliability_scores or None,
         )
 
         # Run locate for each expanded query and merge results
@@ -133,6 +147,8 @@ class StructuralRouter:
                     eq, tree,
                     embedding_index=self._embedding_index,
                     embedding_client=self._embedding_client,
+                    memory_candidates=self._memory_candidates or None,
+                    reliability_scores=self._reliability_scores or None,
                 )
                 located = self._merge_located_nodes(located, extra_located)
                 logger.info(

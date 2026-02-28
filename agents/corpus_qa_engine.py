@@ -230,8 +230,25 @@ class CorpusQAEngine:
         system_prompt = prompt_data["system"]
         user_template = prompt_data["user_template"]
 
+        # Fast synthesis: trim sections to token budget if enabled
+        sections_to_use = rr.all_sections
+        _fast = self._is_feature_enabled("enable_fast_synthesis")
+        if _fast:
+            budget = self._settings.optimization.synthesis_token_budget
+            total_tok = sum(s.token_count for s in sections_to_use)
+            if total_tok > budget:
+                # Drop from the end (lowest relevance) until under budget
+                trimmed = list(sections_to_use)
+                while sum(s.token_count for s in trimmed) > budget and trimmed:
+                    trimmed.pop()
+                logger.info(
+                    "[BENCHMARK][fast_synthesis] Corpus: trimmed %d -> %d sections (%d -> %d tokens)",
+                    len(sections_to_use), len(trimmed), total_tok, sum(s.token_count for s in trimmed),
+                )
+                sections_to_use = trimmed
+
         # Format sections with document attribution
-        retrieved_text = self._format_multi_doc_sections(rr.all_sections)
+        retrieved_text = self._format_multi_doc_sections(sections_to_use)
 
         user_msg = format_prompt(
             user_template,
@@ -241,7 +258,14 @@ class CorpusQAEngine:
 
         try:
             # Adaptive reasoning effort
-            effort = "high"  # Cross-doc queries are always complex
+            if _fast:
+                effort = self._settings.optimization.synthesis_reasoning_effort
+                logger.info(
+                    "[BENCHMARK][fast_synthesis] Corpus: effort=%s sections=%d",
+                    effort, len(sections_to_use),
+                )
+            else:
+                effort = "high"  # Cross-doc queries are always complex
 
             result, was_truncated = self._llm.chat_json_with_status(
                 messages=[
