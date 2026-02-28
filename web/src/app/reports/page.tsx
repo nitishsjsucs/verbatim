@@ -379,7 +379,7 @@ function ReportsContent() {
         const highRiskOpen = openByRisk["High Risk"] || 0
 
         // Workload by team (detailed)
-        const workload: Record<string, { assigned: number; in_progress: number; team_review: number; review: number; completed: number; reworking: number; reviewer_rejected: number; awaiting_justification: number; total: number; avgDays: number; reworkCount: number }> = {}
+        const workload: Record<string, { assigned: number; in_progress: number; team_review: number; review: number; completed: number; reworking: number; reviewer_rejected: number; awaiting_justification: number; pending_all_teams: number; total: number; avgDays: number; reworkCount: number }> = {}
         for (const a of items) {
             const team = safeStr(a.workstream) || "Other"
             if (!workload[team]) workload[team] = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0, total: 0, avgDays: 0, reworkCount: 0 }
