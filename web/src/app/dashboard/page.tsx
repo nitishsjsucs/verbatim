@@ -81,12 +81,13 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
     completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
     reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
     reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
+    awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification"]
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -245,6 +246,11 @@ export default function DashboardPage() {
             task_status: "reworking",
             rejection_reason: reason,
             comments: [...existing, rejectComment],
+            // Clear justification so Lead must re-justify if still delayed
+            delay_justification: "",
+            delay_justification_by: "",
+            delay_justification_at: "",
+            delay_justification_status: "",
         })
         toast.success("Task rejected — returned for rework")
     }, [userName, handleUpdate])
@@ -715,6 +721,9 @@ export default function DashboardPage() {
                                                     )}
                                                     {taskStatus === "reviewer_rejected" && (
                                                         <span className="text-[9px] text-rose-400 italic">Rejected by Reviewer</span>
+                                                    )}
+                                                    {taskStatus === "awaiting_justification" && (
+                                                        <span className="text-[9px] text-yellow-500 italic">Awaiting Lead Justification</span>
                                                     )}
                                                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[9px] text-muted-foreground/30">—</span>

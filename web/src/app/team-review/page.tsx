@@ -82,10 +82,11 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
     completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
     reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
     reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
+    awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -326,22 +327,36 @@ function TeamReviewContent() {
     }, [userName, handleUpdate])
 
     // Team Reviewer approve: team_review → review (sends to compliance officer)
+    // If delayed and no justification, gate at awaiting_justification
     const handleApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
+        const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && (item.task_status || "assigned") !== "completed")
+        const hasJustification = !!item.delay_justification
+
+        // Determine next status: gate delayed tasks without justification
+        const nextStatus = (isDelayed && !hasJustification) ? "awaiting_justification" : "review"
+        const statusLabel = nextStatus === "awaiting_justification"
+            ? "Approved — awaiting Lead justification before Compliance review"
+            : "Approved by Team Reviewer — forwarded to Compliance Officer for final review."
+
         const approveComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
             role: "team_reviewer",
-            text: "Approved by Team Reviewer — forwarded to Compliance Officer for final review.",
+            text: statusLabel,
             timestamp: new Date().toISOString(),
         }
         const existing = item.comments || []
         await handleUpdate(docId, item.id, {
-            task_status: "review",
+            task_status: nextStatus,
             team_reviewer_approved_at: new Date().toISOString(),
             team_reviewer_name: userName,
             comments: [...existing, approveComment],
         })
-        toast.success("Task approved — sent to Compliance Officer for review")
+        if (nextStatus === "awaiting_justification") {
+            toast.success("Task approved — blocked until Team Lead submits delay justification")
+        } else {
+            toast.success("Task approved — sent to Compliance Officer for review")
+        }
     }, [userName, handleUpdate])
 
     // Team Reviewer reject: team_review → in_progress (sends back to team member)

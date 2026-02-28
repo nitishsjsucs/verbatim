@@ -266,7 +266,7 @@ export type ActionableWorkstream =
     | "Legal"
     | "Other";
 
-export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected";
+export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification";
 
 export interface ActionableItem {
     id: string;

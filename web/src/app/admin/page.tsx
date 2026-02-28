@@ -128,11 +128,25 @@ function AdminLoginGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = React.useState("")
   const [error, setError] = React.useState("")
   const [loading, setLoading] = React.useState(false)
+  const [checkingSession, setCheckingSession] = React.useState(true)
 
-  // Check if already authenticated via sessionStorage
+  // Check if already authenticated via Better Auth session (admin role) or sessionStorage
   React.useEffect(() => {
     const token = sessionStorage.getItem("admin_token")
-    if (token) setAuthenticated(true)
+    if (token) {
+      setAuthenticated(true)
+      setCheckingSession(false)
+      return
+    }
+    // Check Better Auth session for admin role
+    import("@/lib/auth-client").then(({ getSession }) => {
+      getSession().then(sess => {
+        if (sess?.data?.user?.role === "admin") {
+          setAuthenticated(true)
+        }
+        setCheckingSession(false)
+      }).catch(() => setCheckingSession(false))
+    }).catch(() => setCheckingSession(false))
   }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -153,6 +167,14 @@ function AdminLoginGate({ children }: { children: React.ReactNode }) {
   }
 
   if (authenticated) return <>{children}</>
+
+  if (checkingSession) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">

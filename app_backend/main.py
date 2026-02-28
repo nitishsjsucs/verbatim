@@ -2305,6 +2305,17 @@ def submit_delay_justification(doc_id: str, item_id: str, body: DelayJustificati
         "details": f"Justification pending CO review: {body.justification}",
     })
 
+    # If the task was gated at awaiting_justification, move it to review
+    if target.task_status == "awaiting_justification":
+        target.task_status = "review"
+        target.audit_trail.append({
+            "event": "status_change",
+            "actor": body.justifier_name,
+            "role": "team_lead",
+            "timestamp": now_iso,
+            "details": "Delay justified — task released to Compliance review",
+        })
+
     result.compute_stats()
     store.save(result)
     return target.to_dict()

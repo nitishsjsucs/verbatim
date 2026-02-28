@@ -81,10 +81,11 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
     completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
     reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
     reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
+    awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -870,6 +871,7 @@ function OversightRow({
     const commentCount = (item.comments || []).length
     const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")
     const hasJustification = !!item.delay_justification
+    const isAwaitingJustification = taskStatus === "awaiting_justification"
 
     const [showJustifyInput, setShowJustifyInput] = React.useState(false)
     const [justifyText, setJustifyText] = React.useState("")
@@ -957,13 +959,22 @@ function OversightRow({
 
                 {/* Delay indicator */}
                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-                    {isDelayed && hasJustification && item.delay_justification_status === "reviewed" && (
+                    {isAwaitingJustification && !hasJustification && (
+                        <button
+                            onClick={() => setShowJustifyInput(true)}
+                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
+                            title="BLOCKED — Submit delay justification to release to Compliance"
+                        >
+                            ⚠ Justify Now
+                        </button>
+                    )}
+                    {!isAwaitingJustification && isDelayed && hasJustification && item.delay_justification_status === "reviewed" && (
                         <span className="text-[9px] text-indigo-400 italic font-medium" title={`Justified: ${item.delay_justification}`}>Justified</span>
                     )}
-                    {isDelayed && hasJustification && item.delay_justification_status !== "reviewed" && (
+                    {!isAwaitingJustification && isDelayed && hasJustification && item.delay_justification_status !== "reviewed" && (
                         <span className="text-[9px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.delay_justification}`}>Pending Review</span>
                     )}
-                    {isDelayed && !hasJustification && (
+                    {!isAwaitingJustification && isDelayed && !hasJustification && (
                         <button
                             onClick={() => setShowJustifyInput(true)}
                             className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
@@ -972,7 +983,7 @@ function OversightRow({
                             Justify
                         </button>
                     )}
-                    {!isDelayed && (
+                    {!isDelayed && !isAwaitingJustification && (
                         <span className="text-[9px] text-muted-foreground/30">—</span>
                     )}
                 </div>

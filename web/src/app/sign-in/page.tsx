@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils"
 import { getUserRole } from "@/components/auth/auth-guard"
 
 function redirectForRole(role: string): string {
-    if (role === "compliance_officer" || role === "admin") return "/dashboard"
+    if (role === "admin") return "/admin"
+    if (role === "compliance_officer") return "/dashboard"
     if (role === "team_reviewer") return "/team-review"
     if (role === "team_lead") return "/team-lead"
     return "/team-board"
@@ -41,9 +42,21 @@ export default function SignInPage() {
                 setError(res.error.message || "Sign in failed")
                 return
             }
-            // After sign-in, redirect to dashboard (RoleRedirect will route non-CO roles)
-            setTimeout(() => {
-                window.location.href = "/dashboard"  // Full reload to pick up session
+            // After sign-in, redirect based on role from response session
+            setTimeout(async () => {
+                // Fetch fresh session to determine role
+                try {
+                    const { getSession } = await import("@/lib/auth-client")
+                    const sess = await getSession()
+                    const sessionRole = sess?.data?.user?.role
+                    if (sessionRole === "admin") {
+                        window.location.href = "/admin"
+                    } else {
+                        window.location.href = "/dashboard"
+                    }
+                } catch {
+                    window.location.href = "/dashboard"
+                }
             }, 300)
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong")

@@ -49,13 +49,14 @@ const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: 
     completed:          { label: "Completed",             bg: "bg-emerald-500", text: "text-white" },
     reworking:          { label: "Reworking",             bg: "bg-orange-500",  text: "text-white" },
     reviewer_rejected:  { label: "Rejected by Reviewer",  bg: "bg-rose-500",    text: "text-white" },
+    awaiting_justification: { label: "Awaiting Justification", bg: "bg-yellow-600", text: "text-white" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    team_review: 0, reviewer_rejected: 1, review: 2, reworking: 3, in_progress: 4, assigned: 5, completed: 6,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification"]
 const RISK_OPTIONS = ["High Risk", "Medium Risk", "Low Risk"]
 
 const RISK_STYLES: Record<string, { bg: string; text: string }> = {
