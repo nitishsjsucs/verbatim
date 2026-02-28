@@ -1,63 +1,106 @@
 const { MongoClient } = require('./web/node_modules/mongodb');
 
+/**
+ * Global Actionable Status Reset
+ *
+ * Resets task_status to "assigned" for every ActionableItem nested inside
+ * every ActionablesResult document in the 'actionables' collection.
+ *
+ * Structure:
+ *   Collection: actionables
+ *   Document:   { _id: <doc_id>, actionables: [ { task_status, ... }, ... ], ... }
+ *
+ * Workflow-state fields reset per item:
+ *   task_status, submitted_at, completion_date, reviewer_comments,
+ *   team_reviewer_name, team_reviewer_approved_at, team_reviewer_rejected_at,
+ *   is_delayed, delay_detected_at, delay_justification, delay_justification_by,
+ *   delay_justification_at
+ *
+ * Fields NOT touched: evidence_files, comments, delay_chat, audit_trail,
+ *   and all extraction/metadata fields.
+ */
+
 async function resetActionables() {
     const uri = "mongodb+srv://nitishsancs_db_user:<ROTATED_CREDENTIAL_REMOVED>@govinda.mdyhulj.mongodb.net/?appName=govinda";
     const client = new MongoClient(uri);
-    
+
     try {
         await client.connect();
         console.log('Connected to MongoDB Atlas');
-        
+
         const db = client.db('govinda_v2');
-        
-        // Check collections
+
         const collections = await db.listCollections().toArray();
-        console.log('Collections:', collections.map(c => c.name));
-        
-        // Find the actionable collection (might be 'actionables' or 'actionable_items')
-        let actionableCollection = null;
-        if (collections.some(c => c.name === 'actionables')) {
-            actionableCollection = db.collection('actionables');
-        } else if (collections.some(c => c.name === 'actionable_items')) {
-            actionableCollection = db.collection('actionable_items');
-        } else {
-            console.log('No actionables collection found. Available collections:', collections.map(c => c.name));
+        const collectionNames = collections.map(c => c.name);
+        console.log('Collections:', collectionNames);
+
+        if (!collectionNames.includes('actionables')) {
+            console.error('ERROR: "actionables" collection not found.');
             return;
         }
-        
-        // Get a sample document to understand the structure
-        const sample = await actionableCollection.findOne();
-        console.log('Sample document structure:', JSON.stringify(sample, null, 2));
-        
-        // Reset all actionables to "assigned" status
-        const result = await actionableCollection.updateMany(
-            {}, // Match all documents
-            { 
-                $set: { 
-                    task_status: "assigned",
-                    team_reviewer_approved_at: null,
-                    team_reviewer_rejected_at: null,
-                    team_reviewer_name: null,
-                    approved_at: null,
-                    rejected_at: null,
-                    completed_at: null
-                }
+
+        const col = db.collection('actionables');
+
+        // Count total items before reset
+        const allDocs = await col.find({}).toArray();
+        console.log(`\nFound ${allDocs.length} ActionablesResult documents.`);
+
+        let totalItems = 0;
+        let totalModified = 0;
+
+        for (const doc of allDocs) {
+            const items = doc.actionables || [];
+            totalItems += items.length;
+
+            // Build the updated items array — only reset workflow-state fields
+            const updatedItems = items.map(item => ({
+                ...item,
+                task_status:                  "assigned",
+                submitted_at:                 "",
+                completion_date:              "",
+                reviewer_comments:            "",
+                team_reviewer_name:           "",
+                team_reviewer_approved_at:    "",
+                team_reviewer_rejected_at:    "",
+                is_delayed:                   false,
+                delay_detected_at:            "",
+                delay_justification:          "",
+                delay_justification_by:       "",
+                delay_justification_at:       "",
+            }));
+
+            const result = await col.updateOne(
+                { _id: doc._id },
+                { $set: { actionables: updatedItems } }
+            );
+
+            if (result.modifiedCount > 0) {
+                totalModified += items.length;
+                console.log(`  ✓ doc_id=${doc._id || doc.doc_id}  items reset: ${items.length}`);
+            } else {
+                console.log(`  – doc_id=${doc._id || doc.doc_id}  no change (already clean)`);
             }
-        );
-        
-        console.log(`\n✅ Reset ${result.modifiedCount} actionables to "assigned" status`);
-        
-        // Verify the reset
-        const statusCounts = await actionableCollection.aggregate([
-            { $group: { _id: "$task_status", count: { $sum: 1 } } },
-            { $sort: { count: -1 } }
-        ]).toArray();
-        
-        console.log('\nStatus counts after reset:');
-        statusCounts.forEach(item => {
-            console.log(`- ${item._id}: ${item.count}`);
-        });
-        
+        }
+
+        console.log(`\n✅ Reset complete.`);
+        console.log(`   Documents processed : ${allDocs.length}`);
+        console.log(`   Total items reset   : ${totalModified} / ${totalItems}`);
+
+        // Verify: collect all task_status values post-reset
+        const verifyDocs = await col.find({}).toArray();
+        const statusCounts = {};
+        for (const doc of verifyDocs) {
+            for (const item of (doc.actionables || [])) {
+                const s = item.task_status || '(empty)';
+                statusCounts[s] = (statusCounts[s] || 0) + 1;
+            }
+        }
+
+        console.log('\nStatus distribution after reset:');
+        Object.entries(statusCounts)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([status, count]) => console.log(`  ${status}: ${count}`));
+
     } catch (error) {
         console.error('Error:', error);
     } finally {
