@@ -12,6 +12,7 @@ import {
     ActionableWorkstream,
     TaskStatus,
     ActionableComment,
+    isMultiTeam,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { TeamChatPanel } from "@/components/shared/team-chat-panel"
@@ -21,7 +22,7 @@ import {
     Loader2, Search, AlertTriangle,
     Paperclip, Calendar, Save, ExternalLink,
     Download, FileText, X, CheckCircle2,
-    XCircle, MessageSquare, SortAsc, SortDesc,
+    XCircle, MessageSquare, SortAsc, SortDesc, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -82,12 +83,13 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
     reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
     reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
     awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
+    pending_all_teams: { bg: "bg-violet-500/15", text: "text-violet-400", label: "Pending All Teams" },
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification", "pending_all_teams"]
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
+    awaiting_justification: 0, pending_all_teams: 1, team_review: 2, reviewer_rejected: 3, review: 4, reworking: 5, in_progress: 6, assigned: 7, completed: 8,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -362,6 +364,7 @@ export default function DashboardPage() {
         const teamReview = allRows.filter(r => r.item.task_status === "team_review").length
         const review = allRows.filter(r => r.item.task_status === "review").length
         const assigned = allRows.filter(r => !r.item.task_status || r.item.task_status === "assigned").length
+        const pendingAllTeams = allRows.filter(r => r.item.task_status === "pending_all_teams").length
         const highRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "High Risk").length
         const midRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Medium Risk").length
         const lowRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Low Risk").length
@@ -369,7 +372,7 @@ export default function DashboardPage() {
         const delayed30 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d30").length
         const delayed60 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d60").length
         const delayed90 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d90").length
-        return { total, completed, inProgress, teamReview, reworking, review, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
+        return { total, completed, inProgress, teamReview, reworking, review, assigned, pendingAllTeams, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
     }, [allRows])
 
     const toggleGroup = (ws: string) => {
@@ -426,6 +429,10 @@ export default function DashboardPage() {
                         <div className="text-center">
                             <p className="text-[15px] font-bold text-orange-400">{stats.reworking}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[15px] font-bold text-violet-400">{stats.pendingAllTeams}</p>
+                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Pending Teams</p>
                         </div>
                         <div className="text-center">
                             <p className="text-[15px] font-bold text-slate-400">{stats.assigned}</p>
@@ -642,6 +649,11 @@ export default function DashboardPage() {
                                                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                                                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
+                                                    {isMultiTeam(item) && (
+                                                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400" title={`Multi-team: ${item.assigned_teams?.join(", ")}`}>
+                                                            <Users className="h-2.5 w-2.5" />{item.assigned_teams?.length}
+                                                        </span>
+                                                    )}
                                                     {commentCount > 0 && (
                                                         <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
                                                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
@@ -724,6 +736,9 @@ export default function DashboardPage() {
                                                     )}
                                                     {taskStatus === "awaiting_justification" && (
                                                         <span className="text-[9px] text-yellow-500 italic">Awaiting Lead Justification</span>
+                                                    )}
+                                                    {taskStatus === "pending_all_teams" && (
+                                                        <span className="text-[9px] text-violet-400 italic">Pending Teams</span>
                                                     )}
                                                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[9px] text-muted-foreground/30">—</span>
@@ -815,6 +830,26 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {/* Multi-team workflow breakdown */}
+                                                    {isMultiTeam(item) && item.team_workflows && (
+                                                        <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg px-4 py-3">
+                                                            <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-2">Team Workflow Status</p>
+                                                            <div className="space-y-1.5">
+                                                                {(item.assigned_teams || []).map(team => {
+                                                                    const tw = item.team_workflows?.[team]
+                                                                    const twStatus = tw?.task_status || "assigned"
+                                                                    const twStyle = TASK_STATUS_STYLES[twStatus as TaskStatus] || TASK_STATUS_STYLES.assigned
+                                                                    return (
+                                                                        <div key={team} className="flex items-center gap-2">
+                                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium min-w-[80px]", WORKSTREAM_COLORS[team]?.bg, WORKSTREAM_COLORS[team]?.text || "text-muted-foreground")}>{team}</span>
+                                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium", twStyle.bg, twStyle.text)}>{twStyle.label}</span>
+                                                                            {tw?.evidence_files && tw.evidence_files.length > 0 && <span className="text-[9px] text-muted-foreground/50"><Paperclip className="h-2.5 w-2.5 inline" /> {tw.evidence_files.length}</span>}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     <CommentThread
                                                         comments={item.comments || []}
                                                         currentUser={userName}
@@ -895,6 +930,7 @@ export default function DashboardPage() {
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate line-through decoration-emerald-500/40">{safeStr(item.action)}</span>
+                                                            {isMultiTeam(item) && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400" title={`Multi-team: ${item.assigned_teams?.join(", ")}`}><Users className="h-2.5 w-2.5" />{item.assigned_teams?.length}</span>}
                                                             {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">

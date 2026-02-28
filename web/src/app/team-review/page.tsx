@@ -12,6 +12,8 @@ import {
     ActionableWorkstream,
     TaskStatus,
     ActionableComment,
+    getTeamView,
+    isMultiTeam,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { TeamChatPanel } from "@/components/shared/team-chat-panel"
@@ -83,10 +85,11 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
     reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
     reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
     awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
+    pending_all_teams: { bg: "bg-violet-500/15", text: "text-violet-400", label: "Pending All Teams" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, pending_all_teams: 6, completed: 7,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -294,7 +297,8 @@ function TeamReviewContent() {
 
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
-            const updated = await updateActionable(docId, itemId, updates)
+            // Always pass team context — backend ignores for single-team items
+            const updated = await updateActionable(docId, itemId, updates, userTeam || undefined)
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
                 return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
@@ -302,7 +306,7 @@ function TeamReviewContent() {
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }
-    }, [])
+    }, [userTeam])
 
     const handleAddComment = React.useCallback(async (docId: string, item: ActionableItem, text: string) => {
         const newComment: ActionableComment = {
@@ -375,8 +379,8 @@ function TeamReviewContent() {
         for (const doc of allDocs) {
             for (const item of doc.actionables) {
                 if (item.published_at) {
-                    // If reviewer has a team assigned, filter by it; otherwise show all
-                    if (!userTeam || item.workstream === userTeam) {
+                    // If reviewer has a team assigned, filter by it (incl. multi-team); otherwise show all
+                    if (!userTeam || item.workstream === userTeam || (item.assigned_teams && item.assigned_teams.includes(userTeam))) {
                         rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
                     }
                 }
@@ -385,13 +389,19 @@ function TeamReviewContent() {
         return rows
     }, [allDocs, userTeam])
 
+    // Project multi-team items to show team-specific status/evidence/comments
+    const viewRows = React.useMemo(() => {
+        if (!userTeam) return allRows
+        return allRows.map(r => ({ ...r, item: getTeamView(r.item, userTeam) }))
+    }, [allRows, userTeam])
+
     // Filter by tab
     const tabRows = React.useMemo(() => {
         if (tab === "pending") {
-            return allRows.filter(r => r.item.task_status === "team_review")
+            return viewRows.filter(r => r.item.task_status === "team_review")
         }
-        return allRows
-    }, [allRows, tab])
+        return viewRows
+    }, [viewRows, tab])
 
     // Filter + Sort
     const filtered = React.useMemo(() => {
@@ -432,14 +442,14 @@ function TeamReviewContent() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const total = allRows.length
-        const teamReview = allRows.filter(r => r.item.task_status === "team_review").length
-        const review = allRows.filter(r => r.item.task_status === "review").length
-        const completed = allRows.filter(r => r.item.task_status === "completed").length
-        const inProgress = allRows.filter(r => r.item.task_status === "in_progress").length
-        const reworking = allRows.filter(r => r.item.task_status === "reworking").length
+        const total = viewRows.length
+        const teamReview = viewRows.filter(r => r.item.task_status === "team_review").length
+        const review = viewRows.filter(r => r.item.task_status === "review").length
+        const completed = viewRows.filter(r => r.item.task_status === "completed").length
+        const inProgress = viewRows.filter(r => r.item.task_status === "in_progress").length
+        const reworking = viewRows.filter(r => r.item.task_status === "reworking").length
         return { total, teamReview, review, completed, inProgress, reworking }
-    }, [allRows])
+    }, [viewRows])
 
     const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 120px"
 
@@ -788,6 +798,11 @@ function ReviewRow({
                     <span className={cn("text-xs text-foreground/90 truncate", taskStatus === "completed" && "line-through decoration-emerald-500/40")}>
                         {safeStr(item.action)}
                     </span>
+                    {(item.assigned_teams?.length ?? 0) > 1 && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded" title={`Multi-team: ${item.assigned_teams!.join(", ")}`}>
+                            <Users className="h-2.5 w-2.5" />{item.assigned_teams!.length}
+                        </span>
+                    )}
                     {commentCount > 0 && (
                         <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}

@@ -266,7 +266,27 @@ export type ActionableWorkstream =
     | "Legal"
     | "Other";
 
-export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification";
+export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification" | "pending_all_teams";
+
+// Per-team workflow state for multi-team actionables
+export interface TeamWorkflow {
+    task_status: TaskStatus;
+    submitted_at: string;
+    team_reviewer_name: string;
+    team_reviewer_approved_at: string;
+    team_reviewer_rejected_at: string;
+    reviewer_comments: string;
+    rejection_reason: string;
+    is_delayed: boolean;
+    delay_detected_at: string;
+    justification: string;
+    justification_by: string;
+    justification_at: string;
+    justification_status: string;
+    evidence_files: { name: string; url: string; uploaded_at: string }[];
+    comments: ActionableComment[];
+    completion_date: string;
+}
 
 export interface ActionableItem {
     id: string;
@@ -302,6 +322,9 @@ export interface ActionableItem {
     justification_at?: string;     // ISO datetime of justification
     justification_status?: "pending_review" | "reviewed";  // CO must review before final
     audit_trail?: AuditTrailEntry[];     // Full audit trail
+    // Multi-team assignment
+    assigned_teams?: string[];             // Teams assigned to this actionable
+    team_workflows?: Record<string, TeamWorkflow>;  // Per-team workflow state
     // Legacy fields kept for backward compat with existing data
     actor?: string;
     object?: string;
@@ -420,4 +443,41 @@ export interface StorageStats {
     total_mb: number;
     limit_mb: number;
     usage_percent: number;
+}
+
+// ─── Multi-team helpers ───
+
+/** Returns true if the item is assigned to more than one team */
+export function isMultiTeam(item: ActionableItem): boolean {
+    return (item.assigned_teams?.length ?? 0) > 1;
+}
+
+/**
+ * For multi-team items, project the team-specific workflow onto the
+ * top-level fields so existing rendering code works unchanged.
+ * Single-team items are returned as-is.
+ */
+export function getTeamView(item: ActionableItem, team: string): ActionableItem {
+    if (!isMultiTeam(item)) return item;
+    const tw = item.team_workflows?.[team];
+    if (!tw) return item;
+    return {
+        ...item,
+        task_status: tw.task_status,
+        submitted_at: tw.submitted_at || undefined,
+        team_reviewer_name: tw.team_reviewer_name || undefined,
+        team_reviewer_approved_at: tw.team_reviewer_approved_at || undefined,
+        team_reviewer_rejected_at: tw.team_reviewer_rejected_at || undefined,
+        reviewer_comments: tw.reviewer_comments || undefined,
+        rejection_reason: tw.rejection_reason || undefined,
+        is_delayed: tw.is_delayed,
+        delay_detected_at: tw.delay_detected_at || undefined,
+        justification: tw.justification || undefined,
+        justification_by: tw.justification_by || undefined,
+        justification_at: tw.justification_at || undefined,
+        justification_status: tw.justification_status as ActionableItem["justification_status"],
+        evidence_files: tw.evidence_files,
+        comments: tw.comments,
+        completion_date: tw.completion_date || undefined,
+    };
 }

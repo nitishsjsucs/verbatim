@@ -13,7 +13,7 @@ import {
 import {
     Send, Loader2, Search,
     ChevronDown, ChevronRight, Undo2,
-    Calendar, Save,
+    Calendar, Save, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -78,7 +78,7 @@ interface FlatItem {
 function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlineTime }: {
     entry: FlatItem
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
-    onPublish: (docId: string, itemId: string, deadline: string) => Promise<void>
+    onPublish: (docId: string, itemId: string, deadline: string, assignedTeams?: string[]) => Promise<void>
     commonDeadline: string
     commonDeadlineTime: string
 }) {
@@ -87,6 +87,12 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
     const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
     const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
     const [saving, setSaving] = React.useState(false)
+    const [extraTeams, setExtraTeams] = React.useState<string[]>([])
+
+    const availableTeams = Object.keys(WORKSTREAM_COLORS).filter(t => t !== item.workstream && t !== "Other")
+    const toggleExtraTeam = (team: string) => {
+        setExtraTeams(prev => prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team])
+    }
 
     // Track if local deadline differs from saved item deadline
     const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
@@ -116,7 +122,8 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
             toast.error("Set a deadline (or a common deadline) before publishing")
             return
         }
-        await onPublish(docId, item.id, dl)
+        const assignedTeams = extraTeams.length > 0 ? [item.workstream, ...extraTeams] : undefined
+        await onPublish(docId, item.id, dl, assignedTeams)
     }
 
     const handleRevert = async (e: React.MouseEvent) => {
@@ -145,6 +152,12 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                     <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Send back to pending">
                         <Undo2 className="h-3.5 w-3.5" />
                     </button>
+                    {extraTeams.length > 0 && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-400/10 text-violet-400 font-mono flex items-center gap-0.5" title={`Multi-team: ${item.workstream}, ${extraTeams.join(", ")}`}>
+                            <Users className="h-2.5 w-2.5" />
+                            {extraTeams.length + 1}
+                        </span>
+                    )}
                     <button onClick={handlePublish} className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium" title="Publish to tracker">
                         <Send className="h-3 w-3" />
                         Publish
@@ -199,6 +212,34 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                         {!deadlineDate && commonDeadline && (
                             <p className="text-[9px] text-muted-foreground/40 mt-1">
                                 No individual deadline — will use common deadline ({commonDeadline}) on publish
+                            </p>
+                        )}
+                    </div>
+                    {/* Multi-team assignment */}
+                    <div>
+                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            Assign to Additional Teams
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {availableTeams.map(team => (
+                                <button
+                                    key={team}
+                                    onClick={() => toggleExtraTeam(team)}
+                                    className={cn(
+                                        "text-[10px] px-2 py-1 rounded-md border transition-colors",
+                                        extraTeams.includes(team)
+                                            ? "border-primary bg-primary/15 text-primary"
+                                            : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
+                                    )}
+                                >
+                                    {team}
+                                </button>
+                            ))}
+                        </div>
+                        {extraTeams.length > 0 && (
+                            <p className="text-[9px] text-primary/60 mt-1">
+                                Multi-team: {item.workstream} + {extraTeams.join(", ")}
                             </p>
                         )}
                     </div>
@@ -278,11 +319,14 @@ export default function PublishPage() {
         }
     }, [])
 
-    const handlePublish = React.useCallback(async (docId: string, itemId: string, deadline: string) => {
-        const publishUpdates = {
+    const handlePublish = React.useCallback(async (docId: string, itemId: string, deadline: string, assignedTeams?: string[]) => {
+        const publishUpdates: Record<string, unknown> = {
             published_at: new Date().toISOString(),
             deadline,
             task_status: "assigned",
+        }
+        if (assignedTeams && assignedTeams.length > 1) {
+            publishUpdates.assigned_teams = assignedTeams
         }
         try {
             const updated = await updateActionable(docId, itemId, publishUpdates)
@@ -291,7 +335,7 @@ export default function PublishPage() {
                 if (d.doc_id !== docId) return d
                 return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...publishUpdates, ...updated } as ActionableItem : a) }
             }))
-            toast.success("Published to tracker")
+            toast.success(assignedTeams && assignedTeams.length > 1 ? `Published to ${assignedTeams.length} teams` : "Published to tracker")
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Publish failed")
         }

@@ -1207,8 +1207,13 @@ def list_all_actionables():
 
 
 @app.put("/documents/{doc_id}/actionables/{item_id}")
-def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
-    """Update a single actionable item's fields (edit, approve, reject)."""
+def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_team: str = Query("")):
+    """Update a single actionable item's fields (edit, approve, reject).
+
+    If for_team is supplied and the item is multi-team (assigned_teams > 1),
+    team-specific workflow fields are written into team_workflows[for_team]
+    instead of the top-level fields, and the aggregate status is recomputed.
+    """
     store = get_actionable_store()
     result = store.load(doc_id)
     if not result:
@@ -1222,6 +1227,13 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
             break
     if not target:
         raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    # Fields that belong to per-team workflow (routed to team_workflows when multi-team)
+    from models.actionable import ActionableItem as _AI
+    team_workflow_fields = set(_AI.TEAM_WORKFLOW_FIELDS)
+
+    # Check if this is a team-specific update on a multi-team item
+    is_team_update = for_team and target.is_multi_team and for_team in target.assigned_teams
 
     # Update allowed fields
     editable_fields = [
@@ -1237,6 +1249,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
         "is_delayed", "delay_detected_at",
         "justification", "justification_by", "justification_at",
         "justification_status", "audit_trail",
+        "assigned_teams", "team_workflows",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -1253,7 +1266,22 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
                     val = Workstream(val)
                 except ValueError:
                     continue
-            setattr(target, field_name, val)
+
+            # Route team-specific fields to team_workflows when multi-team
+            if is_team_update and field_name in team_workflow_fields:
+                if for_team not in target.team_workflows:
+                    target.team_workflows[for_team] = {}
+                target.team_workflows[for_team][field_name] = val
+            else:
+                setattr(target, field_name, val)
+
+    # If assigned_teams was just set, initialize team_workflows for new teams
+    if "assigned_teams" in body:
+        target.init_team_workflows()
+
+    # Recompute aggregate status for multi-team items
+    if target.is_multi_team:
+        target.compute_aggregate_status()
 
     result.compute_stats()
     store.save(result)
@@ -1370,7 +1398,8 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
 
 @app.get("/actionables/approved-by-team")
 def get_approved_by_team():
-    """Get all approved actionables grouped by workstream (team)."""
+    """Get all approved actionables grouped by workstream (team).
+    Multi-team actionables appear in each assigned team's list."""
     store = get_actionable_store()
     db = store._collection
     teams: dict[str, list] = {}
@@ -1381,10 +1410,12 @@ def get_approved_by_team():
             if a.get("approval_status") == "approved":
                 a["doc_id"] = doc_id
                 a["doc_name"] = doc_name
-                ws = a.get("workstream", "Other")
-                if ws not in teams:
-                    teams[ws] = []
-                teams[ws].append(a)
+                assigned = a.get("assigned_teams", [])
+                target_teams = assigned if len(assigned) > 0 else [a.get("workstream", "Other")]
+                for ws in target_teams:
+                    if ws not in teams:
+                        teams[ws] = []
+                    teams[ws].append(a)
     return teams
 
 
@@ -2235,6 +2266,12 @@ def check_delays():
                             "timestamp": now_iso,
                             "details": f"Task missed deadline {a.deadline}",
                         })
+                        # Also mark delay in per-team workflows
+                        if a.is_multi_team:
+                            for t_name, tw in a.team_workflows.items():
+                                if tw.get("task_status", "") not in ("completed", "review", "") and not tw.get("is_delayed"):
+                                    tw["is_delayed"] = True
+                                    tw["delay_detected_at"] = now_iso
                         changed = True
                         updated_count += 1
                 except (ValueError, TypeError):
@@ -2248,7 +2285,8 @@ def check_delays():
 
 @app.get("/actionables/delayed")
 def get_delayed_actionables(team: str = Query("")):
-    """Get all delayed actionables, optionally filtered by team (workstream)."""
+    """Get all delayed actionables, optionally filtered by team.
+    Multi-team items match if team is in assigned_teams."""
     store = get_actionable_store()
     db = store._collection
     delayed = []
@@ -2257,8 +2295,11 @@ def get_delayed_actionables(team: str = Query("")):
         doc_name = raw.get("doc_name", doc_id)
         for a in raw.get("actionables", []):
             if a.get("is_delayed"):
-                if team and a.get("workstream", "") != team:
-                    continue
+                assigned = a.get("assigned_teams", [])
+                if team:
+                    # Match if workstream matches OR team is in assigned_teams
+                    if a.get("workstream", "") != team and team not in assigned:
+                        continue
                 a["doc_id"] = doc_id
                 a["doc_name"] = doc_name
                 delayed.append(a)
@@ -2271,10 +2312,11 @@ class JustificationRequest(BaseModel):
 
 
 @app.post("/documents/{doc_id}/actionables/{item_id}/justification")
-def submit_justification(doc_id: str, item_id: str, body: JustificationRequest):
+def submit_justification(doc_id: str, item_id: str, body: JustificationRequest, for_team: str = Query("")):
     """
     Team Lead submits a justification for a delayed task.
-    Does not change task status — purely governance/accountability.
+    If for_team is provided on a multi-team item, the justification is
+    stored in team_workflows[for_team].
     """
     store = get_actionable_store()
     result = store.load(doc_id)
@@ -2306,20 +2348,36 @@ def submit_justification(doc_id: str, item_id: str, body: JustificationRequest):
         raise HTTPException(status_code=400, detail="Task is not delayed")
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    target.justification = body.justification
-    target.justification_by = body.justifier_name
-    target.justification_at = now_iso
-    target.justification_status = "pending_review"
+
+    # Determine where to write the justification (top-level vs team_workflows)
+    is_team_justification = for_team and target.is_multi_team and for_team in target.assigned_teams
+
+    if is_team_justification:
+        tw = target.team_workflows.get(for_team, {})
+        tw["justification"] = body.justification
+        tw["justification_by"] = body.justifier_name
+        tw["justification_at"] = now_iso
+        tw["justification_status"] = "pending_review"
+        target.team_workflows[for_team] = tw
+        # If the per-team status was awaiting_justification, move to review
+        if tw.get("task_status") == "awaiting_justification":
+            tw["task_status"] = "review"
+    else:
+        target.justification = body.justification
+        target.justification_by = body.justifier_name
+        target.justification_at = now_iso
+        target.justification_status = "pending_review"
+
     target.audit_trail.append({
         "event": "justification_submitted",
         "actor": body.justifier_name,
         "role": "team_lead",
         "timestamp": now_iso,
-        "details": f"Justification pending CO review: {body.justification}",
+        "details": f"Justification pending CO review: {body.justification}" + (f" (team: {for_team})" if is_team_justification else ""),
     })
 
-    # If the task was gated at awaiting_justification, move it to review
-    if target.task_status == "awaiting_justification":
+    # If the task was gated at awaiting_justification (single-team), move it to review
+    if not is_team_justification and target.task_status == "awaiting_justification":
         target.task_status = "review"
         target.audit_trail.append({
             "event": "status_change",
@@ -2328,6 +2386,10 @@ def submit_justification(doc_id: str, item_id: str, body: JustificationRequest):
             "timestamp": now_iso,
             "details": "Delay justified — task released to Compliance review",
         })
+
+    # Recompute aggregate status for multi-team items
+    if target.is_multi_team:
+        target.compute_aggregate_status()
 
     result.compute_stats()
     store.save(result)

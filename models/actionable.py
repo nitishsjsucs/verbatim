@@ -85,6 +85,63 @@ class ActionableItem:
     justification_at: str = ""  # ISO timestamp when justification was provided
     justification_status: str = ""  # "pending_review" or "reviewed"
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
+    # ── Multi-team assignment ──
+    assigned_teams: list = field(default_factory=list)  # e.g. ["Policy", "Technology"] — empty = single-team via workstream
+    team_workflows: dict = field(default_factory=dict)  # Per-team workflow state, keyed by team name
+
+    # ── Multi-team helpers ──
+    TEAM_WORKFLOW_FIELDS = [
+        "task_status", "submitted_at", "team_reviewer_name",
+        "team_reviewer_approved_at", "team_reviewer_rejected_at",
+        "reviewer_comments", "rejection_reason",
+        "is_delayed", "delay_detected_at",
+        "justification", "justification_by", "justification_at", "justification_status",
+        "evidence_files", "comments", "completion_date",
+    ]
+
+    @property
+    def is_multi_team(self) -> bool:
+        return len(self.assigned_teams) > 1
+
+    def effective_teams(self) -> list:
+        if self.assigned_teams:
+            return list(self.assigned_teams)
+        return [self.workstream.value if isinstance(self.workstream, Workstream) else self.workstream]
+
+    def init_team_workflows(self) -> None:
+        """Initialize team_workflows for all assigned_teams."""
+        for t in self.assigned_teams:
+            if t not in self.team_workflows:
+                self.team_workflows[t] = {
+                    "task_status": "assigned",
+                    "submitted_at": "",
+                    "team_reviewer_name": "",
+                    "team_reviewer_approved_at": "",
+                    "team_reviewer_rejected_at": "",
+                    "reviewer_comments": "",
+                    "rejection_reason": "",
+                    "is_delayed": False,
+                    "delay_detected_at": "",
+                    "justification": "",
+                    "justification_by": "",
+                    "justification_at": "",
+                    "justification_status": "",
+                    "evidence_files": [],
+                    "comments": [],
+                    "completion_date": "",
+                }
+
+    def compute_aggregate_status(self) -> None:
+        """For multi-team items, compute top-level task_status from per-team statuses."""
+        if not self.is_multi_team:
+            return
+        if self.task_status == "completed":
+            return  # already approved by compliance
+        statuses = [tw.get("task_status", "assigned") for tw in self.team_workflows.values()]
+        if all(s == "review" for s in statuses):
+            self.task_status = "review"
+        else:
+            self.task_status = "pending_all_teams"
 
     def to_dict(self) -> dict:
         return {
@@ -126,6 +183,8 @@ class ActionableItem:
             "justification_at": self.justification_at,
             "justification_status": self.justification_status,
             "audit_trail": self.audit_trail,
+            "assigned_teams": self.assigned_teams,
+            "team_workflows": self.team_workflows,
         }
 
     @classmethod
@@ -181,6 +240,8 @@ class ActionableItem:
             justification_at=data.get("justification_at", ""),
             justification_status=data.get("justification_status", ""),
             audit_trail=data.get("audit_trail", []),
+            assigned_teams=data.get("assigned_teams", []),
+            team_workflows=data.get("team_workflows", {}),
         )
 
 

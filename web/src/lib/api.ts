@@ -274,8 +274,10 @@ export async function updateActionable(
     docId: string,
     itemId: string,
     updates: Record<string, unknown>,
+    forTeam?: string,
 ): Promise<ActionableItem> {
-    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}`, {
+    const params = forTeam ? `?for_team=${encodeURIComponent(forTeam)}` : '';
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}${params}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -419,8 +421,10 @@ export async function submitJustification(
     itemId: string,
     justification: string,
     justifierName: string,
+    forTeam?: string,
 ): Promise<ActionableItem> {
-    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/justification`, {
+    const teamQuery = forTeam ? `?for_team=${encodeURIComponent(forTeam)}` : '';
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/justification${teamQuery}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ justification, justifier_name: justifierName }),

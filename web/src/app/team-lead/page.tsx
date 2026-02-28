@@ -14,6 +14,8 @@ import {
     ActionableWorkstream,
     ActionableComment,
     TaskStatus,
+    getTeamView,
+    isMultiTeam,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { TeamChatPanel } from "@/components/shared/team-chat-panel"
@@ -27,7 +29,7 @@ import {
     Paperclip, Calendar, ExternalLink,
     Download, FileText, X, CheckCircle2,
     MessageSquare, SortAsc, SortDesc,
-    Eye, Clock, Shield, Send,
+    Eye, Clock, Shield, Send, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -80,10 +82,11 @@ const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: 
     reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
     reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
     awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
+    pending_all_teams: { bg: "bg-violet-500/15", text: "text-violet-400", label: "Pending All Teams" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, pending_all_teams: 6, completed: 7,
 }
 
 function deadlineCategory(deadline: string | undefined): string {
@@ -295,7 +298,7 @@ function TeamLeadContent() {
 
     const handleAddComment = React.useCallback(async (docId: string, itemId: string, text: string) => {
         const doc = allDocs.find(d => d.doc_id === docId)
-        const item = doc?.actionables.find(a => a.id === itemId)
+        const rawItem = doc?.actionables.find(a => a.id === itemId)
         const newComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
@@ -303,9 +306,15 @@ function TeamLeadContent() {
             text,
             timestamp: new Date().toISOString(),
         }
-        const existing = item?.comments || []
+        // Get team-specific comments for multi-team items
+        let existing: ActionableComment[] = []
+        if (rawItem && isMultiTeam(rawItem) && userTeam) {
+            existing = rawItem.team_workflows?.[userTeam]?.comments || []
+        } else {
+            existing = rawItem?.comments || []
+        }
         try {
-            const updated = await updateActionable(docId, itemId, { comments: [...existing, newComment] })
+            const updated = await updateActionable(docId, itemId, { comments: [...existing, newComment] }, userTeam || undefined)
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
                 return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
@@ -313,7 +322,7 @@ function TeamLeadContent() {
         } catch {
             toast.error("Failed to add comment")
         }
-    }, [userName, allDocs])
+    }, [userName, allDocs, userTeam])
 
     // Build flat rows — only published items for the lead's team
     const allRows: FlatRow[] = React.useMemo(() => {
@@ -321,8 +330,8 @@ function TeamLeadContent() {
         for (const doc of allDocs) {
             for (const item of doc.actionables) {
                 if (item.published_at) {
-                    // If lead has a team assigned, filter by it; otherwise show all
-                    if (!userTeam || item.workstream === userTeam) {
+                    // If lead has a team assigned, filter by it (incl. multi-team); otherwise show all
+                    if (!userTeam || item.workstream === userTeam || (item.assigned_teams && item.assigned_teams.includes(userTeam))) {
                         rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
                     }
                 }
@@ -331,13 +340,19 @@ function TeamLeadContent() {
         return rows
     }, [allDocs, userTeam])
 
+    // Project multi-team items to show team-specific status/evidence/comments
+    const viewRows = React.useMemo(() => {
+        if (!userTeam) return allRows
+        return allRows.map(r => ({ ...r, item: getTeamView(r.item, userTeam) }))
+    }, [allRows, userTeam])
+
     // Tab filter
     const tabRows = React.useMemo(() => {
         if (tab === "delayed") {
-            return allRows.filter(r => r.item.is_delayed || (r.item.deadline && new Date(r.item.deadline).getTime() < Date.now() && r.item.task_status !== "completed"))
+            return viewRows.filter(r => r.item.is_delayed || (r.item.deadline && new Date(r.item.deadline).getTime() < Date.now() && r.item.task_status !== "completed"))
         }
-        return allRows
-    }, [allRows, tab])
+        return viewRows
+    }, [viewRows, tab])
 
     // Filter + Sort
     const filtered = React.useMemo(() => {
@@ -380,15 +395,15 @@ function TeamLeadContent() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const total = allRows.length
-        const delayed = allRows.filter(r => r.item.is_delayed || (r.item.deadline && new Date(r.item.deadline).getTime() < Date.now() && r.item.task_status !== "completed")).length
-        const completed = allRows.filter(r => r.item.task_status === "completed").length
-        const inProgress = allRows.filter(r => ["in_progress", "assigned"].includes(r.item.task_status || "assigned")).length
-        const inReview = allRows.filter(r => ["team_review", "review"].includes(r.item.task_status || "")).length
-        const reworking = allRows.filter(r => r.item.task_status === "reworking").length
-        const justified = allRows.filter(r => r.item.justification).length
+        const total = viewRows.length
+        const delayed = viewRows.filter(r => r.item.is_delayed || (r.item.deadline && new Date(r.item.deadline).getTime() < Date.now() && r.item.task_status !== "completed")).length
+        const completed = viewRows.filter(r => r.item.task_status === "completed").length
+        const inProgress = viewRows.filter(r => ["in_progress", "assigned"].includes(r.item.task_status || "assigned")).length
+        const inReview = viewRows.filter(r => ["team_review", "review"].includes(r.item.task_status || "")).length
+        const reworking = viewRows.filter(r => r.item.task_status === "reworking").length
+        const justified = viewRows.filter(r => r.item.justification).length
         return { total, delayed, completed, inProgress, inReview, reworking, justified }
-    }, [allRows])
+    }, [viewRows])
 
     const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
 
@@ -768,7 +783,7 @@ function TeamLeadContent() {
     // ── Handler: submit justification ──
     async function handleJustify(docId: string, itemId: string, justification: string) {
         try {
-            await submitJustification(docId, itemId, justification, userName)
+            await submitJustification(docId, itemId, justification, userName, userTeam || undefined)
             toast.success("Justification submitted")
             await loadAll()
         } catch (err) {
@@ -840,6 +855,11 @@ function OversightRow({
                     <span className={cn("text-xs text-foreground/90 truncate", taskStatus === "completed" && "line-through decoration-emerald-500/40")}>
                         {safeStr(item.action)}
                     </span>
+                    {(item.assigned_teams?.length ?? 0) > 1 && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded" title={`Multi-team: ${item.assigned_teams!.join(", ")}`}>
+                            <Users className="h-2.5 w-2.5" />{item.assigned_teams!.length}
+                        </span>
+                    )}
                     {commentCount > 0 && (
                         <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}

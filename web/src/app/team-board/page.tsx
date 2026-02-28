@@ -10,7 +10,7 @@ import {
     updateActionable,
     uploadEvidence,
 } from "@/lib/api"
-import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment } from "@/lib/types"
+import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, getTeamView, isMultiTeam } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import {
@@ -19,7 +19,7 @@ import {
     ArrowRight, RotateCcw, Trash2, Save,
     MessageSquare, ExternalLink, Download, Upload, Undo2,
     SortAsc, SortDesc,
-    LayoutDashboard, AlertTriangle, X, XCircle,
+    LayoutDashboard, AlertTriangle, X, XCircle, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -50,13 +50,14 @@ const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: 
     reworking:          { label: "Reworking",             bg: "bg-orange-500",  text: "text-white" },
     reviewer_rejected:  { label: "Rejected by Reviewer",  bg: "bg-rose-500",    text: "text-white" },
     awaiting_justification: { label: "Awaiting Justification", bg: "bg-yellow-600", text: "text-white" },
+    pending_all_teams: { label: "Pending All Teams", bg: "bg-violet-500", text: "text-white" },
 }
 
 const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, completed: 7,
+    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, pending_all_teams: 6, completed: 7,
 }
 
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification"]
+const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification", "pending_all_teams"]
 const RISK_OPTIONS = ["High Risk", "Medium Risk", "Low Risk"]
 
 const RISK_STYLES: Record<string, { bg: string; text: string }> = {
@@ -306,6 +307,11 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
+                    {(item.assigned_teams?.length ?? 0) > 1 && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded" title={`Multi-team: ${item.assigned_teams!.join(", ")}`}>
+                            <Users className="h-2.5 w-2.5" />{item.assigned_teams!.length}
+                        </span>
+                    )}
                     {commentCount > 0 && (
                         <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
@@ -555,7 +561,7 @@ function TeamBoardContent() {
             for (const r of results) {
                 if (!r.actionables) continue
                 for (const a of r.actionables) {
-                    if (a.published_at && a.workstream === userTeam) {
+                    if (a.published_at && (a.workstream === userTeam || (a.assigned_teams && a.assigned_teams.includes(userTeam!)))) {
                         items.push({ item: a, docId: r.doc_id, docName: r.doc_name || r.doc_id })
                     }
                 }
@@ -570,27 +576,35 @@ function TeamBoardContent() {
 
     React.useEffect(() => { if (!isComplianceOfficer) loadData() }, [loadData, isComplianceOfficer])
 
+    // Project multi-team items to show team-specific status/evidence/comments
+    const viewItems = React.useMemo(() => {
+        if (!userTeam) return allItems
+        return allItems.map(e => ({ ...e, item: getTeamView(e.item, userTeam) }))
+    }, [allItems, userTeam])
+
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
-            const updated = await updateActionable(docId, itemId, updates)
+            // Always pass team context — backend ignores for single-team items
+            const updated = await updateActionable(docId, itemId, updates, userTeam || undefined)
             setAllItems(prev => prev.map(e => e.item.id === itemId ? { ...e, item: { ...e.item, ...updated } } : e))
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }
-    }, [])
+    }, [userTeam])
 
     const handleEvidenceUpload = React.useCallback(async (docId: string, itemId: string, file: File) => {
         try {
             const result = await uploadEvidence(file)
             const entry = { name: file.name, url: result.url, uploaded_at: new Date().toISOString() }
-            const item = allItems.find(e => e.item.id === itemId)
+            // Use viewItems to get team-projected evidence for multi-team items
+            const item = viewItems.find(e => e.item.id === itemId)
             const existing = item?.item.evidence_files || []
             await handleUpdate(docId, itemId, { evidence_files: [...existing, entry] })
             toast.success(`Evidence "${file.name}" uploaded`)
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Upload failed")
         }
-    }, [allItems, handleUpdate])
+    }, [viewItems, handleUpdate])
 
     const handleStatusTransition = React.useCallback(async (docId: string, item: ActionableItem) => {
         const currentStatus = item.task_status || "assigned"
@@ -622,29 +636,29 @@ function TeamBoardContent() {
     }, [handleUpdate])
 
 
-    // Stats (team-scoped from allItems which is already team-filtered)
+    // Stats (team-scoped from viewItems which has team-projected statuses)
     const stats = React.useMemo(() => {
-        const total = allItems.length
-        const completed = allItems.filter(e => e.item.task_status === "completed").length
-        const inProgress = allItems.filter(e => e.item.task_status === "in_progress").length
-        const teamReview = allItems.filter(e => e.item.task_status === "team_review").length
-        const review = allItems.filter(e => e.item.task_status === "review").length
-        const reworking = allItems.filter(e => e.item.task_status === "reworking").length
-        const reviewerRejected = allItems.filter(e => e.item.task_status === "reviewer_rejected").length
-        const assigned = allItems.filter(e => !e.item.task_status || e.item.task_status === "assigned").length
-        const highRisk = allItems.filter(e => normalizeRisk(e.item.modality) === "High Risk").length
-        const midRisk = allItems.filter(e => normalizeRisk(e.item.modality) === "Medium Risk").length
-        const lowRisk = allItems.filter(e => normalizeRisk(e.item.modality) === "Low Risk").length
-        const yetToDeadline = allItems.filter(e => deadlineCategory(e.item.deadline) === "yet").length
-        const delayed30 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d30").length
-        const delayed60 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d60").length
-        const delayed90 = allItems.filter(e => deadlineCategory(e.item.deadline) === "d90").length
+        const total = viewItems.length
+        const completed = viewItems.filter(e => e.item.task_status === "completed").length
+        const inProgress = viewItems.filter(e => e.item.task_status === "in_progress").length
+        const teamReview = viewItems.filter(e => e.item.task_status === "team_review").length
+        const review = viewItems.filter(e => e.item.task_status === "review").length
+        const reworking = viewItems.filter(e => e.item.task_status === "reworking").length
+        const reviewerRejected = viewItems.filter(e => e.item.task_status === "reviewer_rejected").length
+        const assigned = viewItems.filter(e => !e.item.task_status || e.item.task_status === "assigned").length
+        const highRisk = viewItems.filter(e => normalizeRisk(e.item.modality) === "High Risk").length
+        const midRisk = viewItems.filter(e => normalizeRisk(e.item.modality) === "Medium Risk").length
+        const lowRisk = viewItems.filter(e => normalizeRisk(e.item.modality) === "Low Risk").length
+        const yetToDeadline = viewItems.filter(e => deadlineCategory(e.item.deadline) === "yet").length
+        const delayed30 = viewItems.filter(e => deadlineCategory(e.item.deadline) === "d30").length
+        const delayed60 = viewItems.filter(e => deadlineCategory(e.item.deadline) === "d60").length
+        const delayed90 = viewItems.filter(e => deadlineCategory(e.item.deadline) === "d90").length
         return { total, completed, inProgress, teamReview, review, reworking, reviewerRejected, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
-    }, [allItems])
+    }, [viewItems])
 
     // Filter + Sort
     const filtered = React.useMemo(() => {
-        let result = allItems.filter(({ item }) => {
+        let result = viewItems.filter(({ item }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
@@ -675,7 +689,7 @@ function TeamBoardContent() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [allItems, statusFilter, riskFilter, deadlineFilter, searchQuery, sortBy, sortDir])
+    }, [viewItems, statusFilter, riskFilter, deadlineFilter, searchQuery, sortBy, sortDir])
 
     // Group: Active (not completed) and Completed
     const activeItems = React.useMemo(() => filtered.filter(e => e.item.task_status !== "completed"), [filtered])
@@ -898,7 +912,7 @@ function TeamBoardContent() {
                         </div>
                     )}
 
-                    {!loading && allItems.length === 0 && (
+                    {!loading && viewItems.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
                             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                                 <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
@@ -952,7 +966,7 @@ function TeamBoardContent() {
                         </div>
                     )}
 
-                    {!loading && filtered.length === 0 && allItems.length > 0 && (
+                    {!loading && filtered.length === 0 && viewItems.length > 0 && (
                         <div className="text-center text-sm text-muted-foreground/60 py-12">
                             No actionables match the current filters
                         </div>
