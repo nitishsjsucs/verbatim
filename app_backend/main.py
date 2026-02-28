@@ -2289,7 +2289,20 @@ def submit_delay_justification(doc_id: str, item_id: str, body: DelayJustificati
     if not target:
         raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
 
-    if not target.is_delayed:
+    # Consider delayed if: explicit flag set, deadline passed, or gated at awaiting_justification
+    deadline_passed = False
+    if target.deadline_or_frequency:
+        try:
+            from dateutil.parser import parse as parse_date
+            deadline_passed = parse_date(target.deadline_or_frequency) < datetime.now(timezone.utc)
+        except Exception:
+            pass
+    is_effectively_delayed = (
+        target.is_delayed
+        or deadline_passed
+        or target.task_status == "awaiting_justification"
+    )
+    if not is_effectively_delayed:
         raise HTTPException(status_code=400, detail="Task is not delayed")
 
     now_iso = datetime.now(timezone.utc).isoformat()
