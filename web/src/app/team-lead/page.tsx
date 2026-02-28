@@ -7,7 +7,6 @@ import {
     fetchDelayedActionables,
     submitDelayJustification,
     updateActionable,
-    fetchAuditTrail,
 } from "@/lib/api"
 import {
     ActionableItem,
@@ -15,7 +14,6 @@ import {
     ActionableWorkstream,
     ActionableComment,
     TaskStatus,
-    AuditTrailEntry,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { TeamChatPanel } from "@/components/shared/team-chat-panel"
@@ -233,60 +231,6 @@ function EvidencePopover({ files, taskStatus }: { files: { name: string; url: st
                     })}
                 </div>
             )}
-        </div>
-    )
-}
-
-// ─── Audit Trail Panel ───────────────────────────────────────────────────────
-
-function AuditTrailPanel({ docId, itemId }: { docId: string; itemId: string }) {
-    const [entries, setEntries] = React.useState<AuditTrailEntry[]>([])
-    const [loading, setLoading] = React.useState(true)
-
-    React.useEffect(() => {
-        (async () => {
-            try {
-                const result = await fetchAuditTrail(docId, itemId)
-                setEntries(result.audit_trail || [])
-            } catch {
-                // silently fail
-            } finally {
-                setLoading(false)
-            }
-        })()
-    }, [docId, itemId])
-
-    return (
-        <div className="border border-border/30 rounded-lg bg-muted/5 overflow-hidden">
-            <div className="px-3 py-2 border-b border-border/20 bg-muted/10">
-                <span className="text-[11px] font-semibold text-foreground/70 flex items-center gap-1.5">
-                    <Shield className="h-3 w-3 text-violet-400" />
-                    Audit Trail
-                </span>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto p-3 space-y-2">
-                {loading && (
-                    <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                    </div>
-                )}
-                {!loading && entries.length === 0 && (
-                    <p className="text-[10px] text-muted-foreground/40 italic text-center py-3">No audit trail entries yet.</p>
-                )}
-                {entries.map((entry, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-[10px]">
-                        <div className="h-1.5 w-1.5 rounded-full bg-violet-400 mt-1.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <span className="font-semibold text-foreground/80">{entry.event}</span>
-                            {entry.actor && <span className="text-muted-foreground/50"> — {entry.actor}</span>}
-                            {entry.role && <span className="text-muted-foreground/30"> ({entry.role})</span>}
-                            {entry.details && <p className="text-muted-foreground/40 mt-0.5">{entry.details}</p>}
-                        </div>
-                        <span className="text-muted-foreground/30 shrink-0">{formatDate(entry.timestamp)}</span>
-                    </div>
-                ))}
-            </div>
         </div>
     )
 }
@@ -865,8 +809,7 @@ function OversightRow({
 
     const [showJustifyInput, setShowJustifyInput] = React.useState(false)
     const [justifyText, setJustifyText] = React.useState("")
-    // Tabs in expanded section
-    const [expandTab, setExpandTab] = React.useState<"comments" | "audit">("comments")
+
 
     const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
 
@@ -1022,7 +965,7 @@ function OversightRow({
                 </div>
             )}
 
-            {/* Expanded: tabs for comments, delay chat, audit trail */}
+            {/* Expanded: comments and detail info */}
             {isExpanded && (
                 <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
                     {/* Detail info */}
@@ -1050,47 +993,15 @@ function OversightRow({
                         )}
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex items-center gap-1 mb-3 border-b border-border/20 pb-2">
-                        <button
-                            onClick={() => setExpandTab("comments")}
-                            className={cn(
-                                "px-2.5 py-1 text-[10px] rounded font-medium transition-colors",
-                                expandTab === "comments"
-                                    ? "bg-primary/10 text-primary"
-                                    : "text-muted-foreground/50 hover:text-foreground"
-                            )}
-                        >
-                            Comments ({commentCount})
-                        </button>
-                        <button
-                            onClick={() => setExpandTab("audit")}
-                            className={cn(
-                                "px-2.5 py-1 text-[10px] rounded font-medium transition-colors",
-                                expandTab === "audit"
-                                    ? "bg-violet-500/10 text-violet-400"
-                                    : "text-muted-foreground/50 hover:text-foreground"
-                            )}
-                        >
-                            Audit Trail
-                        </button>
-                    </div>
-
-                    {/* Tab content */}
-                    {expandTab === "comments" && (
-                        <CommentThread
-                            comments={item.comments || []}
-                            currentUser={userName}
-                            currentRole="team_lead"
-                            onAddComment={taskStatus !== "completed"
-                                ? async (text) => onAddComment(docId, item.id, text)
-                                : undefined
-                            }
-                        />
-                    )}
-                    {expandTab === "audit" && (
-                        <AuditTrailPanel docId={docId} itemId={item.id} />
-                    )}
+                    <CommentThread
+                        comments={item.comments || []}
+                        currentUser={userName}
+                        currentRole="team_lead"
+                        onAddComment={taskStatus !== "completed"
+                            ? async (text) => onAddComment(docId, item.id, text)
+                            : undefined
+                        }
+                    />
                 </div>
             )}
         </div>
