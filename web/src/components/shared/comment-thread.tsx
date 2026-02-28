@@ -8,8 +8,9 @@ import type { ActionableComment } from "@/lib/types"
 interface CommentThreadProps {
     comments: ActionableComment[]
     currentUser: string
-    currentRole: "compliance_officer" | "team_member" | "team_reviewer"
+    currentRole: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead"
     onAddComment?: (text: string) => Promise<void>
+    readOnly?: boolean
 }
 
 function formatTimestamp(iso: string): string {
@@ -31,7 +32,7 @@ function formatTimestamp(iso: string): string {
     }
 }
 
-export function CommentThread({ comments, currentUser, currentRole, onAddComment }: CommentThreadProps) {
+export function CommentThread({ comments, currentUser, currentRole, onAddComment, readOnly }: CommentThreadProps) {
     const [draft, setDraft] = React.useState("")
     const [sending, setSending] = React.useState(false)
     const scrollRef = React.useRef<HTMLDivElement>(null)
@@ -109,9 +110,11 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                                         ? "bg-purple-500/15 text-purple-500"
                                         : c.role === "team_reviewer"
                                         ? "bg-teal-500/15 text-teal-500"
+                                        : c.role === "team_lead"
+                                        ? "bg-indigo-500/15 text-indigo-400"
                                         : "bg-blue-500/15 text-blue-500"
                                 )}>
-                                    {c.role === "compliance_officer" ? "Officer" : c.role === "team_reviewer" ? "Reviewer" : "Team"}
+                                    {c.role === "compliance_officer" ? "Officer" : c.role === "team_reviewer" ? "Reviewer" : c.role === "team_lead" ? "Lead" : "Team"}
                                 </span>
                                 <span className="text-[8px] text-muted-foreground/30">{formatTimestamp(c.timestamp)}</span>
                             </div>
@@ -129,7 +132,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
             </div>
 
             {/* Input */}
-            {onAddComment && <div className="flex items-end gap-2 mt-2 pt-2 border-t border-border/20">
+            {onAddComment && !readOnly && <div className="flex items-end gap-2 mt-2 pt-2 border-t border-border/20">
                 <textarea
                     value={draft}
                     onChange={e => setDraft(e.target.value)}

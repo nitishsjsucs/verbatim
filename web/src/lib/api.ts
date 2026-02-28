@@ -16,6 +16,8 @@ import {
     Conversation,
     ConversationMeta,
     StorageStats,
+    DelayChatMessage,
+    AuditTrailEntry,
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
@@ -393,6 +395,79 @@ export async function deleteAllConversations(): Promise<{ count: number }> {
 export async function fetchStorageStats(): Promise<StorageStats> {
     const res = await apiFetch(`/storage/stats`);
     if (!res.ok) throw new Error('Failed to fetch storage stats');
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Delay Monitoring & Team Lead API
+// ---------------------------------------------------------------------------
+
+export async function checkDelays(): Promise<{ checked_at: string; newly_delayed: number }> {
+    const res = await apiFetch('/actionables/check-delays', { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to check delays');
+    return res.json();
+}
+
+export async function fetchDelayedActionables(team?: string): Promise<ActionableItem[]> {
+    const params = team ? `?team=${encodeURIComponent(team)}` : '';
+    const res = await apiFetch(`/actionables/delayed${params}`);
+    if (!res.ok) throw new Error('Failed to fetch delayed actionables');
+    return res.json();
+}
+
+export async function submitDelayJustification(
+    docId: string,
+    itemId: string,
+    justification: string,
+    justifierName: string,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/delay-justification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ justification, justifier_name: justifierName }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to submit delay justification');
+    }
+    return res.json();
+}
+
+export async function postDelayChatMessage(
+    docId: string,
+    itemId: string,
+    author: string,
+    role: string,
+    text: string,
+    team?: string,
+): Promise<DelayChatMessage> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/delay-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author, role, team: team || '', text }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to post delay chat message');
+    }
+    return res.json();
+}
+
+export async function fetchDelayChatMessages(
+    docId: string,
+    itemId: string,
+): Promise<{ item_id: string; doc_id: string; messages: DelayChatMessage[] }> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/delay-chat`);
+    if (!res.ok) throw new Error('Failed to fetch delay chat');
+    return res.json();
+}
+
+export async function fetchAuditTrail(
+    docId: string,
+    itemId: string,
+): Promise<{ item_id: string; doc_id: string; audit_trail: AuditTrailEntry[] }> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/audit-trail`);
+    if (!res.ok) throw new Error('Failed to fetch audit trail');
     return res.json();
 }
 

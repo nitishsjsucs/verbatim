@@ -12,6 +12,7 @@ function redirectForRole(role: string, forcePasswordReset?: boolean): string {
     if (forcePasswordReset) return "/reset-password"
     if (role === "compliance_officer" || role === "admin") return "/"
     if (role === "team_reviewer") return "/team-review"
+    if (role === "team_lead") return "/team-lead"
     return "/team-board"
 }
 

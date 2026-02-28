@@ -17,6 +17,7 @@ import {
   Send,
   Users,
   Lock,
+  Eye,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -43,6 +44,7 @@ export function Sidebar({ className }: SidebarProps) {
   const role = getUserRole(session)
   const isOfficer = role === "compliance_officer" || role === "admin"
   const isTeamReviewer = role === "team_reviewer"
+  const isTeamLead = role === "team_lead"
 
   React.useEffect(() => {
     setMounted(true)
@@ -225,8 +227,32 @@ export function Sidebar({ className }: SidebarProps) {
           </>
         )}
 
+        {/* ─── Team Lead: oversight dashboard + reports ─── */}
+        {isTeamLead && (
+          <>
+            <div>
+              <NavItem
+                href="/team-lead"
+                icon={<Eye className="h-4 w-4" />}
+                iconClassName="text-indigo-500"
+                label="Team Oversight"
+                active={pathname === "/team-lead"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/reports"
+                icon={<BarChart3 className="h-4 w-4" />}
+                iconClassName="text-indigo-500"
+                label="Reports"
+                active={pathname === "/reports"}
+                collapsed={collapsed}
+              />
+            </div>
+          </>
+        )}
+
         {/* ─── Team Member: limited nav ─── */}
-        {!isOfficer && !isTeamReviewer && (
+        {!isOfficer && !isTeamReviewer && !isTeamLead && (
           <>
             <div>
               <NavItem
@@ -255,7 +281,7 @@ export function Sidebar({ className }: SidebarProps) {
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5">
             <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "team_reviewer" ? "Team Reviewer" : "Team Member"}</p>
+            <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>

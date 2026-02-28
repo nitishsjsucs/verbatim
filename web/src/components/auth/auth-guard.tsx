@@ -5,7 +5,7 @@ import { useSession } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
 import { Loader2, ShieldAlert } from "lucide-react"
 
-type UserRole = "compliance_officer" | "team_reviewer" | "team_member" | "admin"
+type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "admin"
 
 interface AuthGuardProps {
     children: React.ReactNode
@@ -20,6 +20,7 @@ export function getUserRole(session: any): UserRole {
     const role = session?.user?.role
     if (role === "compliance_officer" || role === "admin") return role as UserRole
     if (role === "team_reviewer") return "team_reviewer"
+    if (role === "team_lead") return "team_lead"
     return "team_member"
 }
 
@@ -62,6 +63,8 @@ export function AuthGuard({ children, fallback, allowedRoles }: AuthGuardProps) 
                     router.replace("/team-board")
                 } else if (role === "team_reviewer") {
                     router.replace("/team-review")
+                } else if (role === "team_lead") {
+                    router.replace("/team-lead")
                 } else {
                     router.replace("/")
                 }

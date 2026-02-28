@@ -26,177 +26,64 @@ interface SeedUser {
     forcePasswordReset?: boolean
 }
 
-// Team Reviewer users with hardcoded passwords
-const TEAM_REVIEWER_USERS: SeedUser[] = [
-    {
-        name: "Policy Reviewer",
-        email: "policy.reviewer@regtech.com",
-        password: "PolicyReview2024!",
-        role: "team_reviewer",
-        team: "Policy",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Technology Reviewer",
-        email: "technology.reviewer@regtech.com",
-        password: "TechReview2024!",
-        role: "team_reviewer",
-        team: "Technology",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Operations Reviewer",
-        email: "operations.reviewer@regtech.com",
-        password: "OpsReview2024!",
-        role: "team_reviewer",
-        team: "Operations",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Training Reviewer",
-        email: "training.reviewer@regtech.com",
-        password: "TrainReview2024!",
-        role: "team_reviewer",
-        team: "Training",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Reporting Reviewer",
-        email: "reporting.reviewer@regtech.com",
-        password: "ReportReview2024!",
-        role: "team_reviewer",
-        team: "Reporting",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Customer Communication Reviewer",
-        email: "customer_communication.reviewer@regtech.com",
-        password: "CustCommReview2024!",
-        role: "team_reviewer",
-        team: "Customer Communication",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Governance Reviewer",
-        email: "governance.reviewer@regtech.com",
-        password: "GovReview2024!",
-        role: "team_reviewer",
-        team: "Governance",
-        forcePasswordReset: true,
-    },
-    {
-        name: "Legal Reviewer",
-        email: "legal.reviewer@regtech.com",
-        password: "LegalReview2024!",
-        role: "team_reviewer",
-        team: "Legal",
-        forcePasswordReset: true,
-    },
-]
+// Dynamic team user seeding logic
+const ADMIN_USER: SeedUser = {
+    name: "Admin",
+    email: "admin@govinda.com",
+    password: "Govinda@2026",
+    role: "admin",
+    team: ""
+};
 
-const SEED_USERS: SeedUser[] = [
-    // ── Compliance Officer ──
-    {
-        name: "Nitish (Compliance Officer)",
-        email: "compliance@regtech.com",
-        password: "Compliance2024!",
-        role: "compliance_officer",
-        team: "",
-    },
+const COMPLIANCE_OFFICER_USER: SeedUser = {
+    name: "Compliance Officer",
+    email: "compliance@govinda.com",
+    password: "Govinda@2026",
+    role: "compliance_officer",
+    team: ""
+};
 
-    // ── Policy Team ──
-    {
-        name: "Arun Kumar",
-        email: "arun@regtech.com",
-        password: "Policy2024!",
-        role: "team_member",
-        team: "Policy",
-    },
-    {
-        name: "Priya Sharma",
-        email: "priya@regtech.com",
-        password: "Policy2024!",
-        role: "team_member",
-        team: "Policy",
-    },
+// List of teams (from previous hardcoded teams)
+const TEAMS = [
+    "Policy",
+    "Technology",
+    "Operations",
+    "Training",
+    "Reporting",
+    "Customer Communication",
+    "Governance",
+    "Legal"
+];
 
-    // ── Technology Team ──
-    {
-        name: "Rahul Patel",
-        email: "rahul@regtech.com",
-        password: "Technology2024!",
-        role: "team_member",
-        team: "Technology",
-    },
-    {
-        name: "Sneha Gupta",
-        email: "sneha@regtech.com",
-        password: "Technology2024!",
-        role: "team_member",
-        team: "Technology",
-    },
 
-    // ── Operations Team ──
-    {
-        name: "Vikram Singh",
-        email: "vikram@regtech.com",
-        password: "Operations2024!",
-        role: "team_member",
-        team: "Operations",
-    },
-    {
-        name: "Meera Joshi",
-        email: "meera@regtech.com",
-        password: "Operations2024!",
-        role: "team_member",
-        team: "Operations",
-    },
+const TEAM_USERS: SeedUser[] = [];
+for (const team of TEAMS) {
+    TEAM_USERS.push(
+        {
+            name: `${team} Lead`,
+            email: `${team.toLowerCase().replace(/\s+/g, '_')}.lead@govinda.com`,
+            password: "Govinda@2026",
+            role: "team_lead",
+            team
+        },
+        {
+            name: `${team} Reviewer`,
+            email: `${team.toLowerCase().replace(/\s+/g, '_')}.reviewer@govinda.com`,
+            password: "Govinda@2026",
+            role: "team_reviewer",
+            team
+        },
+        {
+            name: `${team} Member`,
+            email: `${team.toLowerCase().replace(/\s+/g, '_')}.member@govinda.com`,
+            password: "Govinda@2026",
+            role: "team_member",
+            team
+        }
+    );
+}
 
-    // ── Training Team ──
-    {
-        name: "Anita Desai",
-        email: "anita@regtech.com",
-        password: "Training2024!",
-        role: "team_member",
-        team: "Training",
-    },
-
-    // ── Reporting Team ──
-    {
-        name: "Suresh Nair",
-        email: "suresh@regtech.com",
-        password: "Reporting2024!",
-        role: "team_member",
-        team: "Reporting",
-    },
-
-    // ── Customer Communication Team ──
-    {
-        name: "Kavita Menon",
-        email: "kavita@regtech.com",
-        password: "CustComm2024!",
-        role: "team_member",
-        team: "Customer Communication",
-    },
-
-    // ── Governance Team ──
-    {
-        name: "Rajesh Iyer",
-        email: "rajesh@regtech.com",
-        password: "Governance2024!",
-        role: "team_member",
-        team: "Governance",
-    },
-
-    // ── Legal Team ──
-    {
-        name: "Deepa Reddy",
-        email: "deepa@regtech.com",
-        password: "Legal2024!",
-        role: "team_member",
-        team: "Legal",
-    },
-]
+const SEED_USERS: SeedUser[] = [ADMIN_USER, COMPLIANCE_OFFICER_USER, ...TEAM_USERS];
 
 export async function POST(req: Request) {
     try {
@@ -206,24 +93,24 @@ export async function POST(req: Request) {
         }
 
         // Connect to MongoDB directly to set role + team after user creation
-        const mongoClient = new MongoClient(process.env.MONGODB_URI || "mongodb://localhost:27017")
-        const db = mongoClient.db(process.env.AUTH_DB_NAME || "govinda_auth")
+        const mongoClient = new MongoClient(process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017")
+        const db = mongoClient.db(process.env.MONGO_DB_NAME || process.env.AUTH_DB_NAME || "govinda_auth")
         const userCollection = db.collection("user")
 
         const results: { email: string; status: string; error?: string }[] = []
 
-        // Combine all users: compliance officer, team members, and team reviewers
-        const allUsers = [...SEED_USERS, ...TEAM_REVIEWER_USERS]
+        // Only seed admin, compliance officer, and one lead/executor/checker per team
+        const allUsers = SEED_USERS;
 
         for (const user of allUsers) {
             try {
                 // Check if user already exists
                 const existing = await userCollection.findOne({ email: user.email })
                 if (existing) {
-                    // Update role, team, and forcePasswordReset if they differ
+                    // Update role and team only (no forcePasswordReset)
                     await userCollection.updateOne(
                         { email: user.email },
-                        { $set: { role: user.role, team: user.team, forcePasswordReset: user.forcePasswordReset || false } }
+                        { $set: { role: user.role, team: user.team } }
                     )
                     results.push({ email: user.email, status: "already_exists (role/team updated)" })
                     continue
@@ -238,10 +125,10 @@ export async function POST(req: Request) {
                     },
                 })
 
-                // Set role, team, and forcePasswordReset directly in MongoDB
+                // Set role and team only (no forcePasswordReset) directly in MongoDB
                 await userCollection.updateOne(
                     { email: user.email },
-                    { $set: { role: user.role, team: user.team, forcePasswordReset: user.forcePasswordReset || false } }
+                    { $set: { role: user.role, team: user.team } }
                 )
 
                 results.push({ email: user.email, status: "created" })
