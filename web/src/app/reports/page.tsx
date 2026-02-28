@@ -42,6 +42,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
     reworking: "Reworking",
     reviewer_rejected: "Rejected by Reviewer",
     awaiting_justification: "Awaiting Justification",
+    pending_all_teams: "Pending All Teams",
 }
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
@@ -53,6 +54,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
     reworking: "#f97316",
     reviewer_rejected: "#f43f5e",
     awaiting_justification: "#ca8a04",
+    pending_all_teams: "#8b5cf6",
 }
 
 const RISK_COLORS: Record<string, string> = {
@@ -316,7 +318,7 @@ function ReportsContent() {
         const pending = allActionables.filter(a => a.approval_status === "pending").length
 
         // By status
-        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0 }
         for (const a of items) {
             const s = (a.task_status || "assigned") as TaskStatus
             byStatus[s] = (byStatus[s] || 0) + 1
@@ -463,7 +465,7 @@ function ReportsContent() {
         if (isOfficer || !userTeam) return null
         const teamItems = allItems.filter(a => safeStr(a.workstream) === userTeam)
         const total = teamItems.length
-        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0 }
         for (const a of teamItems) { const s = (a.task_status || "assigned") as TaskStatus; byStatus[s]++ }
         const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
         for (const a of teamItems) { byRisk[normalizeRisk(a.modality)]++ }
