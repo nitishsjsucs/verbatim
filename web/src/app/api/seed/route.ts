@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { MongoClient } from "mongodb"
-import crypto from "crypto"
 
 /**
  * POST /api/seed
@@ -27,69 +26,73 @@ interface SeedUser {
     forcePasswordReset?: boolean
 }
 
-// Generate a secure random password
-function generateSecurePassword(length: number = 16): string {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
-    const randomBytes = crypto.randomBytes(length)
-    let password = ""
-    for (let i = 0; i < length; i++) {
-        password += charset[randomBytes[i] % charset.length]
-    }
-    // Ensure at least one of each type
-    const lower = "abcdefghijklmnopqrstuvwxyz"
-    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    const digits = "0123456789"
-    const special = "!@#$%^&*"
-    password = password.slice(0, -4) +
-        lower[crypto.randomInt(lower.length)] +
-        upper[crypto.randomInt(upper.length)] +
-        digits[crypto.randomInt(digits.length)] +
-        special[crypto.randomInt(special.length)]
-    return password
-}
-
-// All teams in the system
-const TEAMS = [
-    "Policy",
-    "Technology",
-    "Operations",
-    "Training",
-    "Reporting",
-    "Customer Communication",
-    "Governance",
-    "Legal",
+// Team Reviewer users with hardcoded passwords
+const TEAM_REVIEWER_USERS: SeedUser[] = [
+    {
+        name: "Policy Reviewer",
+        email: "policy.reviewer@regtech.com",
+        password: "PolicyReview2024!",
+        role: "team_reviewer",
+        team: "Policy",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Technology Reviewer",
+        email: "technology.reviewer@regtech.com",
+        password: "TechReview2024!",
+        role: "team_reviewer",
+        team: "Technology",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Operations Reviewer",
+        email: "operations.reviewer@regtech.com",
+        password: "OpsReview2024!",
+        role: "team_reviewer",
+        team: "Operations",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Training Reviewer",
+        email: "training.reviewer@regtech.com",
+        password: "TrainReview2024!",
+        role: "team_reviewer",
+        team: "Training",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Reporting Reviewer",
+        email: "reporting.reviewer@regtech.com",
+        password: "ReportReview2024!",
+        role: "team_reviewer",
+        team: "Reporting",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Customer Communication Reviewer",
+        email: "customer_communication.reviewer@regtech.com",
+        password: "CustCommReview2024!",
+        role: "team_reviewer",
+        team: "Customer Communication",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Governance Reviewer",
+        email: "governance.reviewer@regtech.com",
+        password: "GovReview2024!",
+        role: "team_reviewer",
+        team: "Governance",
+        forcePasswordReset: true,
+    },
+    {
+        name: "Legal Reviewer",
+        email: "legal.reviewer@regtech.com",
+        password: "LegalReview2024!",
+        role: "team_reviewer",
+        team: "Legal",
+        forcePasswordReset: true,
+    },
 ]
-
-// Generate Team Reviewer users dynamically
-function generateTeamReviewers(): { users: SeedUser[]; credentials: { team: string; username: string; email: string; password: string }[] } {
-    const users: SeedUser[] = []
-    const credentials: { team: string; username: string; email: string; password: string }[] = []
-
-    for (const team of TEAMS) {
-        const teamSlug = team.toLowerCase().replace(/\s+/g, "_")
-        const password = generateSecurePassword()
-        const email = `${teamSlug}.reviewer@regtech.com`
-        const name = `${team} Reviewer`
-
-        users.push({
-            name,
-            email,
-            password,
-            role: "team_reviewer",
-            team,
-            forcePasswordReset: true,
-        })
-
-        credentials.push({
-            team,
-            username: `${teamSlug}_reviewer`,
-            email,
-            password,
-        })
-    }
-
-    return { users, credentials }
-}
 
 const SEED_USERS: SeedUser[] = [
     // ── Compliance Officer ──
@@ -209,9 +212,8 @@ export async function POST(req: Request) {
 
         const results: { email: string; status: string; error?: string }[] = []
 
-        // Generate Team Reviewer users and credentials
-        const { users: teamReviewerUsers, credentials: reviewerCredentials } = generateTeamReviewers()
-        const allUsers = [...SEED_USERS, ...teamReviewerUsers]
+        // Combine all users: compliance officer, team members, and team reviewers
+        const allUsers = [...SEED_USERS, ...TEAM_REVIEWER_USERS]
 
         for (const user of allUsers) {
             try {
@@ -265,7 +267,6 @@ export async function POST(req: Request) {
         return NextResponse.json({
             message: "Seed completed",
             results,
-            teamReviewerCredentials: reviewerCredentials,
         })
     } catch (err) {
         return NextResponse.json(

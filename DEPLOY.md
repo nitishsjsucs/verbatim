@@ -114,9 +114,29 @@ This creates **all accounts automatically** with the correct roles and team assi
 
 ### Pre-Created Accounts
 
+#### Compliance Officer
+
+| Email | Password | Role |
+|---|---|---|
+| `compliance@regtech.com` | `Compliance2024!` | compliance_officer |
+
+#### Team Reviewers (one per team)
+
 | Email | Password | Role | Team |
 |---|---|---|---|
-| `compliance@regtech.com` | `Compliance2024!` | compliance_officer | — |
+| `policy.reviewer@regtech.com` | `PolicyReview2024!` | team_reviewer | Policy |
+| `technology.reviewer@regtech.com` | `TechReview2024!` | team_reviewer | Technology |
+| `operations.reviewer@regtech.com` | `OpsReview2024!` | team_reviewer | Operations |
+| `training.reviewer@regtech.com` | `TrainReview2024!` | team_reviewer | Training |
+| `reporting.reviewer@regtech.com` | `ReportReview2024!` | team_reviewer | Reporting |
+| `customer_communication.reviewer@regtech.com` | `CustCommReview2024!` | team_reviewer | Customer Communication |
+| `governance.reviewer@regtech.com` | `GovReview2024!` | team_reviewer | Governance |
+| `legal.reviewer@regtech.com` | `LegalReview2024!` | team_reviewer | Legal |
+
+#### Team Members (Execution)
+
+| Email | Password | Role | Team |
+|---|---|---|---|
 | `arun@regtech.com` | `Policy2024!` | team_member | Policy |
 | `priya@regtech.com` | `Policy2024!` | team_member | Policy |
 | `rahul@regtech.com` | `Technology2024!` | team_member | Technology |
@@ -130,12 +150,19 @@ This creates **all accounts automatically** with the correct roles and team assi
 | `deepa@regtech.com` | `Legal2024!` | team_member | Legal |
 
 > **Change passwords after first login!** These are initial defaults.
+> **Team Reviewers** will be forced to reset their password on first login.
 
 ### What each role sees:
 
 **Compliance Officer** (`compliance@regtech.com`):
 - Ingest, Documents, Research, History, Actionables, Tracker, Team Board, Reports
 - Full access to approve/reject actionables, manage all teams
+
+**Team Reviewers** (`*.reviewer@regtech.com`):
+- Team Review Board + Reports
+- Can approve/reject submissions from their team before sending to Compliance Officer
+- Cannot edit, create, or delete actionables
+- Cannot access Documents, Research, or Admin functions
 
 **Team Members** (everyone else):
 - **Only** see: My Tasks (team board) + Reports
@@ -149,6 +176,7 @@ This creates **all accounts automatically** with the correct roles and team assi
 | Role | Sees | Can Do |
 |---|---|---|
 | `compliance_officer` | Everything: Ingest, Documents, Research, History, Actionables, Tracker, Team Board, Reports | Full CRUD, approve/reject actionables, manage all teams |
+| `team_reviewer` | Team Review Board + Reports | View, approve, reject team submissions (no edit/create/delete) |
 | `team_member` | Team Board + Reports only | View assigned tasks, update status, submit evidence |
 
 ---
