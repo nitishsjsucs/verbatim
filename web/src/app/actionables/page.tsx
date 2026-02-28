@@ -256,10 +256,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
-                    {/* Team tag */}
+                    {/* Team tag(s) */}
                     <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
                         {item.workstream}
                     </span>
+                    {(item.assigned_teams?.length ?? 0) > 1 && (
+                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded" title={`Multi-team: ${item.assigned_teams!.join(", ")}`}>
+                            <Users className="h-2.5 w-2.5" />{item.assigned_teams!.length}
+                        </span>
+                    )}
 
                     {/* Risk icon */}
                     <RiskIcon modality={item.modality} />
@@ -326,8 +331,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Team</p>
-                                    <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground")}>{item.workstream}</span>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Team{(item.assigned_teams?.length ?? 0) > 1 ? "s" : ""}</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).map(t => (
+                                            <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", WORKSTREAM_COLORS[t] || "bg-muted/40 text-foreground")}>{t}</span>
+                                        ))}
+                                    </div>
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Risk Level</p>
@@ -340,34 +349,75 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
                             <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
 
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Team</p>
-                                    <select
-                                        value={item.workstream}
-                                        onChange={e => handleFieldSave("workstream", e.target.value)}
-                                        className={cn(
-                                            "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                            WORKSTREAM_COLORS[item.workstream] || "bg-muted/40 text-foreground"
-                                        )}
-                                    >
-                                        {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select>
+                            {/* Team multi-select */}
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                    <Users className="h-3 w-3" />
+                                    Assign Teams
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {WORKSTREAM_OPTIONS.map(team => {
+                                        const isSelected = team === item.workstream || (item.assigned_teams || []).includes(team)
+                                        return (
+                                            <button
+                                                key={team}
+                                                onClick={async () => {
+                                                    const current = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
+                                                    let next: string[]
+                                                    if (current.includes(team)) {
+                                                        // Don't allow deselecting the last team
+                                                        if (current.length <= 1) return
+                                                        next = current.filter(t => t !== team)
+                                                    } else {
+                                                        next = [...current, team]
+                                                    }
+                                                    // First team becomes workstream
+                                                    const updates: Record<string, unknown> = { workstream: next[0] }
+                                                    if (next.length > 1) {
+                                                        updates.assigned_teams = next
+                                                    } else {
+                                                        updates.assigned_teams = []
+                                                    }
+                                                    setSaving(true)
+                                                    try {
+                                                        await onUpdate(docId, item.id, updates)
+                                                    } finally {
+                                                        setSaving(false)
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "text-[10px] px-2 py-1 rounded-md border transition-colors",
+                                                    isSelected
+                                                        ? "border-primary bg-primary/15 text-primary font-semibold"
+                                                        : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
+                                                )}
+                                            >
+                                                {team}
+                                            </button>
+                                        )
+                                    })}
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
-                                    <select
-                                        value={normalizeRisk(item.modality)}
-                                        onChange={e => handleFieldSave("modality", e.target.value)}
-                                        className={cn(
-                                            "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                            RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
-                                            RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground"
-                                        )}
-                                    >
-                                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select>
-                                </div>
+                                {(item.assigned_teams?.length ?? 0) > 1 && (
+                                    <p className="text-[9px] text-violet-400 mt-1">
+                                        Multi-team: {item.assigned_teams!.join(", ")}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Risk Level */}
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
+                                <select
+                                    value={normalizeRisk(item.modality)}
+                                    onChange={e => handleFieldSave("modality", e.target.value)}
+                                    className={cn(
+                                        "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
+                                        RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
+                                        RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground"
+                                    )}
+                                >
+                                    {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
                             </div>
                         </>
                     )}

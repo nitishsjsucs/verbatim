@@ -87,7 +87,13 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
     const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
     const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
     const [saving, setSaving] = React.useState(false)
-    const [extraTeams, setExtraTeams] = React.useState<string[]>([])
+    // Pre-populate extra teams from already-assigned teams (set in Actionables section)
+    const [extraTeams, setExtraTeams] = React.useState<string[]>(() => {
+        if (item.assigned_teams && item.assigned_teams.length > 1) {
+            return item.assigned_teams.filter(t => t !== item.workstream)
+        }
+        return []
+    })
 
     const availableTeams = Object.keys(WORKSTREAM_COLORS).filter(t => t !== item.workstream && t !== "Other")
     const toggleExtraTeam = (team: string) => {
