@@ -297,10 +297,10 @@ export interface ActionableItem {
     // Delay monitoring & Team Lead fields
     is_delayed?: boolean;                // True if deadline passed and task not completed
     delay_detected_at?: string;          // ISO datetime when delay was detected
-    delay_justification?: string;        // Team Lead's justification for the delay
-    delay_justification_by?: string;     // Name of team lead who justified
-    delay_justification_at?: string;     // ISO datetime of justification
-    delay_justification_status?: "pending_review" | "reviewed";  // CO must review before final
+    justification?: string;        // Team Lead's justification for the delay
+    justification_by?: string;     // Name of team lead who justified
+    justification_at?: string;     // ISO datetime of justification
+    justification_status?: "pending_review" | "reviewed";  // CO must review before final
     audit_trail?: AuditTrailEntry[];     // Full audit trail
     // Legacy fields kept for backward compat with existing data
     actor?: string;

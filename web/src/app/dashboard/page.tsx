@@ -247,10 +247,10 @@ export default function DashboardPage() {
             rejection_reason: reason,
             comments: [...existing, rejectComment],
             // Clear justification so Lead must re-justify if still delayed
-            delay_justification: "",
-            delay_justification_by: "",
-            delay_justification_at: "",
-            delay_justification_status: "",
+            justification: "",
+            justification_by: "",
+            justification_at: "",
+            justification_status: "",
         })
         toast.success("Task rejected — returned for rework")
     }, [userName, handleUpdate])
@@ -778,15 +778,15 @@ export default function DashboardPage() {
                                             {isExpanded && (
                                                 <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
                                                     {/* Pending justification review banner */}
-                                                    {item.delay_justification && item.delay_justification_status === "pending_review" && (
+                                                    {item.justification && item.justification_status === "pending_review" && (
                                                         <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
                                                             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                                                             <div className="flex-1">
-                                                                <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Delay Justification — Pending Your Review</p>
-                                                                <p className="text-xs text-foreground/80 mb-1">{item.delay_justification}</p>
-                                                                <p className="text-[9px] text-muted-foreground/50 mb-2">Submitted by {item.delay_justification_by}{item.delay_justification_at ? ` on ${formatDate(item.delay_justification_at)}` : ""}</p>
+                                                                <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Justification — Pending Your Review</p>
+                                                                <p className="text-xs text-foreground/80 mb-1">{item.justification}</p>
+                                                                <p className="text-[9px] text-muted-foreground/50 mb-2">Submitted by {item.justification_by}{item.justification_at ? ` on ${formatDate(item.justification_at)}` : ""}</p>
                                                                 <button
-                                                                    onClick={() => handleUpdate(docId, item.id, { delay_justification_status: "reviewed" })}
+                                                                    onClick={() => handleUpdate(docId, item.id, { justification_status: "reviewed" })}
                                                                     className="inline-flex items-center gap-1 text-[9px] px-2 py-1 rounded bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-colors font-medium"
                                                                 >
                                                                     <CheckCircle2 className="h-2.5 w-2.5" /> Acknowledge Justification
@@ -795,13 +795,13 @@ export default function DashboardPage() {
                                                         </div>
                                                     )}
                                                     {/* Reviewed justification info */}
-                                                    {item.delay_justification && item.delay_justification_status === "reviewed" && (
+                                                    {item.justification && item.justification_status === "reviewed" && (
                                                         <div className="flex items-start gap-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-4 py-3">
                                                             <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
                                                             <div>
-                                                                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Delay Justification — Reviewed</p>
-                                                                <p className="text-xs text-foreground/80">{item.delay_justification}</p>
-                                                                <p className="text-[9px] text-muted-foreground/50 mt-1">By {item.delay_justification_by}</p>
+                                                                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Justification — Reviewed</p>
+                                                                <p className="text-xs text-foreground/80">{item.justification}</p>
+                                                                <p className="text-[9px] text-muted-foreground/50 mt-1">By {item.justification_by}</p>
                                                             </div>
                                                         </div>
                                                     )}

@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import {
     fetchAllActionables,
     fetchDelayedActionables,
-    submitDelayJustification,
+    submitJustification,
     updateActionable,
 } from "@/lib/api"
 import {
@@ -386,7 +386,7 @@ function TeamLeadContent() {
         const inProgress = allRows.filter(r => ["in_progress", "assigned"].includes(r.item.task_status || "assigned")).length
         const inReview = allRows.filter(r => ["team_review", "review"].includes(r.item.task_status || "")).length
         const reworking = allRows.filter(r => r.item.task_status === "reworking").length
-        const justified = allRows.filter(r => r.item.delay_justification).length
+        const justified = allRows.filter(r => r.item.justification).length
         return { total, delayed, completed, inProgress, inReview, reworking, justified }
     }, [allRows])
 
@@ -765,11 +765,11 @@ function TeamLeadContent() {
         </div>
     )
 
-    // ── Handler: submit delay justification ──
+    // ── Handler: submit justification ──
     async function handleJustify(docId: string, itemId: string, justification: string) {
         try {
-            await submitDelayJustification(docId, itemId, justification, userName)
-            toast.success("Delay justification submitted")
+            await submitJustification(docId, itemId, justification, userName)
+            toast.success("Justification submitted")
             await loadAll()
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Failed to submit justification")
@@ -804,7 +804,7 @@ function OversightRow({
     const isExpanded = expandedRow === rowKey
     const commentCount = (item.comments || []).length
     const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")
-    const hasJustification = !!item.delay_justification
+    const hasJustification = !!item.justification
     const isAwaitingJustification = taskStatus === "awaiting_justification"
 
     const [showJustifyInput, setShowJustifyInput] = React.useState(false)
@@ -896,22 +896,22 @@ function OversightRow({
                         <button
                             onClick={() => setShowJustifyInput(true)}
                             className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
-                            title="BLOCKED — Submit delay justification to release to Compliance"
+                            title="BLOCKED — Submit justification to release to Compliance"
                         >
                             ⚠ Justify Now
                         </button>
                     )}
-                    {!isAwaitingJustification && isDelayed && hasJustification && item.delay_justification_status === "reviewed" && (
-                        <span className="text-[9px] text-indigo-400 italic font-medium" title={`Justified: ${item.delay_justification}`}>Justified</span>
+                    {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status === "reviewed" && (
+                        <span className="text-[9px] text-indigo-400 italic font-medium" title={`Justified: ${item.justification}`}>Justified</span>
                     )}
-                    {!isAwaitingJustification && isDelayed && hasJustification && item.delay_justification_status !== "reviewed" && (
-                        <span className="text-[9px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.delay_justification}`}>Pending Review</span>
+                    {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status !== "reviewed" && (
+                        <span className="text-[9px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
                     )}
                     {!isAwaitingJustification && isDelayed && !hasJustification && (
                         <button
                             onClick={() => setShowJustifyInput(true)}
                             className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
-                            title="Submit delay justification"
+                            title="Submit justification"
                         >
                             Justify
                         </button>
@@ -984,10 +984,10 @@ function OversightRow({
                         )}
                         {hasJustification && (
                             <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-md p-2.5 mt-2">
-                                <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">Delay Justification</span>
-                                <p className="text-[11px] text-foreground/70 mt-0.5">{item.delay_justification}</p>
-                                {item.delay_justification_by && (
-                                    <p className="text-[9px] text-muted-foreground/40 mt-1">— {item.delay_justification_by} {item.delay_justification_at ? `on ${formatDate(item.delay_justification_at)}` : ""}</p>
+                                <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">Justification</span>
+                                <p className="text-[11px] text-foreground/70 mt-0.5">{item.justification}</p>
+                                {item.justification_by && (
+                                    <p className="text-[9px] text-muted-foreground/40 mt-1">— {item.justification_by} {item.justification_at ? `on ${formatDate(item.justification_at)}` : ""}</p>
                                 )}
                             </div>
                         )}

@@ -18,16 +18,19 @@ import {
   Users,
   Lock,
   Eye,
+  MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UploadModal } from "@/components/dashboard/upload-modal"
 import { fetchConfig } from "@/lib/api"
+import { fetchChatUnreadTotal } from "@/lib/api"
 import { AppConfig } from "@/lib/types"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSession, signOut } from "@/lib/auth-client"
 import { getUserRole } from "@/components/auth/auth-guard"
+import { getUserTeam } from "@/components/auth/auth-guard"
 import { SettingsDialog } from "@/components/layout/settings-dialog"
 
 interface SidebarProps {
@@ -45,11 +48,26 @@ export function Sidebar({ className }: SidebarProps) {
   const isOfficer = role === "compliance_officer" || role === "admin"
   const isTeamReviewer = role === "team_reviewer"
   const isTeamLead = role === "team_lead"
+  const userTeam = getUserTeam(session)
+  const [chatUnread, setChatUnread] = React.useState(0)
 
   React.useEffect(() => {
     setMounted(true)
     fetchConfig().then(setConfig).catch(() => {})
   }, [])
+
+  // Poll chat unread count every 5 seconds
+  React.useEffect(() => {
+    if (!session) return
+    const poll = () => {
+      fetchChatUnreadTotal(role, userTeam)
+        .then(r => setChatUnread(r.unread))
+        .catch(() => {})
+    }
+    poll()
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
+  }, [session, role, userTeam])
 
   return (
     <div
@@ -199,6 +217,14 @@ export function Sidebar({ className }: SidebarProps) {
                 active={pathname === "/admin"}
                 collapsed={collapsed}
               />
+              <NavItem
+                href="/chat"
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                iconClassName="text-blue-500"
+                label="Chat"
+                active={pathname === "/chat"}
+                collapsed={collapsed}
+              />
             </div>
           </>
         )}
@@ -221,6 +247,14 @@ export function Sidebar({ className }: SidebarProps) {
                 iconClassName="text-teal-500"
                 label="Reports"
                 active={pathname === "/reports"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/chat"
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                iconClassName="text-blue-500"
+                label="Chat"
+                active={pathname === "/chat"}
                 collapsed={collapsed}
               />
             </div>
@@ -247,6 +281,14 @@ export function Sidebar({ className }: SidebarProps) {
                 active={pathname === "/reports"}
                 collapsed={collapsed}
               />
+              <NavItem
+                href="/chat"
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                iconClassName="text-blue-500"
+                label="Chat"
+                active={pathname === "/chat"}
+                collapsed={collapsed}
+              />
             </div>
           </>
         )}
@@ -269,6 +311,14 @@ export function Sidebar({ className }: SidebarProps) {
                 iconClassName="text-amber-500"
                 label="Reports"
                 active={pathname === "/reports"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/chat"
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                iconClassName="text-blue-500"
+                label="Chat"
+                active={pathname === "/chat"}
                 collapsed={collapsed}
               />
             </div>

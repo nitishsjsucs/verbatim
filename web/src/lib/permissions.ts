@@ -6,7 +6,7 @@ import { createAccessControl } from "better-auth/plugins/access"
  * Roles:
  *   - compliance_officer: Full access to everything (documents, research, actionables, dashboards, admin)
  *   - team_reviewer: Intermediate reviewer — can approve/reject team submissions before compliance officer
- *   - team_lead: Oversight role — can view all team tasks, provide delay justifications, read-only
+ *   - team_lead: Oversight role — can view all team tasks, provide justifications, read-only
  *   - team_member: Can only see their team's board and submit evidence
  */
 

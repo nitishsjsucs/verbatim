@@ -414,20 +414,20 @@ export async function fetchDelayedActionables(team?: string): Promise<Actionable
     return res.json();
 }
 
-export async function submitDelayJustification(
+export async function submitJustification(
     docId: string,
     itemId: string,
     justification: string,
     justifierName: string,
 ): Promise<ActionableItem> {
-    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/delay-justification`, {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/justification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ justification, justifier_name: justifierName }),
     });
     if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.detail || 'Failed to submit delay justification');
+        throw new Error(err.detail || 'Failed to submit justification');
     }
     return res.json();
 }
@@ -503,6 +503,87 @@ export async function postTeamChatMessage(
         const err = await res.json();
         throw new Error(err.detail || 'Failed to post message');
     }
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Global Chat API (standalone module – separate from team-chat & actionables)
+// ---------------------------------------------------------------------------
+
+export interface ChatChannel {
+    channel: string;
+    label: string;
+    type: 'team_internal' | 'team_compliance' | 'compliance_internal';
+    unread: number;
+}
+
+export interface ChatMessage {
+    id: string;
+    author: string;
+    role: string;
+    team: string;
+    text: string;
+    timestamp: string;
+}
+
+export async function fetchChatChannels(
+    role: string,
+    team: string,
+): Promise<{ channels: ChatChannel[] }> {
+    const params = new URLSearchParams({ role, team });
+    const res = await apiFetch(`/chat/channels?${params}`);
+    if (!res.ok) throw new Error('Failed to fetch chat channels');
+    return res.json();
+}
+
+export async function fetchChatMessages(
+    channel: string,
+    role: string,
+    team: string,
+): Promise<{ channel: string; messages: ChatMessage[] }> {
+    const params = new URLSearchParams({ role, team });
+    const res = await apiFetch(`/chat/messages/${encodeURIComponent(channel)}?${params}`);
+    if (!res.ok) throw new Error('Failed to fetch chat messages');
+    return res.json();
+}
+
+export async function postChatMessage(
+    channel: string,
+    author: string,
+    role: string,
+    team: string,
+    text: string,
+): Promise<ChatMessage> {
+    const res = await apiFetch(`/chat/messages/${encodeURIComponent(channel)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author, role, team, text }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to post message');
+    }
+    return res.json();
+}
+
+export async function markChatRead(
+    channel: string,
+    role: string,
+    team: string,
+): Promise<void> {
+    const params = new URLSearchParams({ role, team });
+    await apiFetch(`/chat/mark-read/${encodeURIComponent(channel)}?${params}`, {
+        method: 'POST',
+    });
+}
+
+export async function fetchChatUnreadTotal(
+    role: string,
+    team: string,
+): Promise<{ unread: number }> {
+    const params = new URLSearchParams({ role, team });
+    const res = await apiFetch(`/chat/unread-total?${params}`);
+    if (!res.ok) return { unread: 0 };
     return res.json();
 }
 

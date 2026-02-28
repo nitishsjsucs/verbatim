@@ -1235,8 +1235,8 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...)):
         "submitted_at", "team_reviewer_name",
         "team_reviewer_approved_at", "team_reviewer_rejected_at",
         "is_delayed", "delay_detected_at",
-        "delay_justification", "delay_justification_by", "delay_justification_at",
-        "delay_justification_status", "audit_trail",
+        "justification", "justification_by", "justification_at",
+        "justification_status", "audit_trail",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -2265,15 +2265,15 @@ def get_delayed_actionables(team: str = Query("")):
     return delayed
 
 
-class DelayJustificationRequest(BaseModel):
+class JustificationRequest(BaseModel):
     justification: str
     justifier_name: str
 
 
-@app.post("/documents/{doc_id}/actionables/{item_id}/delay-justification")
-def submit_delay_justification(doc_id: str, item_id: str, body: DelayJustificationRequest):
+@app.post("/documents/{doc_id}/actionables/{item_id}/justification")
+def submit_justification(doc_id: str, item_id: str, body: JustificationRequest):
     """
-    Team Lead submits a delay justification for a delayed task.
+    Team Lead submits a justification for a delayed task.
     Does not change task status — purely governance/accountability.
     """
     store = get_actionable_store()
@@ -2306,12 +2306,12 @@ def submit_delay_justification(doc_id: str, item_id: str, body: DelayJustificati
         raise HTTPException(status_code=400, detail="Task is not delayed")
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    target.delay_justification = body.justification
-    target.delay_justification_by = body.justifier_name
-    target.delay_justification_at = now_iso
-    target.delay_justification_status = "pending_review"
+    target.justification = body.justification
+    target.justification_by = body.justifier_name
+    target.justification_at = now_iso
+    target.justification_status = "pending_review"
     target.audit_trail.append({
-        "event": "delay_justification_submitted",
+        "event": "justification_submitted",
         "actor": body.justifier_name,
         "role": "team_lead",
         "timestamp": now_iso,
@@ -2417,6 +2417,197 @@ def post_team_chat_message(team: str, channel: str, body: TeamChatMessageRequest
         upsert=True,
     )
     return msg
+
+
+# ---------------------------------------------------------------------------
+# Standalone Global Chat System (independent from team-chat / actionable comments)
+# ---------------------------------------------------------------------------
+
+CHAT_COLLECTION = "global_chats"
+
+# Channel naming convention:
+#   "team_internal:{team}"        — team internal (exec/reviewer/lead only)
+#   "team_compliance:{team}"      — team ↔ compliance
+#   "compliance_internal"         — compliance officers only
+
+
+class GlobalChatPostRequest(BaseModel):
+    author: str
+    role: str
+    team: str = ""
+    text: str
+
+
+def _chat_channel_allowed(channel: str, role: str, team: str) -> bool:
+    """Strict role-based permission check for a chat channel."""
+    if channel == "compliance_internal":
+        return role in ("compliance_officer", "admin")
+    if channel.startswith("team_internal:"):
+        ch_team = channel.split(":", 1)[1]
+        return role in ("team_member", "team_reviewer", "team_lead") and team == ch_team
+    if channel.startswith("team_compliance:"):
+        ch_team = channel.split(":", 1)[1]
+        if role in ("compliance_officer", "admin"):
+            return True
+        return role in ("team_member", "team_reviewer", "team_lead") and team == ch_team
+    return False
+
+
+@app.get("/chat/channels")
+def list_chat_channels(role: str = Query(...), team: str = Query("")):
+    """
+    Return the list of channels visible to this role+team, along with
+    per-channel unread counts (messages after a stored read cursor).
+    """
+    from utils.mongo import get_db
+    db = get_db()
+
+    channels: list[dict] = []
+
+    if role in ("compliance_officer", "admin"):
+        # 1. Compliance internal
+        channels.append({
+            "channel": "compliance_internal",
+            "label": "Internal Compliance Chat",
+            "type": "compliance_internal",
+        })
+        # 2. One entry per team for team↔compliance
+        all_teams = [
+            "Policy", "Technology", "Operations", "Training",
+            "Reporting", "Customer Communication", "Governance", "Legal", "Other",
+        ]
+        for t in all_teams:
+            channels.append({
+                "channel": f"team_compliance:{t}",
+                "label": f"{t}",
+                "type": "team_compliance",
+            })
+    else:
+        # Team roles see exactly 2 channels
+        if team:
+            channels.append({
+                "channel": f"team_internal:{team}",
+                "label": "Team Internal Chat",
+                "type": "team_internal",
+            })
+            channels.append({
+                "channel": f"team_compliance:{team}",
+                "label": "Team ↔ Compliance",
+                "type": "team_compliance",
+            })
+
+    # Compute unread counts
+    read_cursors = db["chat_read_cursors"].find_one(
+        {"role": role, "team": team}
+    ) or {}
+    cursors = read_cursors.get("cursors", {})
+
+    for ch in channels:
+        cid = ch["channel"]
+        last_read = cursors.get(cid, "")
+        doc = db[CHAT_COLLECTION].find_one({"channel": cid})
+        msgs = doc.get("messages", []) if doc else []
+        if last_read:
+            unread = sum(1 for m in msgs if m.get("timestamp", "") > last_read)
+        else:
+            unread = len(msgs)
+        ch["unread"] = unread
+
+    return {"channels": channels}
+
+
+@app.get("/chat/messages/{channel:path}")
+def get_chat_messages(channel: str, role: str = Query(...), team: str = Query("")):
+    """Return all messages for a given channel (with role check)."""
+    if not _chat_channel_allowed(channel, role, team):
+        raise HTTPException(status_code=403, detail="Access denied to this channel")
+
+    from utils.mongo import get_db
+    db = get_db()
+    doc = db[CHAT_COLLECTION].find_one({"channel": channel})
+    messages = doc.get("messages", []) if doc else []
+    return {"channel": channel, "messages": messages}
+
+
+@app.post("/chat/messages/{channel:path}")
+def post_chat_message(channel: str, body: GlobalChatPostRequest):
+    """Post a message to a chat channel (with role check)."""
+    if not _chat_channel_allowed(channel, body.role, body.team):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Role '{body.role}' (team '{body.team}') cannot post to '{channel}'"
+        )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    msg = {
+        "id": str(uuid.uuid4()),
+        "author": body.author,
+        "role": body.role,
+        "team": body.team,
+        "text": body.text,
+        "timestamp": now_iso,
+    }
+
+    from utils.mongo import get_db
+    db = get_db()
+    db[CHAT_COLLECTION].update_one(
+        {"channel": channel},
+        {"$push": {"messages": msg}, "$setOnInsert": {"channel": channel}},
+        upsert=True,
+    )
+    return msg
+
+
+@app.post("/chat/mark-read/{channel:path}")
+def mark_chat_read(channel: str, role: str = Query(...), team: str = Query("")):
+    """Mark a channel as fully read for this user context."""
+    if not _chat_channel_allowed(channel, role, team):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    from utils.mongo import get_db
+    db = get_db()
+    db["chat_read_cursors"].update_one(
+        {"role": role, "team": team},
+        {"$set": {f"cursors.{channel.replace('.', '_')}": now_iso}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@app.get("/chat/unread-total")
+def get_chat_unread_total(role: str = Query(...), team: str = Query("")):
+    """Return total unread count across all visible channels for badge display."""
+    from utils.mongo import get_db
+    db = get_db()
+
+    visible_channels: list[str] = []
+    if role in ("compliance_officer", "admin"):
+        visible_channels.append("compliance_internal")
+        for t in [
+            "Policy", "Technology", "Operations", "Training",
+            "Reporting", "Customer Communication", "Governance", "Legal", "Other",
+        ]:
+            visible_channels.append(f"team_compliance:{t}")
+    else:
+        if team:
+            visible_channels.append(f"team_internal:{team}")
+            visible_channels.append(f"team_compliance:{team}")
+
+    read_cursors = db["chat_read_cursors"].find_one({"role": role, "team": team}) or {}
+    cursors = read_cursors.get("cursors", {})
+
+    total = 0
+    for cid in visible_channels:
+        last_read = cursors.get(cid, "")
+        doc = db[CHAT_COLLECTION].find_one({"channel": cid})
+        msgs = doc.get("messages", []) if doc else []
+        if last_read:
+            total += sum(1 for m in msgs if m.get("timestamp", "") > last_read)
+        else:
+            total += len(msgs)
+
+    return {"unread": total}
 
 
 if __name__ == "__main__":

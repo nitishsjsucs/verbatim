@@ -80,10 +80,10 @@ class ActionableItem:
     # ── Delay monitoring & Team Lead fields ──
     is_delayed: bool = False  # True if deadline has passed and task not completed
     delay_detected_at: str = ""  # ISO timestamp when delay was first detected
-    delay_justification: str = ""  # Team Lead's explanation for the delay
-    delay_justification_by: str = ""  # Name of team lead who provided justification
-    delay_justification_at: str = ""  # ISO timestamp when justification was provided
-    delay_justification_status: str = ""  # "pending_review" or "reviewed"
+    justification: str = ""  # Team Lead's explanation for the delay
+    justification_by: str = ""  # Name of team lead who provided justification
+    justification_at: str = ""  # ISO timestamp when justification was provided
+    justification_status: str = ""  # "pending_review" or "reviewed"
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
 
     def to_dict(self) -> dict:
@@ -121,10 +121,10 @@ class ActionableItem:
             "team_reviewer_rejected_at": self.team_reviewer_rejected_at,
             "is_delayed": self.is_delayed,
             "delay_detected_at": self.delay_detected_at,
-            "delay_justification": self.delay_justification,
-            "delay_justification_by": self.delay_justification_by,
-            "delay_justification_at": self.delay_justification_at,
-            "delay_justification_status": self.delay_justification_status,
+            "justification": self.justification,
+            "justification_by": self.justification_by,
+            "justification_at": self.justification_at,
+            "justification_status": self.justification_status,
             "audit_trail": self.audit_trail,
         }
 
@@ -176,10 +176,10 @@ class ActionableItem:
             team_reviewer_rejected_at=data.get("team_reviewer_rejected_at", ""),
             is_delayed=data.get("is_delayed", False),
             delay_detected_at=data.get("delay_detected_at", ""),
-            delay_justification=data.get("delay_justification", ""),
-            delay_justification_by=data.get("delay_justification_by", ""),
-            delay_justification_at=data.get("delay_justification_at", ""),
-            delay_justification_status=data.get("delay_justification_status", ""),
+            justification=data.get("justification", ""),
+            justification_by=data.get("justification_by", ""),
+            justification_at=data.get("justification_at", ""),
+            justification_status=data.get("justification_status", ""),
             audit_trail=data.get("audit_trail", []),
         )
 

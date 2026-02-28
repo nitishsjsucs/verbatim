@@ -13,8 +13,8 @@ const { MongoClient } = require('./web/node_modules/mongodb');
  * Workflow-state fields reset per item:
  *   task_status, submitted_at, completion_date, reviewer_comments,
  *   team_reviewer_name, team_reviewer_approved_at, team_reviewer_rejected_at,
- *   is_delayed, delay_detected_at, delay_justification, delay_justification_by,
- *   delay_justification_at
+ *   is_delayed, delay_detected_at, justification, justification_by,
+ *   justification_at
  *
  * Fields NOT touched: evidence_files, comments, delay_chat, audit_trail,
  *   and all extraction/metadata fields.
@@ -64,9 +64,9 @@ async function resetActionables() {
                 team_reviewer_rejected_at:    "",
                 is_delayed:                   false,
                 delay_detected_at:            "",
-                delay_justification:          "",
-                delay_justification_by:       "",
-                delay_justification_at:       "",
+                justification:                "",
+                justification_by:             "",
+                justification_at:             "",
             }));
 
             const result = await col.updateOne(

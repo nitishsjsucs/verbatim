@@ -320,7 +320,7 @@ function TeamReviewContent() {
     // If delayed and no justification, gate at awaiting_justification
     const handleApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
         const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && (item.task_status || "assigned") !== "completed")
-        const hasJustification = !!item.delay_justification
+        const hasJustification = !!item.justification
 
         // Determine next status: gate delayed tasks without justification
         const nextStatus = (isDelayed && !hasJustification) ? "awaiting_justification" : "review"
@@ -343,7 +343,7 @@ function TeamReviewContent() {
             comments: [...existing, approveComment],
         })
         if (nextStatus === "awaiting_justification") {
-            toast.success("Task approved — blocked until Team Lead submits delay justification")
+            toast.success("Task approved — blocked until Team Lead submits justification")
         } else {
             toast.success("Task approved — sent to Compliance Officer for review")
         }
