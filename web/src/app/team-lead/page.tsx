@@ -6,6 +6,7 @@ import {
     fetchAllActionables,
     fetchDelayedActionables,
     submitDelayJustification,
+    updateActionable,
     postDelayChatMessage,
     fetchDelayChatMessages,
     fetchAuditTrail,
@@ -14,6 +15,7 @@ import {
     ActionableItem,
     ActionablesResult,
     ActionableWorkstream,
+    ActionableComment,
     TaskStatus,
     DelayChatMessage,
     AuditTrailEntry,
@@ -466,6 +468,28 @@ function TeamLeadContent() {
 
     React.useEffect(() => { if (isTeamLead) loadAll() }, [loadAll, isTeamLead])
 
+    const handleAddComment = React.useCallback(async (docId: string, itemId: string, text: string) => {
+        const doc = allDocs.find(d => d.doc_id === docId)
+        const item = doc?.actionables.find(a => a.id === itemId)
+        const newComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "team_lead",
+            text,
+            timestamp: new Date().toISOString(),
+        }
+        const existing = item?.comments || []
+        try {
+            const updated = await updateActionable(docId, itemId, { comments: [...existing, newComment] })
+            setAllDocs(prev => prev.map(d => {
+                if (d.doc_id !== docId) return d
+                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
+            }))
+        } catch {
+            toast.error("Failed to add comment")
+        }
+    }, [userName, allDocs])
+
     // Build flat rows — only published items for the lead's team
     const allRows: FlatRow[] = React.useMemo(() => {
         const rows: FlatRow[] = []
@@ -771,6 +795,7 @@ function TeamLeadContent() {
                                             userName={userName}
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
+                                            onAddComment={handleAddComment}
                                         />
                                     ))}
                                 </>
@@ -812,6 +837,7 @@ function TeamLeadContent() {
                                             userName={userName}
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
+                                            onAddComment={handleAddComment}
                                         />
                                     ))}
                                 </>
@@ -843,6 +869,7 @@ function TeamLeadContent() {
                                     userName={userName}
                                     userTeam={userTeam || ""}
                                     onJustify={handleJustify}
+                                    onAddComment={handleAddComment}
                                 />
                             ))}
                         </>
@@ -882,6 +909,7 @@ function TeamLeadContent() {
                                             userName={userName}
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
+                                            onAddComment={handleAddComment}
                                         />
                                     ))}
                                 </>
@@ -915,6 +943,7 @@ function OversightRow({
     userName,
     userTeam,
     onJustify,
+    onAddComment,
 }: {
     item: ActionableItem
     docId: string
@@ -923,6 +952,7 @@ function OversightRow({
     userName: string
     userTeam: string
     onJustify: (docId: string, itemId: string, justification: string) => Promise<void>
+    onAddComment: (docId: string, itemId: string, text: string) => Promise<void>
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -1152,8 +1182,10 @@ function OversightRow({
                             comments={item.comments || []}
                             currentUser={userName}
                             currentRole="team_lead"
-                            onAddComment={async () => { /* read-only: team lead cannot add comments in comment thread */ }}
-                            readOnly
+                            onAddComment={taskStatus !== "completed"
+                                ? async (text) => onAddComment(docId, item.id, text)
+                                : undefined
+                            }
                         />
                     )}
                     {expandTab === "delay_chat" && isDelayed && (

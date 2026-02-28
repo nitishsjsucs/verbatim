@@ -353,6 +353,7 @@ function TeamReviewContent() {
         const existing = item.comments || []
         await handleUpdate(docId, item.id, {
             task_status: "in_progress",
+            rejection_reason: reason,
             team_reviewer_rejected_at: new Date().toISOString(),
             team_reviewer_name: userName,
             comments: [...existing, rejectComment],
@@ -884,7 +885,17 @@ function ReviewRow({
 
             {/* Expanded: Comment thread */}
             {isExpanded && (
-                <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
+                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
+                    {/* Rejection reason banner (CO or team reviewer rejection) */}
+                    {(taskStatus === "reworking" || taskStatus === "in_progress") && item.rejection_reason && (
+                        <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                            <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
+                            </div>
+                        </div>
+                    )}
                     <CommentThread
                         comments={item.comments || []}
                         currentUser={userName}

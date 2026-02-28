@@ -224,6 +224,26 @@ export default function DashboardPage() {
         await handleUpdate(docId, item.id, { comments: [...existing, newComment] })
     }, [userName, handleUpdate])
 
+    const [rejectingItem, setRejectingItem] = React.useState<{ docId: string; item: ActionableItem } | null>(null)
+    const [rejectReason, setRejectReason] = React.useState("")
+
+    const handleReject = React.useCallback(async (docId: string, item: ActionableItem, reason: string) => {
+        const rejectComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "compliance_officer",
+            text: `Rejected by Compliance Officer: ${reason}`,
+            timestamp: new Date().toISOString(),
+        }
+        const existing = item.comments || []
+        await handleUpdate(docId, item.id, {
+            task_status: "reworking",
+            rejection_reason: reason,
+            comments: [...existing, rejectComment],
+        })
+        toast.success("Task rejected — returned for rework")
+    }, [userName, handleUpdate])
+
     // Only show PUBLISHED actionables
     const allRows: FlatRow[] = React.useMemo(() => {
         const rows: FlatRow[] = []
@@ -671,7 +691,7 @@ export default function DashboardPage() {
                                                                 <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                                                             </button>
                                                             <button
-                                                                onClick={() => handleUpdate(docId, item.id, { task_status: "reworking" })}
+                                                                onClick={() => { setRejectingItem({ docId, item }); setRejectReason("") }}
                                                                 className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                 title="Reject — send back for rework"
                                                             >
@@ -694,9 +714,62 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
 
+                                            {/* Rejection reason input */}
+                                            {rejectingItem?.item.id === item.id && rejectingItem.docId === docId && (
+                                                <div className="bg-red-500/5 border-t border-red-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                    <input
+                                                        value={rejectReason}
+                                                        onChange={e => setRejectReason(e.target.value)}
+                                                        placeholder="Reason for rejection (required)..."
+                                                        className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                                                        autoFocus
+                                                        onKeyDown={e => {
+                                                            if (e.key === "Enter" && rejectReason.trim()) {
+                                                                handleReject(docId, item, rejectReason.trim())
+                                                                setRejectingItem(null)
+                                                                setRejectReason("")
+                                                            }
+                                                            if (e.key === "Escape") {
+                                                                setRejectingItem(null)
+                                                                setRejectReason("")
+                                                            }
+                                                        }}
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            if (rejectReason.trim()) {
+                                                                handleReject(docId, item, rejectReason.trim())
+                                                                setRejectingItem(null)
+                                                                setRejectReason("")
+                                                            }
+                                                        }}
+                                                        disabled={!rejectReason.trim()}
+                                                        className="text-[10px] px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    >
+                                                        Confirm Reject
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setRejectingItem(null); setRejectReason("") }}
+                                                        className="text-[10px] px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             {/* Expanded: Comment thread */}
                                             {isExpanded && (
-                                                <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
+                                                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
+                                                    {/* Rejection reason banner */}
+                                                    {taskStatus === "reworking" && item.rejection_reason && (
+                                                        <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                                                            <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                                                <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     <CommentThread
                                                         comments={item.comments || []}
                                                         currentUser={userName}

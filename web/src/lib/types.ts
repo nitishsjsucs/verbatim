@@ -286,6 +286,7 @@ export interface ActionableItem {
     task_status?: TaskStatus;
     completion_date?: string;    // ISO datetime when task is completed
     reviewer_comments?: string;  // Comments from compliance officer on rejection/rework
+    rejection_reason?: string;   // Reason provided when CO or team reviewer rejects a task
     evidence_files?: { name: string; url: string; uploaded_at: string }[];
     comments?: ActionableComment[];  // Thread of comments between team & compliance officer
     // Team reviewer audit fields

@@ -18,7 +18,7 @@ import {
     ArrowRight, RotateCcw, Trash2, Save,
     MessageSquare, ExternalLink, Download, Upload, Undo2,
     SortAsc, SortDesc,
-    LayoutDashboard, AlertTriangle, X,
+    LayoutDashboard, AlertTriangle, X, XCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -361,7 +361,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
                     {canAdvance && (
                         <button
                             onClick={() => onStatusTransition(docId, item)}
-                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium"
+                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                         >
                             {taskStatus === "assigned" && <><ArrowRight className="h-2.5 w-2.5" /> Start</>}
                             {taskStatus === "in_progress" && <><CheckCircle2 className="h-2.5 w-2.5" /> Submit</>}
@@ -393,7 +393,18 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
             {/* Expanded: Evidence & Comments */}
             {expanded && (
                 <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-5">
-                    {/* Evidence files section */}
+                    {/* Rejection reason banner */}
+                    {taskStatus === "reworking" && item.rejection_reason && (
+                        <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                            <div className="shrink-0 mt-0.5">
+                                <XCircle className="h-4 w-4 text-red-400" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
