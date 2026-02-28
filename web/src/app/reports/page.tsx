@@ -40,6 +40,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
     review: "Under Review",
     completed: "Completed",
     reworking: "Reworking",
+    reviewer_rejected: "Rejected by Reviewer",
 }
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
@@ -49,6 +50,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
     review: "#3b82f6",
     completed: "#22c55e",
     reworking: "#f97316",
+    reviewer_rejected: "#f43f5e",
 }
 
 const RISK_COLORS: Record<string, string> = {
