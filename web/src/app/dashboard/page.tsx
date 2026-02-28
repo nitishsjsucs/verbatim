@@ -208,9 +208,9 @@ export default function DashboardPage() {
 
     React.useEffect(() => { loadAll() }, [loadAll])
 
-    const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
+    const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>, forTeam?: string) => {
         try {
-            const updated = await updateActionable(docId, itemId, updates)
+            const updated = await updateActionable(docId, itemId, updates, forTeam)
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
                 return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
@@ -234,6 +234,40 @@ export default function DashboardPage() {
 
     const [rejectingItem, setRejectingItem] = React.useState<{ docId: string; item: ActionableItem } | null>(null)
     const [rejectReason, setRejectReason] = React.useState("")
+
+    // Per-team rejection state for multi-team items
+    const [rejectingTeamInfo, setRejectingTeamInfo] = React.useState<{ docId: string; itemId: string; team: string } | null>(null)
+    const [rejectTeamReason, setRejectTeamReason] = React.useState("")
+
+    const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
+        await handleUpdate(docId, item.id, {
+            task_status: "completed",
+            completion_date: new Date().toISOString(),
+        }, team)
+        toast.success(`${team} team approved`)
+    }, [handleUpdate])
+
+    const handleRejectTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string, reason: string) => {
+        const rejectComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "compliance_officer",
+            text: `Rejected ${team} team: ${reason}`,
+            timestamp: new Date().toISOString(),
+        }
+        // Add rejection comment to the team's workflow comments
+        const teamComments = item.team_workflows?.[team]?.comments || []
+        await handleUpdate(docId, item.id, {
+            task_status: "reworking",
+            rejection_reason: reason,
+            comments: [...teamComments, rejectComment],
+            justification: "",
+            justification_by: "",
+            justification_at: "",
+            justification_status: "",
+        }, team)
+        toast.success(`${team} team rejected — returned for rework`)
+    }, [userName, handleUpdate])
 
     const handleReject = React.useCallback(async (docId: string, item: ActionableItem, reason: string) => {
         const rejectComment: ActionableComment = {
@@ -704,7 +738,7 @@ export default function DashboardPage() {
 
                                                 {/* Actions (approve/reject for compliance officer) */}
                                                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-                                                    {taskStatus === "review" && (
+                                                    {taskStatus === "review" && !isMultiTeam(item) && (
                                                         <>
                                                             <button
                                                                 onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
@@ -721,6 +755,9 @@ export default function DashboardPage() {
                                                                 <XCircle className="h-2.5 w-2.5" /> Reject
                                                             </button>
                                                         </>
+                                                    )}
+                                                    {taskStatus === "review" && isMultiTeam(item) && (
+                                                        <span className="text-[9px] text-violet-400 italic">Review per team ↓</span>
                                                     )}
                                                     {taskStatus === "completed" && (
                                                         <span className="text-[9px] text-emerald-400 italic">Approved</span>
@@ -830,20 +867,84 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {/* Multi-team workflow breakdown */}
+                                                    {/* Multi-team workflow breakdown with per-team approve/reject */}
                                                     {isMultiTeam(item) && item.team_workflows && (
                                                         <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg px-4 py-3">
                                                             <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-2">Team Workflow Status</p>
-                                                            <div className="space-y-1.5">
+                                                            <div className="space-y-2">
                                                                 {(item.assigned_teams || []).map(team => {
                                                                     const tw = item.team_workflows?.[team]
-                                                                    const twStatus = tw?.task_status || "assigned"
-                                                                    const twStyle = TASK_STATUS_STYLES[twStatus as TaskStatus] || TASK_STATUS_STYLES.assigned
+                                                                    const twStatus = (tw?.task_status || "assigned") as TaskStatus
+                                                                    const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
+                                                                    const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
                                                                     return (
-                                                                        <div key={team} className="flex items-center gap-2">
-                                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium min-w-[80px]", WORKSTREAM_COLORS[team]?.bg, WORKSTREAM_COLORS[team]?.text || "text-muted-foreground")}>{team}</span>
-                                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium", twStyle.bg, twStyle.text)}>{twStyle.label}</span>
-                                                                            {tw?.evidence_files && tw.evidence_files.length > 0 && <span className="text-[9px] text-muted-foreground/50"><Paperclip className="h-2.5 w-2.5 inline" /> {tw.evidence_files.length}</span>}
+                                                                        <div key={team}>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium min-w-[80px]", WORKSTREAM_COLORS[team]?.bg, WORKSTREAM_COLORS[team]?.text || "text-muted-foreground")}>{team}</span>
+                                                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium", twStyle.bg, twStyle.text)}>{twStyle.label}</span>
+                                                                                {tw?.evidence_files && tw.evidence_files.length > 0 && <span className="text-[9px] text-muted-foreground/50"><Paperclip className="h-2.5 w-2.5 inline" /> {tw.evidence_files.length}</span>}
+                                                                                {twStatus === "review" && (
+                                                                                    <div className="flex items-center gap-1 ml-auto">
+                                                                                        <button
+                                                                                            onClick={() => handleApproveTeam(docId, item, team)}
+                                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                                            title={`Approve ${team}`}
+                                                                                        >
+                                                                                            <CheckCircle2 className="h-2.5 w-2.5" /> Approve
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
+                                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                                            title={`Reject ${team}`}
+                                                                                        >
+                                                                                            <XCircle className="h-2.5 w-2.5" /> Reject
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
+                                                                                {twStatus === "completed" && <span className="text-[9px] text-emerald-400 italic ml-auto">Approved</span>}
+                                                                            </div>
+                                                                            {/* Per-team rejection reason input */}
+                                                                            {isRejectingThisTeam && (
+                                                                                <div className="flex items-center gap-2 mt-1.5 ml-[88px]">
+                                                                                    <input
+                                                                                        value={rejectTeamReason}
+                                                                                        onChange={e => setRejectTeamReason(e.target.value)}
+                                                                                        placeholder="Reason for rejection (required)..."
+                                                                                        className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                                                                                        autoFocus
+                                                                                        onKeyDown={e => {
+                                                                                            if (e.key === "Enter" && rejectTeamReason.trim()) {
+                                                                                                handleRejectTeam(docId, item, team, rejectTeamReason.trim())
+                                                                                                setRejectingTeamInfo(null)
+                                                                                                setRejectTeamReason("")
+                                                                                            }
+                                                                                            if (e.key === "Escape") {
+                                                                                                setRejectingTeamInfo(null)
+                                                                                                setRejectTeamReason("")
+                                                                                            }
+                                                                                        }}
+                                                                                    />
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            if (rejectTeamReason.trim()) {
+                                                                                                handleRejectTeam(docId, item, team, rejectTeamReason.trim())
+                                                                                                setRejectingTeamInfo(null)
+                                                                                                setRejectTeamReason("")
+                                                                                            }
+                                                                                        }}
+                                                                                        disabled={!rejectTeamReason.trim()}
+                                                                                        className="text-[9px] px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                                    >
+                                                                                        Reject
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => { setRejectingTeamInfo(null); setRejectTeamReason("") }}
+                                                                                        className="text-[9px] px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                                                    >
+                                                                                        Cancel
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     )
                                                                 })}

@@ -132,13 +132,21 @@ class ActionableItem:
                 }
 
     def compute_aggregate_status(self) -> None:
-        """For multi-team items, compute top-level task_status from per-team statuses."""
+        """For multi-team items, compute top-level task_status from per-team statuses.
+
+        - All teams completed → top-level "completed" (set completion_date)
+        - Any team at "review" (CO can act) → top-level "review"
+        - Otherwise → "pending_all_teams"
+        """
         if not self.is_multi_team:
             return
-        if self.task_status == "completed":
-            return  # already approved by compliance
         statuses = [tw.get("task_status", "assigned") for tw in self.team_workflows.values()]
-        if all(s == "review" for s in statuses):
+        if all(s == "completed" for s in statuses):
+            self.task_status = "completed"
+            if not self.completion_date:
+                from datetime import datetime, timezone
+                self.completion_date = datetime.now(timezone.utc).isoformat()
+        elif any(s == "review" for s in statuses):
             self.task_status = "review"
         else:
             self.task_status = "pending_all_teams"
