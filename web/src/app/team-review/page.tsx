@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
     safeStr, normalizeRisk, formatDate, formatTime, deadlineCategory,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, WORKSTREAM_OPTIONS,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"

@@ -1261,11 +1261,8 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
                 except ValueError:
                     continue
             elif field_name == "workstream":
-                from models.actionable import Workstream
-                try:
-                    val = Workstream(val)
-                except ValueError:
-                    continue
+                # Accept any string — teams are now dynamic (database-driven)
+                val = str(val) if val else "Other"
 
             # Route team-specific fields to team_workflows when multi-team
             if is_team_update and field_name in team_workflow_fields:
@@ -1354,7 +1351,7 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
             pass
     new_id = f"MAN-{max_num + 1:03d}"
 
-    from models.actionable import ActionableItem as AI, Modality, Workstream
+    from models.actionable import ActionableItem as AI, Modality
 
     modality_str = body.get("modality", "Mandatory")
     try:
@@ -1362,11 +1359,8 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
     except ValueError:
         modality = Modality.MANDATORY
 
-    workstream_str = body.get("workstream", "Other")
-    try:
-        workstream = Workstream(workstream_str)
-    except ValueError:
-        workstream = Workstream.OTHER
+    # Accept any workstream string — teams are now dynamic (database-driven)
+    workstream_str = str(body.get("workstream", "Other"))
 
     item = AI(
         id=new_id,
@@ -1383,7 +1377,7 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
         source_location=body.get("source_location", ""),
         source_node_id=body.get("source_node_id", ""),
         implementation_notes=body.get("implementation_notes", ""),
-        workstream=workstream,
+        workstream=workstream_str,
         needs_legal_review=body.get("needs_legal_review", False),
         validation_status="manual",
         approval_status="pending",
@@ -2533,11 +2527,8 @@ def list_chat_channels(role: str = Query(...), team: str = Query("")):
             "label": "Internal Compliance Chat",
             "type": "compliance_internal",
         })
-        # 2. One entry per team for team↔compliance
-        all_teams = [
-            "Policy", "Technology", "Operations", "Training",
-            "Reporting", "Customer Communication", "Governance", "Legal", "Other",
-        ]
+        # 2. One entry per team for team↔compliance (dynamic from DB)
+        all_teams = [t["name"] for t in db["teams"].find({"is_system": {"$ne": True}}, {"name": 1})]
         for t in all_teams:
             channels.append({
                 "channel": f"team_compliance:{t}",
@@ -2659,10 +2650,7 @@ def get_chat_unread_total(role: str = Query(...), team: str = Query("")):
     visible_channels: list[str] = []
     if role in ("compliance_officer", "admin"):
         visible_channels.append("compliance_internal")
-        for t in [
-            "Policy", "Technology", "Operations", "Training",
-            "Reporting", "Customer Communication", "Governance", "Legal", "Other",
-        ]:
+        for t in [t["name"] for t in db["teams"].find({"is_system": {"$ne": True}}, {"name": 1})]:
             visible_channels.append(f"team_compliance:{t}")
     else:
         if team:
@@ -2715,6 +2703,190 @@ def rename_chat_channel(channel: str, body: RenameChatChannelRequest, role: str 
     )
     
     return {"ok": True, "channel": channel, "custom_name": body.custom_name}
+
+
+# ---------------------------------------------------------------------------
+# Dynamic Teams Management API
+# ---------------------------------------------------------------------------
+
+SYSTEM_TEAM = "Mixed Team Projects"
+
+# Color palette for auto-assigning to new teams
+_TEAM_COLOR_PALETTE = [
+    {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"},
+    {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"},
+    {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"},
+    {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"},
+    {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"},
+    {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"},
+    {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"},
+    {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"},
+    {"bg": "bg-rose-500/10", "text": "text-rose-400", "header": "bg-rose-500"},
+    {"bg": "bg-teal-500/10", "text": "text-teal-400", "header": "bg-teal-500"},
+    {"bg": "bg-lime-500/10", "text": "text-lime-400", "header": "bg-lime-500"},
+    {"bg": "bg-orange-500/10", "text": "text-orange-400", "header": "bg-orange-500"},
+]
+
+MIXED_TEAM_COLORS = {"bg": "bg-amber-500/10", "text": "text-amber-400", "header": "bg-amber-500"}
+OTHER_TEAM_COLORS = {"bg": "bg-zinc-500/10", "text": "text-zinc-400", "header": "bg-zinc-500"}
+
+
+def _ensure_system_team():
+    """Ensure the Mixed Team Projects system team always exists."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+    existing = col.find_one({"name": SYSTEM_TEAM})
+    if not existing:
+        col.insert_one({
+            "name": SYSTEM_TEAM,
+            "is_system": True,
+            "colors": MIXED_TEAM_COLORS,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "order": -1,  # Always first
+        })
+        logger.info("Seeded system team: %s", SYSTEM_TEAM)
+
+
+# Ensure system team on startup
+@app.on_event("startup")
+async def ensure_teams():
+    _ensure_system_team()
+
+
+@app.get("/teams")
+def list_teams():
+    """Return all teams ordered by 'order' field. System teams first."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+    teams = list(col.find({}, {"_id": 0}).sort("order", 1))
+    return {"teams": teams}
+
+
+class CreateTeamRequest(BaseModel):
+    name: str
+
+
+@app.post("/teams")
+def create_team(body: CreateTeamRequest):
+    """Admin creates a new team. Cannot create system teams or duplicates."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Team name cannot be empty")
+    if name == SYSTEM_TEAM:
+        raise HTTPException(status_code=400, detail="Cannot create system team")
+
+    existing = col.find_one({"name": name})
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Team '{name}' already exists")
+
+    # Auto-assign color from palette based on current team count
+    count = col.count_documents({"is_system": {"$ne": True}})
+    color_index = count % len(_TEAM_COLOR_PALETTE)
+    colors = _TEAM_COLOR_PALETTE[color_index]
+
+    team_doc = {
+        "name": name,
+        "is_system": False,
+        "colors": colors,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "order": count + 1,
+    }
+    col.insert_one(team_doc)
+    team_doc.pop("_id", None)
+    return team_doc
+
+
+@app.delete("/teams/{team_name}")
+def delete_team(team_name: str):
+    """Admin deletes a team. Cannot delete system teams."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+
+    existing = col.find_one({"name": team_name})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found")
+    if existing.get("is_system"):
+        raise HTTPException(status_code=403, detail="Cannot delete system team")
+
+    col.delete_one({"name": team_name})
+    return {"deleted": team_name}
+
+
+class UpdateTeamRequest(BaseModel):
+    name: Optional[str] = None
+    colors: Optional[dict] = None
+    order: Optional[int] = None
+
+
+@app.put("/teams/{team_name}")
+def update_team(team_name: str, body: UpdateTeamRequest):
+    """Admin updates a team. Cannot modify system teams."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+
+    existing = col.find_one({"name": team_name})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found")
+    if existing.get("is_system"):
+        raise HTTPException(status_code=403, detail="Cannot modify system team")
+
+    updates = {}
+    if body.name is not None:
+        updates["name"] = body.name.strip()
+    if body.colors is not None:
+        updates["colors"] = body.colors
+    if body.order is not None:
+        updates["order"] = body.order
+
+    if updates:
+        col.update_one({"name": team_name}, {"$set": updates})
+
+    updated = col.find_one({"name": updates.get("name", team_name)}, {"_id": 0})
+    return updated
+
+
+@app.post("/teams/seed-defaults")
+def seed_default_teams():
+    """Seed the default teams into the database. Idempotent — skips existing teams."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+
+    default_teams = [
+        ("Policy", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}),
+        ("Technology", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}),
+        ("Operations", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}),
+        ("Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}),
+        ("Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}),
+        ("Customer Communication", {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"}),
+        ("Governance", {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"}),
+        ("Legal", {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"}),
+        ("Other", {"bg": "bg-zinc-500/10", "text": "text-zinc-400", "header": "bg-zinc-500"}),
+    ]
+
+    _ensure_system_team()
+
+    seeded = []
+    for idx, (name, colors) in enumerate(default_teams):
+        if not col.find_one({"name": name}):
+            col.insert_one({
+                "name": name,
+                "is_system": False,
+                "colors": colors,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "order": idx + 1,
+            })
+            seeded.append(name)
+
+    return {"seeded": seeded, "total_teams": col.count_documents({})}
 
 
 if __name__ == "__main__":

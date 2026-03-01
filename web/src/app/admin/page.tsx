@@ -9,7 +9,12 @@ import {
   fetchAdminQueries,
   fetchAdminQueryFull,
   adminLogin,
+  createTeam,
+  deleteTeam,
+  seedDefaultTeams,
 } from "@/lib/api"
+import { useTeams, invalidateTeamsCache } from "@/lib/use-teams"
+import type { Team } from "@/lib/types"
 import {
   Shield,
   Activity,
@@ -39,13 +44,16 @@ import {
   Hash,
   Star,
   X,
+  Users,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage"
+type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams"
 
 interface AdminData {
   documents?: { total: number; list: Array<{ doc_id: string; doc_name: string; total_pages: number; node_count: number }> }
@@ -456,6 +464,7 @@ function AdminDashboardContent() {
           <TabBtn active={tab === "benchmarks"} icon={<BarChart3 className="h-3.5 w-3.5" />} label="Benchmarks" onClick={() => setTab("benchmarks")} />
           <TabBtn active={tab === "memory"} icon={<Brain className="h-3.5 w-3.5" />} label="Memory System" onClick={() => setTab("memory")} />
           <TabBtn active={tab === "storage"} icon={<HardDrive className="h-3.5 w-3.5" />} label="Storage" onClick={() => setTab("storage")} />
+          <TabBtn active={tab === "teams"} icon={<Users className="h-3.5 w-3.5" />} label="Teams" onClick={() => setTab("teams")} />
         </div>
       </div>
 
@@ -477,6 +486,7 @@ function AdminDashboardContent() {
         {tab === "benchmarks" && <BenchmarksTab data={benchData} overview={data} />}
         {tab === "memory" && <MemoryTab data={memoryData} overview={data} />}
         {tab === "storage" && data && <StorageTab data={data} />}
+        {tab === "teams" && <TeamsTab />}
       </div>
     </div>
   )
@@ -1254,6 +1264,168 @@ function StorageTab({ data }: { data: AdminData }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEAMS TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function TeamsTab() {
+  const { teams, loading, refresh } = useTeams()
+  const [newTeamName, setNewTeamName] = React.useState("")
+  const [creating, setCreating] = React.useState(false)
+  const [deleting, setDeleting] = React.useState<string | null>(null)
+  const [seeding, setSeeding] = React.useState(false)
+
+  const handleCreate = async () => {
+    const name = newTeamName.trim()
+    if (!name) return
+    setCreating(true)
+    try {
+      await createTeam(name)
+      setNewTeamName("")
+      invalidateTeamsCache()
+      refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create team")
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleDelete = async (teamName: string) => {
+    if (!confirm(`Delete team "${teamName}"? This cannot be undone.`)) return
+    setDeleting(teamName)
+    try {
+      await deleteTeam(teamName)
+      invalidateTeamsCache()
+      refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete team")
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleSeedDefaults = async () => {
+    setSeeding(true)
+    try {
+      const result = await seedDefaultTeams()
+      invalidateTeamsCache()
+      refresh()
+      alert(`Seeded ${result.seeded.length} teams. Total: ${result.total_teams}`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to seed defaults")
+    } finally {
+      setSeeding(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Users className="h-4 w-4 text-blue-500" />
+          Team Management
+          <span className="text-[10px] text-muted-foreground font-normal ml-1">({teams.length} teams)</span>
+        </h2>
+        <button
+          onClick={handleSeedDefaults}
+          disabled={seeding}
+          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+        >
+          {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+          Seed Defaults
+        </button>
+      </div>
+
+      {/* Create new team */}
+      <div className="rounded-lg border border-border bg-card p-4 mb-4">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Create New Team</p>
+        <div className="flex gap-2">
+          <input
+            value={newTeamName}
+            onChange={e => setNewTeamName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleCreate()}
+            placeholder="Team name…"
+            className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <button
+            onClick={handleCreate}
+            disabled={creating || !newTeamName.trim()}
+            className="flex items-center gap-1 h-8 px-3 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          >
+            {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            Create
+          </button>
+        </div>
+      </div>
+
+      {/* Teams list */}
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Team</th>
+                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Color</th>
+                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Type</th>
+                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Created</th>
+                <th className="text-right px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teams.map((team: Team) => (
+                <tr key={team.name} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
+                  <td className="px-4 py-2.5 font-medium text-foreground">{team.name}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-medium", team.colors.bg, team.colors.text)}>
+                      {team.colors.header.replace("bg-", "").replace("-500", "")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {team.is_system ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-500">
+                        <Lock className="h-3 w-3" /> System
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Custom</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground text-[12px]">
+                    {team.created_at ? new Date(team.created_at).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    {!team.is_system && (
+                      <button
+                        onClick={() => handleDelete(team.name)}
+                        disabled={deleting === team.name}
+                        className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                      >
+                        {deleting === team.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                        Delete
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {teams.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-[13px]">
+                    No teams yet. Click &quot;Seed Defaults&quot; to create the standard teams.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </>

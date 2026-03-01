@@ -9,7 +9,7 @@
  *  • Common helper functions (safeStr, normalizeRisk, formatDate, …)
  */
 
-import type { TaskStatus, ActionableModality, ActionableWorkstream } from "./types"
+import type { TaskStatus, ActionableModality } from "./types"
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
 
@@ -97,20 +97,28 @@ export const RISK_COLORS_HEX: Record<string, string> = {
 export const RISK_OPTIONS: ActionableModality[] = ["High Risk", "Medium Risk", "Low Risk"]
 
 // ─── Workstream Colors ───────────────────────────────────────────────────────
+// NOTE: This is now a RUNTIME MUTABLE cache populated from the database via
+// `syncTeamColors()`. It starts with a minimal fallback so early renders work.
 
 export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: string }> = {
-    Policy:                   { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
-    Technology:               { bg: "bg-cyan-500/10",   text: "text-cyan-400",   header: "bg-cyan-500" },
-    Operations:               { bg: "bg-blue-500/10",   text: "text-blue-400",   header: "bg-blue-500" },
-    Training:                 { bg: "bg-pink-500/10",   text: "text-pink-400",   header: "bg-pink-500" },
-    Reporting:                { bg: "bg-indigo-500/10",  text: "text-indigo-400", header: "bg-indigo-500" },
-    "Customer Communication": { bg: "bg-sky-500/10",    text: "text-sky-400",    header: "bg-sky-500" },
-    Governance:               { bg: "bg-violet-500/10", text: "text-violet-400", header: "bg-violet-500" },
-    Legal:                    { bg: "bg-fuchsia-500/10", text: "text-fuchsia-400", header: "bg-fuchsia-500" },
     Other:                    { bg: "bg-zinc-500/10",   text: "text-zinc-400",   header: "bg-zinc-500" },
-    // System-generated classification for multi-team actionables (not manually selectable)
-    // Uses same styling as other teams - no special visual distinction
     "Mixed Team Projects":    { bg: "bg-amber-500/10", text: "text-amber-400", header: "bg-amber-500" },
+}
+
+/**
+ * Sync the WORKSTREAM_COLORS lookup from the dynamic teams fetched from DB.
+ * Call this once after `fetchTeams()` resolves.
+ */
+export function syncTeamColors(teams: { name: string; colors: { bg: string; text: string; header: string } }[]) {
+    // Clear existing entries except keep fallbacks
+    for (const key of Object.keys(WORKSTREAM_COLORS)) {
+        if (key !== "Other" && key !== "Mixed Team Projects") {
+            delete WORKSTREAM_COLORS[key]
+        }
+    }
+    for (const t of teams) {
+        WORKSTREAM_COLORS[t.name] = t.colors
+    }
 }
 
 /** Flat workstream class string (bg + text combined) for simple badge usage. */
@@ -119,12 +127,14 @@ export function getWorkstreamClass(name: string): string {
     return ws ? `${ws.bg} ${ws.text}` : "bg-muted text-muted-foreground"
 }
 
-// ─── Workstream Options ──────────────────────────────────────────────────────
-
-export const WORKSTREAM_OPTIONS: ActionableWorkstream[] = [
-    "Policy", "Technology", "Operations", "Training",
-    "Reporting", "Customer Communication", "Governance", "Legal", "Other",
-]
+/**
+ * @deprecated Use `useTeams().teamNames` instead.
+ * Kept temporarily for backward compatibility during migration.
+ * Returns the keys of WORKSTREAM_COLORS excluding system teams.
+ */
+export function getWorkstreamOptions(): string[] {
+    return Object.keys(WORKSTREAM_COLORS).filter(k => k !== "Mixed Team Projects")
+}
 
 // ─── Task Status Styles (Tailwind — semi-transparent pills) ──────────────────
 

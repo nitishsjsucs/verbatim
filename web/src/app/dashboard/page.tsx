@@ -30,9 +30,10 @@ import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk, formatDate, formatTime, formatDateTime, deadlineCategory,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, WORKSTREAM_OPTIONS,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
+import { useTeams } from "@/lib/use-teams"
 import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ interface FlatRow {
 // ─── Main Tracker Page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+    const { teamNames } = useTeams()
     const { data: session } = useSession()
     const [allDocs, setAllDocs] = React.useState<{ doc_id: string; doc_name: string; actionables: ActionableItem[] }[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -259,10 +261,10 @@ export default function DashboardPage() {
         const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
         if (mixedIndex > -1) {
             keys.splice(mixedIndex, 1)
-            return [MIXED_TEAM_CLASSIFICATION, ...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream) && k !== MIXED_TEAM_CLASSIFICATION)]
+            return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
         }
-        return [...WORKSTREAM_OPTIONS, "Other"].filter(ws => grouped[ws] && grouped[ws].length > 0)
-    }, [grouped])
+        return [...teamNames, "Other"].filter(ws => grouped[ws] && grouped[ws].length > 0)
+    }, [grouped, teamNames])
 
     // Group completed by classification (multi-team items go to "Mixed Team Projects")
     const completedByTeam = React.useMemo(() => {
@@ -282,10 +284,10 @@ export default function DashboardPage() {
         const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
         if (mixedIndex > -1) {
             keys.splice(mixedIndex, 1)
-            return [MIXED_TEAM_CLASSIFICATION, ...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream) && k !== MIXED_TEAM_CLASSIFICATION)]
+            return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
         }
-        return [...WORKSTREAM_OPTIONS, "Other"].filter(ws => completedByTeam[ws] && completedByTeam[ws].length > 0)
-    }, [completedByTeam])
+        return [...teamNames, "Other"].filter(ws => completedByTeam[ws] && completedByTeam[ws].length > 0)
+    }, [completedByTeam, teamNames])
 
     const [collapsedCompletedTeams, setCollapsedCompletedTeams] = React.useState<Set<string>>(new Set())
     const toggleCompletedTeam = (ws: string) => {

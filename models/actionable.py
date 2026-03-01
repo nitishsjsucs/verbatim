@@ -29,7 +29,12 @@ class Modality(str, Enum):
 
 
 class Workstream(str, Enum):
-    """Implementation workstream category."""
+    """Implementation workstream category.
+    
+    NOTE: This enum is kept for backward compatibility with existing data.
+    New teams are dynamic (database-driven). The from_dict / to_dict methods
+    gracefully handle any string value, not just enum members.
+    """
 
     POLICY = "Policy"
     TECHNOLOGY = "Technology"
@@ -60,7 +65,7 @@ class ActionableItem:
     source_location: str = ""  # Page + section heading
     source_node_id: str = ""  # Tree node ID
     implementation_notes: str = ""  # Short operational guidance
-    workstream: Workstream = Workstream.OTHER  # Implementation category
+    workstream: str = "Other"  # Implementation category (dynamic — any team name)
     needs_legal_review: bool = False  # Ambiguous items flagged
     validation_status: str = "pending"  # pending, validated, flagged
     validation_notes: str = ""  # Notes from validation pass
@@ -106,7 +111,8 @@ class ActionableItem:
     def effective_teams(self) -> list:
         if self.assigned_teams:
             return list(self.assigned_teams)
-        return [self.workstream.value if isinstance(self.workstream, Workstream) else self.workstream]
+        ws = self.workstream
+        return [ws.value if isinstance(ws, Workstream) else str(ws)]
 
     def init_team_workflows(self) -> None:
         """Initialize team_workflows for all assigned_teams."""
@@ -167,7 +173,7 @@ class ActionableItem:
             "source_location": self.source_location,
             "source_node_id": self.source_node_id,
             "implementation_notes": self.implementation_notes,
-            "workstream": self.workstream.value,
+            "workstream": self.workstream.value if isinstance(self.workstream, Workstream) else str(self.workstream),
             "needs_legal_review": self.needs_legal_review,
             "validation_status": self.validation_status,
             "validation_notes": self.validation_notes,
@@ -203,11 +209,11 @@ class ActionableItem:
         except ValueError:
             modality = Modality.MANDATORY
 
-        workstream_str = data.get("workstream", "Other")
-        try:
-            workstream = Workstream(workstream_str)
-        except ValueError:
-            workstream = Workstream.OTHER
+        # Accept any string — teams are now dynamic
+        workstream_val = data.get("workstream", "Other")
+        if isinstance(workstream_val, Workstream):
+            workstream_val = workstream_val.value
+        workstream_str = str(workstream_val) if workstream_val else "Other"
 
         return cls(
             id=data.get("id", ""),
@@ -224,7 +230,7 @@ class ActionableItem:
             source_location=data.get("source_location", ""),
             source_node_id=data.get("source_node_id", ""),
             implementation_notes=data.get("implementation_notes", ""),
-            workstream=workstream,
+            workstream=workstream_str,
             needs_legal_review=data.get("needs_legal_review", False),
             validation_status=data.get("validation_status", "pending"),
             validation_notes=data.get("validation_notes", ""),
@@ -292,7 +298,7 @@ class ActionablesResult:
             self.by_modality[key] = self.by_modality.get(key, 0) + 1
         self.by_workstream = {}
         for a in self.actionables:
-            key = a.workstream.value
+            key = a.workstream.value if isinstance(a.workstream, Workstream) else str(a.workstream)
             self.by_workstream[key] = self.by_workstream.get(key, 0) + 1
 
     def to_dict(self) -> dict:

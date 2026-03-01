@@ -43,47 +43,47 @@ const COMPLIANCE_OFFICER_USER: SeedUser = {
     team: ""
 };
 
-// List of teams (from previous hardcoded teams)
-const TEAMS = [
-    "Policy",
-    "Technology",
-    "Operations",
-    "Training",
-    "Reporting",
-    "Customer Communication",
-    "Governance",
-    "Legal"
-];
+// Teams are now dynamic — fetched from the `teams` collection in MongoDB.
+// The seed route reads teams from DB (after seeding defaults via backend API),
+// then creates users for each team.
 
-
-const TEAM_USERS: SeedUser[] = [];
-for (const team of TEAMS) {
-    TEAM_USERS.push(
-        {
-            name: `${team} Lead`,
-            email: `${team.toLowerCase().replace(/\s+/g, '_')}.lead@govinda.com`,
-            password: "Govinda@2026",
-            role: "team_lead",
-            team
-        },
-        {
-            name: `${team} Reviewer`,
-            email: `${team.toLowerCase().replace(/\s+/g, '_')}.reviewer@govinda.com`,
-            password: "Govinda@2026",
-            role: "team_reviewer",
-            team
-        },
-        {
-            name: `${team} Member`,
-            email: `${team.toLowerCase().replace(/\s+/g, '_')}.member@govinda.com`,
-            password: "Govinda@2026",
-            role: "team_member",
-            team
-        }
-    );
+async function getTeamsFromDb(db: ReturnType<MongoClient["db"]>): Promise<string[]> {
+    const teams = await db.collection("teams").find(
+        { is_system: { $ne: true } },
+        { projection: { name: 1, _id: 0 } }
+    ).sort({ order: 1 }).toArray();
+    return teams.map(t => t.name);
 }
 
-const SEED_USERS: SeedUser[] = [ADMIN_USER, COMPLIANCE_OFFICER_USER, ...TEAM_USERS];
+function buildTeamUsers(teams: string[]): SeedUser[] {
+    const users: SeedUser[] = [];
+    for (const team of teams) {
+        users.push(
+            {
+                name: `${team} Lead`,
+                email: `${team.toLowerCase().replace(/\s+/g, '_')}.lead@govinda.com`,
+                password: "Govinda@2026",
+                role: "team_lead",
+                team
+            },
+            {
+                name: `${team} Reviewer`,
+                email: `${team.toLowerCase().replace(/\s+/g, '_')}.reviewer@govinda.com`,
+                password: "Govinda@2026",
+                role: "team_reviewer",
+                team
+            },
+            {
+                name: `${team} Member`,
+                email: `${team.toLowerCase().replace(/\s+/g, '_')}.member@govinda.com`,
+                password: "Govinda@2026",
+                role: "team_member",
+                team
+            }
+        );
+    }
+    return users;
+}
 
 export async function POST(req: Request) {
     try {
@@ -99,8 +99,11 @@ export async function POST(req: Request) {
 
         const results: { email: string; status: string; error?: string }[] = []
 
-        // Only seed admin, compliance officer, and one lead/executor/checker per team
-        const allUsers = SEED_USERS;
+        // Fetch teams dynamically from the database
+        const backendDb = mongoClient.db(process.env.BACKEND_DB_NAME || "govinda_db")
+        const dynamicTeams = await getTeamsFromDb(backendDb)
+        const teamUsers = buildTeamUsers(dynamicTeams)
+        const allUsers: SeedUser[] = [ADMIN_USER, COMPLIANCE_OFFICER_USER, ...teamUsers];
 
         for (const user of allUsers) {
             try {

@@ -30,8 +30,9 @@ import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_OPTIONS, WORKSTREAM_COLORS, getWorkstreamClass,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
+import { useTeams } from "@/lib/use-teams"
 import { RiskIcon } from "@/components/shared/status-components"
 
 const PdfViewer = dynamic(
@@ -154,6 +155,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     isSelected: boolean
     onSelect: () => void
 }) {
+    const { teamNames } = useTeams()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
 
@@ -345,7 +347,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     Assign Teams
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {WORKSTREAM_OPTIONS.map(team => {
+                                    {teamNames.map(team => {
                                         const isSelected = team === item.workstream || (item.assigned_teams || []).includes(team)
                                         const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
                                         return (
@@ -448,6 +450,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     onCreated: () => void
     onCancel: () => void
 }) {
+    const { teamNames } = useTeams()
     const [creating, setCreating] = React.useState(false)
     const [selectedDocId, setSelectedDocId] = React.useState(docId)
     const [docSearchQuery, setDocSearchQuery] = React.useState("")
@@ -534,7 +537,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 <div>
                     <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Team</label>
                     <select value={form.workstream} onChange={e => setForm(f => ({ ...f, workstream: e.target.value as ActionableWorkstream }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
-                        {WORKSTREAM_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                        {teamNames.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 </div>
             </div>
@@ -563,6 +566,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
 // --- Main Page ---
 
 export default function ActionablesPage() {
+    const { teamNames } = useTeams()
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
     const [viewTab, setViewTab] = React.useState<ViewTab>("all")
@@ -739,10 +743,10 @@ export default function ActionablesPage() {
         if (mixedIndex > -1) {
             // Move Mixed Team Projects to the front
             keys.splice(mixedIndex, 1)
-            return [MIXED_TEAM_CLASSIFICATION, ...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream))]
+            return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
         }
-        return [...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream))]
-    }, [byTeam])
+        return [...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k))]
+    }, [byTeam, teamNames])
 
     // Stats (published count comes from allDocs since allItems excludes published)
     const stats = React.useMemo(() => {

@@ -17,6 +17,7 @@ import {
     ConversationMeta,
     StorageStats,
     AuditTrailEntry,
+    Team,
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
@@ -678,6 +679,46 @@ export async function fetchAdminSystemLogs(lines: number = 200): Promise<{ total
 export async function fetchAdminRuntimeConfig(): Promise<Record<string, unknown>> {
     const res = await apiFetch('/admin/runtime-config');
     if (!res.ok) throw new Error('Failed to fetch runtime config');
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic Teams API
+// ---------------------------------------------------------------------------
+
+export async function fetchTeams(): Promise<Team[]> {
+    const res = await apiFetch('/teams');
+    if (!res.ok) throw new Error('Failed to fetch teams');
+    const data = await res.json();
+    return data.teams || [];
+}
+
+export async function createTeam(name: string): Promise<Team> {
+    const res = await apiFetch('/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to create team');
+    }
+    return res.json();
+}
+
+export async function deleteTeam(teamName: string): Promise<void> {
+    const res = await apiFetch(`/teams/${encodeURIComponent(teamName)}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to delete team');
+    }
+}
+
+export async function seedDefaultTeams(): Promise<{ seeded: string[]; total_teams: number }> {
+    const res = await apiFetch('/teams/seed-defaults', { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to seed default teams');
     return res.json();
 }
 

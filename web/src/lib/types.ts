@@ -255,16 +255,11 @@ export interface CorpusQueryResponse {
 
 export type ActionableModality = "High Risk" | "Medium Risk" | "Low Risk";
 
-export type ActionableWorkstream =
-    | "Policy"
-    | "Technology"
-    | "Operations"
-    | "Training"
-    | "Reporting"
-    | "Customer Communication"
-    | "Governance"
-    | "Legal"
-    | "Other";
+/**
+ * Workstream / team name. Now a plain string — teams are dynamic (database-driven).
+ * The old union type is removed; any string is accepted.
+ */
+export type ActionableWorkstream = string;
 
 export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification" | "pending_all_teams";
 
@@ -447,6 +442,16 @@ export interface StorageStats {
     total_mb: number;
     limit_mb: number;
     usage_percent: number;
+}
+
+// ─── Dynamic Team Entity ───
+
+export interface Team {
+    name: string;
+    is_system: boolean;
+    colors: { bg: string; text: string; header: string };
+    created_at: string;
+    order: number;
 }
 
 // ─── Multi-team helpers ───

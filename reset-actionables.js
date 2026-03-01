@@ -1,34 +1,65 @@
 const { MongoClient } = require('./web/node_modules/mongodb');
 
 /**
- * Global Actionable Status Reset
+ * Global Actionable Status Reset (Dynamic Teams Edition)
  *
  * Resets task_status to "assigned" for every ActionableItem nested inside
  * every ActionablesResult document in the 'actionables' collection.
+ * Also resets per-team workflow states in team_workflows.
  *
  * Structure:
  *   Collection: actionables
- *   Document:   { _id: <doc_id>, actionables: [ { task_status, ... }, ... ], ... }
+ *   Document:   { _id: <doc_id>, actionables: [ { task_status, team_workflows, ... }, ... ], ... }
  *
  * Workflow-state fields reset per item:
  *   task_status, submitted_at, completion_date, reviewer_comments,
  *   team_reviewer_name, team_reviewer_approved_at, team_reviewer_rejected_at,
  *   is_delayed, delay_detected_at, justification, justification_by,
- *   justification_at
+ *   justification_at, team_workflows (each team reset to "assigned")
  *
  * Fields NOT touched: evidence_files, comments, delay_chat, audit_trail,
- *   and all extraction/metadata fields.
+ *   assigned_teams, workstream, and all extraction/metadata fields.
+ *
+ * Preserves: teams collection, users collection.
+ *
+ * Usage:
+ *   MONGO_URI=<uri> MONGO_DB=<db> node reset-actionables.js
  */
 
+const DEFAULT_URI = process.env.MONGO_URI
+    || process.env.MONGODB_URI
+    || "mongodb+srv://nitishsancs_db_user:<ROTATED_CREDENTIAL_REMOVED>@govinda.mdyhulj.mongodb.net/?appName=govinda";
+const DEFAULT_DB = process.env.MONGO_DB || process.env.BACKEND_DB_NAME || "govinda_v2";
+
+function resetTeamWorkflows(teamWorkflows) {
+    if (!teamWorkflows || typeof teamWorkflows !== 'object') return teamWorkflows;
+    const reset = {};
+    for (const [team, wf] of Object.entries(teamWorkflows)) {
+        reset[team] = {
+            ...wf,
+            task_status:                  "assigned",
+            submitted_at:                 "",
+            completion_date:              "",
+            reviewer_comments:            "",
+            team_reviewer_name:           "",
+            team_reviewer_approved_at:    "",
+            team_reviewer_rejected_at:    "",
+            implementation_notes:         wf.implementation_notes || "",
+            evidence_quote:               wf.evidence_quote || "",
+        };
+    }
+    return reset;
+}
+
 async function resetActionables() {
-    const uri = "mongodb+srv://nitishsancs_db_user:<ROTATED_CREDENTIAL_REMOVED>@govinda.mdyhulj.mongodb.net/?appName=govinda";
+    const uri = DEFAULT_URI;
     const client = new MongoClient(uri);
 
     try {
         await client.connect();
         console.log('Connected to MongoDB Atlas');
 
-        const db = client.db('govinda_v2');
+        const db = client.db(DEFAULT_DB);
 
         const collections = await db.listCollections().toArray();
         const collectionNames = collections.map(c => c.name);
@@ -52,7 +83,7 @@ async function resetActionables() {
             const items = doc.actionables || [];
             totalItems += items.length;
 
-            // Build the updated items array — only reset workflow-state fields
+            // Build the updated items array — reset workflow-state fields + team_workflows
             const updatedItems = items.map(item => ({
                 ...item,
                 task_status:                  "assigned",
@@ -67,6 +98,7 @@ async function resetActionables() {
                 justification:                "",
                 justification_by:             "",
                 justification_at:             "",
+                team_workflows:               resetTeamWorkflows(item.team_workflows),
             }));
 
             const result = await col.updateOne(
@@ -85,6 +117,7 @@ async function resetActionables() {
         console.log(`\n✅ Reset complete.`);
         console.log(`   Documents processed : ${allDocs.length}`);
         console.log(`   Total items reset   : ${totalModified} / ${totalItems}`);
+        console.log(`   Teams & users preserved.`);
 
         // Verify: collect all task_status values post-reset
         const verifyDocs = await col.find({}).toArray();

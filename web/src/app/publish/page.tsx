@@ -28,6 +28,7 @@ import {
     safeStr, normalizeRisk,
     RISK_STYLES, WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
+import { useTeams } from "@/lib/use-teams"
 import { RiskIcon } from "@/components/shared/status-components"
 
 // --- Types ---
@@ -212,7 +213,8 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
         return []
     })
 
-    const availableTeams = Object.keys(WORKSTREAM_COLORS).filter(t => t !== item.workstream && t !== "Other")
+    const { teamNames: _availTeams } = useTeams()
+    const availableTeams = _availTeams.filter(t => t !== item.workstream && t !== "Other")
     const toggleExtraTeam = (team: string) => {
         setExtraTeams(prev => prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team])
     }
@@ -393,6 +395,7 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
 // --- Main Page ---
 
 export default function PublishPage() {
+    const { teamNames: dynTeamNames } = useTeams()
     const [allDocs, setAllDocs] = React.useState<{ doc_id: string; doc_name: string; actionables: ActionableItem[] }[]>([])
     const [loading, setLoading] = React.useState(true)
     const [searchQuery, setSearchQuery] = React.useState("")
@@ -525,12 +528,10 @@ export default function PublishPage() {
         const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
         if (mixedIndex > -1) {
             keys.splice(mixedIndex, 1)
-            const wsOptions = Object.keys(WORKSTREAM_COLORS).filter(k => k !== "Mixed Team Projects")
-            return [MIXED_TEAM_CLASSIFICATION, ...wsOptions.filter(ws => keys.includes(ws)), ...keys.filter(k => !wsOptions.includes(k))]
+            return [MIXED_TEAM_CLASSIFICATION, ...dynTeamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !dynTeamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
         }
-        const wsOptions = Object.keys(WORKSTREAM_COLORS).filter(k => k !== "Mixed Team Projects")
-        return [...wsOptions.filter(ws => keys.includes(ws)), ...keys.filter(k => !wsOptions.includes(k))]
-    }, [byTeam])
+        return [...dynTeamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !dynTeamNames.includes(k))]
+    }, [byTeam, dynTeamNames])
 
     const toggleTeam = (team: string) => {
         setCollapsedTeams(prev => {
