@@ -1274,11 +1274,22 @@ function LLMBenchmarkTab({
   const [runError, setRunError] = React.useState("")
   const [expandedResult, setExpandedResult] = React.useState<string | null>(null)
 
-  if (!config) return <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+  const models = (config?.models || []) as LLMBenchModel[]
+  const stages = (config?.stages || []) as LLMBenchStage[]
+  const questions = (config?.test_questions || []) as LLMBenchQuestion[]
 
-  const models = (config.models || []) as LLMBenchModel[]
-  const stages = (config.stages || []) as LLMBenchStage[]
-  const questions = (config.test_questions || []) as LLMBenchQuestion[]
+  // Group models by provider — must be before early return to preserve hook order
+  const providerGroups = React.useMemo(() => {
+    const groups: Record<string, LLMBenchModel[]> = {}
+    for (const m of models) {
+      const key = m.provider || "other"
+      if (!groups[key]) groups[key] = []
+      groups[key].push(m)
+    }
+    return groups
+  }, [models])
+
+  if (!config) return <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
 
   const aggregated = (results?.aggregated || []) as LLMBenchAgg[]
   const bestPerStage = (results?.best_per_stage || {}) as Record<string, { model: string; avg_quality: number; avg_latency: number }>
@@ -1310,17 +1321,6 @@ function LLMBenchmarkTab({
       setRunning(false)
     }
   }
-
-  // Group models by provider
-  const providerGroups = React.useMemo(() => {
-    const groups: Record<string, LLMBenchModel[]> = {}
-    for (const m of models) {
-      const key = m.provider || "other"
-      if (!groups[key]) groups[key] = []
-      groups[key].push(m)
-    }
-    return groups
-  }, [models])
 
   // Unique stages & models from results for matrix
   const resultStages = [...new Set(aggregated.map(a => a.stage))]
