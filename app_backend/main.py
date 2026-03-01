@@ -2917,6 +2917,123 @@ def seed_default_teams():
             seeded.append(name)
 
     return {"seeded": seeded, "total_teams": col.count_documents({})}
+# LLM Benchmark Endpoints
+# ---------------------------------------------------------------------------
+
+class LLMBenchmarkRunRequest(BaseModel):
+    stages: list[str] = []  # Empty = all stages
+    models: list[str] = []  # Empty = default models
+    question_ids: list[str] = []  # Empty = all questions
+
+
+@app.get("/admin/llm-benchmark/models")
+def llm_benchmark_models():
+    """List all available models for benchmarking."""
+    from utils.llm_benchmark import AVAILABLE_MODELS, STAGE_META, TEST_QUESTIONS, PipelineStage
+    return {
+        "models": AVAILABLE_MODELS,
+        "stages": [
+            {"id": s.value, "label": STAGE_META[s]["label"], "default_model": STAGE_META[s]["default_model"]}
+            for s in PipelineStage
+        ],
+        "test_questions": TEST_QUESTIONS,
+    }
+
+
+@app.post("/admin/llm-benchmark/run")
+def llm_benchmark_run(req: LLMBenchmarkRunRequest):
+    """
+    Run an LLM benchmark batch.  This is synchronous and may take several minutes.
+    
+    Returns all individual results + aggregated per-stage per-model comparisons.
+    """
+    from utils.llm_benchmark import (
+        BenchmarkRunner,
+        BenchmarkResultStore,
+        PipelineStage,
+        TEST_QUESTIONS,
+    )
+
+    runner = BenchmarkRunner()
+
+    # Resolve stages
+    if req.stages:
+        try:
+            stages = [PipelineStage(s) for s in req.stages]
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid stage: {e}")
+    else:
+        stages = list(PipelineStage)
+
+    # Resolve models
+    models = req.models if req.models else ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano"]
+
+    # Resolve questions
+    if req.question_ids:
+        questions = [q for q in TEST_QUESTIONS if q["id"] in req.question_ids]
+        if not questions:
+            raise HTTPException(status_code=400, detail="No matching question IDs")
+    else:
+        questions = TEST_QUESTIONS
+
+    # Run the benchmark
+    summary = runner.run_batch(stages, models, questions)
+
+    # Store in MongoDB
+    try:
+        store = BenchmarkResultStore()
+        run_id = store.save_run(summary)
+        summary["run_id"] = run_id
+    except Exception as e:
+        summary["run_id"] = None
+        summary["storage_error"] = str(e)
+
+    return summary
+
+
+@app.get("/admin/llm-benchmark/results")
+def llm_benchmark_results(limit: int = Query(20, ge=1, le=100)):
+    """List recent LLM benchmark runs (metadata only)."""
+    from utils.llm_benchmark import BenchmarkResultStore
+    store = BenchmarkResultStore()
+    return {"runs": store.list_runs(limit)}
+
+
+@app.get("/admin/llm-benchmark/results/{run_id}")
+def llm_benchmark_result_detail(run_id: str):
+    """Get full results for a specific benchmark run."""
+    from utils.llm_benchmark import BenchmarkResultStore
+    store = BenchmarkResultStore()
+    result = store.get_run(run_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Benchmark run not found")
+    return result
+
+
+@app.get("/admin/llm-benchmark/latest")
+def llm_benchmark_latest():
+    """Get the most recent benchmark run results."""
+    from utils.llm_benchmark import BenchmarkResultStore
+    store = BenchmarkResultStore()
+    result = store.get_latest()
+    if not result:
+        return {"message": "No benchmark runs yet"}
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Memory Health Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/memory/health")
+def admin_memory_health():
+    """
+    Run health checks on all memory subsystems and infrastructure.
+    Tests MongoDB, LLM, embeddings, and each memory loop.
+    """
+    from utils.llm_benchmark import MemoryHealthChecker
+    checker = MemoryHealthChecker()
+    return checker.check_all()
 
 
 if __name__ == "__main__":

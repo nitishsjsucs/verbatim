@@ -712,6 +712,40 @@ export async function createTeam(name: string, color?: string, summary?: string)
     return res.json();
 }
 
+// LLM Benchmark API
+// ---------------------------------------------------------------------------
+
+export async function fetchLLMBenchmarkModels(): Promise<{
+    models: Array<{ id: string; provider: string; label: string }>;
+    stages: Array<{ id: string; label: string; default_model: string }>;
+    test_questions: Array<{ id: string; query: string; expected_type: string; complexity: string }>;
+}> {
+    const res = await apiFetch('/admin/llm-benchmark/models');
+    if (!res.ok) throw new Error('Failed to fetch benchmark models');
+    return res.json();
+}
+
+export async function runLLMBenchmark(params: {
+    stages?: string[];
+    models?: string[];
+    question_ids?: string[];
+}): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/llm-benchmark/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            stages: params.stages || [],
+            models: params.models || [],
+            question_ids: params.question_ids || [],
+        }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Benchmark failed' }));
+        throw new Error(err.detail || 'Benchmark run failed');
+    }
+    return res.json();
+}
+
 export async function updateTeam(teamName: string, updates: { name?: string; color?: string; summary?: string }): Promise<Team> {
     const res = await apiFetch(`/teams/${encodeURIComponent(teamName)}`, {
         method: 'PUT',
@@ -738,6 +772,18 @@ export async function deleteTeam(teamName: string): Promise<void> {
 export async function seedDefaultTeams(): Promise<{ seeded: string[]; total_teams: number }> {
     const res = await apiFetch('/teams/seed-defaults', { method: 'POST' });
     if (!res.ok) throw new Error('Failed to seed default teams');
+    return res.json();
+}
+
+export async function fetchLLMBenchmarkResults(limit: number = 20): Promise<{ runs: Array<Record<string, unknown>> }> {
+    const res = await apiFetch(`/admin/llm-benchmark/results?limit=${limit}`);
+    if (!res.ok) throw new Error('Failed to fetch benchmark results');
+    return res.json();
+}
+
+export async function fetchLLMBenchmarkLatest(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/llm-benchmark/latest');
+    if (!res.ok) throw new Error('Failed to fetch latest benchmark');
     return res.json();
 }
 
@@ -798,3 +844,11 @@ export async function deleteUser(email: string): Promise<void> {
     }
 }
 
+// Memory Health API
+// ---------------------------------------------------------------------------
+
+export async function fetchMemoryHealth(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/memory/health');
+    if (!res.ok) throw new Error('Failed to fetch memory health');
+    return res.json();
+}
