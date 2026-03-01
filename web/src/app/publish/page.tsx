@@ -13,6 +13,7 @@ import {
     MIXED_TEAM_CLASSIFICATION,
     isMultiTeam,
     ActionableWorkstream,
+    TeamWorkflow,
 } from "@/lib/types"
 import {
     Send, Loader2, Search,
@@ -35,6 +36,158 @@ interface FlatItem {
     item: ActionableItem
     docId: string
     docName: string
+}
+
+// --- Per-Team Publish Blocks (for multi-team actionables) ---
+
+function PerTeamPublishBlocks({ item, docId, onUpdate, commonDeadline, commonDeadlineTime }: {
+    item: ActionableItem
+    docId: string
+    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
+    commonDeadline: string
+    commonDeadlineTime: string
+}) {
+    const teams = item.assigned_teams || [item.workstream]
+    
+    // Calculate global deadline (MAX of all team deadlines)
+    const globalDeadline = React.useMemo(() => {
+        const deadlines = teams
+            .map(team => item.team_workflows?.[team]?.deadline)
+            .filter(Boolean) as string[]
+        if (deadlines.length === 0) return item.deadline || ""
+        return deadlines.reduce((max, dl) => dl > max ? dl : max, deadlines[0])
+    }, [teams, item.team_workflows, item.deadline])
+
+    return (
+        <div className="space-y-3">
+            {/* Global deadline display */}
+            {globalDeadline && (
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-500/10 rounded-md">
+                    <Calendar className="h-3 w-3 text-blue-400" />
+                    <span className="text-[10px] text-blue-400 font-medium">Global Deadline:</span>
+                    <span className="text-[10px] text-blue-400 font-mono">{globalDeadline.split("T")[0]}</span>
+                    <span className="text-[9px] text-muted-foreground/50 ml-auto">(MAX of team deadlines)</span>
+                </div>
+            )}
+
+            {/* Per-team blocks */}
+            {teams.map(team => {
+                const tw = item.team_workflows?.[team]
+                const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                return (
+                    <PerTeamBlock
+                        key={team}
+                        team={team}
+                        teamColors={teamColors}
+                        tw={tw}
+                        item={item}
+                        docId={docId}
+                        onUpdate={onUpdate}
+                        commonDeadline={commonDeadline}
+                        commonDeadlineTime={commonDeadlineTime}
+                    />
+                )
+            })}
+        </div>
+    )
+}
+
+// --- Per-Team Block Component ---
+
+function PerTeamBlock({ team, teamColors, tw, item, docId, onUpdate, commonDeadline, commonDeadlineTime }: {
+    team: string
+    teamColors: { bg: string; text: string; header: string }
+    tw: TeamWorkflow | undefined
+    item: ActionableItem
+    docId: string
+    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
+    commonDeadline: string
+    commonDeadlineTime: string
+}) {
+    const [deadlineDate, setDeadlineDate] = React.useState(tw?.deadline ? tw.deadline.split("T")[0] || "" : "")
+    const [deadlineTime, setDeadlineTime] = React.useState(tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59")
+    const [saving, setSaving] = React.useState(false)
+
+    const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
+    const savedDl = tw?.deadline || ""
+    const deadlineDirty = currentDl !== savedDl
+
+    const handleSaveTeamDeadline = async () => {
+        if (!deadlineDate) return
+        setSaving(true)
+        try {
+            const workflows = { ...(item.team_workflows || {}) }
+            workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), deadline: currentDl }
+            await onUpdate(docId, item.id, { team_workflows: workflows })
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+            <div className="flex items-center gap-2">
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
+                    {team}
+                </span>
+                {tw?.deadline && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono ml-auto">
+                        {tw.deadline.split("T")[0]}
+                    </span>
+                )}
+            </div>
+            
+            {/* Implementation */}
+            <div>
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                <p className="text-xs text-foreground/80">{safeStr(tw?.implementation_notes || item.implementation_notes)}</p>
+            </div>
+            
+            {/* Evidence */}
+            <div>
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                <p className="text-xs text-foreground/80 italic">{safeStr(tw?.evidence_quote || item.evidence_quote)}</p>
+            </div>
+            
+            {/* Deadline */}
+            <div>
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Deadline for {team}</p>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="date"
+                        value={deadlineDate}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={e => setDeadlineDate(e.target.value)}
+                        className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                    <input
+                        type="time"
+                        value={deadlineTime}
+                        onChange={e => setDeadlineTime(e.target.value)}
+                        className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                    <button
+                        onClick={handleSaveTeamDeadline}
+                        disabled={!deadlineDirty || saving || !deadlineDate}
+                        className={cn(
+                            "flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md font-medium transition-colors",
+                            deadlineDirty && deadlineDate
+                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                        )}
+                    >
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Save
+                    </button>
+                </div>
+                {!deadlineDate && commonDeadline && (
+                    <p className="text-[9px] text-muted-foreground/40 mt-1">
+                        Will use common deadline ({commonDeadline}) on publish
+                    </p>
+                )}
+            </div>
+        </div>
+    )
 }
 
 // --- Publish Card ---
@@ -106,8 +259,9 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
             <div className="flex items-center gap-1.5 px-3 py-2 hover:bg-muted/20 transition-colors">
                 <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(item.workstream))}>
-                        {item.workstream}
+                    {/* Use getClassification for consistent tag - shows "Mixed Team Projects" for multi-team */}
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
+                        {getClassification(item)}
                     </span>
                     <RiskIcon modality={item.modality} />
                     <p className="text-xs text-foreground/90 leading-relaxed truncate flex-1 min-w-0">{safeStr(item.action)}</p>
@@ -122,12 +276,6 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                     <button onClick={handleRevert} className="p-1 rounded hover:bg-amber-400/10 text-muted-foreground/40 hover:text-amber-400 transition-colors" title="Send back to pending">
                         <Undo2 className="h-3.5 w-3.5" />
                     </button>
-                    {extraTeams.length > 0 && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-400/10 text-violet-400 font-mono flex items-center gap-0.5" title={`Multi-team: ${item.workstream}, ${extraTeams.join(", ")}`}>
-                            <Users className="h-2.5 w-2.5" />
-                            {extraTeams.length + 1}
-                        </span>
-                    )}
                     <button onClick={handlePublish} className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium" title="Publish to tracker">
                         <Send className="h-3 w-3" />
                         Publish
@@ -137,55 +285,73 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
 
             {expanded && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border/20 pt-2.5">
-                    {item.implementation_notes && (
-                        <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
-                            <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes)}</p>
-                        </div>
-                    )}
-                    {item.evidence_quote && (
-                        <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
-                            <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote)}</p>
-                        </div>
-                    )}
-                    <div>
-                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Independent Deadline</p>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="date"
-                                value={deadlineDate}
-                                min={new Date().toISOString().split("T")[0]}
-                                onChange={e => setDeadlineDate(e.target.value)}
-                                className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                            />
-                            <input
-                                type="time"
-                                value={deadlineTime}
-                                onChange={e => setDeadlineTime(e.target.value)}
-                                className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                            />
-                            <button
-                                onClick={handleSaveDeadline}
-                                disabled={!deadlineDirty || saving || !deadlineDate}
-                                className={cn(
-                                    "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
-                                    deadlineDirty && deadlineDate
-                                        ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                        : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                    {/* Single-team: Show single implementation/evidence block */}
+                    {!isMultiTeam(item) && (
+                        <>
+                            {item.implementation_notes && (
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                    <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes)}</p>
+                                </div>
+                            )}
+                            {item.evidence_quote && (
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                    <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote)}</p>
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Deadline</p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={deadlineDate}
+                                        min={new Date().toISOString().split("T")[0]}
+                                        onChange={e => setDeadlineDate(e.target.value)}
+                                        className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                    />
+                                    <input
+                                        type="time"
+                                        value={deadlineTime}
+                                        onChange={e => setDeadlineTime(e.target.value)}
+                                        className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                    />
+                                    <button
+                                        onClick={handleSaveDeadline}
+                                        disabled={!deadlineDirty || saving || !deadlineDate}
+                                        className={cn(
+                                            "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
+                                            deadlineDirty && deadlineDate
+                                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                        )}
+                                    >
+                                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                        Save
+                                    </button>
+                                </div>
+                                {!deadlineDate && commonDeadline && (
+                                    <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                        No individual deadline — will use common deadline ({commonDeadline}) on publish
+                                    </p>
                                 )}
-                            >
-                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                Save
-                            </button>
-                        </div>
-                        {!deadlineDate && commonDeadline && (
-                            <p className="text-[9px] text-muted-foreground/40 mt-1">
-                                No individual deadline — will use common deadline ({commonDeadline}) on publish
-                            </p>
-                        )}
-                    </div>
-                    {/* Multi-team assignment */}
+                            </div>
+                        </>
+                    )}
+
+                    {/* Multi-team: Show per-team implementation blocks */}
+                    {isMultiTeam(item) && (
+                        <PerTeamPublishBlocks 
+                            item={item} 
+                            docId={docId} 
+                            onUpdate={onUpdate}
+                            commonDeadline={commonDeadline}
+                            commonDeadlineTime={commonDeadlineTime}
+                        />
+                    )}
+
+                    {/* Multi-team assignment - only show for single-team items */}
+                    {!isMultiTeam(item) && (
                     <div>
                         <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                             <Users className="h-3 w-3" />
@@ -211,11 +377,12 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                             })}
                         </div>
                         {extraTeams.length > 0 && (
-                            <p className="text-[9px] text-primary/60 mt-1">
-                                Multi-team: {item.workstream} + {extraTeams.join(", ")}
+                            <p className="text-[9px] text-amber-400 mt-1">
+                                Classification: {MIXED_TEAM_CLASSIFICATION} — Each team will have separate implementation
                             </p>
                         )}
                     </div>
+                    )}
                     <div className="text-[10px] text-muted-foreground/40">{docName}</div>
                 </div>
             )}

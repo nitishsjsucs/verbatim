@@ -31,7 +31,7 @@ import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk, formatDate, formatTime, formatDateTime, deadlineCategory,
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, WORKSTREAM_OPTIONS,
-    TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
+    TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
 
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
                         </div>
                         <div className="text-center">
-                            <p className="text-[15px] font-bold text-violet-400">{stats.pendingAllTeams}</p>
+                            <p className="text-[15px] font-bold text-amber-400">{stats.pendingAllTeams}</p>
                             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Pending Teams</p>
                         </div>
                         <div className="text-center">
@@ -579,10 +579,10 @@ export default function DashboardPage() {
                                                 style={{ gridTemplateColumns: gridCols }}
                                                 onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
                                             >
-                                                {/* Team */}
+                                                {/* Team - use getClassification for consistent tag */}
                                                 <div className="py-1.5 px-1">
-                                                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
-                                                        {item.workstream}
+                                                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(getClassification(item)))}>
+                                                        {getClassification(item)}
                                                     </span>
                                                 </div>
 
@@ -597,11 +597,6 @@ export default function DashboardPage() {
                                                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                                                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
-                                                    {isMultiTeam(item) && (
-                                                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400" title={`Multi-team: ${item.assigned_teams?.join(", ")}`}>
-                                                            <Users className="h-2.5 w-2.5" />{item.assigned_teams?.length}
-                                                        </span>
-                                                    )}
                                                     {commentCount > 0 && (
                                                         <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
                                                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
@@ -671,7 +666,7 @@ export default function DashboardPage() {
                                                         </>
                                                     )}
                                                     {taskStatus === "review" && isMultiTeam(item) && (
-                                                        <span className="text-[9px] text-violet-400 italic">Review per team ↓</span>
+                                                        <span className="text-[9px] text-amber-400 italic">Review per team ↓</span>
                                                     )}
                                                     {taskStatus === "completed" && (
                                                         <span className="text-[9px] text-emerald-400 italic">Approved</span>
@@ -689,7 +684,7 @@ export default function DashboardPage() {
                                                         <span className="text-[9px] text-yellow-500 italic">Awaiting Lead Justification</span>
                                                     )}
                                                     {taskStatus === "pending_all_teams" && (
-                                                        <span className="text-[9px] text-violet-400 italic">Pending Teams</span>
+                                                        <span className="text-[9px] text-amber-400 italic">Pending Teams</span>
                                                     )}
                                                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[9px] text-muted-foreground/30">—</span>
@@ -781,88 +776,97 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {/* Multi-team workflow breakdown with per-team approve/reject */}
-                                                    {isMultiTeam(item) && item.team_workflows && (
-                                                        <div className="bg-violet-500/5 border border-violet-500/20 rounded-lg px-4 py-3">
-                                                            <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-2">Team Workflow Status</p>
-                                                            <div className="space-y-2">
-                                                                {(item.assigned_teams || []).map(team => {
-                                                                    const tw = item.team_workflows?.[team]
-                                                                    const twStatus = (tw?.task_status || "assigned") as TaskStatus
-                                                                    const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
-                                                                    const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
-                                                                    return (
-                                                                        <div key={team}>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium min-w-[80px]", WORKSTREAM_COLORS[team]?.bg, WORKSTREAM_COLORS[team]?.text || "text-muted-foreground")}>{team}</span>
-                                                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium", twStyle.bg, twStyle.text)}>{twStyle.label}</span>
-                                                                                {tw?.evidence_files && tw.evidence_files.length > 0 && <span className="text-[9px] text-muted-foreground/50"><Paperclip className="h-2.5 w-2.5 inline" /> {tw.evidence_files.length}</span>}
-                                                                                {twStatus === "review" && (
-                                                                                    <div className="flex items-center gap-1 ml-auto">
-                                                                                        <button
-                                                                                            onClick={() => handleApproveTeam(docId, item, team)}
-                                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
-                                                                                            title={`Approve ${team}`}
-                                                                                        >
-                                                                                            <CheckCircle2 className="h-2.5 w-2.5" /> Approve
-                                                                                        </button>
-                                                                                        <button
-                                                                                            onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
-                                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
-                                                                                            title={`Reject ${team}`}
-                                                                                        >
-                                                                                            <XCircle className="h-2.5 w-2.5" /> Reject
-                                                                                        </button>
-                                                                                    </div>
-                                                                                )}
-                                                                                {twStatus === "completed" && <span className="text-[9px] text-emerald-400 italic ml-auto">Approved</span>}
-                                                                            </div>
-                                                                            {/* Per-team rejection reason input */}
-                                                                            {isRejectingThisTeam && (
-                                                                                <div className="flex items-center gap-2 mt-1.5 ml-[88px]">
-                                                                                    <input
-                                                                                        value={rejectTeamReason}
-                                                                                        onChange={e => setRejectTeamReason(e.target.value)}
-                                                                                        placeholder="Reason for rejection (required)..."
-                                                                                        className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
-                                                                                        autoFocus
-                                                                                        onKeyDown={e => {
-                                                                                            if (e.key === "Enter" && rejectTeamReason.trim()) {
-                                                                                                handleRejectTeam(docId, item, team, rejectTeamReason.trim())
-                                                                                                setRejectingTeamInfo(null)
-                                                                                                setRejectTeamReason("")
-                                                                                            }
-                                                                                            if (e.key === "Escape") {
-                                                                                                setRejectingTeamInfo(null)
-                                                                                                setRejectTeamReason("")
-                                                                                            }
-                                                                                        }}
-                                                                                    />
+                                                    {/* Multi-team: Full per-team implementation blocks */}
+                                                    {isMultiTeam(item) && (
+                                                        <div className="space-y-3">
+                                                            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Per-Team Implementation</p>
+                                                            {(item.assigned_teams || []).map(team => {
+                                                                const tw = item.team_workflows?.[team]
+                                                                const twStatus = (tw?.task_status || "assigned") as TaskStatus
+                                                                const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
+                                                                const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                                                const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
+                                                                return (
+                                                                    <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+                                                                        {/* Team header with status */}
+                                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>{team}</span>
+                                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium", twStyle.bg, twStyle.text)}>{twStyle.label}</span>
+                                                                            {tw?.deadline && <span className="text-[9px] text-muted-foreground/50"><Calendar className="h-2.5 w-2.5 inline" /> {tw.deadline.split("T")[0]}</span>}
+                                                                            {tw?.evidence_files && tw.evidence_files.length > 0 && <span className="text-[9px] text-muted-foreground/50"><Paperclip className="h-2.5 w-2.5 inline" /> {tw.evidence_files.length}</span>}
+                                                                            {twStatus === "review" && (
+                                                                                <div className="flex items-center gap-1 ml-auto">
                                                                                     <button
-                                                                                        onClick={() => {
-                                                                                            if (rejectTeamReason.trim()) {
-                                                                                                handleRejectTeam(docId, item, team, rejectTeamReason.trim())
-                                                                                                setRejectingTeamInfo(null)
-                                                                                                setRejectTeamReason("")
-                                                                                            }
-                                                                                        }}
-                                                                                        disabled={!rejectTeamReason.trim()}
-                                                                                        className="text-[9px] px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                                        onClick={() => handleApproveTeam(docId, item, team)}
+                                                                                        className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                                     >
-                                                                                        Reject
+                                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                                                                                     </button>
                                                                                     <button
-                                                                                        onClick={() => { setRejectingTeamInfo(null); setRejectTeamReason("") }}
-                                                                                        className="text-[9px] px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                                                        onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
+                                                                                        className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                                     >
-                                                                                        Cancel
+                                                                                        <XCircle className="h-2.5 w-2.5" /> Reject
                                                                                     </button>
                                                                                 </div>
                                                                             )}
+                                                                            {twStatus === "completed" && <span className="text-[9px] text-emerald-400 italic ml-auto">Approved</span>}
                                                                         </div>
-                                                                    )
-                                                                })}
-                                                            </div>
+                                                                        {/* Implementation */}
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                                                            <p className="text-xs text-foreground/80">{safeStr(tw?.implementation_notes || item.implementation_notes)}</p>
+                                                                        </div>
+                                                                        {/* Evidence */}
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                                                            <p className="text-xs text-foreground/80 italic">{safeStr(tw?.evidence_quote || item.evidence_quote)}</p>
+                                                                        </div>
+                                                                        {/* Per-team rejection reason input */}
+                                                                        {isRejectingThisTeam && (
+                                                                            <div className="flex items-center gap-2 mt-1.5">
+                                                                                <input
+                                                                                    value={rejectTeamReason}
+                                                                                    onChange={e => setRejectTeamReason(e.target.value)}
+                                                                                    placeholder="Reason for rejection (required)..."
+                                                                                    className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                                                                                    autoFocus
+                                                                                    onKeyDown={e => {
+                                                                                        if (e.key === "Enter" && rejectTeamReason.trim()) {
+                                                                                            handleRejectTeam(docId, item, team, rejectTeamReason.trim())
+                                                                                            setRejectingTeamInfo(null)
+                                                                                            setRejectTeamReason("")
+                                                                                        }
+                                                                                        if (e.key === "Escape") {
+                                                                                            setRejectingTeamInfo(null)
+                                                                                            setRejectTeamReason("")
+                                                                                        }
+                                                                                    }}
+                                                                                />
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        if (rejectTeamReason.trim()) {
+                                                                                            handleRejectTeam(docId, item, team, rejectTeamReason.trim())
+                                                                                            setRejectingTeamInfo(null)
+                                                                                            setRejectTeamReason("")
+                                                                                        }
+                                                                                    }}
+                                                                                    disabled={!rejectTeamReason.trim()}
+                                                                                    className="text-[9px] px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                                >
+                                                                                    Reject
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => { setRejectingTeamInfo(null); setRejectTeamReason("") }}
+                                                                                    className="text-[9px] px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                                                >
+                                                                                    Cancel
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })}
                                                         </div>
                                                     )}
                                                     <CommentThread
@@ -938,15 +942,14 @@ export default function DashboardPage() {
                                                         onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
                                                     >
                                                         <div className="py-1.5 px-1">
-                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
-                                                                {item.workstream}
+                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(getClassification(item)))}>
+                                                                {getClassification(item)}
                                                             </span>
                                                         </div>
                                                         <div className="py-1.5 flex justify-center"><RiskIcon modality={item.modality} /></div>
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate line-through decoration-emerald-500/40">{safeStr(item.action)}</span>
-                                                            {isMultiTeam(item) && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400" title={`Multi-team: ${item.assigned_teams?.join(", ")}`}><Users className="h-2.5 w-2.5" />{item.assigned_teams?.length}</span>}
                                                             {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
