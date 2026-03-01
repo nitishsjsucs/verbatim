@@ -106,68 +106,186 @@ STAGE_META: dict[str, dict[str, Any]] = {
 
 # ─── Available Models ─────────────────────────────────────────────────────────
 
-# Models the user can select from in the benchmark UI
-AVAILABLE_MODELS = [
-    # OpenAI flagship
-    {"id": "gpt-4o",          "provider": "openai", "label": "GPT-4o"},
-    {"id": "gpt-4o-mini",     "provider": "openai", "label": "GPT-4o Mini"},
-    {"id": "gpt-4.1",         "provider": "openai", "label": "GPT-4.1"},
-    {"id": "gpt-4.1-mini",    "provider": "openai", "label": "GPT-4.1 Mini"},
-    {"id": "gpt-4.1-nano",    "provider": "openai", "label": "GPT-4.1 Nano"},
-    {"id": "gpt-5.2",         "provider": "openai", "label": "GPT-5.2"},
-    {"id": "gpt-5.2-pro",     "provider": "openai", "label": "GPT-5.2 Pro"},
-    # Reasoning
-    {"id": "o1",              "provider": "openai", "label": "o1"},
-    {"id": "o1-mini",         "provider": "openai", "label": "o1-mini"},
-    {"id": "o3",              "provider": "openai", "label": "o3"},
-    {"id": "o3-mini",         "provider": "openai", "label": "o3-mini"},
-    {"id": "o4-mini",         "provider": "openai", "label": "o4-mini"},
-    # Open Source (via OpenRouter or compatible API)
-    {"id": "deepseek/deepseek-r1",                 "provider": "openrouter", "label": "DeepSeek R1"},
-    {"id": "deepseek/deepseek-chat-v3-0324",       "provider": "openrouter", "label": "DeepSeek V3"},
-    {"id": "google/gemini-2.5-pro-preview",        "provider": "openrouter", "label": "Gemini 2.5 Pro"},
-    {"id": "google/gemini-2.5-flash-preview",      "provider": "openrouter", "label": "Gemini 2.5 Flash"},
-    {"id": "anthropic/claude-sonnet-4",            "provider": "openrouter", "label": "Claude Sonnet 4"},
-    {"id": "anthropic/claude-3.5-haiku",           "provider": "openrouter", "label": "Claude 3.5 Haiku"},
-    {"id": "meta-llama/llama-4-maverick",          "provider": "openrouter", "label": "Llama 4 Maverick"},
-    {"id": "meta-llama/llama-4-scout",             "provider": "openrouter", "label": "Llama 4 Scout"},
-    {"id": "qwen/qwen3-235b-a22b",                "provider": "openrouter", "label": "Qwen3 235B"},
-    {"id": "mistralai/mistral-large-2411",         "provider": "openrouter", "label": "Mistral Large"},
+# Pricing: USD per 1M tokens  (source: OpenAI model page, Mar 2026)
+MODEL_PRICING: dict[str, dict[str, float]] = {
+    "gpt-5.2":     {"input": 1.75,  "output": 14.00},
+    "gpt-5.2-pro": {"input": 1.75,  "output": 14.00},   # same pricing tier
+    "gpt-5-mini":  {"input": 0.25,  "output":  2.00},
+    "gpt-5-nano":  {"input": 0.05,  "output":  0.40},
+}
+
+# Models to benchmark — focused set the user wants to compare
+BENCHMARK_MODELS = [
+    {"id": "gpt-5.2",     "label": "GPT-5.2",     "tier": "flagship",  "speed": "medium",    "reasoning": "highest"},
+    {"id": "gpt-5.2-pro", "label": "GPT-5.2 Pro", "tier": "flagship",  "speed": "slow",      "reasoning": "highest"},
+    {"id": "gpt-5-mini",  "label": "GPT-5 Mini",  "tier": "mid",       "speed": "fast",      "reasoning": "high"},
+    {"id": "gpt-5-nano",  "label": "GPT-5 Nano",  "tier": "budget",    "speed": "very_fast", "reasoning": "average"},
 ]
+
+# Full list for the dropdown (kept for admin UI)
+AVAILABLE_MODELS = [
+    {"id": "gpt-5.2",     "provider": "openai", "label": "GPT-5.2"},
+    {"id": "gpt-5.2-pro", "provider": "openai", "label": "GPT-5.2 Pro"},
+    {"id": "gpt-5-mini",  "provider": "openai", "label": "GPT-5 Mini"},
+    {"id": "gpt-5-nano",  "provider": "openai", "label": "GPT-5 Nano"},
+]
+
+
+def compute_cost(model_id: str, input_tokens: int, output_tokens: int) -> float:
+    """Compute USD cost for a single LLM call."""
+    pricing = MODEL_PRICING.get(model_id)
+    if not pricing:
+        return 0.0
+    return (input_tokens * pricing["input"] + output_tokens * pricing["output"]) / 1_000_000
 
 
 # ─── Test Questions ───────────────────────────────────────────────────────────
 
 TEST_QUESTIONS = [
+    # ── KYC Directions, 2025 ─────────────────────────────────────────────────
     {
-        "id": "q1",
-        "query": "What is the definition of Beneficial Owner under these Master Directions?",
-        "expected_type": "definitional",
-        "complexity": "simple",
-    },
-    {
-        "id": "q2",
-        "query": "What are the CDD requirements for opening a savings account for an individual?",
-        "expected_type": "single_hop",
-        "complexity": "medium",
-    },
-    {
-        "id": "q3",
-        "query": "What are all the documents required for KYC verification of a company? Compare the requirements for different types of legal entities.",
+        "id": "kyc1_layered_bo",
+        "query": (
+            "A customer is Company X. Ownership is: Company A holds 9% of X; "
+            "Company B holds 9% of X; Trust T holds 12% of X; remaining is widely held. "
+            "In the Shareholders' Agreement, Company A has the right to appoint 3/5 directors "
+            "and veto key policy decisions. Trust T has 4 beneficiaries; one beneficiary has "
+            "8% interest in the trust; trustee is a corporate trustee.\n\n"
+            "Identify all Beneficial Owners you must determine for X, and explain why each "
+            "qualifies (ownership vs control vs 'senior managing official' fallback). Also list "
+            "whose CDD you must perform (customer, BOs, authorised signatories, POA holders, etc.) "
+            "and what evidence you'd rely on."
+        ),
         "expected_type": "multi_hop",
         "complexity": "complex",
+        "document": "kyc",
     },
     {
-        "id": "q4",
-        "query": "Summarize all the record-keeping and retention requirements mentioned across the document.",
-        "expected_type": "global",
+        "id": "kyc2_vcip_design",
+        "query": (
+            "Your bank proposes V-CIP where: video files are stored on a cloud vendor for "
+            "7 days 'for processing,' the app allows logins from any IP, the liveness model "
+            "is not periodically re-trained, and a call drop creates a second video file that "
+            "is stitched later.\n\n"
+            "Identify the specific non-compliances and the minimum fixes needed to make this "
+            "V-CIP setup acceptable — cover data ownership/retention, geo/IP controls, "
+            "encryption/audit trail, handling disruptions, and audit before activation."
+        ),
+        "expected_type": "multi_hop",
         "complexity": "complex",
+        "document": "kyc",
     },
     {
-        "id": "q5",
-        "query": "What penalties or enforcement actions can RBI take for non-compliance with KYC norms?",
-        "expected_type": "single_hop",
-        "complexity": "medium",
+        "id": "kyc3_aadhaar_limits",
+        "query": (
+            "A customer opened 2 deposit accounts using Aadhaar OTP e-KYC (non-face-to-face). "
+            "Over 9 months, combined balances reach INR 1.12 lakh, annual credits reach "
+            "INR 1.95 lakh, and the bank has also sanctioned two term loans of INR 40,000 and "
+            "INR 30,000 in the same year.\n\n"
+            "Which limits are breached (if any), what immediate operational restrictions must "
+            "be applied, and by what deadline must the bank complete full identification (and "
+            "what happens if it doesn't)? Include how you'd handle the required customer "
+            "declaration about not having OTP-based accounts elsewhere."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "kyc",
+    },
+    # ── ALM Directions, 2025 ─────────────────────────────────────────────────
+    {
+        "id": "alm1_sls_mismatch",
+        "query": (
+            "Given the bank's domestic SLS shows cumulative cash outflows of: "
+            "Next day: INR 10,000 cr; 2-7 days: INR 22,000 cr; 8-14 days: INR 15,000 cr; "
+            "15-30 days: INR 18,000 cr. "
+            "And cumulative net gaps (inflows minus outflows) are: "
+            "Next day: -INR 650 cr; 2-7 days: -INR 2,050 cr; 8-14 days: -INR 2,100 cr; "
+            "15-30 days: -INR 3,900 cr.\n\n"
+            "For each bucket, determine whether the bank breaches the regulatory net "
+            "cumulative negative mismatch limits and explain what 'cumulative' means "
+            "operationally for monitoring and escalation."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "alm",
+    },
+    {
+        "id": "alm2_ibl_limits",
+        "query": (
+            "A bank's Net Worth as of prior March 31 is INR 8,000 cr; CRAR is 11.5%. "
+            "Its India fund-based interbank liabilities are: "
+            "Call/notice/term borrowings: INR 7,500 cr; Interbank CDs: INR 6,000 cr; "
+            "Interbank FCY liabilities within India: INR 2,500 cr; "
+            "TREPS collateralised borrowing: INR 4,000 cr; NABARD refinance: INR 1,500 cr; "
+            "Interbank liabilities outside India: INR 3,000 cr.\n\n"
+            "Compute IBL for limit purposes, decide the maximum permitted IBL % applicable, "
+            "and conclude whether it is compliant. Clearly justify inclusions/exclusions."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "alm",
+    },
+    {
+        "id": "alm3_intraday_liquidity",
+        "query": (
+            "You have settlement-account transaction stamps for a day and must compute the "
+            "bank's maximum intraday liquidity usage (largest net cumulative negative position), "
+            "and then decide what should be reported as the three largest negative/positive net "
+            "cumulative positions for the month.\n\n"
+            "Explain the exact step-by-step method to compute 'largest net negative position "
+            "during the business day' from transaction-by-transaction data, and what it implies "
+            "about minimum intraday liquidity access."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "alm",
+    },
+    # ── Combined KYC + ALM ───────────────────────────────────────────────────
+    {
+        "id": "combined1_board_governance",
+        "query": (
+            "During a market-wide stress event, Treasury proposes aggressive short-term "
+            "wholesale funding and rapid onboarding of new counterparties. Simultaneously, "
+            "AML flags unusual flows that may be linked to TF risk, but compliance worries "
+            "that deeper questioning could 'tip off.'\n\n"
+            "Design a Board-level governance response that satisfies both directions: who "
+            "approves/oversees what, what must be escalated, how risk tolerance/limits and "
+            "KYC controls interact, and how you proceed when suspicion + tip-off risk exists."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "combined",
+    },
+    {
+        "id": "combined2_correspondent_banking",
+        "query": (
+            "Your bank wants a new cross-border correspondent banking relationship that "
+            "will also be a major source of intraday liquidity and settlement flows in a "
+            "significant foreign currency.\n\n"
+            "Specify the combined due diligence and monitoring you would mandate, covering: "
+            "(i) approval/oversight requirements for correspondent banking, "
+            "(ii) how you ensure AML/CTF controls on payable-through/third-party usage risks, "
+            "and (iii) how you monitor/limit intraday liquidity reliance and stress scenarios "
+            "when that correspondent is disrupted."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "combined",
+    },
+    {
+        "id": "combined3_overseas_branch",
+        "query": (
+            "An overseas branch operates in a host country with (a) weaker KYC rules than "
+            "RBI, and (b) ring-fencing/FX controls that may prevent liquidity transfers to "
+            "the parent during stress.\n\n"
+            "What standards must the branch follow for KYC, and how should the group reflect "
+            "liquidity transfer restrictions in its liquidity risk management, stress testing, "
+            "and contingency planning? Include the operational implications for both compliance "
+            "and ALCO decisions."
+        ),
+        "expected_type": "multi_hop",
+        "complexity": "complex",
+        "document": "combined",
     },
 ]
 
@@ -336,6 +454,7 @@ class BenchmarkRunner:
             "latency_seconds": 0,
             "input_tokens": 0,
             "output_tokens": 0,
+            "cost_usd": 0.0,
             "output_text": "",
             "output_json": None,
             "quality_score": None,
@@ -353,6 +472,7 @@ class BenchmarkRunner:
         if meta["temperature"] is not None:
             params["temperature"] = meta["temperature"]
 
+        self._llm.reset_usage()
         start = time.time()
         try:
             raw_output = self._llm.chat_json(**params)
@@ -365,6 +485,9 @@ class BenchmarkRunner:
             usage = self._llm.get_usage_summary()
             result["input_tokens"] = usage.get("total_input_tokens", 0)
             result["output_tokens"] = usage.get("total_output_tokens", 0)
+            result["cost_usd"] = round(compute_cost(
+                model_id, result["input_tokens"], result["output_tokens"]
+            ), 6)
 
             # Store the parsed JSON
             if isinstance(raw_output, (dict, list)):
@@ -553,12 +676,15 @@ class BenchmarkRunner:
             if success:
                 latencies = [s["latency_seconds"] for s in success]
                 qualities = [s["quality_score"] for s in success if s["quality_score"] is not None]
+                costs = [s.get("cost_usd", 0) for s in success]
                 agg["avg_latency"] = round(sum(latencies) / len(latencies), 3)
                 agg["min_latency"] = round(min(latencies), 3)
                 agg["max_latency"] = round(max(latencies), 3)
                 agg["avg_quality"] = round(sum(qualities) / len(qualities), 1) if qualities else None
                 agg["avg_input_tokens"] = round(sum(s["input_tokens"] for s in success) / len(success))
                 agg["avg_output_tokens"] = round(sum(s["output_tokens"] for s in success) / len(success))
+                agg["avg_cost_usd"] = round(sum(costs) / len(costs), 6) if costs else 0
+                agg["total_cost_usd"] = round(sum(costs), 6)
             else:
                 agg["avg_latency"] = None
                 agg["min_latency"] = None
@@ -566,21 +692,31 @@ class BenchmarkRunner:
                 agg["avg_quality"] = None
                 agg["avg_input_tokens"] = None
                 agg["avg_output_tokens"] = None
+                agg["avg_cost_usd"] = None
+                agg["total_cost_usd"] = None
 
             aggregated.append(agg)
 
-        # Best model per stage
+        # Best model per stage (three picks: best quality, cheapest viable, fastest viable)
         best_per_stage: dict[str, dict[str, Any]] = {}
         stages_seen = {a["stage"] for a in aggregated}
         for stage in stages_seen:
             stage_aggs = [a for a in aggregated if a["stage"] == stage and a["avg_quality"] is not None]
-            if stage_aggs:
-                best = max(stage_aggs, key=lambda a: (a["avg_quality"], -a["avg_latency"]))
-                best_per_stage[stage] = {
-                    "model": best["model"],
-                    "avg_quality": best["avg_quality"],
-                    "avg_latency": best["avg_latency"],
-                }
+            if not stage_aggs:
+                continue
+
+            by_quality = max(stage_aggs, key=lambda a: (a["avg_quality"], -a["avg_latency"]))
+            viable = [a for a in stage_aggs if a["avg_quality"] >= by_quality["avg_quality"] * 0.85]
+            if not viable:
+                viable = stage_aggs
+            by_cost = min(viable, key=lambda a: a.get("avg_cost_usd") or 999)
+            by_speed = min(viable, key=lambda a: a.get("avg_latency") or 999)
+
+            best_per_stage[stage] = {
+                "best_quality": {"model": by_quality["model"], "avg_quality": by_quality["avg_quality"], "avg_latency": by_quality["avg_latency"], "avg_cost_usd": by_quality.get("avg_cost_usd")},
+                "cheapest_viable": {"model": by_cost["model"], "avg_quality": by_cost["avg_quality"], "avg_latency": by_cost["avg_latency"], "avg_cost_usd": by_cost.get("avg_cost_usd")},
+                "fastest_viable": {"model": by_speed["model"], "avg_quality": by_speed["avg_quality"], "avg_latency": by_speed["avg_latency"], "avg_cost_usd": by_speed.get("avg_cost_usd")},
+            }
 
         return {
             "aggregated": aggregated,
@@ -636,6 +772,314 @@ class BenchmarkResultStore:
         from bson import ObjectId
         result = self._collection.delete_one({"_id": ObjectId(run_id)})
         return result.deleted_count > 0
+
+
+# ─── Model Optimization Experiment ────────────────────────────────────────────
+
+# The 6 core QA stages that run for every single-doc question
+CORE_QA_STAGES = [
+    PipelineStage.CLASSIFICATION,
+    PipelineStage.EXPANSION,
+    PipelineStage.LOCATION,
+    PipelineStage.REFLECTION,
+    PipelineStage.SYNTHESIS,
+    PipelineStage.VERIFICATION,
+]
+
+# Current baseline assignment: what model each stage uses today
+CURRENT_BASELINE: dict[str, str] = {
+    PipelineStage.CLASSIFICATION: "gpt-5.2",
+    PipelineStage.EXPANSION:      "gpt-5.2",
+    PipelineStage.LOCATION:        "gpt-5.2",
+    PipelineStage.REFLECTION:      "gpt-5.2",
+    PipelineStage.SYNTHESIS:       "gpt-5.2-pro",
+    PipelineStage.VERIFICATION:    "gpt-5.2-pro",
+}
+
+
+class ModelExperiment:
+    """
+    Full model optimization experiment.
+
+    Phase 1: Per-stage isolation — test each of the 3 candidate models on
+             each pipeline stage independently (3 models × 6 stages × N questions).
+    Phase 2: Combo optimization — from Phase 1 data, compute the Pareto-optimal
+             model assignments and compare against the current baseline.
+
+    The result is a ranked list of model combos sorted by a weighted score
+    that balances quality, cost, and latency.
+    """
+
+    def __init__(self) -> None:
+        self._runner = BenchmarkRunner()
+
+    def run_experiment(
+        self,
+        questions: list[dict[str, Any]] | None = None,
+        models: list[str] | None = None,
+        quality_weight: float = 0.5,
+        cost_weight: float = 0.3,
+        latency_weight: float = 0.2,
+        on_progress: Any = None,
+    ) -> dict[str, Any]:
+        """
+        Run the full experiment.
+
+        Args:
+            questions: Questions to test (defaults to TEST_QUESTIONS).
+            models: Model IDs to test (defaults to BENCHMARK_MODELS).
+            quality_weight: Weight for quality in combo scoring (0-1).
+            cost_weight: Weight for cost in combo scoring (0-1).
+            latency_weight: Weight for latency in combo scoring (0-1).
+            on_progress: Optional callback(phase, current, total, detail_msg).
+
+        Returns:
+            Complete experiment results with per-stage data, combos, and recommendations.
+        """
+        if questions is None:
+            questions = TEST_QUESTIONS
+        if models is None:
+            models = [m["id"] for m in BENCHMARK_MODELS]
+
+        experiment_start = time.time()
+        experiment: dict[str, Any] = {
+            "experiment_type": "model_optimization",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "config": {
+                "models_tested": models,
+                "questions": [q["id"] for q in questions],
+                "question_count": len(questions),
+                "stages": [s.value for s in CORE_QA_STAGES],
+                "weights": {"quality": quality_weight, "cost": cost_weight, "latency": latency_weight},
+                "baseline": {s.value: m for s, m in CURRENT_BASELINE.items()},
+            },
+        }
+
+        # ── Phase 1: Per-stage isolation ──────────────────────────────────
+        logger.info("═══ Phase 1: Per-stage model testing ═══")
+        phase1_results: list[dict[str, Any]] = []
+        total_phase1 = len(CORE_QA_STAGES) * len(models) * len(questions)
+        current = 0
+
+        for stage in CORE_QA_STAGES:
+            for model in models:
+                for question in questions:
+                    current += 1
+                    if on_progress:
+                        try:
+                            on_progress(1, current, total_phase1, f"{stage.value} × {model} × {question['id']}")
+                        except Exception:
+                            pass
+                    logger.info(
+                        "Phase1 [%d/%d] %s × %s × %s",
+                        current, total_phase1, stage.value, model, question["id"],
+                    )
+                    r = self._runner.run_single(stage, model, question)
+                    phase1_results.append(r)
+
+        # ── Aggregate Phase 1 ─────────────────────────────────────────────
+        phase1_summary = self._runner._aggregate(phase1_results)
+        experiment["phase1"] = {
+            "total_runs": total_phase1,
+            "completed": len(phase1_results),
+            "results": phase1_results,
+            **phase1_summary,
+        }
+
+        # ── Phase 2: Combo optimization ───────────────────────────────────
+        logger.info("═══ Phase 2: Computing optimal combos ═══")
+        combos = self._compute_combos(
+            phase1_summary["aggregated"],
+            models,
+            quality_weight,
+            cost_weight,
+            latency_weight,
+        )
+        experiment["phase2"] = {
+            "combos": combos,
+            "total_combos_evaluated": len(combos),
+        }
+
+        # ── Baseline comparison ───────────────────────────────────────────
+        baseline_combo = self._extract_baseline_stats(phase1_summary["aggregated"])
+        experiment["baseline"] = baseline_combo
+
+        # ── Recommendations ───────────────────────────────────────────────
+        experiment["recommendations"] = self._build_recommendations(
+            combos, baseline_combo
+        )
+
+        experiment["total_time_seconds"] = round(time.time() - experiment_start, 2)
+        logger.info("Experiment complete in %.1fs", experiment["total_time_seconds"])
+        return experiment
+
+    def _compute_combos(
+        self,
+        aggregated: list[dict[str, Any]],
+        models: list[str],
+        w_quality: float,
+        w_cost: float,
+        w_latency: float,
+    ) -> list[dict[str, Any]]:
+        """
+        Enumerate all possible model assignments (one model per stage)
+        and score each combo.  3 models × 6 stages = 729 combos.
+        """
+        import itertools
+
+        # Build lookup: (stage, model) -> {avg_quality, avg_cost_usd, avg_latency}
+        lookup: dict[tuple[str, str], dict] = {}
+        for agg in aggregated:
+            key = (agg["stage"], agg["model"])
+            lookup[key] = agg
+
+        stages = [s.value for s in CORE_QA_STAGES]
+
+        # Find global max/min for normalization
+        all_qualities = [a["avg_quality"] for a in aggregated if a["avg_quality"] is not None]
+        all_costs = [a.get("avg_cost_usd", 0) for a in aggregated if a.get("avg_cost_usd") is not None]
+        all_latencies = [a["avg_latency"] for a in aggregated if a["avg_latency"] is not None]
+
+        q_max = max(all_qualities) if all_qualities else 1
+        q_min = min(all_qualities) if all_qualities else 0
+        c_max = max(all_costs) if all_costs else 1
+        c_min = min(all_costs) if all_costs else 0
+        l_max = max(all_latencies) if all_latencies else 1
+        l_min = min(all_latencies) if all_latencies else 0
+
+        def _norm(val: float, vmin: float, vmax: float) -> float:
+            if vmax == vmin:
+                return 1.0
+            return (val - vmin) / (vmax - vmin)
+
+        combos: list[dict[str, Any]] = []
+        for assignment in itertools.product(models, repeat=len(stages)):
+            combo_map = dict(zip(stages, assignment))
+            total_quality = 0.0
+            total_cost = 0.0
+            total_latency = 0.0
+            valid = True
+
+            for stage, model in combo_map.items():
+                data = lookup.get((stage, model))
+                if not data or data["avg_quality"] is None:
+                    valid = False
+                    break
+                total_quality += data["avg_quality"]
+                total_cost += data.get("avg_cost_usd", 0) or 0
+                total_latency += data.get("avg_latency", 0) or 0
+
+            if not valid:
+                continue
+
+            avg_quality = total_quality / len(stages)
+            # Normalize: quality higher=better, cost lower=better, latency lower=better
+            norm_q = _norm(avg_quality, q_min, q_max)
+            norm_c = 1.0 - _norm(total_cost, c_min * len(stages), c_max * len(stages)) if c_max > c_min else 1.0
+            norm_l = 1.0 - _norm(total_latency, l_min * len(stages), l_max * len(stages)) if l_max > l_min else 1.0
+
+            weighted_score = w_quality * norm_q + w_cost * norm_c + w_latency * norm_l
+
+            combos.append({
+                "assignment": combo_map,
+                "avg_quality": round(avg_quality, 1),
+                "total_cost_per_question_usd": round(total_cost, 6),
+                "total_latency_seconds": round(total_latency, 2),
+                "normalized_quality": round(norm_q, 3),
+                "normalized_cost": round(norm_c, 3),
+                "normalized_latency": round(norm_l, 3),
+                "weighted_score": round(weighted_score, 4),
+                "unique_models_used": len(set(assignment)),
+            })
+
+        # Sort by weighted score descending
+        combos.sort(key=lambda c: c["weighted_score"], reverse=True)
+
+        # Add rank
+        for i, c in enumerate(combos):
+            c["rank"] = i + 1
+
+        return combos
+
+    def _extract_baseline_stats(self, aggregated: list[dict[str, Any]]) -> dict[str, Any]:
+        """Extract stats for the current baseline model assignment."""
+        stages = [s.value for s in CORE_QA_STAGES]
+        total_quality = 0.0
+        total_cost = 0.0
+        total_latency = 0.0
+        per_stage: dict[str, Any] = {}
+
+        for stage_enum, model in CURRENT_BASELINE.items():
+            stage = stage_enum.value
+            match = [a for a in aggregated if a["stage"] == stage and a["model"] == model]
+            if match:
+                data = match[0]
+                per_stage[stage] = {
+                    "model": model,
+                    "avg_quality": data["avg_quality"],
+                    "avg_cost_usd": data.get("avg_cost_usd"),
+                    "avg_latency": data["avg_latency"],
+                }
+                total_quality += data["avg_quality"] or 0
+                total_cost += data.get("avg_cost_usd") or 0
+                total_latency += data.get("avg_latency") or 0
+            else:
+                per_stage[stage] = {"model": model, "avg_quality": None, "avg_cost_usd": None, "avg_latency": None}
+
+        return {
+            "assignment": {s.value: m for s, m in CURRENT_BASELINE.items()},
+            "per_stage": per_stage,
+            "avg_quality": round(total_quality / len(stages), 1) if total_quality else None,
+            "total_cost_per_question_usd": round(total_cost, 6),
+            "total_latency_seconds": round(total_latency, 2),
+        }
+
+    def _build_recommendations(
+        self,
+        combos: list[dict[str, Any]],
+        baseline: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build the final recommendations comparing top combos to baseline."""
+        if not combos:
+            return {"error": "No valid combos found"}
+
+        top = combos[0]
+        base_cost = baseline.get("total_cost_per_question_usd", 0) or 0.001
+        base_latency = baseline.get("total_latency_seconds", 0) or 0.001
+        base_quality = baseline.get("avg_quality", 0) or 1
+
+        # Find specific optimal combos
+        cheapest = min(combos, key=lambda c: c["total_cost_per_question_usd"])
+        fastest = min(combos, key=lambda c: c["total_latency_seconds"])
+        best_quality = max(combos, key=lambda c: c["avg_quality"])
+
+        def _compare(combo: dict, label: str) -> dict:
+            cost_save = ((base_cost - combo["total_cost_per_question_usd"]) / base_cost) * 100 if base_cost else 0
+            latency_save = ((base_latency - combo["total_latency_seconds"]) / base_latency) * 100 if base_latency else 0
+            quality_diff = combo["avg_quality"] - base_quality
+            return {
+                "label": label,
+                "assignment": combo["assignment"],
+                "rank": combo["rank"],
+                "weighted_score": combo["weighted_score"],
+                "avg_quality": combo["avg_quality"],
+                "total_cost_per_question_usd": combo["total_cost_per_question_usd"],
+                "total_latency_seconds": combo["total_latency_seconds"],
+                "vs_baseline": {
+                    "cost_saving_pct": round(cost_save, 1),
+                    "latency_saving_pct": round(latency_save, 1),
+                    "quality_change": round(quality_diff, 1),
+                },
+            }
+
+        return {
+            "overall_best": _compare(top, "Best Overall (Weighted)"),
+            "cheapest": _compare(cheapest, "Cheapest Per Question"),
+            "fastest": _compare(fastest, "Fastest Per Question"),
+            "best_quality": _compare(best_quality, "Highest Quality"),
+            "top_10": [_compare(c, f"Rank #{c['rank']}") for c in combos[:10]],
+            "total_combos": len(combos),
+        }
 
 
 # ─── Memory Health Checker ────────────────────────────────────────────────────
@@ -724,80 +1168,110 @@ class MemoryHealthChecker:
     def _check_raptor(self) -> dict[str, Any]:
         """Check RAPTOR index subsystem."""
         try:
+            from memory.raptor_index import RaptorIndex  # noqa: F401
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
-            if not mm._initialized or not mm._raptor:
-                return {"healthy": False, "status": "disabled"}
-            stats = mm._raptor.get_stats() if hasattr(mm._raptor, "get_stats") else {}
+            if not getattr(mm, "_initialized", False):
+                return {"healthy": False, "status": "not_initialized"}
+            settings = get_settings()
+            enabled = getattr(settings.optimization, "enable_raptor_index", False)
+            store = getattr(mm, "_raptor_indexes", getattr(mm, "_raptor", None))
+            loaded = len(store) if isinstance(store, dict) else (1 if store else 0)
             return {
                 "healthy": True,
-                "status": "active",
-                "details": stats,
+                "status": "enabled" if enabled else "disabled_by_flag",
+                "details": {"enabled": enabled, "loaded_docs": loaded},
             }
+        except ImportError as e:
+            return {"healthy": False, "status": "import_error", "error": str(e)[:300]}
         except Exception as e:
             return {"healthy": False, "status": "error", "error": str(e)[:300]}
 
     def _check_user_memory(self) -> dict[str, Any]:
         """Check user memory subsystem."""
         try:
+            from memory.user_memory import UserMemoryManager  # noqa: F401
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
-            if not mm._initialized or not mm._user_memory:
-                return {"healthy": False, "status": "disabled"}
-            stats = mm._user_memory.get_stats() if hasattr(mm._user_memory, "get_stats") else {}
+            if not getattr(mm, "_initialized", False):
+                return {"healthy": False, "status": "not_initialized"}
+            settings = get_settings()
+            enabled = getattr(settings.optimization, "enable_user_memory", False)
+            store = getattr(mm, "_user_memories", getattr(mm, "_user_memory", None))
+            loaded = len(store) if isinstance(store, dict) else (1 if store else 0)
             return {
                 "healthy": True,
-                "status": "active",
-                "details": stats,
+                "status": "enabled" if enabled else "disabled_by_flag",
+                "details": {"enabled": enabled, "loaded_users": loaded},
             }
+        except ImportError as e:
+            return {"healthy": False, "status": "import_error", "error": str(e)[:300]}
         except Exception as e:
             return {"healthy": False, "status": "error", "error": str(e)[:300]}
 
     def _check_query_intelligence(self) -> dict[str, Any]:
         """Check query intelligence subsystem."""
         try:
+            from memory.query_intelligence import QueryIntelligence  # noqa: F401
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
-            if not mm._initialized or not mm._query_intel:
-                return {"healthy": False, "status": "disabled"}
-            stats = mm._query_intel.get_stats() if hasattr(mm._query_intel, "get_stats") else {}
+            if not getattr(mm, "_initialized", False):
+                return {"healthy": False, "status": "not_initialized"}
+            settings = get_settings()
+            enabled = getattr(settings.optimization, "enable_query_intelligence", False)
+            store = getattr(mm, "_query_intel", None) or {}
+            loaded = len(store) if isinstance(store, dict) else 0
             return {
                 "healthy": True,
-                "status": "active",
-                "details": stats,
+                "status": "enabled" if enabled else "disabled_by_flag",
+                "details": {"enabled": enabled, "loaded_docs": loaded},
             }
+        except ImportError as e:
+            return {"healthy": False, "status": "import_error", "error": str(e)[:300]}
         except Exception as e:
             return {"healthy": False, "status": "error", "error": str(e)[:300]}
 
     def _check_retrieval_feedback(self) -> dict[str, Any]:
         """Check retrieval feedback subsystem."""
         try:
+            from memory.retrieval_feedback import RetrievalFeedback  # noqa: F401
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
-            if not mm._initialized or not mm._retrieval_fb:
-                return {"healthy": False, "status": "disabled"}
-            stats = mm._retrieval_fb.get_stats() if hasattr(mm._retrieval_fb, "get_stats") else {}
+            if not getattr(mm, "_initialized", False):
+                return {"healthy": False, "status": "not_initialized"}
+            settings = get_settings()
+            enabled = getattr(settings.optimization, "enable_retrieval_feedback", False)
+            store = getattr(mm, "_retrieval_fb", None) or {}
+            loaded = len(store) if isinstance(store, dict) else 0
             return {
                 "healthy": True,
-                "status": "active",
-                "details": stats,
+                "status": "enabled" if enabled else "disabled_by_flag",
+                "details": {"enabled": enabled, "loaded_docs": loaded},
             }
+        except ImportError as e:
+            return {"healthy": False, "status": "import_error", "error": str(e)[:300]}
         except Exception as e:
             return {"healthy": False, "status": "error", "error": str(e)[:300]}
 
     def _check_r2r(self) -> dict[str, Any]:
         """Check R2R fallback subsystem."""
         try:
+            from memory.r2r_fallback import R2RFallback  # noqa: F401
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
-            if not mm._initialized or not mm._r2r:
-                return {"healthy": False, "status": "disabled"}
-            stats = mm._r2r.get_stats() if hasattr(mm._r2r, "get_stats") else {}
+            if not getattr(mm, "_initialized", False):
+                return {"healthy": False, "status": "not_initialized"}
+            settings = get_settings()
+            enabled = getattr(settings.optimization, "enable_r2r_fallback", False)
+            store = getattr(mm, "_r2r_fallbacks", getattr(mm, "_r2r", None))
+            loaded = len(store) if isinstance(store, dict) else (1 if store else 0)
             return {
                 "healthy": True,
-                "status": "active",
-                "details": stats,
+                "status": "enabled" if enabled else "disabled_by_flag",
+                "details": {"enabled": enabled, "loaded_docs": loaded},
             }
+        except ImportError as e:
+            return {"healthy": False, "status": "import_error", "error": str(e)[:300]}
         except Exception as e:
             return {"healthy": False, "status": "error", "error": str(e)[:300]}
 

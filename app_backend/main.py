@@ -3088,14 +3088,20 @@ class LLMBenchmarkRunRequest(BaseModel):
 @app.get("/admin/llm-benchmark/models")
 def llm_benchmark_models():
     """List all available models for benchmarking."""
-    from utils.llm_benchmark import AVAILABLE_MODELS, STAGE_META, TEST_QUESTIONS, PipelineStage
+    from utils.llm_benchmark import (
+        AVAILABLE_MODELS, BENCHMARK_MODELS, MODEL_PRICING,
+        STAGE_META, TEST_QUESTIONS, PipelineStage, CURRENT_BASELINE,
+    )
     return {
         "models": AVAILABLE_MODELS,
+        "benchmark_models": BENCHMARK_MODELS,
+        "pricing": MODEL_PRICING,
         "stages": [
             {"id": s.value, "label": STAGE_META[s]["label"], "default_model": STAGE_META[s]["default_model"]}
             for s in PipelineStage
         ],
         "test_questions": TEST_QUESTIONS,
+        "current_baseline": {s.value: m for s, m in CURRENT_BASELINE.items()},
     }
 
 
@@ -3125,7 +3131,7 @@ def llm_benchmark_run(req: LLMBenchmarkRunRequest):
         stages = list(PipelineStage)
 
     # Resolve models
-    models = req.models if req.models else ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano"]
+    models = req.models if req.models else ["gpt-5.2", "gpt-5-mini", "gpt-5-nano"]
 
     # Resolve questions
     if req.question_ids:
@@ -3177,6 +3183,68 @@ def llm_benchmark_latest():
     result = store.get_latest()
     if not result:
         return {"message": "No benchmark runs yet"}
+    return result
+
+
+class ModelExperimentRequest(BaseModel):
+    models: list[str] = []  # Empty = BENCHMARK_MODELS (gpt-5.2, gpt-5-mini, gpt-5-nano)
+    question_ids: list[str] = []  # Empty = all TEST_QUESTIONS
+    questions: list[dict] = []  # Custom questions [{id, query, expected_type, complexity}]
+    quality_weight: float = 0.5
+    cost_weight: float = 0.3
+    latency_weight: float = 0.2
+
+
+@app.post("/admin/llm-benchmark/experiment")
+def llm_benchmark_experiment(req: ModelExperimentRequest):
+    """
+    Run a full model optimization experiment.
+
+    Tests gpt-5.2 vs gpt-5-mini vs gpt-5-nano across all 6 QA pipeline stages,
+    then computes the optimal model assignment per stage to minimize cost and
+    latency while maintaining quality.
+
+    WARNING: This is synchronous and runs 3 models × 6 stages × N questions
+    = 18×N LLM calls.  With 5 default questions that's 90 calls (~5-15 min).
+    """
+    from utils.llm_benchmark import (
+        ModelExperiment, BenchmarkResultStore,
+        BENCHMARK_MODELS, TEST_QUESTIONS,
+    )
+
+    experiment = ModelExperiment()
+
+    # Resolve models
+    models = req.models if req.models else [m["id"] for m in BENCHMARK_MODELS]
+
+    # Resolve questions
+    if req.questions:
+        questions = req.questions
+    elif req.question_ids:
+        questions = [q for q in TEST_QUESTIONS if q["id"] in req.question_ids]
+        if not questions:
+            raise HTTPException(status_code=400, detail="No matching question IDs")
+    else:
+        questions = TEST_QUESTIONS
+
+    # Run
+    result = experiment.run_experiment(
+        questions=questions,
+        models=models,
+        quality_weight=req.quality_weight,
+        cost_weight=req.cost_weight,
+        latency_weight=req.latency_weight,
+    )
+
+    # Store in MongoDB
+    try:
+        store = BenchmarkResultStore()
+        run_id = store.save_run(result)
+        result["run_id"] = run_id
+    except Exception as e:
+        result["run_id"] = None
+        result["storage_error"] = str(e)
+
     return result
 
 
