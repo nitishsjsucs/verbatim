@@ -693,15 +693,28 @@ export async function fetchTeams(): Promise<Team[]> {
     return data.teams || [];
 }
 
-export async function createTeam(name: string): Promise<Team> {
+export async function createTeam(name: string, color?: string, summary?: string): Promise<Team> {
     const res = await apiFetch('/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, color: color || undefined, summary: summary || "" }),
     });
     if (!res.ok) {
         const err = await res.json();
         throw new Error(err.detail || 'Failed to create team');
+    }
+    return res.json();
+}
+
+export async function updateTeam(teamName: string, updates: { name?: string; color?: string; summary?: string }): Promise<Team> {
+    const res = await apiFetch(`/teams/${encodeURIComponent(teamName)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to update team');
     }
     return res.json();
 }
@@ -720,5 +733,62 @@ export async function seedDefaultTeams(): Promise<{ seeded: string[]; total_team
     const res = await apiFetch('/teams/seed-defaults', { method: 'POST' });
     if (!res.ok) throw new Error('Failed to seed default teams');
     return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// User Management API (Next.js API route — /api/users)
+// ---------------------------------------------------------------------------
+
+export interface AppUser {
+    id?: string;
+    name: string;
+    email: string;
+    role: string;
+    team: string;
+    start_date?: string;
+    createdAt?: string;
+}
+
+export async function fetchUsers(): Promise<AppUser[]> {
+    const res = await fetch('/api/users');
+    if (!res.ok) throw new Error('Failed to fetch users');
+    const data = await res.json();
+    return data.users || [];
+}
+
+export async function createUser(body: { name: string; role: string; team: string; start_date?: string }): Promise<{ user: AppUser; generated_email: string; default_password: string }> {
+    const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to create user');
+    }
+    return res.json();
+}
+
+export async function updateUser(body: { email: string; name?: string; role?: string; team?: string; start_date?: string }): Promise<{ user: AppUser }> {
+    const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update user');
+    }
+    return res.json();
+}
+
+export async function deleteUser(email: string): Promise<void> {
+    const res = await fetch(`/api/users?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete user');
+    }
 }
 

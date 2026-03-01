@@ -450,6 +450,7 @@ export interface Team {
     name: string;
     is_system: boolean;
     colors: { bg: string; text: string; header: string };
+    summary: string;
     created_at: string;
     order: number;
 }

@@ -102,7 +102,7 @@ export const RISK_OPTIONS: ActionableModality[] = ["High Risk", "Medium Risk", "
 
 export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: string }> = {
     Other:                    { bg: "bg-zinc-500/10",   text: "text-zinc-400",   header: "bg-zinc-500" },
-    "Mixed Team Projects":    { bg: "bg-amber-500/10", text: "text-amber-400", header: "bg-amber-500" },
+    "Mixed Team Projects":    { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
 }
 
 /**

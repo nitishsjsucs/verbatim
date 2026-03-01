@@ -2727,12 +2727,22 @@ _TEAM_COLOR_PALETTE = [
     {"bg": "bg-orange-500/10", "text": "text-orange-400", "header": "bg-orange-500"},
 ]
 
-MIXED_TEAM_COLORS = {"bg": "bg-amber-500/10", "text": "text-amber-400", "header": "bg-amber-500"}
+MIXED_TEAM_COLORS = {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}
 OTHER_TEAM_COLORS = {"bg": "bg-zinc-500/10", "text": "text-zinc-400", "header": "bg-zinc-500"}
 
 
+def _color_key_to_classes(color_key: str) -> dict:
+    """Convert a Tailwind color key (e.g. 'cyan', 'blue') to full class dict."""
+    key = color_key.strip().lower()
+    return {
+        "bg": f"bg-{key}-500/10",
+        "text": f"text-{key}-400",
+        "header": f"bg-{key}-500",
+    }
+
+
 def _ensure_system_team():
-    """Ensure the Mixed Team Projects system team always exists."""
+    """Ensure the Mixed Team Projects system team always exists with correct purple color."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
@@ -2742,10 +2752,17 @@ def _ensure_system_team():
             "name": SYSTEM_TEAM,
             "is_system": True,
             "colors": MIXED_TEAM_COLORS,
+            "summary": "System-generated classification for actionables assigned to multiple teams.",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "order": -1,  # Always first
         })
         logger.info("Seeded system team: %s", SYSTEM_TEAM)
+    else:
+        # Force purple color and ensure summary exists
+        col.update_one({"name": SYSTEM_TEAM}, {"$set": {
+            "colors": MIXED_TEAM_COLORS,
+            "summary": existing.get("summary") or "System-generated classification for actionables assigned to multiple teams.",
+        }})
 
 
 # Ensure system team on startup
@@ -2766,6 +2783,8 @@ def list_teams():
 
 class CreateTeamRequest(BaseModel):
     name: str
+    color: Optional[str] = None  # Tailwind color key e.g. "cyan", "blue", "pink"
+    summary: str = ""
 
 
 @app.post("/teams")
@@ -2785,15 +2804,20 @@ def create_team(body: CreateTeamRequest):
     if existing:
         raise HTTPException(status_code=409, detail=f"Team '{name}' already exists")
 
-    # Auto-assign color from palette based on current team count
-    count = col.count_documents({"is_system": {"$ne": True}})
-    color_index = count % len(_TEAM_COLOR_PALETTE)
-    colors = _TEAM_COLOR_PALETTE[color_index]
+    # Use user-selected color or auto-assign from palette
+    if body.color:
+        colors = _color_key_to_classes(body.color)
+    else:
+        count = col.count_documents({"is_system": {"$ne": True}})
+        color_index = count % len(_TEAM_COLOR_PALETTE)
+        colors = _TEAM_COLOR_PALETTE[color_index]
 
+    count = col.count_documents({"is_system": {"$ne": True}})
     team_doc = {
         "name": name,
         "is_system": False,
         "colors": colors,
+        "summary": body.summary.strip(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "order": count + 1,
     }
@@ -2822,7 +2846,9 @@ def delete_team(team_name: str):
 class UpdateTeamRequest(BaseModel):
     name: Optional[str] = None
     colors: Optional[dict] = None
+    color: Optional[str] = None  # Tailwind color key shorthand
     order: Optional[int] = None
+    summary: Optional[str] = None
 
 
 @app.put("/teams/{team_name}")
@@ -2841,10 +2867,14 @@ def update_team(team_name: str, body: UpdateTeamRequest):
     updates = {}
     if body.name is not None:
         updates["name"] = body.name.strip()
-    if body.colors is not None:
+    if body.color is not None:
+        updates["colors"] = _color_key_to_classes(body.color)
+    elif body.colors is not None:
         updates["colors"] = body.colors
     if body.order is not None:
         updates["order"] = body.order
+    if body.summary is not None:
+        updates["summary"] = body.summary.strip()
 
     if updates:
         col.update_one({"name": team_name}, {"$set": updates})

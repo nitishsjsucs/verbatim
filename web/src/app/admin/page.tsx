@@ -10,9 +10,15 @@ import {
   fetchAdminQueryFull,
   adminLogin,
   createTeam,
+  updateTeam,
   deleteTeam,
   seedDefaultTeams,
+  fetchUsers,
+  createUser,
+  updateUser,
+  deleteUser,
 } from "@/lib/api"
+import type { AppUser } from "@/lib/api"
 import { useTeams, invalidateTeamsCache } from "@/lib/use-teams"
 import type { Team } from "@/lib/types"
 import {
@@ -47,13 +53,16 @@ import {
   Users,
   Plus,
   Trash2,
+  Pencil,
+  Check,
+  Palette,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams"
+type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users"
 
 interface AdminData {
   documents?: { total: number; list: Array<{ doc_id: string; doc_name: string; total_pages: number; node_count: number }> }
@@ -465,6 +474,7 @@ function AdminDashboardContent() {
           <TabBtn active={tab === "memory"} icon={<Brain className="h-3.5 w-3.5" />} label="Memory System" onClick={() => setTab("memory")} />
           <TabBtn active={tab === "storage"} icon={<HardDrive className="h-3.5 w-3.5" />} label="Storage" onClick={() => setTab("storage")} />
           <TabBtn active={tab === "teams"} icon={<Users className="h-3.5 w-3.5" />} label="Teams" onClick={() => setTab("teams")} />
+          <TabBtn active={tab === "users"} icon={<Shield className="h-3.5 w-3.5" />} label="Users" onClick={() => setTab("users")} />
         </div>
       </div>
 
@@ -487,6 +497,7 @@ function AdminDashboardContent() {
         {tab === "memory" && <MemoryTab data={memoryData} overview={data} />}
         {tab === "storage" && data && <StorageTab data={data} />}
         {tab === "teams" && <TeamsTab />}
+        {tab === "users" && <UsersTab />}
       </div>
     </div>
   )
@@ -1274,20 +1285,80 @@ function StorageTab({ data }: { data: AdminData }) {
 // TEAMS TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Available color keys for the color picker — explicit Tailwind classes so they survive purge
+const TEAM_COLOR_OPTIONS: { key: string; label: string; bg: string }[] = [
+  { key: "purple",  label: "Purple",  bg: "bg-purple-500" },
+  { key: "cyan",    label: "Cyan",    bg: "bg-cyan-500" },
+  { key: "blue",    label: "Blue",    bg: "bg-blue-500" },
+  { key: "pink",    label: "Pink",    bg: "bg-pink-500" },
+  { key: "indigo",  label: "Indigo",  bg: "bg-indigo-500" },
+  { key: "sky",     label: "Sky",     bg: "bg-sky-500" },
+  { key: "violet",  label: "Violet",  bg: "bg-violet-500" },
+  { key: "fuchsia", label: "Fuchsia", bg: "bg-fuchsia-500" },
+  { key: "rose",    label: "Rose",    bg: "bg-rose-500" },
+  { key: "teal",    label: "Teal",    bg: "bg-teal-500" },
+  { key: "lime",    label: "Lime",    bg: "bg-lime-500" },
+  { key: "orange",  label: "Orange",  bg: "bg-orange-500" },
+  { key: "amber",   label: "Amber",   bg: "bg-amber-500" },
+  { key: "emerald", label: "Emerald", bg: "bg-emerald-500" },
+  { key: "red",     label: "Red",     bg: "bg-red-500" },
+  { key: "zinc",    label: "Zinc",    bg: "bg-zinc-500" },
+]
+
+function ColorPicker({ value, onChange }: { value: string; onChange: (key: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {TEAM_COLOR_OPTIONS.map(c => {
+        const isSelected = value === c.key
+        return (
+          <button
+            key={c.key}
+            type="button"
+            title={c.label}
+            onClick={() => onChange(c.key)}
+            className={cn(
+              "w-6 h-6 rounded-full transition-all border-2",
+              c.bg,
+              isSelected ? "border-foreground scale-110 ring-2 ring-foreground/30" : "border-transparent hover:scale-105 opacity-70 hover:opacity-100"
+            )}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+/** Extract color key from Tailwind class like "bg-cyan-500" → "cyan" */
+function extractColorKey(headerClass: string): string {
+  const m = headerClass.match(/^bg-(\w+)-500$/)
+  return m ? m[1] : "zinc"
+}
+
 function TeamsTab() {
   const { teams, loading, refresh } = useTeams()
+  // Create form state
   const [newTeamName, setNewTeamName] = React.useState("")
+  const [newTeamColor, setNewTeamColor] = React.useState("cyan")
+  const [newTeamSummary, setNewTeamSummary] = React.useState("")
   const [creating, setCreating] = React.useState(false)
   const [deleting, setDeleting] = React.useState<string | null>(null)
-  const [seeding, setSeeding] = React.useState(false)
+  // Edit state
+  const [editing, setEditing] = React.useState<string | null>(null)
+  const [editName, setEditName] = React.useState("")
+  const [editColor, setEditColor] = React.useState("")
+  const [editSummary, setEditSummary] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
 
   const handleCreate = async () => {
     const name = newTeamName.trim()
-    if (!name) return
+    const summary = newTeamSummary.trim()
+    if (!name || !summary) return
     setCreating(true)
     try {
-      await createTeam(name)
+      await createTeam(name, newTeamColor, summary)
       setNewTeamName("")
+      setNewTeamColor("cyan")
+      setNewTeamSummary("")
       invalidateTeamsCache()
       refresh()
     } catch (err) {
@@ -1311,17 +1382,35 @@ function TeamsTab() {
     }
   }
 
-  const handleSeedDefaults = async () => {
-    setSeeding(true)
+  const startEdit = (team: Team) => {
+    setEditing(team.name)
+    setEditName(team.name)
+    setEditColor(extractColorKey(team.colors.header))
+    setEditSummary(team.summary || "")
+  }
+
+  const cancelEdit = () => {
+    setEditing(null)
+    setEditName("")
+    setEditColor("")
+    setEditSummary("")
+  }
+
+  const handleSaveEdit = async (originalName: string) => {
+    setSaving(true)
     try {
-      const result = await seedDefaultTeams()
+      const updates: { name?: string; color?: string; summary?: string } = {}
+      if (editName.trim() && editName.trim() !== originalName) updates.name = editName.trim()
+      if (editColor) updates.color = editColor
+      if (editSummary !== undefined) updates.summary = editSummary.trim()
+      await updateTeam(originalName, updates)
       invalidateTeamsCache()
       refresh()
-      alert(`Seeded ${result.seeded.length} teams. Total: ${result.total_teams}`)
+      cancelEdit()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to seed defaults")
+      alert(err instanceof Error ? err.message : "Failed to update team")
     } finally {
-      setSeeding(false)
+      setSaving(false)
     }
   }
 
@@ -1333,34 +1422,45 @@ function TeamsTab() {
           Team Management
           <span className="text-[10px] text-muted-foreground font-normal ml-1">({teams.length} teams)</span>
         </h2>
-        <button
-          onClick={handleSeedDefaults}
-          disabled={seeding}
-          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
-        >
-          {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-          Seed Defaults
-        </button>
       </div>
 
       {/* Create new team */}
       <div className="rounded-lg border border-border bg-card p-4 mb-4">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Create New Team</p>
-        <div className="flex gap-2">
-          <input
-            value={newTeamName}
-            onChange={e => setNewTeamName(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleCreate()}
-            placeholder="Team name…"
-            className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+        <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+          <Plus className="h-3.5 w-3.5" /> Create New Team
+        </p>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              value={newTeamName}
+              onChange={e => setNewTeamName(e.target.value)}
+              placeholder="Team name (required)"
+              className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">Summary (required)</label>
+            <textarea
+              value={newTeamSummary}
+              onChange={e => setNewTeamSummary(e.target.value)}
+              placeholder="Describe the purpose of this team…"
+              rows={2}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+              <Palette className="h-3 w-3" /> Color
+            </label>
+            <ColorPicker value={newTeamColor} onChange={setNewTeamColor} />
+          </div>
           <button
             onClick={handleCreate}
-            disabled={creating || !newTeamName.trim()}
-            className="flex items-center gap-1 h-8 px-3 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            disabled={creating || !newTeamName.trim() || !newTeamSummary.trim()}
+            className="flex items-center gap-1 h-8 px-4 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-            Create
+            Create Team
           </button>
         </div>
       </div>
@@ -1371,61 +1471,510 @@ function TeamsTab() {
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Team</th>
-                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Color</th>
-                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Type</th>
-                <th className="text-left px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Created</th>
-                <th className="text-right px-4 py-2 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teams.map((team: Team) => (
-                <tr key={team.name} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-4 py-2.5 font-medium text-foreground">{team.name}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-medium", team.colors.bg, team.colors.text)}>
-                      {team.colors.header.replace("bg-", "").replace("-500", "")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {team.is_system ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-500">
-                        <Lock className="h-3 w-3" /> System
-                      </span>
+        <div className="space-y-2">
+          {teams.map((team: Team) => {
+            const isEditing = editing === team.name
+            return (
+              <div key={team.name} className="rounded-lg border border-border bg-card overflow-hidden">
+                {/* Team header row */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  {/* Color dot */}
+                  <span className={cn("w-3 h-3 rounded-full flex-shrink-0", team.colors.header)} />
+                  {/* Name + type */}
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <input
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        className="h-7 rounded border border-input bg-background px-2 text-[13px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-full max-w-xs"
+                      />
                     ) : (
-                      <span className="text-[10px] text-muted-foreground">Custom</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-medium text-foreground truncate">{team.name}</span>
+                        {team.is_system && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-purple-500">
+                            <Lock className="h-2.5 w-2.5" /> System
+                          </span>
+                        )}
+                      </div>
                     )}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-[12px]">
-                    {team.created_at ? new Date(team.created_at).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    {!team.is_system && (
-                      <button
-                        onClick={() => handleDelete(team.name)}
-                        disabled={deleting === team.name}
-                        className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                      >
-                        {deleting === team.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                        Delete
-                      </button>
+                    {!isEditing && team.summary && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{team.summary}</p>
                     )}
-                  </td>
-                </tr>
-              ))}
-              {teams.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-[13px]">
-                    No teams yet. Click &quot;Seed Defaults&quot; to create the standard teams.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                  {/* Color badge */}
+                  <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium flex-shrink-0", team.colors.bg, team.colors.text)}>
+                    {extractColorKey(team.colors.header)}
+                  </span>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {!team.is_system && !isEditing && (
+                      <>
+                        <button
+                          onClick={() => startEdit(team)}
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Pencil className="h-3 w-3" /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(team.name)}
+                          disabled={deleting === team.name}
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                        >
+                          {deleting === team.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                        </button>
+                      </>
+                    )}
+                    {isEditing && (
+                      <>
+                        <button
+                          onClick={() => handleSaveEdit(team.name)}
+                          disabled={saving}
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] font-medium text-emerald-500 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                        >
+                          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <X className="h-3 w-3" /> Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Edit panel */}
+                {isEditing && (
+                  <div className="border-t border-border/50 px-4 py-3 bg-muted/10 space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-muted-foreground mb-1">Summary</label>
+                      <textarea
+                        value={editSummary}
+                        onChange={e => setEditSummary(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Palette className="h-3 w-3" /> Color
+                      </label>
+                      <ColorPicker value={editColor} onChange={setEditColor} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          {teams.length === 0 && (
+            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-[13px]">
+              No teams yet. Create one above to get started.
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USERS TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ROLE_OPTIONS = [
+  { value: "team_member", label: "Team Member" },
+  { value: "team_lead", label: "Team Lead" },
+  { value: "team_reviewer", label: "Team Reviewer" },
+  { value: "compliance_officer", label: "Compliance Officer" },
+  { value: "admin", label: "Admin" },
+]
+
+const ROLE_LABELS: Record<string, string> = {
+  team_member: "Team Member",
+  team_lead: "Team Lead",
+  team_reviewer: "Team Reviewer",
+  compliance_officer: "Compliance Officer",
+  admin: "Admin",
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  admin: "bg-red-500/10 text-red-400",
+  compliance_officer: "bg-amber-500/10 text-amber-400",
+  team_lead: "bg-blue-500/10 text-blue-400",
+  team_reviewer: "bg-teal-500/10 text-teal-400",
+  team_member: "bg-slate-500/10 text-slate-400",
+}
+
+type UserGroupBy = "team" | "role"
+
+function UsersTab() {
+  const { teamNames } = useTeams()
+  const [users, setUsers] = React.useState<AppUser[]>([])
+  const [loading, setLoading] = React.useState(true)
+  // Filters / views
+  const [groupBy, setGroupBy] = React.useState<UserGroupBy>("team")
+  const [filterTeam, setFilterTeam] = React.useState("")
+  const [filterRole, setFilterRole] = React.useState("")
+  const [search, setSearch] = React.useState("")
+  // Create form
+  const [showCreate, setShowCreate] = React.useState(false)
+  const [newName, setNewName] = React.useState("")
+  const [newRole, setNewRole] = React.useState("team_member")
+  const [newTeam, setNewTeam] = React.useState("")
+  const [newStartDate, setNewStartDate] = React.useState("")
+  const [creating, setCreating] = React.useState(false)
+  const [createResult, setCreateResult] = React.useState<{ email: string; password: string } | null>(null)
+  // Edit state
+  const [editingEmail, setEditingEmail] = React.useState<string | null>(null)
+  const [editRole, setEditRole] = React.useState("")
+  const [editTeam, setEditTeam] = React.useState("")
+  const [editName, setEditName] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
+  // Delete
+  const [deletingEmail, setDeletingEmail] = React.useState<string | null>(null)
+
+  const loadUsers = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await fetchUsers()
+      setUsers(data)
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [])
+
+  React.useEffect(() => { loadUsers() }, [loadUsers])
+
+  // Filter users
+  const filtered = React.useMemo(() => {
+    let list = users
+    if (filterTeam) list = list.filter(u => u.team === filterTeam)
+    if (filterRole) list = list.filter(u => u.role === filterRole)
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    }
+    return list
+  }, [users, filterTeam, filterRole, search])
+
+  // Group users
+  const grouped = React.useMemo(() => {
+    const map: Record<string, AppUser[]> = {}
+    for (const u of filtered) {
+      const key = groupBy === "team" ? (u.team || "No Team") : (ROLE_LABELS[u.role] || u.role)
+      if (!map[key]) map[key] = []
+      map[key].push(u)
+    }
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [filtered, groupBy])
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !newRole) return
+    if (!["admin", "compliance_officer"].includes(newRole) && !newTeam) return
+    setCreating(true)
+    setCreateResult(null)
+    try {
+      const result = await createUser({
+        name: newName.trim(),
+        role: newRole,
+        team: newTeam,
+        start_date: newStartDate || undefined,
+      })
+      setCreateResult({ email: result.generated_email, password: result.default_password })
+      setNewName("")
+      setNewRole("team_member")
+      setNewTeam("")
+      setNewStartDate("")
+      loadUsers()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create user")
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const startEdit = (u: AppUser) => {
+    setEditingEmail(u.email)
+    setEditName(u.name)
+    setEditRole(u.role)
+    setEditTeam(u.team)
+  }
+
+  const cancelEdit = () => {
+    setEditingEmail(null)
+    setEditName("")
+    setEditRole("")
+    setEditTeam("")
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingEmail) return
+    setSaving(true)
+    try {
+      await updateUser({
+        email: editingEmail,
+        name: editName.trim() || undefined,
+        role: editRole || undefined,
+        team: editTeam,
+      })
+      cancelEdit()
+      loadUsers()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update user")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (email: string) => {
+    if (!confirm(`Delete user ${email}? This cannot be undone.`)) return
+    setDeletingEmail(email)
+    try {
+      await deleteUser(email)
+      loadUsers()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete user")
+    } finally {
+      setDeletingEmail(null)
+    }
+  }
+
+  return (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Shield className="h-4 w-4 text-blue-500" />
+          User Management
+          <span className="text-[10px] text-muted-foreground font-normal ml-1">({users.length} users)</span>
+        </h2>
+        <button
+          onClick={() => { setShowCreate(!showCreate); setCreateResult(null) }}
+          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="h-3 w-3" /> New User
+        </button>
+      </div>
+
+      {/* Create user form */}
+      {showCreate && (
+        <div className="rounded-lg border border-border bg-card p-4 mb-4">
+          <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> Create New User
+          </p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Name (required)</label>
+              <input
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="Full name"
+                className="w-full h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Role (required)</label>
+              <select
+                value={newRole}
+                onChange={e => setNewRole(e.target.value)}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Team (required for team roles)</label>
+              <select
+                value={newTeam}
+                onChange={e => setNewTeam(e.target.value)}
+                disabled={["admin", "compliance_officer"].includes(newRole)}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+              >
+                <option value="">Select team…</option>
+                {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Start Date</label>
+              <input
+                type="date"
+                value={newStartDate}
+                onChange={e => setNewStartDate(e.target.value)}
+                className="w-full h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCreate}
+              disabled={creating || !newName.trim() || (!["admin", "compliance_officer"].includes(newRole) && !newTeam)}
+              className="flex items-center gap-1 h-8 px-4 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              Create User
+            </button>
+            <button onClick={() => { setShowCreate(false); setCreateResult(null) }} className="text-[12px] text-muted-foreground hover:text-foreground">Cancel</button>
+          </div>
+          {createResult && (
+            <div className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <p className="text-[12px] font-medium text-emerald-500 mb-1">User created successfully!</p>
+              <p className="text-[11px] text-muted-foreground">Email: <span className="font-mono text-foreground">{createResult.email}</span></p>
+              <p className="text-[11px] text-muted-foreground">Password: <span className="font-mono text-foreground">{createResult.password}</span></p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Group by */}
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <span>Group:</span>
+          <button
+            onClick={() => setGroupBy("team")}
+            className={cn("px-2 py-0.5 rounded text-[11px]", groupBy === "team" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+          >Team</button>
+          <button
+            onClick={() => setGroupBy("role")}
+            className={cn("px-2 py-0.5 rounded text-[11px]", groupBy === "role" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+          >Role</button>
+        </div>
+        <div className="w-px h-4 bg-border" />
+        {/* Filter team */}
+        <select
+          value={filterTeam}
+          onChange={e => setFilterTeam(e.target.value)}
+          className="h-7 rounded border border-input bg-background px-2 text-[11px] text-foreground"
+        >
+          <option value="">All Teams</option>
+          {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        {/* Filter role */}
+        <select
+          value={filterRole}
+          onChange={e => setFilterRole(e.target.value)}
+          className="h-7 rounded border border-input bg-background px-2 text-[11px] text-foreground"
+        >
+          <option value="">All Roles</option>
+          {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+        {/* Search */}
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name…"
+          className="h-7 rounded border border-input bg-background px-2 text-[11px] text-foreground w-48 focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        {(filterTeam || filterRole || search) && (
+          <button
+            onClick={() => { setFilterTeam(""); setFilterRole(""); setSearch("") }}
+            className="text-[10px] text-muted-foreground hover:text-foreground"
+          >Clear</button>
+        )}
+        <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} shown</span>
+      </div>
+
+      {/* User list */}
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map(([group, groupUsers]) => (
+            <div key={group}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider">{group}</span>
+                <span className="text-[10px] text-muted-foreground">({groupUsers.length})</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Role</th>
+                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Team</th>
+                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
+                      <th className="text-right px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupUsers.map(u => {
+                      const isEditing = editingEmail === u.email
+                      return (
+                        <tr key={u.email} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <input value={editName} onChange={e => setEditName(e.target.value)} className="h-6 w-full max-w-[160px] rounded border border-input bg-background px-2 text-[12px] text-foreground" />
+                            ) : (
+                              <span className="font-medium text-foreground">{u.name}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-[12px] text-muted-foreground font-mono">{u.email}</td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <select value={editRole} onChange={e => setEditRole(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-[11px] text-foreground">
+                                {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                              </select>
+                            ) : (
+                              <span className={cn("inline-block px-1.5 py-0.5 rounded text-[10px] font-medium", ROLE_COLORS[u.role] || "bg-muted text-muted-foreground")}>
+                                {ROLE_LABELS[u.role] || u.role}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {isEditing ? (
+                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-[11px] text-foreground" disabled={["admin", "compliance_officer"].includes(editRole)}>
+                                <option value="">—</option>
+                                {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            ) : (
+                              <span className="text-[12px] text-muted-foreground">{u.team || "—"}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-[12px] text-muted-foreground">
+                            {u.start_date || "—"}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {isEditing ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={handleSaveEdit} disabled={saving} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] font-medium text-emerald-500 hover:bg-emerald-500/10 disabled:opacity-50">
+                                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                                </button>
+                                <button onClick={cancelEdit} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted">
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => startEdit(u)} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted">
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(u.email)}
+                                  disabled={deletingEmail === u.email}
+                                  className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  {deletingEmail === u.email ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+          {grouped.length === 0 && (
+            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-[13px]">
+              No users found matching your filters.
+            </div>
+          )}
         </div>
       )}
     </>

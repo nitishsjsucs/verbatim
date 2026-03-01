@@ -83,10 +83,14 @@ async function resetActionables() {
             const items = doc.actionables || [];
             totalItems += items.length;
 
-            // Build the updated items array — reset workflow-state fields + team_workflows
+            // Build the updated items array — reset ALL workflow fields back to pre-approval
             const updatedItems = items.map(item => ({
                 ...item,
-                task_status:                  "assigned",
+                // Move back to Actionable section (pre-approval)
+                approval_status:              "pending",
+                published_at:                 "",
+                task_status:                  "",
+                // Clear all workflow state
                 submitted_at:                 "",
                 completion_date:              "",
                 reviewer_comments:            "",
@@ -98,6 +102,7 @@ async function resetActionables() {
                 justification:                "",
                 justification_by:             "",
                 justification_at:             "",
+                justification_status:         "",
                 team_workflows:               resetTeamWorkflows(item.team_workflows),
             }));
 
