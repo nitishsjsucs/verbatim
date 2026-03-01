@@ -13,55 +13,12 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import {
+    safeStr, normalizeRisk,
+    STATUS_LABELS, STATUS_COLORS_HEX, RISK_COLORS_HEX,
+} from "@/lib/status-config"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function safeStr(v: unknown): string {
-    if (v === null || v === undefined) return ""
-    if (typeof v === "string") return v
-    if (typeof v === "number" || typeof v === "boolean") return String(v)
-    try { return JSON.stringify(v) } catch { return String(v) }
-}
-
-function normalizeRisk(modality: string): string {
-    const map: Record<string, string> = {
-        "Mandatory": "High Risk",
-        "Prohibited": "High Risk",
-        "Recommended": "Medium Risk",
-        "Permitted": "Low Risk",
-    }
-    return map[modality] || (["High Risk", "Medium Risk", "Low Risk"].includes(modality) ? modality : "Medium Risk")
-}
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-    assigned: "Assigned",
-    in_progress: "In Progress",
-    team_review: "Team Review",
-    review: "Under Review",
-    completed: "Completed",
-    reworking: "Reworking",
-    reviewer_rejected: "Rejected by Reviewer",
-    awaiting_justification: "Awaiting Justification",
-    pending_all_teams: "Pending All Teams",
-}
-
-const STATUS_COLORS: Record<TaskStatus, string> = {
-    assigned: "#94a3b8",
-    in_progress: "#f59e0b",
-    team_review: "#14b8a6",
-    review: "#3b82f6",
-    completed: "#22c55e",
-    reworking: "#f97316",
-    reviewer_rejected: "#f43f5e",
-    awaiting_justification: "#ca8a04",
-    pending_all_teams: "#8b5cf6",
-}
-
-const RISK_COLORS: Record<string, string> = {
-    "High Risk": "#ef4444",
-    "Medium Risk": "#eab308",
-    "Low Risk": "#22c55e",
-}
 
 const PIE_COLORS = ["#94a3b8", "#f59e0b", "#14b8a6", "#3b82f6", "#22c55e", "#f97316"]
 const RISK_PIE_COLORS = ["#ef4444", "#eab308", "#22c55e"]
@@ -620,13 +577,13 @@ function ReportsContent() {
                                     const avg = itemsInStatus.length > 0
                                         ? (itemsInStatus.reduce((sum, a) => sum + daysOpen(a), 0) / itemsInStatus.length).toFixed(1)
                                         : "—"
-                                    return <Stat key={s} label={`Avg Days in ${STATUS_LABELS[s]}`} value={avg} color={STATUS_COLORS[s]} />
+                                    return <Stat key={s} label={`Avg Days in ${STATUS_LABELS[s]}`} value={avg} color={STATUS_COLORS_HEX[s]} />
                                 })}
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                 {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => (
                                     <div key={s} className="bg-muted/20 rounded-lg p-3 text-center">
-                                        <p className="text-[15px] font-bold" style={{ color: STATUS_COLORS[s] }}>{stats.byStatus[s]}</p>
+                                        <p className="text-[15px] font-bold" style={{ color: STATUS_COLORS_HEX[s] }}>{stats.byStatus[s]}</p>
                                         <p className="text-[9px] text-muted-foreground mt-1">{STATUS_LABELS[s]}</p>
                                     </div>
                                 ))}
@@ -695,7 +652,7 @@ function ReportsContent() {
                                                             {["High Risk", "Medium Risk", "Low Risk"].map(r => {
                                                                 const pct = total > 0 ? (risks[r] / total) * 100 : 0
                                                                 if (pct === 0) return null
-                                                                return <div key={r} className="h-full" style={{ width: `${pct}%`, backgroundColor: RISK_COLORS[r] }} title={`${r}: ${risks[r]}`} />
+                                                                return <div key={r} className="h-full" style={{ width: `${pct}%`, backgroundColor: RISK_COLORS_HEX[r] }} title={`${r}: ${risks[r]}`} />
                                                             })}
                                                         </div>
                                                         <div className="flex gap-1 shrink-0 text-[9px] font-mono">
@@ -750,11 +707,11 @@ function ReportsContent() {
                         <Section title="Section 1 — My Workload" icon={<Activity className="h-3.5 w-3.5 text-emerald-500" />}>
                             <div className="flex gap-3 flex-wrap">
                                 <Stat label="Total Active" value={myStats.total - myStats.byStatus.completed} color="#f59e0b" />
-                                <Stat label="Assigned" value={myStats.byStatus.assigned} color={STATUS_COLORS.assigned} />
-                                <Stat label="In Progress" value={myStats.byStatus.in_progress} color={STATUS_COLORS.in_progress} />
-                                <Stat label="Under Review" value={myStats.byStatus.review} color={STATUS_COLORS.review} />
-                                <Stat label="Reworking" value={myStats.byStatus.reworking} color={STATUS_COLORS.reworking} />
-                                <Stat label="Completed" value={myStats.byStatus.completed} color={STATUS_COLORS.completed} />
+                                <Stat label="Assigned" value={myStats.byStatus.assigned} color={STATUS_COLORS_HEX.assigned} />
+                                <Stat label="In Progress" value={myStats.byStatus.in_progress} color={STATUS_COLORS_HEX.in_progress} />
+                                <Stat label="Under Review" value={myStats.byStatus.review} color={STATUS_COLORS_HEX.review} />
+                                <Stat label="Reworking" value={myStats.byStatus.reworking} color={STATUS_COLORS_HEX.reworking} />
+                                <Stat label="Completed" value={myStats.byStatus.completed} color={STATUS_COLORS_HEX.completed} />
                             </div>
                             <div className="flex items-center gap-4">
                                 <span className="text-[10px] text-muted-foreground">Completion</span>

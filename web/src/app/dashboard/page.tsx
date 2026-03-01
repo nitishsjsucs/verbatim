@@ -20,88 +20,19 @@ import { useSession } from "@/lib/auth-client"
 import {
     LayoutDashboard, ChevronDown, ChevronRight,
     Loader2, Search, AlertTriangle,
-    Paperclip, Calendar, Save, ExternalLink,
-    Download, FileText, X, CheckCircle2,
+    Paperclip, Calendar, Save,
+    CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const WORKSTREAM_OPTIONS: ActionableWorkstream[] = [
-    "Policy", "Technology", "Operations", "Training",
-    "Reporting", "Customer Communication", "Governance", "Legal", "Other",
-]
-
-const RISK_OPTIONS = ["High Risk", "Medium Risk", "Low Risk"]
-
-function safeStr(v: unknown): string {
-    if (v === null || v === undefined) return ""
-    if (typeof v === "string") return v
-    if (typeof v === "number" || typeof v === "boolean") return String(v)
-    try { return JSON.stringify(v) } catch { return String(v) }
-}
-
-function normalizeRisk(modality: string): string {
-    const map: Record<string, string> = {
-        "Mandatory": "High Risk",
-        "Prohibited": "High Risk",
-        "Recommended": "Medium Risk",
-        "Permitted": "Low Risk",
-    }
-    return map[modality] || (RISK_STYLES[modality] ? modality : "Medium Risk")
-}
-
-// ─── Color configs ───────────────────────────────────────────────────────────
-
-const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: string }> = {
-    Policy:                   { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
-    Technology:               { bg: "bg-cyan-500/10",   text: "text-cyan-400",   header: "bg-cyan-500" },
-    Operations:               { bg: "bg-blue-500/10",   text: "text-blue-400",   header: "bg-blue-500" },
-    Training:                 { bg: "bg-pink-500/10",   text: "text-pink-400",   header: "bg-pink-500" },
-    Reporting:                { bg: "bg-indigo-500/10",  text: "text-indigo-400", header: "bg-indigo-500" },
-    "Customer Communication": { bg: "bg-sky-500/10",    text: "text-sky-400",    header: "bg-sky-500" },
-    Governance:               { bg: "bg-violet-500/10", text: "text-violet-400", header: "bg-violet-500" },
-    Legal:                    { bg: "bg-fuchsia-500/10", text: "text-fuchsia-400", header: "bg-fuchsia-500" },
-    Other:                    { bg: "bg-zinc-500/10",   text: "text-zinc-400",   header: "bg-zinc-500" },
-}
-
-const RISK_STYLES: Record<string, { bg: string; text: string }> = {
-    "High Risk":   { bg: "bg-red-500/15",    text: "text-red-500" },
-    "Medium Risk": { bg: "bg-yellow-500/15",  text: "text-yellow-500" },
-    "Low Risk":    { bg: "bg-emerald-500/15", text: "text-emerald-500" },
-}
-
-const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; label: string }> = {
-    assigned:           { bg: "bg-slate-500/15",   text: "text-slate-400",   label: "Assigned" },
-    in_progress:        { bg: "bg-amber-500/15",   text: "text-amber-400",   label: "In Progress" },
-    team_review:        { bg: "bg-teal-500/15",    text: "text-teal-400",    label: "Team Review" },
-    review:             { bg: "bg-blue-500/15",    text: "text-blue-400",    label: "Under Review" },
-    completed:          { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Completed" },
-    reworking:          { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Reworking" },
-    reviewer_rejected:  { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
-    awaiting_justification: { bg: "bg-yellow-600/15", text: "text-yellow-500", label: "Awaiting Justification" },
-    pending_all_teams: { bg: "bg-violet-500/15", text: "text-violet-400", label: "Pending All Teams" },
-}
-
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification", "pending_all_teams"]
-
-const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0, pending_all_teams: 1, team_review: 2, reviewer_rejected: 3, review: 4, reworking: 5, in_progress: 6, assigned: 7, completed: 8,
-}
-
-function deadlineCategory(deadline: string | undefined): string {
-    if (!deadline) return "none"
-    const dl = new Date(deadline).getTime()
-    const now = Date.now()
-    if (dl >= now) return "yet"
-    const days = (now - dl) / (1000 * 60 * 60 * 24)
-    if (days <= 30) return "d30"
-    if (days <= 60) return "d60"
-    return "d90"
-}
+import {
+    safeStr, normalizeRisk, formatDate, formatTime, formatDateTime, deadlineCategory,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, WORKSTREAM_OPTIONS,
+    TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
+} from "@/lib/status-config"
+import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -109,60 +40,6 @@ interface FlatRow {
     item: ActionableItem
     docId: string
     docName: string
-}
-
-// ─── Risk Icon ───────────────────────────────────────────────────────────────
-
-function RiskIcon({ modality }: { modality: string }) {
-    const risk = normalizeRisk(modality)
-    const cfg = RISK_STYLES[risk] || RISK_STYLES["Medium Risk"]
-    return (
-        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.text)} title={risk}>
-            !
-        </span>
-    )
-}
-
-// ─── Progress bar ────────────────────────────────────────────────────────────
-
-function ProgressBar({ completed, total }: { completed: number; total: number }) {
-    if (total === 0) return <span className="text-[10px] text-muted-foreground/40">—</span>
-    const pct = (completed / total) * 100
-    return (
-        <div className="flex items-center gap-2 w-full">
-            <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                {completed}/{total}
-            </span>
-        </div>
-    )
-}
-
-// ─── Format helpers ──────────────────────────────────────────────────────────
-
-function formatDate(iso: string | undefined): string {
-    if (!iso) return "—"
-    try {
-        const d = new Date(iso)
-        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    } catch { return iso }
-}
-
-function formatTime(iso: string | undefined): string {
-    if (!iso) return ""
-    try {
-        const d = new Date(iso)
-        return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
-    } catch { return "" }
-}
-
-function formatDateTime(iso: string | undefined): string {
-    if (!iso) return "—"
-    const date = formatDate(iso)
-    const time = formatTime(iso)
-    return time ? `${date} ${time}` : date
 }
 
 // ─── Main Tracker Page ───────────────────────────────────────────────────────
@@ -391,22 +268,29 @@ export default function DashboardPage() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const total = allRows.length
-        const completed = allRows.filter(r => r.item.task_status === "completed").length
-        const inProgress = allRows.filter(r => r.item.task_status === "in_progress").length
-        const reworking = allRows.filter(r => r.item.task_status === "reworking").length
-        const teamReview = allRows.filter(r => r.item.task_status === "team_review").length
-        const review = allRows.filter(r => r.item.task_status === "review").length
-        const assigned = allRows.filter(r => !r.item.task_status || r.item.task_status === "assigned").length
-        const pendingAllTeams = allRows.filter(r => r.item.task_status === "pending_all_teams").length
-        const highRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "High Risk").length
-        const midRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Medium Risk").length
-        const lowRisk = allRows.filter(r => normalizeRisk(r.item.modality) === "Low Risk").length
-        const yetToDeadline = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "yet").length
-        const delayed30 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d30").length
-        const delayed60 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d60").length
-        const delayed90 = allRows.filter(r => r.item.task_status !== "completed" && deadlineCategory(r.item.deadline) === "d90").length
-        return { total, completed, inProgress, teamReview, reworking, review, assigned, pendingAllTeams, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
+        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, highRisk: 0, midRisk: 0, lowRisk: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
+        for (const r of allRows) {
+            const st = r.item.task_status || "assigned"
+            if (st === "completed") s.completed++
+            else if (st === "in_progress") s.inProgress++
+            else if (st === "team_review") s.teamReview++
+            else if (st === "review") s.review++
+            else if (st === "reworking") s.reworking++
+            else if (st === "pending_all_teams") s.pendingAllTeams++
+            else s.assigned++
+            const risk = normalizeRisk(r.item.modality)
+            if (risk === "High Risk") s.highRisk++
+            else if (risk === "Medium Risk") s.midRisk++
+            else s.lowRisk++
+            if (st !== "completed") {
+                const dc = deadlineCategory(r.item.deadline)
+                if (dc === "yet") s.yetToDeadline++
+                else if (dc === "d30") s.delayed30++
+                else if (dc === "d60") s.delayed60++
+                else if (dc === "d90") s.delayed90++
+            }
+        }
+        return s
     }, [allRows])
 
     const toggleGroup = (ws: string) => {
@@ -1112,90 +996,6 @@ export default function DashboardPage() {
             />
         </div>
         </RoleRedirect>
-    )
-}
-
-// ─── Evidence popover (compliance officer can view/download evidence) ────────
-
-function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
-    const [open, setOpen] = React.useState(false)
-    const popoverRef = React.useRef<HTMLDivElement>(null)
-
-    // Close on outside click
-    React.useEffect(() => {
-        if (!open) return
-        const handler = (e: MouseEvent) => {
-            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false)
-        }
-        document.addEventListener("mousedown", handler)
-        return () => document.removeEventListener("mousedown", handler)
-    }, [open])
-
-    if (files.length === 0) {
-        return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
-    }
-
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-
-    return (
-        <div className="relative" ref={popoverRef}>
-            <button
-                onClick={() => setOpen(!open)}
-                className="text-[10px] text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
-            >
-                <Paperclip className="h-2.5 w-2.5" />{files.length}
-            </button>
-
-            {open && (
-                <div className="absolute z-50 top-full mt-1 right-0 w-72 bg-background border border-border rounded-lg shadow-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-foreground/80">Evidence Files</span>
-                        <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground/40">
-                            <X className="h-3 w-3" />
-                        </button>
-                    </div>
-                    {files.map((file, idx) => {
-                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
-                        return (
-                            <div key={idx} className="flex items-center gap-2.5 bg-muted/20 rounded-md px-3 py-2.5 border border-border/20">
-                                <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                                    <FileText className="h-3.5 w-3.5 text-primary/70" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                    <p className="text-[9px] text-muted-foreground/40">
-                                        {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                    {fileUrl && (
-                                        <>
-                                            <a
-                                                href={fileUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                title="Open"
-                                            >
-                                                <ExternalLink className="h-3 w-3" />
-                                            </a>
-                                            <a
-                                                href={fileUrl}
-                                                download={file.name}
-                                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                title="Download"
-                                            >
-                                                <Download className="h-3 w-3" />
-                                            </a>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
-        </div>
     )
 }
 

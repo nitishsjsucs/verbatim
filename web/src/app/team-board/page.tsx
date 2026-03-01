@@ -16,188 +16,23 @@ import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
     FileText, Paperclip, Calendar, CheckCircle2,
-    ArrowRight, RotateCcw, Trash2, Save,
+    ArrowRight, RotateCcw, Trash2,
     MessageSquare, ExternalLink, Download, Upload, Undo2,
     SortAsc, SortDesc,
-    LayoutDashboard, AlertTriangle, X, XCircle, Users,
+    LayoutDashboard, AlertTriangle, XCircle, Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-function safeStr(v: unknown): string {
-    if (v === null || v === undefined) return ""
-    if (typeof v === "string") return v
-    if (typeof v === "number" || typeof v === "boolean") return String(v)
-    try { return JSON.stringify(v) } catch { return String(v) }
-}
-
-function normalizeRisk(modality: string): string {
-    const map: Record<string, string> = {
-        "Mandatory": "High Risk", "Prohibited": "High Risk",
-        "Recommended": "Medium Risk", "Permitted": "Low Risk",
-    }
-    return map[modality] || (RISK_STYLES[modality] ? modality : "Medium Risk")
-}
-
-const TASK_STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: string }> = {
-    assigned:           { label: "Assigned",              bg: "bg-slate-500",   text: "text-white" },
-    in_progress:        { label: "In Progress",           bg: "bg-amber-500",   text: "text-white" },
-    team_review:        { label: "Team Review",           bg: "bg-teal-500",    text: "text-white" },
-    review:             { label: "Under Review",          bg: "bg-blue-500",    text: "text-white" },
-    completed:          { label: "Completed",             bg: "bg-emerald-500", text: "text-white" },
-    reworking:          { label: "Reworking",             bg: "bg-orange-500",  text: "text-white" },
-    reviewer_rejected:  { label: "Rejected by Reviewer",  bg: "bg-rose-500",    text: "text-white" },
-    awaiting_justification: { label: "Awaiting Justification", bg: "bg-yellow-600", text: "text-white" },
-    pending_all_teams: { label: "Pending All Teams", bg: "bg-violet-500", text: "text-white" },
-}
-
-const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0, team_review: 1, reviewer_rejected: 2, review: 3, reworking: 4, in_progress: 5, assigned: 6, pending_all_teams: 6, completed: 7,
-}
-
-const ALL_TASK_STATUSES: TaskStatus[] = ["assigned", "in_progress", "team_review", "review", "completed", "reworking", "reviewer_rejected", "awaiting_justification", "pending_all_teams"]
-const RISK_OPTIONS = ["High Risk", "Medium Risk", "Low Risk"]
-
-const RISK_STYLES: Record<string, { bg: string; text: string }> = {
-    "High Risk":   { bg: "bg-red-500/15",    text: "text-red-500" },
-    "Medium Risk": { bg: "bg-yellow-500/15",  text: "text-yellow-500" },
-    "Low Risk":    { bg: "bg-emerald-500/15", text: "text-emerald-500" },
-}
-
-function formatDate(iso: string | undefined): string {
-    if (!iso) return "—"
-    try {
-        return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    } catch { return iso }
-}
-
-function deadlineCategory(deadline: string | undefined): string {
-    if (!deadline) return "none"
-    const dl = new Date(deadline).getTime()
-    const now = Date.now()
-    if (dl >= now) return "yet"
-    const days = (now - dl) / (1000 * 60 * 60 * 24)
-    if (days <= 30) return "d30"
-    if (days <= 60) return "d60"
-    return "d90"
-}
-
-// ─── Risk Icon ───────────────────────────────────────────────────────────────
-
-function RiskIcon({ modality }: { modality: string }) {
-    const risk = normalizeRisk(modality)
-    const cfg = RISK_STYLES[risk] || RISK_STYLES["Medium Risk"]
-    return (
-        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.text)} title={risk}>
-            !
-        </span>
-    )
-}
-
-// ─── Format helpers ──────────────────────────────────────────────────────────
-
-function formatTime(iso: string | undefined): string {
-    if (!iso) return ""
-    try {
-        const d = new Date(iso)
-        return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
-    } catch { return "" }
-}
-
-// ─── Progress bar ────────────────────────────────────────────────────────────
-
-function ProgressBar({ completed, total }: { completed: number; total: number }) {
-    if (total === 0) return <span className="text-[10px] text-muted-foreground/40">—</span>
-    const pct = (completed / total) * 100
-    return (
-        <div className="flex items-center gap-2 w-full">
-            <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                {completed}/{total}
-            </span>
-        </div>
-    )
-}
-
-// ─── Evidence popover ────────────────────────────────────────────────────────
-
-function EvidencePopover({ files, taskStatus }: { files: { name: string; url: string; uploaded_at: string }[]; taskStatus?: string }) {
-    const [open, setOpen] = React.useState(false)
-    const popoverRef = React.useRef<HTMLDivElement>(null)
-
-    React.useEffect(() => {
-        if (!open) return
-        const handler = (e: MouseEvent) => {
-            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false)
-        }
-        document.addEventListener("mousedown", handler)
-        return () => document.removeEventListener("mousedown", handler)
-    }, [open])
-
-    if (files.length === 0) {
-        return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
-    }
-
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-
-    return (
-        <div className="relative" ref={popoverRef}>
-            <button
-                onClick={() => setOpen(!open)}
-                className="text-[10px] text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
-            >
-                <Paperclip className="h-2.5 w-2.5" />{files.length}
-            </button>
-
-            {open && (
-                <div className="absolute z-50 top-full mt-1 right-0 w-72 bg-background border border-border rounded-lg shadow-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-foreground/80">Evidence Files</span>
-                        <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground/40">
-                            <X className="h-3 w-3" />
-                        </button>
-                    </div>
-                    {files.map((file, idx) => {
-                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
-                        return (
-                            <div key={idx} className="flex items-center gap-2.5 bg-muted/20 rounded-md px-3 py-2.5 border border-border/20">
-                                <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                                    <FileText className="h-3.5 w-3.5 text-primary/70" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                    <p className="text-[9px] text-muted-foreground/40">
-                                        {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                    {fileUrl && (
-                                        <>
-                                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Open">
-                                                <ExternalLink className="h-3 w-3" />
-                                            </a>
-                                            <a href={fileUrl} download={file.name} className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Download">
-                                                <Download className="h-3 w-3" />
-                                            </a>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
-        </div>
-    )
-}
+import {
+    safeStr, normalizeRisk, formatDateShort as formatDate, formatTime, deadlineCategory,
+    RISK_STYLES, RISK_OPTIONS, TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
+    WORKSTREAM_COLORS,
+} from "@/lib/status-config"
+import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
-function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRevert, userName }: {
+const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRevert, userName }: {
     entry: { item: ActionableItem; docId: string; docName: string }
     gridCols: string
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
@@ -211,7 +46,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
     const inputRef = React.useRef<HTMLInputElement>(null)
 
     const taskStatus = (item.task_status || "assigned") as TaskStatus
-    const statusCfg = TASK_STATUS_CONFIG[taskStatus] || TASK_STATUS_CONFIG.assigned
+    const statusCfg = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
     const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
     const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking" || taskStatus === "reviewer_rejected"
     const isCompleted = taskStatus === "completed"
@@ -523,7 +358,7 @@ function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRe
             )}
         </div>
     )
-}
+})
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -626,7 +461,7 @@ function TeamBoardContent() {
 
         if (nextStatus) {
             await handleUpdate(docId, item.id, { task_status: nextStatus, ...extraUpdates })
-            toast.success(`Task moved to ${TASK_STATUS_CONFIG[nextStatus].label}`)
+            toast.success(`Task moved to ${TASK_STATUS_STYLES[nextStatus].label}`)
         }
     }, [handleUpdate])
 
@@ -638,22 +473,27 @@ function TeamBoardContent() {
 
     // Stats (team-scoped from viewItems which has team-projected statuses)
     const stats = React.useMemo(() => {
-        const total = viewItems.length
-        const completed = viewItems.filter(e => e.item.task_status === "completed").length
-        const inProgress = viewItems.filter(e => e.item.task_status === "in_progress").length
-        const teamReview = viewItems.filter(e => e.item.task_status === "team_review").length
-        const review = viewItems.filter(e => e.item.task_status === "review").length
-        const reworking = viewItems.filter(e => e.item.task_status === "reworking").length
-        const reviewerRejected = viewItems.filter(e => e.item.task_status === "reviewer_rejected").length
-        const assigned = viewItems.filter(e => !e.item.task_status || e.item.task_status === "assigned").length
-        const highRisk = viewItems.filter(e => normalizeRisk(e.item.modality) === "High Risk").length
-        const midRisk = viewItems.filter(e => normalizeRisk(e.item.modality) === "Medium Risk").length
-        const lowRisk = viewItems.filter(e => normalizeRisk(e.item.modality) === "Low Risk").length
-        const yetToDeadline = viewItems.filter(e => deadlineCategory(e.item.deadline) === "yet").length
-        const delayed30 = viewItems.filter(e => deadlineCategory(e.item.deadline) === "d30").length
-        const delayed60 = viewItems.filter(e => deadlineCategory(e.item.deadline) === "d60").length
-        const delayed90 = viewItems.filter(e => deadlineCategory(e.item.deadline) === "d90").length
-        return { total, completed, inProgress, teamReview, review, reworking, reviewerRejected, assigned, highRisk, midRisk, lowRisk, yetToDeadline, delayed30, delayed60, delayed90 }
+        const s = { total: viewItems.length, completed: 0, inProgress: 0, teamReview: 0, review: 0, reworking: 0, reviewerRejected: 0, assigned: 0, highRisk: 0, midRisk: 0, lowRisk: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
+        for (const e of viewItems) {
+            const st = e.item.task_status || "assigned"
+            if (st === "completed") s.completed++
+            else if (st === "in_progress") s.inProgress++
+            else if (st === "team_review") s.teamReview++
+            else if (st === "review") s.review++
+            else if (st === "reworking") s.reworking++
+            else if (st === "reviewer_rejected") s.reviewerRejected++
+            else s.assigned++
+            const risk = normalizeRisk(e.item.modality)
+            if (risk === "High Risk") s.highRisk++
+            else if (risk === "Medium Risk") s.midRisk++
+            else s.lowRisk++
+            const dc = deadlineCategory(e.item.deadline)
+            if (dc === "yet") s.yetToDeadline++
+            else if (dc === "d30") s.delayed30++
+            else if (dc === "d60") s.delayed60++
+            else if (dc === "d90") s.delayed90++
+        }
+        return s
     }, [viewItems])
 
     // Filter + Sort
@@ -842,7 +682,7 @@ function TeamBoardContent() {
                     >
                         <option value="all">All Status</option>
                         {ALL_TASK_STATUSES.map(s => (
-                            <option key={s} value={s}>{TASK_STATUS_CONFIG[s].label}</option>
+                            <option key={s} value={s}>{TASK_STATUS_STYLES[s].label}</option>
                         ))}
                     </select>
 

@@ -4,6 +4,7 @@ import * as React from "react"
 import { MessageSquare, Send, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ActionableComment } from "@/lib/types"
+import { ROLE_BADGE } from "@/lib/status-config"
 
 interface CommentThreadProps {
     comments: ActionableComment[]
@@ -106,15 +107,9 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                                 <span className="text-[9px] font-medium text-foreground/60">{c.author}</span>
                                 <span className={cn(
                                     "text-[8px] px-1 py-0 rounded font-medium",
-                                    c.role === "compliance_officer"
-                                        ? "bg-purple-500/15 text-purple-500"
-                                        : c.role === "team_reviewer"
-                                        ? "bg-teal-500/15 text-teal-500"
-                                        : c.role === "team_lead"
-                                        ? "bg-indigo-500/15 text-indigo-400"
-                                        : "bg-blue-500/15 text-blue-500"
+                                    (ROLE_BADGE[c.role] || ROLE_BADGE.team_member).className
                                 )}>
-                                    {c.role === "compliance_officer" ? "Officer" : c.role === "team_reviewer" ? "Reviewer" : c.role === "team_lead" ? "Lead" : "Team"}
+                                    {(ROLE_BADGE[c.role] || ROLE_BADGE.team_member).label}
                                 </span>
                                 <span className="text-[8px] text-muted-foreground/30">{formatTimestamp(c.timestamp)}</span>
                             </div>

@@ -12,35 +12,14 @@ import { fetchActionables, extractActionablesStreaming, ExtractionProgressEvent 
 import {
     ActionableItem, ActionablesResult, ActionableModality, ActionableWorkstream,
 } from "@/lib/types"
+import { normalizeRisk, RISK_STYLES, getWorkstreamClass } from "@/lib/status-config"
 
 // --- Color/icon config ---
 
 const MODALITY_CONFIG: Record<string, { color: string; bg: string; icon: React.ReactNode }> = {
-    "High Risk": { color: "text-red-500", bg: "bg-red-500/15", icon: <Shield className="h-3 w-3" /> },
-    "Medium Risk": { color: "text-yellow-500", bg: "bg-yellow-500/15", icon: <Shield className="h-3 w-3" /> },
-    "Low Risk": { color: "text-emerald-500", bg: "bg-emerald-500/15", icon: <Shield className="h-3 w-3" /> },
-}
-
-function normalizeRisk(modality: string): string {
-    const map: Record<string, string> = {
-        "Mandatory": "High Risk",
-        "Prohibited": "High Risk",
-        "Recommended": "Medium Risk",
-        "Permitted": "Low Risk",
-    }
-    return map[modality] || (MODALITY_CONFIG[modality] ? modality : "Medium Risk")
-}
-
-const WORKSTREAM_COLORS: Record<string, string> = {
-    Policy: "bg-purple-400/15 text-purple-400",
-    Technology: "bg-cyan-400/15 text-cyan-400",
-    Operations: "bg-blue-400/15 text-blue-400",
-    Training: "bg-pink-400/15 text-pink-400",
-    Reporting: "bg-indigo-400/15 text-indigo-400",
-    "Customer Communication": "bg-sky-400/15 text-sky-400",
-    Governance: "bg-violet-400/15 text-violet-400",
-    Legal: "bg-fuchsia-400/15 text-fuchsia-400",
-    Other: "bg-muted text-muted-foreground",
+    "High Risk": { color: RISK_STYLES["High Risk"].text, bg: RISK_STYLES["High Risk"].bg, icon: <Shield className="h-3 w-3" /> },
+    "Medium Risk": { color: RISK_STYLES["Medium Risk"].text, bg: RISK_STYLES["Medium Risk"].bg, icon: <Shield className="h-3 w-3" /> },
+    "Low Risk": { color: RISK_STYLES["Low Risk"].text, bg: RISK_STYLES["Low Risk"].bg, icon: <Shield className="h-3 w-3" /> },
 }
 
 // --- Sub-components ---
@@ -126,7 +105,7 @@ function ActionableCard({ item, onSourceClick }: {
                             <AlertTriangle className="h-3 w-3" />
                         </span>
                     )}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(item.workstream))}>
                         {item.workstream}
                     </span>
                 </div>

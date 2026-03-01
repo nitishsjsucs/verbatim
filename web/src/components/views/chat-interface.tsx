@@ -3,7 +3,7 @@
 import * as React from "react"
 import {
     Send, User, Bot, FileText, Loader2, Sparkles, BookOpen,
-    ChevronDown, ChevronRight, ShieldCheck, ShieldAlert, ShieldQuestion,
+    ShieldCheck,
     Clock, Zap, Brain, Search, Route, BarChart3, CheckCircle2, XCircle,
     Plus, MessageSquare, Trash2, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react"
@@ -21,6 +21,7 @@ import {
 } from "@/lib/types"
 import { FeedbackPanel } from "./feedback-panel"
 import { Markdown } from "@/components/ui/markdown"
+import { CollapsibleSection, VerificationBadge, ConfidenceIndicator, StageTimingBar } from "@/components/shared/status-components"
 
 interface ChatInterfaceProps {
     docId: string
@@ -50,46 +51,6 @@ interface Message {
 
 // --- Helper sub-components ---
 
-function CollapsibleSection({ title, icon, children, defaultOpen = false, badge }: {
-    title: string
-    icon: React.ReactNode
-    children: React.ReactNode
-    defaultOpen?: boolean
-    badge?: React.ReactNode
-}) {
-    const [open, setOpen] = React.useState(defaultOpen)
-    return (
-        <div className="border border-border/30 rounded-lg overflow-hidden">
-            <button
-                onClick={() => setOpen(!open)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-            >
-                {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                {icon}
-                <span>{title}</span>
-                {badge && <span className="ml-auto">{badge}</span>}
-            </button>
-            {open && <div className="px-3 pb-3 pt-1">{children}</div>}
-        </div>
-    )
-}
-
-function VerificationBadge({ status }: { status: string }) {
-    const config = {
-        verified: { icon: ShieldCheck, color: "text-green-400 bg-green-400/10", label: "Verified" },
-        partially_verified: { icon: ShieldQuestion, color: "text-amber-400 bg-amber-400/10", label: "Partially Verified" },
-        unverified: { icon: ShieldAlert, color: "text-red-400 bg-red-400/10", label: "Unverified" },
-    }[status] || { icon: ShieldQuestion, color: "text-muted-foreground bg-muted", label: status || "Unknown" }
-
-    const Icon = config.icon
-    return (
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", config.color)}>
-            <Icon className="h-3 w-3" />
-            {config.label}
-        </span>
-    )
-}
-
 function QueryTypeBadge({ type }: { type: QueryType }) {
     const labels: Record<string, string> = {
         single_hop: "Single-Hop",
@@ -102,24 +63,6 @@ function QueryTypeBadge({ type }: { type: QueryType }) {
             {labels[type] || type}
         </span>
     )
-}
-
-function StageTimingBar({ name, seconds, maxSeconds }: { name: string; seconds: number; maxSeconds: number }) {
-    const pct = maxSeconds > 0 ? Math.min((seconds / maxSeconds) * 100, 100) : 0
-    return (
-        <div className="flex items-center gap-2 text-[11px]">
-            <span className="w-24 text-muted-foreground truncate">{name}</span>
-            <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                <div className="h-full bg-primary/60 rounded-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="w-10 text-right font-mono text-muted-foreground">{seconds.toFixed(1)}s</span>
-        </div>
-    )
-}
-
-function ConfidenceIndicator({ confidence }: { confidence: string }) {
-    const color = confidence === "high" ? "bg-green-400" : confidence === "medium" ? "bg-amber-400" : "bg-red-400"
-    return <span className={cn("inline-block h-2 w-2 rounded-full", color)} />
 }
 
 // --- Conversation sidebar ---

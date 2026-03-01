@@ -27,21 +27,14 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { ROLE_BADGE } from "@/lib/status-config"
 
-// ─── Role labels & colors ────────────────────────────────────────────────────
-
-const ROLE_TAG: Record<string, { label: string; color: string }> = {
-    team_member: { label: "Execution", color: "bg-amber-500/15 text-amber-500" },
-    team_reviewer: { label: "Reviewer", color: "bg-teal-500/15 text-teal-500" },
-    team_lead: { label: "Lead", color: "bg-indigo-500/15 text-indigo-500" },
-    compliance_officer: { label: "Compliance", color: "bg-pink-500/15 text-pink-500" },
-    admin: { label: "Admin", color: "bg-red-500/15 text-red-500" },
-}
+// ─── Role tag renderer ───────────────────────────────────────────────────────
 
 function roleTag(role: string) {
-    const t = ROLE_TAG[role] || { label: role, color: "bg-muted text-muted-foreground" }
+    const t = ROLE_BADGE[role] || { label: role, className: "bg-muted text-muted-foreground" }
     return (
-        <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider", t.color)}>
+        <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider", t.className)}>
             {t.label}
         </span>
     )

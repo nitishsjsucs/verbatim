@@ -19,51 +19,11 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
-
-// --- Constants ---
-
-const RISK_CONFIG: Record<string, { color: string; bg: string }> = {
-    "High Risk":   { color: "text-red-500",    bg: "bg-red-500/15" },
-    "Medium Risk": { color: "text-yellow-500",  bg: "bg-yellow-500/15" },
-    "Low Risk":    { color: "text-emerald-500", bg: "bg-emerald-500/15" },
-}
-
-const WORKSTREAM_COLORS: Record<string, string> = {
-    Policy: "bg-purple-400/15 text-purple-400",
-    Technology: "bg-cyan-400/15 text-cyan-400",
-    Operations: "bg-blue-400/15 text-blue-400",
-    Training: "bg-pink-400/15 text-pink-400",
-    Reporting: "bg-indigo-400/15 text-indigo-400",
-    "Customer Communication": "bg-sky-400/15 text-sky-400",
-    Governance: "bg-violet-400/15 text-violet-400",
-    Legal: "bg-fuchsia-400/15 text-fuchsia-400",
-    Other: "bg-muted text-muted-foreground",
-}
-
-function safeStr(v: unknown): string {
-    if (v === null || v === undefined) return ""
-    if (typeof v === "string") return v
-    if (typeof v === "number" || typeof v === "boolean") return String(v)
-    try { return JSON.stringify(v) } catch { return String(v) }
-}
-
-function normalizeRisk(modality: string): string {
-    const map: Record<string, string> = {
-        "Mandatory": "High Risk",
-        "Prohibited": "High Risk",
-        "Recommended": "Medium Risk",
-        "Permitted": "Low Risk",
-    }
-    return map[modality] || (RISK_CONFIG[modality] ? modality : "Medium Risk")
-}
-
-function RiskIcon({ modality }: { modality: string }) {
-    const risk = normalizeRisk(modality)
-    const cfg = RISK_CONFIG[risk] || RISK_CONFIG["Medium Risk"]
-    return (
-        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.color)} title={risk}>!</span>
-    )
-}
+import {
+    safeStr, normalizeRisk,
+    RISK_STYLES, WORKSTREAM_COLORS, getWorkstreamClass,
+} from "@/lib/status-config"
+import { RiskIcon } from "@/components/shared/status-components"
 
 // --- Types ---
 
@@ -142,7 +102,7 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
             <div className="flex items-center gap-1.5 px-3 py-2 hover:bg-muted/20 transition-colors">
                 <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(item.workstream))}>
                         {item.workstream}
                     </span>
                     <RiskIcon modality={item.modality} />
@@ -535,7 +495,7 @@ export default function PublishPage() {
                                                 ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                                 : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                             }
-                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>
+                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>
                                                 {team}
                                             </span>
                                             <span className="text-[10px] text-muted-foreground/40 font-mono">{entries.length}</span>

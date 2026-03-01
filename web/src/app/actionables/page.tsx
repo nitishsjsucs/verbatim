@@ -25,6 +25,11 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
+import {
+    safeStr, normalizeRisk,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_OPTIONS, getWorkstreamClass,
+} from "@/lib/status-config"
+import { RiskIcon } from "@/components/shared/status-components"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
@@ -32,68 +37,6 @@ const PdfViewer = dynamic(
 )
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-
-// --- Constants ---
-
-const RISK_OPTIONS: ActionableModality[] = ["High Risk", "Medium Risk", "Low Risk"]
-const WORKSTREAM_OPTIONS: ActionableWorkstream[] = [
-    "Policy", "Technology", "Operations", "Training",
-    "Reporting", "Customer Communication", "Governance", "Legal", "Other",
-]
-
-const RISK_CONFIG: Record<string, { color: string; bg: string }> = {
-    "High Risk":   { color: "text-red-500",    bg: "bg-red-500/15" },
-    "Medium Risk": { color: "text-yellow-500",  bg: "bg-yellow-500/15" },
-    "Low Risk":    { color: "text-emerald-500", bg: "bg-emerald-500/15" },
-}
-
-// Team tag colors that do NOT use red/yellow/green
-const WORKSTREAM_COLORS: Record<string, string> = {
-    Policy: "bg-purple-400/15 text-purple-400",
-    Technology: "bg-cyan-400/15 text-cyan-400",
-    Operations: "bg-blue-400/15 text-blue-400",
-    Training: "bg-pink-400/15 text-pink-400",
-    Reporting: "bg-indigo-400/15 text-indigo-400",
-    "Customer Communication": "bg-sky-400/15 text-sky-400",
-    Governance: "bg-violet-400/15 text-violet-400",
-    Legal: "bg-fuchsia-400/15 text-fuchsia-400",
-    Other: "bg-muted text-muted-foreground",
-}
-
-/** Safely convert any value to a renderable string */
-function safeStr(v: unknown): string {
-    if (v === null || v === undefined) return ""
-    if (typeof v === "string") return v
-    if (typeof v === "number" || typeof v === "boolean") return String(v)
-    try { return JSON.stringify(v) } catch { return String(v) }
-}
-
-// --- Normalize legacy modality values to new risk levels ---
-
-function normalizeRisk(modality: string): string {
-    const map: Record<string, string> = {
-        "Mandatory": "High Risk",
-        "Prohibited": "High Risk",
-        "Recommended": "Medium Risk",
-        "Permitted": "Low Risk",
-    }
-    return map[modality] || (RISK_CONFIG[modality] ? modality : "Medium Risk")
-}
-
-// --- Risk Icon (just ! with color) ---
-
-function RiskIcon({ modality, className }: { modality: string; className?: string }) {
-    const risk = normalizeRisk(modality)
-    const cfg = RISK_CONFIG[risk] || RISK_CONFIG["Medium Risk"]
-    return (
-        <span
-            className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-[11px] font-bold shrink-0", cfg.bg, cfg.color, className)}
-            title={risk}
-        >
-            !
-        </span>
-    )
-}
 
 // --- Types ---
 
@@ -257,7 +200,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
                     {/* Team tag(s) */}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", WORKSTREAM_COLORS[item.workstream] || WORKSTREAM_COLORS.Other)}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(item.workstream))}>
                         {item.workstream}
                     </span>
                     {(item.assigned_teams?.length ?? 0) > 1 && (
@@ -334,13 +277,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Team{(item.assigned_teams?.length ?? 0) > 1 ? "s" : ""}</p>
                                     <div className="flex flex-wrap gap-1">
                                         {((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).map(t => (
-                                            <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", WORKSTREAM_COLORS[t] || "bg-muted/40 text-foreground")}>{t}</span>
+                                            <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", getWorkstreamClass(t))}>{t}</span>
                                         ))}
                                     </div>
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Risk Level</p>
-                                    <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground")}>{normalizeRisk(item.modality)}</span>
+                                    <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", RISK_STYLES[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_STYLES[normalizeRisk(item.modality)]?.text || "text-foreground")}>{normalizeRisk(item.modality)}</span>
                                 </div>
                             </div>
                         </>
@@ -412,8 +355,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     onChange={e => handleFieldSave("modality", e.target.value)}
                                     className={cn(
                                         "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                        RISK_CONFIG[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
-                                        RISK_CONFIG[normalizeRisk(item.modality)]?.color || "text-foreground"
+                                        RISK_STYLES[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
+                                        RISK_STYLES[normalizeRisk(item.modality)]?.text || "text-foreground"
                                     )}
                                 >
                                     {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
@@ -1015,7 +958,7 @@ export default function ActionablesPage() {
                                                             <div key={team} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>{team}</span>
+                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                     <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10" onClick={(e) => { e.stopPropagation(); handleApproveAll(pendingEntries) }}>
@@ -1094,7 +1037,7 @@ export default function ActionablesPage() {
                                                             <div key={team} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other)}>{team}</span>
+                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>

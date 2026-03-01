@@ -9,15 +9,9 @@ import {
     postTeamChatMessage,
     type TeamChatMessage,
 } from "@/lib/api"
+import { ROLE_BADGE } from "@/lib/status-config"
 
 type ChatChannel = "internal" | "compliance"
-
-const ROLE_BADGE: Record<string, { label: string; className: string }> = {
-    team_lead:          { label: "Lead",     className: "bg-indigo-500/15 text-indigo-400" },
-    team_reviewer:      { label: "Reviewer", className: "bg-teal-500/15 text-teal-400" },
-    team_member:        { label: "Member",   className: "bg-amber-500/15 text-amber-400" },
-    compliance_officer: { label: "CO",       className: "bg-pink-500/15 text-pink-400" },
-}
 
 function formatTimestamp(iso: string): string {
     try {
