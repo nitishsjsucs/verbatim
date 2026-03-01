@@ -69,6 +69,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
+import { LLMExperiment } from "@/components/admin/llm-experiment"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1603,6 +1604,15 @@ function LLMBenchmarkTab({
           <p className="text-xs text-muted-foreground mt-1">Select models and stages above, then click Run Benchmark</p>
         </div>
       )}
+
+      {/* ── Model Optimization Experiment ── */}
+      <div className="border-t border-border pt-6 mt-6">
+        <LLMExperiment
+          benchmarkModels={(config?.benchmark_models || []) as Array<{ id: string; label: string; tier: string; speed: string; reasoning: string }>}
+          questions={questions}
+          pricing={(config?.pricing || {}) as Record<string, { input: number; output: number }>}
+        />
+      </div>
     </>
   )
 }

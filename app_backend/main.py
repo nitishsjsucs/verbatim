@@ -3153,6 +3153,9 @@ def llm_benchmark_run(req: LLMBenchmarkRunRequest):
         summary["run_id"] = None
         summary["storage_error"] = str(e)
 
+    # MongoDB insert_one mutates dict in-place adding _id as ObjectId
+    summary.pop("_id", None)
+
     return summary
 
 
@@ -3244,6 +3247,9 @@ def llm_benchmark_experiment(req: ModelExperimentRequest):
     except Exception as e:
         result["run_id"] = None
         result["storage_error"] = str(e)
+
+    # MongoDB insert_one mutates dict in-place adding _id as ObjectId
+    result.pop("_id", None)
 
     return result
 

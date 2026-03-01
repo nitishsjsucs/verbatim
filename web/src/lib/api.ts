@@ -717,8 +717,10 @@ export async function createTeam(name: string, color?: string, summary?: string)
 
 export async function fetchLLMBenchmarkModels(): Promise<{
     models: Array<{ id: string; provider: string; label: string }>;
+    benchmark_models: Array<{ id: string; label: string; tier: string; speed: string; reasoning: string }>;
     stages: Array<{ id: string; label: string; default_model: string }>;
     test_questions: Array<{ id: string; query: string; expected_type: string; complexity: string }>;
+    pricing: Record<string, { input: number; output: number }>;
 }> {
     const res = await apiFetch('/admin/llm-benchmark/models');
     if (!res.ok) throw new Error('Failed to fetch benchmark models');
