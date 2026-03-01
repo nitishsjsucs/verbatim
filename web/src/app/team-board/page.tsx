@@ -12,7 +12,6 @@ import {
 } from "@/lib/api"
 import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, getTeamView, isMultiTeam } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
-import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
     FileText, Paperclip, Calendar, CheckCircle2,
@@ -386,7 +385,6 @@ function TeamBoardContent() {
     const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
-    const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadData = React.useCallback(async () => {
         try {
@@ -813,26 +811,6 @@ function TeamBoardContent() {
                     )}
                 </div>
             </main>
-
-            {/* Team Chat floating button */}
-            {userTeam && (
-                <button
-                    onClick={() => setChatOpen(!chatOpen)}
-                    className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
-                    title="Team Chat"
-                >
-                    <MessageSquare className="h-5 w-5" />
-                </button>
-            )}
-            {userTeam && (
-                <TeamChatPanel
-                    team={userTeam}
-                    userName={userName}
-                    userRole={role || "team_member"}
-                    open={chatOpen}
-                    onClose={() => setChatOpen(false)}
-                />
-            )}
         </div>
     )
 }

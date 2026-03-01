@@ -286,6 +286,7 @@ export interface TeamWorkflow {
     evidence_files: { name: string; url: string; uploaded_at: string }[];
     comments: ActionableComment[];
     completion_date: string;
+    deadline?: string;  // Per-team deadline for mixed group projects
 }
 
 export interface ActionableItem {

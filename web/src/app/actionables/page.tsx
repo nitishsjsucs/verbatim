@@ -27,7 +27,7 @@ import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_OPTIONS, getWorkstreamClass,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_OPTIONS, WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
 import { RiskIcon } from "@/components/shared/status-components"
 
@@ -301,6 +301,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 <div className="flex flex-wrap gap-1.5">
                                     {WORKSTREAM_OPTIONS.map(team => {
                                         const isSelected = team === item.workstream || (item.assigned_teams || []).includes(team)
+                                        const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
                                         return (
                                             <button
                                                 key={team}
@@ -329,9 +330,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     }
                                                 }}
                                                 className={cn(
-                                                    "text-[10px] px-2 py-1 rounded-md border transition-colors",
+                                                    "text-[10px] px-2 py-1 rounded-md border transition-colors font-medium",
                                                     isSelected
-                                                        ? "border-primary bg-primary/15 text-primary font-semibold"
+                                                        ? `${teamColors.bg} ${teamColors.text} border-current`
                                                         : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
                                                 )}
                                             >

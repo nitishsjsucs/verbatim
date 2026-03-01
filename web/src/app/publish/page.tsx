@@ -188,20 +188,23 @@ function PublishCard({ entry, onUpdate, onPublish, commonDeadline, commonDeadlin
                             Assign to Additional Teams
                         </p>
                         <div className="flex flex-wrap gap-1.5">
-                            {availableTeams.map(team => (
-                                <button
-                                    key={team}
-                                    onClick={() => toggleExtraTeam(team)}
-                                    className={cn(
-                                        "text-[10px] px-2 py-1 rounded-md border transition-colors",
-                                        extraTeams.includes(team)
-                                            ? "border-primary bg-primary/15 text-primary"
-                                            : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
-                                    )}
-                                >
-                                    {team}
-                                </button>
-                            ))}
+                            {availableTeams.map(team => {
+                                const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                return (
+                                    <button
+                                        key={team}
+                                        onClick={() => toggleExtraTeam(team)}
+                                        className={cn(
+                                            "text-[10px] px-2 py-1 rounded-md border transition-colors font-medium",
+                                            extraTeams.includes(team)
+                                                ? `${teamColors.bg} ${teamColors.text} border-current`
+                                                : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
+                                        )}
+                                    >
+                                        {team}
+                                    </button>
+                                )
+                            })}
                         </div>
                         {extraTeams.length > 0 && (
                             <p className="text-[9px] text-primary/60 mt-1">

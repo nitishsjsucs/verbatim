@@ -16,7 +16,6 @@ import {
     isMultiTeam,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
-import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { AuthGuard } from "@/components/auth/auth-guard"
@@ -76,7 +75,6 @@ function TeamReviewContent() {
     const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
     // Tab: "pending" shows team_review items, "all" shows all published items for the reviewer's team
     const [tab, setTab] = React.useState<"pending" | "all">("pending")
-    const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -518,26 +516,6 @@ function TeamReviewContent() {
                     )}
                 </div>
             </main>
-
-            {/* Team Chat floating button */}
-            {userTeam && (
-                <button
-                    onClick={() => setChatOpen(!chatOpen)}
-                    className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
-                    title="Team Chat"
-                >
-                    <MessageSquare className="h-5 w-5" />
-                </button>
-            )}
-            {userTeam && (
-                <TeamChatPanel
-                    team={userTeam}
-                    userName={userName}
-                    userRole={role || "team_reviewer"}
-                    open={chatOpen}
-                    onClose={() => setChatOpen(false)}
-                />
-            )}
         </div>
     )
 }

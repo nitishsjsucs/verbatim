@@ -18,7 +18,6 @@ import {
     isMultiTeam,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
-import { TeamChatPanel } from "@/components/shared/team-chat-panel"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { AuthGuard } from "@/components/auth/auth-guard"
@@ -82,7 +81,6 @@ function TeamLeadContent() {
     const [delayedCollapsed, setDelayedCollapsed] = React.useState(false)
     // Tab: "overview" shows all items, "delayed" shows only delayed items
     const [tab, setTab] = React.useState<"overview" | "delayed">("delayed")
-    const [chatOpen, setChatOpen] = React.useState(false)
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -567,25 +565,6 @@ function TeamLeadContent() {
                     )}
                 </div>
             </main>
-
-            {userTeam && (
-                <button
-                    onClick={() => setChatOpen(!chatOpen)}
-                    className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
-                    title="Team Chat"
-                >
-                    <MessageSquare className="h-5 w-5" />
-                </button>
-            )}
-            {userTeam && (
-                <TeamChatPanel
-                    team={userTeam}
-                    userName={userName}
-                    userRole={role || "team_lead"}
-                    open={chatOpen}
-                    onClose={() => setChatOpen(false)}
-                />
-            )}
         </div>
     )
 
