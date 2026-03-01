@@ -202,15 +202,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
-                    {/* Team tag(s) */}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(item.workstream))}>
-                        {item.workstream}
+                    {/* Team tag - shows "Mixed Team Projects" when multiple teams selected (live switch) */}
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
+                        {getClassification(item)}
                     </span>
-                    {(item.assigned_teams?.length ?? 0) > 1 && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded" title={`Multi-team: ${item.assigned_teams!.join(", ")}`}>
-                            <Users className="h-2.5 w-2.5" />{item.assigned_teams!.length}
-                        </span>
-                    )}
 
                     {/* Risk icon */}
                     <RiskIcon modality={item.modality} />
@@ -292,8 +287,56 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </>
                     ) : (
                         <>
-                            <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
-                            <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+                            {/* Single-team: Show single implementation/evidence block */}
+                            {!isMultiTeam(item) && (
+                                <>
+                                    <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
+                                    <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+                                </>
+                            )}
+
+                            {/* Multi-team: Show per-team implementation blocks */}
+                            {isMultiTeam(item) && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        Per-Team Implementation
+                                    </p>
+                                    {item.assigned_teams!.map(team => {
+                                        const tw = item.team_workflows?.[team]
+                                        const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                        return (
+                                            <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
+                                                        {team}
+                                                    </span>
+                                                </div>
+                                                <EditableField 
+                                                    label="Implementation" 
+                                                    value={tw?.implementation_notes || item.implementation_notes} 
+                                                    onSave={async v => {
+                                                        const workflows = { ...(item.team_workflows || {}) }
+                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), implementation_notes: v }
+                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
+                                                    }} 
+                                                    type="textarea" 
+                                                />
+                                                <EditableField 
+                                                    label="Evidence" 
+                                                    value={tw?.evidence_quote || item.evidence_quote} 
+                                                    onSave={async v => {
+                                                        const workflows = { ...(item.team_workflows || {}) }
+                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), evidence_quote: v }
+                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
+                                                    }} 
+                                                    type="textarea" 
+                                                />
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
 
                             {/* Team multi-select */}
                             <div>
@@ -344,9 +387,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         )
                                     })}
                                 </div>
-                                {(item.assigned_teams?.length ?? 0) > 1 && (
-                                    <p className="text-[9px] text-violet-400 mt-1">
-                                        Multi-team: {item.assigned_teams!.join(", ")}
+                                {isMultiTeam(item) && (
+                                    <p className="text-[9px] text-amber-400 mt-1">
+                                        Classification: {MIXED_TEAM_CLASSIFICATION} — Each team has separate implementation
                                     </p>
                                 )}
                             </div>
@@ -975,12 +1018,10 @@ export default function ActionablesPage() {
                                                         const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
                                                         if (pendingEntries.length === 0) return null
                                                         const isCollapsed = collapsedTeams.has(team)
-                                                        const isMixedTeam = team === MIXED_TEAM_CLASSIFICATION
                                                         return (
-                                                            <div key={team} className={cn("space-y-1.5", isMixedTeam && "bg-gradient-to-r from-violet-500/5 to-amber-500/5 rounded-lg p-2 -mx-2")}>
+                                                            <div key={team} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
-                                                                    {isCollapsed ? <ChevronRight className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} /> : <ChevronDown className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} />}
-                                                                    {isMixedTeam && <Users className="h-3.5 w-3.5 text-amber-400" />}
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
@@ -1057,12 +1098,10 @@ export default function ActionablesPage() {
                                                         const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
                                                         if (approvedEntries.length === 0) return null
                                                         const isCollapsed = collapsedTeams.has(`approved-${team}`)
-                                                        const isMixedTeam = team === MIXED_TEAM_CLASSIFICATION
                                                         return (
-                                                            <div key={team} className={cn("space-y-1.5", isMixedTeam && "bg-gradient-to-r from-violet-500/5 to-amber-500/5 rounded-lg p-2 -mx-2")}>
+                                                            <div key={team} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
-                                                                    {isCollapsed ? <ChevronRight className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} /> : <ChevronDown className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} />}
-                                                                    {isMixedTeam && <Users className="h-3.5 w-3.5 text-amber-400" />}
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />

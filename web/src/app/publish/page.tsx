@@ -513,15 +513,13 @@ export default function PublishPage() {
                                 const entries = byTeam[team] || []
                                 if (entries.length === 0) return null
                                 const isCollapsed = collapsedTeams.has(team)
-                                const isMixedTeam = team === MIXED_TEAM_CLASSIFICATION
                                 return (
-                                    <div key={team} className={cn("space-y-1.5", isMixedTeam && "bg-gradient-to-r from-violet-500/5 to-amber-500/5 rounded-lg p-2 -mx-2")}>
+                                    <div key={team} className="space-y-1.5">
                                         <div className="flex items-center gap-2 pt-1 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
                                             {isCollapsed
-                                                ? <ChevronRight className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} />
-                                                : <ChevronDown className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} />
+                                                ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                             }
-                                            {isMixedTeam && <Users className="h-3.5 w-3.5 text-amber-400" />}
                                             <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>
                                                 {team}
                                             </span>

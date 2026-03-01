@@ -109,7 +109,8 @@ export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; heade
     Legal:                    { bg: "bg-fuchsia-500/10", text: "text-fuchsia-400", header: "bg-fuchsia-500" },
     Other:                    { bg: "bg-zinc-500/10",   text: "text-zinc-400",   header: "bg-zinc-500" },
     // System-generated classification for multi-team actionables (not manually selectable)
-    "Mixed Team Projects":    { bg: "bg-gradient-to-r from-violet-500/15 to-amber-500/15", text: "text-amber-400", header: "bg-gradient-to-r from-violet-500 to-amber-500" },
+    // Uses same styling as other teams - no special visual distinction
+    "Mixed Team Projects":    { bg: "bg-amber-500/10", text: "text-amber-400", header: "bg-amber-500" },
 }
 
 /** Flat workstream class string (bg + text combined) for simple badge usage. */

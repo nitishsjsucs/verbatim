@@ -34,7 +34,7 @@ import { toast } from "sonner"
 import {
     safeStr, normalizeRisk, formatDate, formatTime, deadlineCategory,
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, WORKSTREAM_OPTIONS,
-    TASK_STATUS_STYLES, STATUS_SORT_ORDER,
+    TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
 
@@ -582,9 +582,9 @@ function ReviewRow({
                     <span className={cn("text-xs text-foreground/90 truncate", taskStatus === "completed" && "line-through decoration-emerald-500/40")}>
                         {safeStr(item.action)}
                     </span>
-                    {(item.assigned_teams?.length ?? 0) > 1 && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded" title={`Multi-team: ${item.assigned_teams!.join(", ")}`}>
-                            <Users className="h-2.5 w-2.5" />{item.assigned_teams!.length}
+                    {isMultiTeam(item) && (
+                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
+                            {MIXED_TEAM_CLASSIFICATION}
                         </span>
                     )}
                     {commentCount > 0 && (

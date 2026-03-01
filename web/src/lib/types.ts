@@ -269,23 +269,26 @@ export type ActionableWorkstream =
 export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification" | "pending_all_teams";
 
 // Per-team workflow state for multi-team actionables
+// Each team has its own implementation, evidence, status, and approval flow
 export interface TeamWorkflow {
     task_status: TaskStatus;
-    submitted_at: string;
-    team_reviewer_name: string;
-    team_reviewer_approved_at: string;
-    team_reviewer_rejected_at: string;
-    reviewer_comments: string;
-    rejection_reason: string;
-    is_delayed: boolean;
-    delay_detected_at: string;
-    justification: string;
-    justification_by: string;
-    justification_at: string;
-    justification_status: string;
-    evidence_files: { name: string; url: string; uploaded_at: string }[];
-    comments: ActionableComment[];
-    completion_date: string;
+    implementation_notes?: string;  // Per-team implementation text
+    evidence_quote?: string;        // Per-team evidence description
+    submitted_at?: string;
+    team_reviewer_name?: string;
+    team_reviewer_approved_at?: string;
+    team_reviewer_rejected_at?: string;
+    reviewer_comments?: string;
+    rejection_reason?: string;
+    is_delayed?: boolean;
+    delay_detected_at?: string;
+    justification?: string;
+    justification_by?: string;
+    justification_at?: string;
+    justification_status?: string;
+    evidence_files?: { name: string; url: string; uploaded_at: string }[];
+    comments?: ActionableComment[];
+    completion_date?: string;
     deadline?: string;  // Per-team deadline for mixed group projects
 }
 
@@ -467,6 +470,36 @@ export function getClassification(item: ActionableItem): string {
         return MIXED_TEAM_CLASSIFICATION;
     }
     return item.workstream || "Other";
+}
+
+/**
+ * Derives the parent status from all child team workflows.
+ * Parent moves to "completed" ONLY when ALL child team implementations are completed.
+ * Returns the most restrictive status across all teams.
+ */
+export function deriveParentStatus(item: ActionableItem): TaskStatus {
+    if (!isMultiTeam(item) || !item.team_workflows) {
+        return item.task_status || "assigned";
+    }
+    
+    const teams = item.assigned_teams || [];
+    const statuses = teams.map(team => item.team_workflows?.[team]?.task_status || "assigned");
+    
+    // If all completed, parent is completed
+    if (statuses.every(s => s === "completed")) return "completed";
+    
+    // If any is in review states, show that
+    if (statuses.some(s => s === "review")) return "review";
+    if (statuses.some(s => s === "team_review")) return "team_review";
+    
+    // If any is reworking/rejected
+    if (statuses.some(s => s === "reworking" || s === "reviewer_rejected")) return "reworking";
+    
+    // If any is in progress
+    if (statuses.some(s => s === "in_progress")) return "in_progress";
+    
+    // Default to assigned
+    return "assigned";
 }
 
 /**
