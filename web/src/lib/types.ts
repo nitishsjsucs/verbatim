@@ -448,9 +448,25 @@ export interface StorageStats {
 
 // ─── Multi-team helpers ───
 
+/** The system-generated classification for multi-team actionables */
+export const MIXED_TEAM_CLASSIFICATION = "Mixed Team Projects" as const;
+
 /** Returns true if the item is assigned to more than one team */
 export function isMultiTeam(item: ActionableItem): boolean {
     return (item.assigned_teams?.length ?? 0) > 1;
+}
+
+/**
+ * Computes the classification for an actionable based on team count.
+ * - If team_count > 1 → "Mixed Team Projects"
+ * - Otherwise → the single assigned team (workstream)
+ * This is a computed/derived value, not stored in DB.
+ */
+export function getClassification(item: ActionableItem): string {
+    if (isMultiTeam(item)) {
+        return MIXED_TEAM_CLASSIFICATION;
+    }
+    return item.workstream || "Other";
 }
 
 /**

@@ -42,8 +42,11 @@ uvicorn app_backend.main:app --host 0.0.0.0 --port 8001
 
 **Terminal 2 — ngrok tunnel (use your static domain):**
 ```
-ngrok http --domain=fox-happy-cobra.ngrok-free.app 8001
+ngrok http --region=in --domain=fox-happy-cobra.ngrok-free.app 8001
 ```
+
+> **Note:** Using `--region=in` connects to ngrok's India (Mumbai) region for lower latency.
+> Available regions: `us` (default), `eu`, `ap`, `au`, `sa`, `jp`, `in` (India)
 
 Your backend is now publicly accessible at `https://fox-happy-cobra.ngrok-free.app`.
 
@@ -184,9 +187,11 @@ This creates **all accounts automatically** with the correct roles and team assi
 ## Daily workflow (when you want the app live)
 
 1. Open Terminal 1 → run the backend command above
-2. Open Terminal 2 → run `ngrok http --domain=your-domain.ngrok-free.app 8001`
+2. Open Terminal 2 → run `ngrok http --region=in --domain=your-domain.ngrok-free.app 8001`
 3. Frontend on Vercel is always live — no action needed
 4. Auth is always live — runs inside Vercel serverless functions
+
+> **Tip:** Use `--region=in` for India (Mumbai) region to reduce latency for Indian users.
 
 ---
 

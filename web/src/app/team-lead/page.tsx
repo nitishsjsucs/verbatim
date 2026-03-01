@@ -16,6 +16,8 @@ import {
     TaskStatus,
     getTeamView,
     isMultiTeam,
+    getClassification,
+    MIXED_TEAM_CLASSIFICATION,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"

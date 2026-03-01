@@ -13,6 +13,8 @@ import {
     TaskStatus,
     ActionableComment,
     isMultiTeam,
+    getClassification,
+    MIXED_TEAM_CLASSIFICATION,
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"
@@ -199,7 +201,9 @@ export default function DashboardPage() {
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)}`.toLowerCase()
+                // Include classification in search so "Mixed Team Projects" is searchable
+                const classification = getClassification(item)
+                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${classification}`.toLowerCase()
                 if (!s.includes(q)) return false
             }
             return true
@@ -259,18 +263,26 @@ export default function DashboardPage() {
         return [...WORKSTREAM_OPTIONS, "Other"].filter(ws => grouped[ws] && grouped[ws].length > 0)
     }, [grouped])
 
-    // Group completed by team (workstream)
+    // Group completed by classification (multi-team items go to "Mixed Team Projects")
     const completedByTeam = React.useMemo(() => {
         const groups: Record<string, FlatRow[]> = {}
         for (const row of completedRows) {
-            const ws = safeStr(row.item.workstream) || "Other"
-            if (!groups[ws]) groups[ws] = []
-            groups[ws].push(row)
+            // Use getClassification to determine grouping
+            const classification = getClassification(row.item)
+            if (!groups[classification]) groups[classification] = []
+            groups[classification].push(row)
         }
         return groups
     }, [completedRows])
 
+    // Ordered completed team keys: Mixed Team Projects first (if exists), then regular teams
     const completedTeamKeys = React.useMemo(() => {
+        const keys = Object.keys(completedByTeam)
+        const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
+        if (mixedIndex > -1) {
+            keys.splice(mixedIndex, 1)
+            return [MIXED_TEAM_CLASSIFICATION, ...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream) && k !== MIXED_TEAM_CLASSIFICATION)]
+        }
         return [...WORKSTREAM_OPTIONS, "Other"].filter(ws => completedByTeam[ws] && completedByTeam[ws].length > 0)
     }, [completedByTeam])
 
@@ -1097,18 +1109,21 @@ export default function DashboardPage() {
 
                             {!completedCollapsed && completedTeamKeys.map(ws => {
                                 const rows = completedByTeam[ws] || []
+                                if (rows.length === 0) return null
                                 const isCollapsed = collapsedCompletedTeams.has(ws)
                                 const wsColors = WORKSTREAM_COLORS[ws] || WORKSTREAM_COLORS.Other
+                                const isMixedTeam = ws === MIXED_TEAM_CLASSIFICATION
 
                                 return (
-                                    <div key={`completed-${ws}`} className="mb-0.5">
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-background/50 border-b border-border/10">
+                                    <div key={`completed-${ws}`} className={cn("mb-0.5", isMixedTeam && "bg-gradient-to-r from-violet-500/5 to-amber-500/5 rounded-lg")}>
+                                        <div className={cn("flex items-center gap-2 px-3 py-1 bg-background/50 border-b border-border/10", isMixedTeam && "bg-transparent")}>
                                             <button onClick={() => toggleCompletedTeam(ws)} className="flex items-center gap-2 flex-1 min-w-0">
                                                 {isCollapsed
-                                                    ? <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                                                    : <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+                                                    ? <ChevronRight className={cn("h-3 w-3 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground/50")} />
+                                                    : <ChevronDown className={cn("h-3 w-3 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground/50")} />}
+                                                {isMixedTeam && <Users className="h-3 w-3 text-amber-400" />}
                                                 <div className={cn("h-3 w-0.5 rounded-full shrink-0", wsColors.header)} />
-                                                <span className="text-[11px] font-medium text-muted-foreground">{ws}</span>
+                                                <span className={cn("text-[11px] font-medium", isMixedTeam ? "text-amber-400" : "text-muted-foreground")}>{ws}</span>
                                                 <span className="text-[9px] text-muted-foreground/40 font-mono">{rows.length}</span>
                                             </button>
                                         </div>

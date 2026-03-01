@@ -32,8 +32,10 @@ if ($existing) {
 Write-Host "Starting Govinda backend on port 8001..." -ForegroundColor Cyan
 
 if ($NgrokDomain -ne "") {
-    Write-Host "Starting ngrok tunnel for domain: $NgrokDomain" -ForegroundColor Yellow
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "ngrok http --domain=$NgrokDomain 8001"
+    Write-Host "Starting ngrok tunnel for domain: $NgrokDomain (India region)" -ForegroundColor Yellow
+    # Using --region=in for India (Mumbai) region for lower latency
+    # Available regions: us, eu, ap, au, sa, jp, in
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "ngrok http --region=in --domain=$NgrokDomain 8001"
 }
 
 uvicorn app_backend.main:app --host 0.0.0.0 --port 8001

@@ -10,7 +10,7 @@ import {
     updateActionable,
     uploadEvidence,
 } from "@/lib/api"
-import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, getTeamView, isMultiTeam } from "@/lib/types"
+import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, getTeamView, isMultiTeam, getClassification, MIXED_TEAM_CLASSIFICATION } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import {
     ChevronDown, ChevronRight, Loader2, Search,

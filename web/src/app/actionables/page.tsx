@@ -14,6 +14,9 @@ import {
     ActionablesResult,
     ActionableModality,
     ActionableWorkstream,
+    getClassification,
+    MIXED_TEAM_CLASSIFICATION,
+    isMultiTeam,
 } from "@/lib/types"
 import {
     Shield,
@@ -664,23 +667,39 @@ export default function ActionablesPage() {
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)}`.toLowerCase()
+                // Include classification in search so "Mixed Team Projects" is searchable
+                const classification = getClassification(item)
+                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)} ${classification}`.toLowerCase()
                 if (!searchable.includes(q)) return false
             }
             return true
         }).sort((a, b) => (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1))
     }, [allItems, docFilter, riskFilter, searchQuery])
 
-    // Group by team for the "by-team" view
+    // Group by team/classification for the "by-team" view
+    // Multi-team items are grouped under "Mixed Team Projects" (system-generated classification)
     const byTeam = React.useMemo(() => {
         const teams: Record<string, { item: ActionableItem; docId: string; docName: string }[]> = {}
         for (const entry of filtered) {
-            const ws = entry.item.workstream || "Other"
-            if (!teams[ws]) teams[ws] = []
-            teams[ws].push(entry)
+            // Use getClassification to determine grouping - multi-team items go to "Mixed Team Projects"
+            const classification = getClassification(entry.item)
+            if (!teams[classification]) teams[classification] = []
+            teams[classification].push(entry)
         }
         return teams
     }, [filtered])
+
+    // Ordered team keys: Mixed Team Projects first (if exists), then regular teams
+    const orderedTeamKeys = React.useMemo(() => {
+        const keys = Object.keys(byTeam)
+        const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
+        if (mixedIndex > -1) {
+            // Move Mixed Team Projects to the front
+            keys.splice(mixedIndex, 1)
+            return [MIXED_TEAM_CLASSIFICATION, ...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream))]
+        }
+        return [...WORKSTREAM_OPTIONS.filter(ws => keys.includes(ws)), ...keys.filter(k => !WORKSTREAM_OPTIONS.includes(k as ActionableWorkstream))]
+    }, [byTeam])
 
     // Stats (published count comes from allDocs since allItems excludes published)
     const stats = React.useMemo(() => {
@@ -950,15 +969,18 @@ export default function ActionablesPage() {
                                                         )
                                                     })}
 
-                                                    {/* By Team tab — pending */}
-                                                    {viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
+                                                    {/* By Team tab — pending (using orderedTeamKeys for proper ordering) */}
+                                                    {viewTab === "by-team" && orderedTeamKeys.map(team => {
+                                                        const entries = byTeam[team] || []
                                                         const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
                                                         if (pendingEntries.length === 0) return null
                                                         const isCollapsed = collapsedTeams.has(team)
+                                                        const isMixedTeam = team === MIXED_TEAM_CLASSIFICATION
                                                         return (
-                                                            <div key={team} className="space-y-1.5">
+                                                            <div key={team} className={cn("space-y-1.5", isMixedTeam && "bg-gradient-to-r from-violet-500/5 to-amber-500/5 rounded-lg p-2 -mx-2")}>
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(team)}>
-                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    {isCollapsed ? <ChevronRight className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} /> : <ChevronDown className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} />}
+                                                                    {isMixedTeam && <Users className="h-3.5 w-3.5 text-amber-400" />}
                                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{pendingEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
@@ -1029,15 +1051,18 @@ export default function ActionablesPage() {
                                                         )
                                                     })}
 
-                                                    {/* By Team tab — approved */}
-                                                    {viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
+                                                    {/* By Team tab — approved (using orderedTeamKeys for proper ordering) */}
+                                                    {viewTab === "by-team" && orderedTeamKeys.map(team => {
+                                                        const entries = byTeam[team] || []
                                                         const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
                                                         if (approvedEntries.length === 0) return null
                                                         const isCollapsed = collapsedTeams.has(`approved-${team}`)
+                                                        const isMixedTeam = team === MIXED_TEAM_CLASSIFICATION
                                                         return (
-                                                            <div key={team} className="space-y-1.5">
+                                                            <div key={team} className={cn("space-y-1.5", isMixedTeam && "bg-gradient-to-r from-violet-500/5 to-amber-500/5 rounded-lg p-2 -mx-2")}>
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
-                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    {isCollapsed ? <ChevronRight className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} /> : <ChevronDown className={cn("h-3.5 w-3.5 shrink-0", isMixedTeam ? "text-amber-400" : "text-muted-foreground")} />}
+                                                                    {isMixedTeam && <Users className="h-3.5 w-3.5 text-amber-400" />}
                                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
                                                                     <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
