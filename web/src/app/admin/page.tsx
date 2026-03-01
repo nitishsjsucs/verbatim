@@ -17,6 +17,10 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  fetchLLMBenchmarkModels,
+  runLLMBenchmark,
+  fetchLLMBenchmarkLatest,
+  fetchMemoryHealth,
 } from "@/lib/api"
 import type { AppUser } from "@/lib/api"
 import { useTeams, invalidateTeamsCache } from "@/lib/use-teams"
@@ -56,13 +60,19 @@ import {
   Pencil,
   Check,
   Palette,
+  FlaskConical,
+  HeartPulse,
+  Play,
+  Trophy,
+  Timer,
+  Gauge,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users"
+type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health"
 
 interface AdminData {
   documents?: { total: number; list: Array<{ doc_id: string; doc_name: string; total_pages: number; node_count: number }> }
@@ -351,6 +361,13 @@ function AdminDashboardContent() {
   // Memory tab state
   const [memoryData, setMemoryData] = React.useState<Record<string, unknown> | null>(null)
 
+  // LLM Benchmark tab state
+  const [llmBenchConfig, setLlmBenchConfig] = React.useState<Record<string, unknown> | null>(null)
+  const [llmBenchResults, setLlmBenchResults] = React.useState<Record<string, unknown> | null>(null)
+
+  // Memory Health tab state
+  const [healthData, setHealthData] = React.useState<Record<string, unknown> | null>(null)
+
   const loadOverview = React.useCallback(async () => {
     try {
       const result = await fetchAdminOverview()
@@ -388,7 +405,20 @@ function AdminDashboardContent() {
         .then(d => setMemoryData(d))
         .catch(() => {})
     }
-  }, [tab, queryData, benchData, memoryData])
+    if (tab === "llm-benchmark" && !llmBenchConfig) {
+      fetchLLMBenchmarkModels()
+        .then((d: Record<string, unknown>) => setLlmBenchConfig(d))
+        .catch(() => {})
+      fetchLLMBenchmarkLatest()
+        .then((d: Record<string, unknown>) => setLlmBenchResults(d))
+        .catch(() => {})
+    }
+    if (tab === "health" && !healthData) {
+      fetchMemoryHealth()
+        .then((d: Record<string, unknown>) => setHealthData(d))
+        .catch(() => {})
+    }
+  }, [tab, queryData, benchData, memoryData, llmBenchConfig, healthData])
 
   const loadQueryPage = (page: number) => {
     setQueryPage(page)
@@ -467,11 +497,13 @@ function AdminDashboardContent() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 px-6 pb-2">
+        <div className="flex items-center gap-1 px-6 pb-2 overflow-x-auto">
           <TabBtn active={tab === "overview"} icon={<Activity className="h-3.5 w-3.5" />} label="Overview" onClick={() => setTab("overview")} />
           <TabBtn active={tab === "queries"} icon={<Search className="h-3.5 w-3.5" />} label="Query Log" onClick={() => setTab("queries")} />
           <TabBtn active={tab === "benchmarks"} icon={<BarChart3 className="h-3.5 w-3.5" />} label="Benchmarks" onClick={() => setTab("benchmarks")} />
+          <TabBtn active={tab === "llm-benchmark"} icon={<FlaskConical className="h-3.5 w-3.5" />} label="LLM Benchmark" onClick={() => setTab("llm-benchmark")} />
           <TabBtn active={tab === "memory"} icon={<Brain className="h-3.5 w-3.5" />} label="Memory System" onClick={() => setTab("memory")} />
+          <TabBtn active={tab === "health"} icon={<HeartPulse className="h-3.5 w-3.5" />} label="Health" onClick={() => setTab("health")} />
           <TabBtn active={tab === "storage"} icon={<HardDrive className="h-3.5 w-3.5" />} label="Storage" onClick={() => setTab("storage")} />
           <TabBtn active={tab === "teams"} icon={<Users className="h-3.5 w-3.5" />} label="Teams" onClick={() => setTab("teams")} />
           <TabBtn active={tab === "users"} icon={<Shield className="h-3.5 w-3.5" />} label="Users" onClick={() => setTab("users")} />
@@ -494,7 +526,15 @@ function AdminDashboardContent() {
           />
         )}
         {tab === "benchmarks" && <BenchmarksTab data={benchData} overview={data} />}
+        {tab === "llm-benchmark" && (
+          <LLMBenchmarkTab
+            config={llmBenchConfig}
+            results={llmBenchResults}
+            onResultsUpdate={setLlmBenchResults}
+          />
+        )}
         {tab === "memory" && <MemoryTab data={memoryData} overview={data} />}
+        {tab === "health" && <MemoryHealthTab data={healthData} onRefresh={() => { setHealthData(null); fetchMemoryHealth().then((d: Record<string, unknown>) => setHealthData(d)).catch(() => {}) }} />}
         {tab === "storage" && data && <StorageTab data={data} />}
         {tab === "teams" && <TeamsTab />}
         {tab === "users" && <UsersTab />}
@@ -1192,6 +1232,529 @@ function SubsystemCard({ name, stats }: { name: string; stats: Record<string, un
         ))}
       </div>
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LLM BENCHMARK TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface LLMBenchModel { id: string; provider: string; label: string }
+interface LLMBenchStage { id: string; label: string; default_model: string }
+interface LLMBenchQuestion { id: string; query: string; expected_type: string; complexity: string }
+interface LLMBenchAgg {
+  stage: string
+  model: string
+  runs: number
+  success_count: number
+  failure_count: number
+  success_rate: number
+  avg_latency: number | null
+  min_latency: number | null
+  max_latency: number | null
+  avg_quality: number | null
+  avg_input_tokens: number | null
+  avg_output_tokens: number | null
+}
+
+function LLMBenchmarkTab({
+  config,
+  results,
+  onResultsUpdate,
+}: {
+  config: Record<string, unknown> | null
+  results: Record<string, unknown> | null
+  onResultsUpdate: (r: Record<string, unknown>) => void
+}) {
+  const [selectedModels, setSelectedModels] = React.useState<string[]>([])
+  const [selectedStages, setSelectedStages] = React.useState<string[]>([])
+  const [selectedQuestions, setSelectedQuestions] = React.useState<string[]>([])
+  const [running, setRunning] = React.useState(false)
+  const [runError, setRunError] = React.useState("")
+  const [expandedResult, setExpandedResult] = React.useState<string | null>(null)
+
+  if (!config) return <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+
+  const models = (config.models || []) as LLMBenchModel[]
+  const stages = (config.stages || []) as LLMBenchStage[]
+  const questions = (config.test_questions || []) as LLMBenchQuestion[]
+
+  const aggregated = (results?.aggregated || []) as LLMBenchAgg[]
+  const bestPerStage = (results?.best_per_stage || {}) as Record<string, { model: string; avg_quality: number; avg_latency: number }>
+  const allResults = (results?.results || []) as Array<Record<string, unknown>>
+
+  const toggleModel = (id: string) => {
+    setSelectedModels(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id])
+  }
+  const toggleStage = (id: string) => {
+    setSelectedStages(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id])
+  }
+  const toggleQuestion = (id: string) => {
+    setSelectedQuestions(prev => prev.includes(id) ? prev.filter(q => q !== id) : [...prev, id])
+  }
+
+  const handleRun = async () => {
+    setRunning(true)
+    setRunError("")
+    try {
+      const result = await runLLMBenchmark({
+        stages: selectedStages.length > 0 ? selectedStages : undefined,
+        models: selectedModels.length > 0 ? selectedModels : undefined,
+        question_ids: selectedQuestions.length > 0 ? selectedQuestions : undefined,
+      })
+      onResultsUpdate(result)
+    } catch (e) {
+      setRunError(e instanceof Error ? e.message : "Benchmark failed")
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  // Group models by provider
+  const providerGroups = React.useMemo(() => {
+    const groups: Record<string, LLMBenchModel[]> = {}
+    for (const m of models) {
+      const key = m.provider || "other"
+      if (!groups[key]) groups[key] = []
+      groups[key].push(m)
+    }
+    return groups
+  }, [models])
+
+  // Unique stages & models from results for matrix
+  const resultStages = [...new Set(aggregated.map(a => a.stage))]
+  const resultModels = [...new Set(aggregated.map(a => a.model))]
+
+  return (
+    <>
+      {/* ── Configuration Panel ── */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <FlaskConical className="h-3.5 w-3.5" /> Benchmark Configuration
+          </h3>
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className={cn(
+              "flex items-center gap-1.5 h-8 px-4 rounded-md text-[13px] font-medium transition-colors",
+              running
+                ? "bg-muted text-muted-foreground cursor-wait"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+          >
+            {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            {running ? "Running…" : "Run Benchmark"}
+          </button>
+        </div>
+
+        {runError && (
+          <div className="mb-3 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-2 text-xs flex items-center gap-1.5">
+            <XCircle className="h-3.5 w-3.5 flex-shrink-0" /> {runError}
+          </div>
+        )}
+
+        {/* Model Selection */}
+        <div className="mb-4">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Models (none = defaults)</p>
+          {Object.entries(providerGroups).map(([provider, mlist]) => (
+            <div key={provider} className="mb-2">
+              <p className="text-[10px] text-muted-foreground uppercase mb-1">{provider}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {mlist.map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleModel(m.id)}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors",
+                      selectedModels.includes(m.id)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-muted-foreground border-border hover:border-foreground/30"
+                    )}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Stage Selection */}
+        <div className="mb-4">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pipeline Stages (none = all)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {stages.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => toggleStage(s.id)}
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors",
+                  selectedStages.includes(s.id)
+                    ? "bg-blue-500 text-white border-blue-500"
+                    : "bg-card text-muted-foreground border-border hover:border-foreground/30"
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Question Selection */}
+        <div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Test Questions (none = all)</p>
+          <div className="space-y-1">
+            {questions.map(q => (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => toggleQuestion(q.id)}
+                className={cn(
+                  "w-full text-left rounded-md px-3 py-1.5 text-[12px] border transition-colors",
+                  selectedQuestions.includes(q.id)
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-foreground"
+                    : "bg-card border-border text-muted-foreground hover:border-foreground/30"
+                )}
+              >
+                <span className="font-mono text-[10px] mr-2 text-muted-foreground">{q.id}</span>
+                <span className="truncate">{q.query.slice(0, 80)}{q.query.length > 80 ? "…" : ""}</span>
+                <span className={cn(
+                  "ml-2 text-[10px] rounded-full px-1.5 py-0.5",
+                  q.complexity === "complex" ? "bg-red-500/10 text-red-500" : q.complexity === "medium" ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
+                )}>
+                  {q.expected_type}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Best Model Per Stage ── */}
+      {Object.keys(bestPerStage).length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Trophy className="h-3.5 w-3.5 text-amber-500" /> Best Model Per Stage
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {Object.entries(bestPerStage).map(([stage, best]) => {
+              const stageLabel = stages.find(s => s.id === stage)?.label || stage
+              return (
+                <div key={stage} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stageLabel}</p>
+                  <p className="text-sm font-semibold text-foreground">{best.model}</p>
+                  <div className="flex justify-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                    <span>Q: {fmt(best.avg_quality)}</span>
+                    <span>{fmtMs(best.avg_latency)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Results Matrix ── */}
+      {aggregated.length > 0 && (
+        <div className="rounded-lg border border-border bg-card">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5" /> Model × Stage Comparison
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b border-border">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Model</th>
+                  {resultStages.map(s => {
+                    const label = stages.find(st => st.id === s)?.label || s
+                    return <th key={s} className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">{label}</th>
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {resultModels.map(model => (
+                  <tr key={model} className="border-b border-border/30 hover:bg-muted/20">
+                    <td className="px-3 py-2 font-mono text-xs text-foreground whitespace-nowrap">{model}</td>
+                    {resultStages.map(stage => {
+                      const agg = aggregated.find(a => a.stage === stage && a.model === model)
+                      const isBest = bestPerStage[stage]?.model === model
+                      if (!agg) return <td key={stage} className="px-3 py-2 text-center text-muted-foreground">—</td>
+                      return (
+                        <td key={stage} className={cn("px-3 py-2 text-center", isBest && "bg-amber-500/5")}>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className={cn(
+                              "text-sm font-semibold",
+                              agg.avg_quality !== null && agg.avg_quality >= 80 ? "text-emerald-600 dark:text-emerald-400"
+                              : agg.avg_quality !== null && agg.avg_quality >= 50 ? "text-amber-600 dark:text-amber-400"
+                              : "text-red-600 dark:text-red-400"
+                            )}>
+                              {agg.avg_quality !== null ? fmt(agg.avg_quality, 0) : "—"}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{fmtMs(agg.avg_latency)}</span>
+                            <span className="text-[9px] text-muted-foreground">{agg.success_count}/{agg.runs} ok</span>
+                            {isBest && <Trophy className="h-3 w-3 text-amber-500" />}
+                          </div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Individual Results ── */}
+      {allResults.length > 0 && (
+        <div className="rounded-lg border border-border bg-card">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Individual Results ({allResults.length})
+            </h3>
+          </div>
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full text-[12px]">
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b border-border">
+                  <th className="text-left px-3 py-1.5 text-xs font-medium text-muted-foreground">Stage</th>
+                  <th className="text-left px-3 py-1.5 text-xs font-medium text-muted-foreground">Model</th>
+                  <th className="text-left px-3 py-1.5 text-xs font-medium text-muted-foreground">Question</th>
+                  <th className="text-right px-3 py-1.5 text-xs font-medium text-muted-foreground">Quality</th>
+                  <th className="text-right px-3 py-1.5 text-xs font-medium text-muted-foreground">Latency</th>
+                  <th className="text-center px-3 py-1.5 text-xs font-medium text-muted-foreground">Status</th>
+                  <th className="text-center px-3 py-1.5 text-xs font-medium text-muted-foreground w-8"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {allResults.map((r, i) => {
+                  const rStage = String(r.stage_label || r.stage || "")
+                  const rModel = String(r.model || "")
+                  const rQuestion = String(r.question_text || "").slice(0, 50)
+                  const rQuality = r.quality_score as number | null
+                  const rLatency = r.latency_seconds as number | null
+                  const rSuccess = r.success as boolean
+                  const rError = r.error as string | null
+                  const rOutput = r.output_text as string | null
+                  const rowKey = `${r.stage}-${r.model}-${r.question_id}`
+                  const isExpanded = expandedResult === rowKey
+
+                  return (
+                    <React.Fragment key={i}>
+                      <tr className={cn("border-b border-border/30 hover:bg-muted/20 cursor-pointer", isExpanded && "bg-muted/30")} onClick={() => setExpandedResult(isExpanded ? null : rowKey)}>
+                        <td className="px-3 py-1.5 text-foreground">{rStage}</td>
+                        <td className="px-3 py-1.5 font-mono text-muted-foreground">{rModel}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground truncate max-w-[200px]">{rQuestion}</td>
+                        <td className="px-3 py-1.5 text-right">
+                          <span className={cn(
+                            "font-semibold",
+                            rQuality !== null && rQuality >= 80 ? "text-emerald-600" : rQuality !== null && rQuality >= 50 ? "text-amber-600" : "text-red-600"
+                          )}>
+                            {rQuality !== null ? fmt(rQuality, 0) : "—"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-mono text-muted-foreground">{fmtMs(rLatency)}</td>
+                        <td className="px-3 py-1.5 text-center">
+                          {rSuccess
+                            ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                            : <XCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                        </td>
+                        <td className="px-3 py-1.5 text-center">
+                          {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground inline" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground inline" />}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-3 bg-muted/20">
+                            {rError && (
+                              <div className="mb-2 text-xs text-red-500 bg-red-500/10 rounded px-2 py-1">{rError}</div>
+                            )}
+                            {rOutput && (
+                              <div className="text-[11px] font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[300px] overflow-auto whitespace-pre-wrap">
+                                {rOutput}
+                              </div>
+                            )}
+                            <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
+                              <span>Keys present: {String((r.expected_keys_present as string[])?.join(", ") || "—")}</span>
+                              <span>Keys missing: {String((r.expected_keys_missing as string[])?.join(", ") || "none")}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* No results yet */}
+      {aggregated.length === 0 && !running && (
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <FlaskConical className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No benchmark results yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Select models and stages above, then click Run Benchmark</p>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MEMORY HEALTH TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function MemoryHealthTab({
+  data,
+  onRefresh,
+}: {
+  data: Record<string, unknown> | null
+  onRefresh: () => void
+}) {
+  if (!data) return <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+
+  const overallStatus = String(data.overall_status || "unknown")
+  const healthyCount = (data.healthy_count as number) || 0
+  const totalChecks = (data.total_checks as number) || 0
+  const subsystems = (data.subsystems || {}) as Record<string, {
+    healthy: boolean
+    status: string
+    error?: string
+    latency_seconds?: number
+    details?: Record<string, unknown>
+  }>
+  const timestamp = String(data.timestamp || "")
+
+  const statusColor: Record<string, string> = {
+    healthy: "text-emerald-600 dark:text-emerald-400",
+    degraded: "text-amber-600 dark:text-amber-400",
+    unhealthy: "text-red-600 dark:text-red-400",
+    down: "text-red-600 dark:text-red-400",
+    unknown: "text-muted-foreground",
+  }
+  const statusBg: Record<string, string> = {
+    healthy: "bg-emerald-500/10",
+    degraded: "bg-amber-500/10",
+    unhealthy: "bg-red-500/10",
+    down: "bg-red-500/10",
+    unknown: "bg-muted",
+  }
+
+  return (
+    <>
+      {/* Overall Status */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <HeartPulse className="h-3.5 w-3.5" /> System Health
+          </h3>
+          <div className="flex items-center gap-3">
+            {timestamp && <span className="text-[10px] text-muted-foreground">Checked {timeAgo(timestamp)}</span>}
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" /> Re-check
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className={cn("rounded-lg px-4 py-3 text-center", statusBg[overallStatus])}>
+            <p className={cn("text-2xl font-bold uppercase", statusColor[overallStatus])}>{overallStatus}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{healthyCount}/{totalChecks} checks passed</p>
+          </div>
+          <div className="flex-1">
+            <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  overallStatus === "healthy" ? "bg-emerald-500" : overallStatus === "degraded" ? "bg-amber-500" : "bg-red-500"
+                )}
+                style={{ width: `${totalChecks > 0 ? (healthyCount / totalChecks) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Subsystem Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {Object.entries(subsystems).map(([name, check]) => {
+          const friendlyNames: Record<string, string> = {
+            memory_manager: "Memory Manager",
+            raptor_index: "RAPTOR Index",
+            user_memory: "User Memory",
+            query_intelligence: "Query Intelligence",
+            retrieval_feedback: "Retrieval Feedback",
+            r2r_fallback: "R2R Fallback",
+            mongodb: "MongoDB",
+            llm_client: "LLM Client",
+            embedding_model: "Embedding Model",
+          }
+          const iconColors: Record<string, string> = {
+            memory_manager: "text-purple-500",
+            raptor_index: "text-purple-500",
+            user_memory: "text-blue-500",
+            query_intelligence: "text-teal-500",
+            retrieval_feedback: "text-amber-500",
+            r2r_fallback: "text-pink-500",
+            mongodb: "text-emerald-500",
+            llm_client: "text-blue-500",
+            embedding_model: "text-indigo-500",
+          }
+
+          return (
+            <div key={name} className={cn(
+              "rounded-lg border p-3",
+              check.healthy ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
+            )}>
+              <div className="flex items-center justify-between mb-2">
+                <p className={cn("text-xs font-semibold", iconColors[name] || "text-foreground")}>
+                  {friendlyNames[name] || name.replace(/_/g, " ")}
+                </p>
+                {check.healthy
+                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  : <XCircle className="h-4 w-4 text-red-500" />}
+              </div>
+              <div className="space-y-1 text-[11px]">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className={cn("font-medium", check.healthy ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                    {check.status}
+                  </span>
+                </div>
+                {check.latency_seconds !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Latency</span>
+                    <span className="font-mono text-foreground">{fmtMs(check.latency_seconds)}</span>
+                  </div>
+                )}
+                {check.error && (
+                  <p className="text-[10px] text-red-500 mt-1 bg-red-500/10 rounded px-1.5 py-1 break-words">{check.error}</p>
+                )}
+                {check.details && Object.keys(check.details).length > 0 && (
+                  <div className="mt-1 pt-1 border-t border-border/50">
+                    {Object.entries(check.details).map(([k, v]) => (
+                      <div key={k} className="flex justify-between text-[10px]">
+                        <span className="text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                        <span className="font-mono text-foreground">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </>
   )
 }
 
