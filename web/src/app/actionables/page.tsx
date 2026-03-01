@@ -373,6 +373,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     setSaving(true)
                                                     try {
                                                         await onUpdate(docId, item.id, updates)
+                                                    } catch (err) {
+                                                        console.error("Failed to update teams:", err)
+                                                        alert(`Failed to update teams: ${err instanceof Error ? err.message : String(err)}`)
                                                     } finally {
                                                         setSaving(false)
                                                     }

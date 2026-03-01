@@ -278,16 +278,22 @@ export async function updateActionable(
     forTeam?: string,
 ): Promise<ActionableItem> {
     const params = forTeam ? `?for_team=${encodeURIComponent(forTeam)}` : '';
-    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}${params}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to update actionable');
+    const url = `/documents/${docId}/actionables/${itemId}${params}`;
+    try {
+        const res = await apiFetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}: ${res.statusText}` }));
+            throw new Error(err.detail || 'Failed to update actionable');
+        }
+        return res.json();
+    } catch (err) {
+        console.error(`updateActionable failed for ${url}:`, err);
+        throw err;
     }
-    return res.json();
 }
 
 export async function createManualActionable(

@@ -116,6 +116,8 @@ class ActionableItem:
 
     def init_team_workflows(self) -> None:
         """Initialize team_workflows for all assigned_teams."""
+        if not isinstance(self.team_workflows, dict):
+            self.team_workflows = {}
         for t in self.assigned_teams:
             if t not in self.team_workflows:
                 self.team_workflows[t] = {
