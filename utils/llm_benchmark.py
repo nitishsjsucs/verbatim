@@ -468,9 +468,15 @@ class BenchmarkRunner:
             "max_tokens": meta["max_tokens"],
         }
         if meta["reasoning_effort"]:
-            params["reasoning_effort"] = meta["reasoning_effort"]
+            effort = meta["reasoning_effort"]
+            # gpt-5.2-pro only supports medium/high/xhigh — clamp up
+            if "pro" in model_id and effort in ("none", "low"):
+                effort = "medium"
+            params["reasoning_effort"] = effort
         if meta["temperature"] is not None:
-            params["temperature"] = meta["temperature"]
+            # temperature only effective when reasoning_effort is "none"
+            if params.get("reasoning_effort") == "none":
+                params["temperature"] = meta["temperature"]
 
         self._llm.reset_usage()
         start = time.time()

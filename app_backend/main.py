@@ -3148,7 +3148,7 @@ def llm_benchmark_run(req: LLMBenchmarkRunRequest):
     try:
         store = BenchmarkResultStore()
         run_id = store.save_run(summary)
-        summary["run_id"] = run_id
+        summary["run_id"] = str(run_id)
     except Exception as e:
         summary["run_id"] = None
         summary["storage_error"] = str(e)
@@ -3240,7 +3240,7 @@ def llm_benchmark_experiment(req: ModelExperimentRequest):
     try:
         store = BenchmarkResultStore()
         run_id = store.save_run(result)
-        result["run_id"] = run_id
+        result["run_id"] = str(run_id)
     except Exception as e:
         result["run_id"] = None
         result["storage_error"] = str(e)
