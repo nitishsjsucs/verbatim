@@ -469,9 +469,17 @@ class BenchmarkRunner:
         }
         if meta["reasoning_effort"]:
             effort = meta["reasoning_effort"]
-            # gpt-5.2-pro only supports medium/high/xhigh — clamp up
-            if "pro" in model_id and effort in ("none", "low"):
-                effort = "medium"
+            # Model-specific reasoning_effort compatibility:
+            #   gpt-5.2:     none, low, medium, high
+            #   gpt-5.2-pro: medium, high, xhigh
+            #   gpt-5-mini:  minimal, low, medium, high
+            #   gpt-5-nano:  minimal, low, medium, high
+            if "pro" in model_id:
+                if effort in ("none", "low", "minimal"):
+                    effort = "medium"
+            elif "mini" in model_id or "nano" in model_id:
+                if effort == "none":
+                    effort = "minimal"
             params["reasoning_effort"] = effort
         if meta["temperature"] is not None:
             # temperature only effective when reasoning_effort is "none"
