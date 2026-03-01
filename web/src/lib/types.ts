@@ -494,6 +494,9 @@ export function deriveParentStatus(item: ActionableItem): TaskStatus {
     // If all completed, parent is completed
     if (statuses.every(s => s === "completed")) return "completed";
     
+    // If any is awaiting justification
+    if (statuses.some(s => s === "awaiting_justification")) return "awaiting_justification";
+    
     // If any is in review states, show that
     if (statuses.some(s => s === "review")) return "review";
     if (statuses.some(s => s === "team_review")) return "team_review";
@@ -504,8 +507,11 @@ export function deriveParentStatus(item: ActionableItem): TaskStatus {
     // If any is in progress
     if (statuses.some(s => s === "in_progress")) return "in_progress";
     
-    // Default to assigned
-    return "assigned";
+    // If all assigned
+    if (statuses.every(s => s === "assigned")) return "assigned";
+    
+    // Default fallback
+    return "pending_all_teams" as TaskStatus;
 }
 
 /**
@@ -535,5 +541,8 @@ export function getTeamView(item: ActionableItem, team: string): ActionableItem 
         evidence_files: tw.evidence_files,
         comments: tw.comments,
         completion_date: tw.completion_date || undefined,
+        deadline: tw.deadline || item.deadline,
+        implementation_notes: tw.implementation_notes ?? item.implementation_notes,
+        evidence_quote: tw.evidence_quote ?? item.evidence_quote,
     };
 }

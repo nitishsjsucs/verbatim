@@ -82,6 +82,7 @@ class ActionableItem:
     team_reviewer_name: str = ""  # Name of the team reviewer who acted
     team_reviewer_approved_at: str = ""  # ISO timestamp when team reviewer approved
     team_reviewer_rejected_at: str = ""  # ISO timestamp when team reviewer rejected
+    rejection_reason: str = ""  # Reason provided when CO or team reviewer rejects a task
     # ── Delay monitoring & Team Lead fields ──
     is_delayed: bool = False  # True if deadline has passed and task not completed
     delay_detected_at: str = ""  # ISO timestamp when delay was first detected
@@ -102,6 +103,7 @@ class ActionableItem:
         "is_delayed", "delay_detected_at",
         "justification", "justification_by", "justification_at", "justification_status",
         "evidence_files", "comments", "completion_date",
+        "deadline", "implementation_notes", "evidence_quote",
     ]
 
     @property
@@ -137,25 +139,46 @@ class ActionableItem:
                     "evidence_files": [],
                     "comments": [],
                     "completion_date": "",
+                    "deadline": "",
+                    "implementation_notes": "",
+                    "evidence_quote": "",
                 }
 
     def compute_aggregate_status(self) -> None:
         """For multi-team items, compute top-level task_status from per-team statuses.
 
-        - All teams completed → top-level "completed" (set completion_date)
-        - Any team at "review" (CO can act) → top-level "review"
-        - Otherwise → "pending_all_teams"
+        Priority order (highest → lowest):
+        1. All completed → "completed"
+        2. Any awaiting_justification → "awaiting_justification"
+        3. Any review → "review"
+        4. Any team_review → "team_review"
+        5. Any reworking / reviewer_rejected → "reworking"
+        6. Any in_progress → "in_progress"
+        7. All assigned → "assigned"
+        8. Otherwise → "pending_all_teams"
         """
         if not self.is_multi_team:
             return
         statuses = [tw.get("task_status", "assigned") for tw in self.team_workflows.values()]
+        if not statuses:
+            return
         if all(s == "completed" for s in statuses):
             self.task_status = "completed"
             if not self.completion_date:
                 from datetime import datetime, timezone
                 self.completion_date = datetime.now(timezone.utc).isoformat()
+        elif any(s == "awaiting_justification" for s in statuses):
+            self.task_status = "awaiting_justification"
         elif any(s == "review" for s in statuses):
             self.task_status = "review"
+        elif any(s == "team_review" for s in statuses):
+            self.task_status = "team_review"
+        elif any(s in ("reworking", "reviewer_rejected") for s in statuses):
+            self.task_status = "reworking"
+        elif any(s == "in_progress" for s in statuses):
+            self.task_status = "in_progress"
+        elif all(s == "assigned" for s in statuses):
+            self.task_status = "assigned"
         else:
             self.task_status = "pending_all_teams"
 
@@ -192,6 +215,7 @@ class ActionableItem:
             "team_reviewer_name": self.team_reviewer_name,
             "team_reviewer_approved_at": self.team_reviewer_approved_at,
             "team_reviewer_rejected_at": self.team_reviewer_rejected_at,
+            "rejection_reason": self.rejection_reason,
             "is_delayed": self.is_delayed,
             "delay_detected_at": self.delay_detected_at,
             "justification": self.justification,
@@ -249,6 +273,7 @@ class ActionableItem:
             team_reviewer_name=data.get("team_reviewer_name", ""),
             team_reviewer_approved_at=data.get("team_reviewer_approved_at", ""),
             team_reviewer_rejected_at=data.get("team_reviewer_rejected_at", ""),
+            rejection_reason=data.get("rejection_reason", ""),
             is_delayed=data.get("is_delayed", False),
             delay_detected_at=data.get("delay_detected_at", ""),
             justification=data.get("justification", ""),

@@ -1243,7 +1243,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "implementation_notes", "workstream", "needs_legal_review",
         "approval_status", "validation_notes",
         "published_at", "deadline", "task_status", "completion_date",
-        "reviewer_comments", "evidence_files", "comments",
+        "reviewer_comments", "rejection_reason", "evidence_files", "comments",
         "submitted_at", "team_reviewer_name",
         "team_reviewer_approved_at", "team_reviewer_rejected_at",
         "is_delayed", "delay_detected_at",
@@ -2247,6 +2247,7 @@ def check_delays():
             continue
         changed = False
         for a in result.actionables:
+            # Check top-level deadline
             if a.deadline and a.task_status not in ("completed", "") and not a.is_delayed:
                 try:
                     dl = datetime.fromisoformat(a.deadline.replace("Z", "+00:00"))
@@ -2270,6 +2271,27 @@ def check_delays():
                         updated_count += 1
                 except (ValueError, TypeError):
                     pass
+            # Check per-team deadlines for multi-team items
+            if a.is_multi_team and isinstance(a.team_workflows, dict):
+                for t_name, tw in a.team_workflows.items():
+                    team_dl = tw.get("deadline", "")
+                    if team_dl and tw.get("task_status", "") not in ("completed", "review", "") and not tw.get("is_delayed"):
+                        try:
+                            tdl = datetime.fromisoformat(team_dl.replace("Z", "+00:00"))
+                            if now > tdl:
+                                tw["is_delayed"] = True
+                                tw["delay_detected_at"] = now_iso
+                                a.audit_trail.append({
+                                    "event": "delay_detected",
+                                    "actor": "system",
+                                    "role": "system",
+                                    "timestamp": now_iso,
+                                    "details": f"Team '{t_name}' missed deadline {team_dl}",
+                                })
+                                changed = True
+                                updated_count += 1
+                        except (ValueError, TypeError):
+                            pass
         if changed:
             result.compute_stats()
             store.save(result)
@@ -2327,11 +2349,10 @@ def submit_justification(doc_id: str, item_id: str, body: JustificationRequest, 
 
     # Consider delayed if: explicit flag set, deadline passed, or gated at awaiting_justification
     deadline_passed = False
-    if target.deadline_or_frequency:
+    if target.deadline:
         try:
-            from dateutil.parser import parse as parse_date
-            deadline_passed = parse_date(target.deadline_or_frequency) < datetime.now(timezone.utc)
-        except Exception:
+            deadline_passed = datetime.fromisoformat(target.deadline.replace("Z", "+00:00")) < datetime.now(timezone.utc)
+        except (ValueError, TypeError):
             pass
     is_effectively_delayed = (
         target.is_delayed
@@ -2839,8 +2860,85 @@ def delete_team(team_name: str):
     if existing.get("is_system"):
         raise HTTPException(status_code=403, detail="Cannot delete system team")
 
+    # ── Cascade: clean up actionables referencing this team ──
+    reassigned_count = _cascade_team_delete(db, team_name)
+
     col.delete_one({"name": team_name})
-    return {"deleted": team_name}
+
+    # Clean up user records — reassign users on this team to empty string
+    auth_db_name = "govinda_auth"
+    try:
+        auth_db = db.client[auth_db_name]
+        auth_db["user"].update_many({"team": team_name}, {"$set": {"team": ""}})
+    except Exception:
+        pass
+
+    # Clean up chat collections
+    for chat_col_name in ["team_chats", "global_chats"]:
+        try:
+            db[chat_col_name].delete_many({"team": team_name})
+        except Exception:
+            pass
+
+    return {"deleted": team_name, "actionables_reassigned": reassigned_count}
+
+
+def _cascade_team_delete(db, team_name: str) -> int:
+    """Remove a deleted team from actionables. Returns count of affected items."""
+    store = get_actionable_store()
+    act_col = store._collection
+    reassigned = 0
+
+    for raw in act_col.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        result = store.load(doc_id)
+        if not result:
+            continue
+        changed = False
+        for a in result.actionables:
+            ws = a.workstream.value if hasattr(a.workstream, "value") else str(a.workstream)
+
+            # Single-team item with this workstream → reassign to "Other"
+            if ws == team_name and not a.is_multi_team:
+                a.workstream = "Other"
+                changed = True
+                reassigned += 1
+
+            # Remove from assigned_teams
+            if team_name in (a.assigned_teams or []):
+                a.assigned_teams = [t for t in a.assigned_teams if t != team_name]
+                changed = True
+                reassigned += 1
+
+                # If only one team left, collapse to single-team
+                if len(a.assigned_teams) == 1:
+                    surviving = a.assigned_teams[0]
+                    a.workstream = surviving
+                    # Merge surviving team workflow back to top-level
+                    tw = a.team_workflows.get(surviving, {})
+                    for k, v in tw.items():
+                        if hasattr(a, k) and v:
+                            setattr(a, k, v)
+                    a.team_workflows = {}
+                    a.assigned_teams = []
+                elif len(a.assigned_teams) == 0:
+                    a.workstream = "Other"
+                    a.team_workflows = {}
+                    a.assigned_teams = []
+
+            # Remove team_workflows entry
+            if isinstance(a.team_workflows, dict) and team_name in a.team_workflows:
+                del a.team_workflows[team_name]
+                changed = True
+
+            # Recompute aggregate status if still multi-team
+            if a.is_multi_team:
+                a.compute_aggregate_status()
+
+        if changed:
+            store.save(result)
+
+    return reassigned
 
 
 class UpdateTeamRequest(BaseModel):
@@ -2879,8 +2977,57 @@ def update_team(team_name: str, body: UpdateTeamRequest):
     if updates:
         col.update_one({"name": team_name}, {"$set": updates})
 
+    # ── Cascade name change to actionables, users, and chats ──
+    new_name = updates.get("name")
+    if new_name and new_name != team_name:
+        _cascade_team_rename(db, team_name, new_name)
+
     updated = col.find_one({"name": updates.get("name", team_name)}, {"_id": 0})
     return updated
+
+
+def _cascade_team_rename(db, old_name: str, new_name: str):
+    """Propagate a team rename across actionables, users, and chat collections."""
+    store = get_actionable_store()
+    act_col = store._collection
+
+    for raw in act_col.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        result = store.load(doc_id)
+        if not result:
+            continue
+        changed = False
+        for a in result.actionables:
+            # Rename workstream
+            ws = a.workstream.value if hasattr(a.workstream, "value") else str(a.workstream)
+            if ws == old_name:
+                a.workstream = new_name
+                changed = True
+            # Rename in assigned_teams
+            if old_name in (a.assigned_teams or []):
+                a.assigned_teams = [new_name if t == old_name else t for t in a.assigned_teams]
+                changed = True
+            # Rename team_workflows key
+            if isinstance(a.team_workflows, dict) and old_name in a.team_workflows:
+                a.team_workflows[new_name] = a.team_workflows.pop(old_name)
+                changed = True
+        if changed:
+            store.save(result)
+
+    # Rename in user records
+    auth_db_name = "govinda_auth"
+    try:
+        auth_db = db.client[auth_db_name]
+        auth_db["user"].update_many({"team": old_name}, {"$set": {"team": new_name}})
+    except Exception:
+        pass
+
+    # Rename chat collections
+    for chat_col_name in ["team_chats", "global_chats"]:
+        try:
+            db[chat_col_name].update_many({"team": old_name}, {"$set": {"team": new_name}})
+        except Exception:
+            pass
 
 
 @app.post("/teams/seed-defaults")
@@ -2891,30 +3038,34 @@ def seed_default_teams():
     col = db["teams"]
 
     default_teams = [
-        ("Policy", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}),
-        ("Technology", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}),
-        ("Operations", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}),
-        ("Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}),
-        ("Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}),
-        ("Customer Communication", {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"}),
-        ("Governance", {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"}),
-        ("Legal", {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"}),
-        ("Other", {"bg": "bg-zinc-500/10", "text": "text-zinc-400", "header": "bg-zinc-500"}),
+        ("Policy", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}, "Policy and regulatory framework implementation"),
+        ("Technology", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Technology and systems compliance"),
+        ("Operations", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}, "Operational process compliance"),
+        ("Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}, "Training and awareness programs"),
+        ("Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}, "Regulatory reporting and disclosures"),
+        ("Customer Communication", {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"}, "Customer-facing compliance communications"),
+        ("Governance", {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"}, "Corporate governance and oversight"),
+        ("Legal", {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"}, "Legal review and advisory"),
+        ("Other", {"bg": "bg-zinc-500/10", "text": "text-zinc-400", "header": "bg-zinc-500"}, "Uncategorized or cross-functional items"),
     ]
 
     _ensure_system_team()
 
     seeded = []
-    for idx, (name, colors) in enumerate(default_teams):
+    for idx, (name, colors, summary) in enumerate(default_teams):
         if not col.find_one({"name": name}):
             col.insert_one({
                 "name": name,
                 "is_system": False,
                 "colors": colors,
+                "summary": summary,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "order": idx + 1,
             })
             seeded.append(name)
+        else:
+            # Patch older teams that may be missing the summary field
+            col.update_one({"name": name, "summary": {"$exists": False}}, {"$set": {"summary": summary}})
 
     return {"seeded": seeded, "total_teams": col.count_documents({})}
 

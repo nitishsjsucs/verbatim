@@ -41,11 +41,19 @@ function resetTeamWorkflows(teamWorkflows) {
             submitted_at:                 "",
             completion_date:              "",
             reviewer_comments:            "",
+            rejection_reason:             "",
             team_reviewer_name:           "",
             team_reviewer_approved_at:    "",
             team_reviewer_rejected_at:    "",
+            is_delayed:                   false,
+            delay_detected_at:            "",
+            justification:                "",
+            justification_by:             "",
+            justification_at:             "",
+            justification_status:         "",
             implementation_notes:         wf.implementation_notes || "",
             evidence_quote:               wf.evidence_quote || "",
+            deadline:                     wf.deadline || "",
         };
     }
     return reset;
@@ -94,6 +102,7 @@ async function resetActionables() {
                 submitted_at:                 "",
                 completion_date:              "",
                 reviewer_comments:            "",
+                rejection_reason:             "",
                 team_reviewer_name:           "",
                 team_reviewer_approved_at:    "",
                 team_reviewer_rejected_at:    "",
