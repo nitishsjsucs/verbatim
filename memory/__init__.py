@@ -13,3 +13,4 @@ feature flags (e.g. enable_raptor_index). When retrieval_mode='legacy',
 none of this code executes.
 
 Entry point: memory.memory_manager.get_memory_manager()
+"""

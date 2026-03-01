@@ -1866,6 +1866,14 @@ const TEAM_COLOR_OPTIONS: { key: string; label: string; bg: string }[] = [
   { key: "emerald", label: "Emerald", bg: "bg-emerald-500" },
   { key: "red",     label: "Red",     bg: "bg-red-500" },
   { key: "zinc",    label: "Zinc",    bg: "bg-zinc-500" },
+  { key: "yellow",  label: "Yellow",  bg: "bg-yellow-500" },
+  { key: "green",   label: "Green",   bg: "bg-green-500" },
+  { key: "stone",   label: "Stone",   bg: "bg-stone-500" },
+  { key: "slate",   label: "Slate",   bg: "bg-slate-500" },
+  { key: "neutral", label: "Neutral", bg: "bg-neutral-500" },
+  { key: "warmGray", label: "Warm Gray", bg: "bg-stone-400" },
+  { key: "coral",   label: "Coral",   bg: "bg-red-400" },
+  { key: "mint",    label: "Mint",    bg: "bg-emerald-400" },
 ]
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (key: string) => void }) {
@@ -1900,6 +1908,7 @@ function extractColorKey(headerClass: string): string {
 function TeamsTab() {
   const { teams, loading, refresh } = useTeams()
   // Create form state
+  const [showCreate, setShowCreate] = React.useState(false)
   const [newTeamName, setNewTeamName] = React.useState("")
   const [newTeamColor, setNewTeamColor] = React.useState("cyan")
   const [newTeamSummary, setNewTeamSummary] = React.useState("")
@@ -1922,6 +1931,7 @@ function TeamsTab() {
       setNewTeamName("")
       setNewTeamColor("cyan")
       setNewTeamSummary("")
+      setShowCreate(false)
       invalidateTeamsCache()
       refresh()
     } catch (err) {
@@ -1979,54 +1989,66 @@ function TeamsTab() {
 
   return (
     <>
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Users className="h-4 w-4 text-blue-500" />
           Team Management
           <span className="text-[10px] text-muted-foreground font-normal ml-1">({teams.length} teams)</span>
         </h2>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="h-3 w-3" /> New Team
+        </button>
       </div>
 
-      {/* Create new team */}
-      <div className="rounded-lg border border-border bg-card p-4 mb-4">
-        <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Create New Team
-        </p>
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              value={newTeamName}
-              onChange={e => setNewTeamName(e.target.value)}
-              placeholder="Team name (required)"
-              className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+      {/* Create new team (toggle) */}
+      {showCreate && (
+        <div className="rounded-lg border border-border bg-card p-4 mb-4">
+          <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> Create New Team
+          </p>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                value={newTeamName}
+                onChange={e => setNewTeamName(e.target.value)}
+                placeholder="Team name (required)"
+                className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">Summary (required)</label>
+              <textarea
+                value={newTeamSummary}
+                onChange={e => setNewTeamSummary(e.target.value)}
+                placeholder="Describe the purpose of this team…"
+                rows={2}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                <Palette className="h-3 w-3" /> Color
+              </label>
+              <ColorPicker value={newTeamColor} onChange={setNewTeamColor} />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCreate}
+                disabled={creating || !newTeamName.trim() || !newTeamSummary.trim()}
+                className="flex items-center gap-1 h-8 px-4 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Create Team
+              </button>
+              <button onClick={() => setShowCreate(false)} className="text-[12px] text-muted-foreground hover:text-foreground">Cancel</button>
+            </div>
           </div>
-          <div>
-            <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">Summary (required)</label>
-            <textarea
-              value={newTeamSummary}
-              onChange={e => setNewTeamSummary(e.target.value)}
-              placeholder="Describe the purpose of this team…"
-              rows={2}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-              <Palette className="h-3 w-3" /> Color
-            </label>
-            <ColorPicker value={newTeamColor} onChange={setNewTeamColor} />
-          </div>
-          <button
-            onClick={handleCreate}
-            disabled={creating || !newTeamName.trim() || !newTeamSummary.trim()}
-            className="flex items-center gap-1 h-8 px-4 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-            Create Team
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Teams list */}
       {loading ? (

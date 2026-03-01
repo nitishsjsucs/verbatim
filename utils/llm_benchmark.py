@@ -823,7 +823,7 @@ class MemoryHealthChecker:
             llm = LLMClient()
             response = llm.chat(
                 messages=[{"role": "user", "content": "Reply with exactly: OK"}],
-                max_tokens=10,
+                max_tokens=20,
                 reasoning_effort="none",
             )
             ok = "ok" in response.lower()

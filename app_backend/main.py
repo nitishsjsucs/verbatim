@@ -2746,6 +2746,14 @@ _TEAM_COLOR_PALETTE = [
     {"bg": "bg-teal-500/10", "text": "text-teal-400", "header": "bg-teal-500"},
     {"bg": "bg-lime-500/10", "text": "text-lime-400", "header": "bg-lime-500"},
     {"bg": "bg-orange-500/10", "text": "text-orange-400", "header": "bg-orange-500"},
+    {"bg": "bg-amber-500/10", "text": "text-amber-400", "header": "bg-amber-500"},
+    {"bg": "bg-emerald-500/10", "text": "text-emerald-400", "header": "bg-emerald-500"},
+    {"bg": "bg-red-500/10", "text": "text-red-400", "header": "bg-red-500"},
+    {"bg": "bg-yellow-500/10", "text": "text-yellow-400", "header": "bg-yellow-500"},
+    {"bg": "bg-green-500/10", "text": "text-green-400", "header": "bg-green-500"},
+    {"bg": "bg-stone-500/10", "text": "text-stone-400", "header": "bg-stone-500"},
+    {"bg": "bg-slate-500/10", "text": "text-slate-400", "header": "bg-slate-500"},
+    {"bg": "bg-neutral-500/10", "text": "text-neutral-400", "header": "bg-neutral-500"},
 ]
 
 MIXED_TEAM_COLORS = {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}
