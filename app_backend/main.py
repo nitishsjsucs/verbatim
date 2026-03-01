@@ -3159,6 +3159,45 @@ def llm_benchmark_run(req: LLMBenchmarkRunRequest):
     return summary
 
 
+class TournamentBattleRequest(BaseModel):
+    stage: str
+    question_id: str
+    models: list[str] = []  # Empty = all benchmark models
+
+
+@app.post("/admin/llm-benchmark/tournament-battle")
+def llm_benchmark_tournament_battle(req: TournamentBattleRequest):
+    """
+    Run a tournament battle: all models compete on one stage × one question.
+    GPT-5.2-pro (high reasoning) judges the outputs.
+    
+    Designed for incremental calls from the UI — one battle per HTTP request.
+    """
+    from utils.llm_benchmark import (
+        BenchmarkRunner, PipelineStage, TEST_QUESTIONS, BENCHMARK_MODELS,
+    )
+
+    try:
+        stage = PipelineStage(req.stage)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid stage: {req.stage}")
+
+    question = next((q for q in TEST_QUESTIONS if q["id"] == req.question_id), None)
+    if not question:
+        raise HTTPException(status_code=400, detail=f"Unknown question_id: {req.question_id}")
+
+    models = req.models if req.models else [m["id"] for m in BENCHMARK_MODELS]
+
+    runner = BenchmarkRunner()
+    battle = runner.tournament_battle(stage, models, question)
+
+    # Clean any ObjectId that might have snuck in
+    import json
+    cleaned = json.loads(json.dumps(battle, default=str))
+
+    return cleaned
+
+
 @app.get("/admin/llm-benchmark/results")
 def llm_benchmark_results(limit: int = Query(20, ge=1, le=100)):
     """List recent LLM benchmark runs (metadata only)."""

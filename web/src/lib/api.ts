@@ -777,6 +777,27 @@ export async function seedDefaultTeams(): Promise<{ seeded: string[]; total_team
     return res.json();
 }
 
+export async function runTournamentBattle(params: {
+    stage: string;
+    question_id: string;
+    models?: string[];
+}): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/admin/llm-benchmark/tournament-battle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            stage: params.stage,
+            question_id: params.question_id,
+            models: params.models || [],
+        }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Tournament battle failed' }));
+        throw new Error(err.detail || 'Tournament battle failed');
+    }
+    return res.json();
+}
+
 export async function fetchLLMBenchmarkResults(limit: number = 20): Promise<{ runs: Array<Record<string, unknown>> }> {
     const res = await apiFetch(`/admin/llm-benchmark/results?limit=${limit}`);
     if (!res.ok) throw new Error('Failed to fetch benchmark results');

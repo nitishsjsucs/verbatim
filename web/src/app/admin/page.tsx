@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import { LLMExperiment } from "@/components/admin/llm-experiment"
+import { LLMTournament } from "@/components/admin/llm-tournament"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1612,6 +1613,11 @@ function LLMBenchmarkTab({
           questions={questions}
           pricing={(config?.pricing || {}) as Record<string, { input: number; output: number }>}
         />
+      </div>
+
+      {/* ── Tournament Mode ── */}
+      <div className="border-t border-border pt-6 mt-6">
+        <LLMTournament questions={questions} />
       </div>
     </>
   )

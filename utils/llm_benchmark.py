@@ -617,6 +617,172 @@ class BenchmarkRunner:
 
         return min(round(score, 1), 100.0)
 
+    # ------------------------------------------------------------------
+    # Tournament: run all models on one stage×question, then judge
+    # ------------------------------------------------------------------
+
+    def tournament_battle(
+        self,
+        stage: PipelineStage,
+        models: list[str],
+        question: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Run a tournament battle: all models compete on one stage × one question.
+
+        1. Run each model on the stage×question to get their outputs.
+        2. Send all outputs to GPT-5.2-pro (high reasoning) for comparative judging.
+        3. Return individual results + judge rankings.
+        """
+        meta = STAGE_META[stage]
+        battle: dict[str, Any] = {
+            "stage": stage.value,
+            "stage_label": meta["label"],
+            "question_id": question["id"],
+            "question_text": question["query"],
+            "question_type": question.get("expected_type", "unknown"),
+            "models": models,
+            "results": {},
+            "judge": None,
+            "error": None,
+        }
+
+        # Phase 1: Run all models
+        for model_id in models:
+            logger.info(
+                "Tournament: %s × %s × %s",
+                stage.value, model_id, question["id"],
+            )
+            result = self.run_single(stage, model_id, question)
+            battle["results"][model_id] = result
+
+        # Phase 2: Judge with GPT-5.2-pro (high reasoning)
+        successful = {
+            m: r for m, r in battle["results"].items()
+            if r["success"] and r.get("output_text")
+        }
+
+        if len(successful) < 2:
+            battle["error"] = f"Only {len(successful)} model(s) succeeded — need at least 2 for judging"
+            # Still rank what we have
+            if successful:
+                sole_model = list(successful.keys())[0]
+                battle["judge"] = {
+                    "rankings": [{"model": sole_model, "rank": 1, "score": 100, "reasoning": "Only model that succeeded"}],
+                    "winner": sole_model,
+                    "judge_model": "n/a",
+                    "judge_latency": 0,
+                    "judge_cost": 0,
+                }
+            return battle
+
+        try:
+            judge_result = self._judge_outputs(stage, question, successful)
+            battle["judge"] = judge_result
+        except Exception as e:
+            logger.error("Tournament judge failed: %s", str(e)[:300])
+            battle["error"] = f"Judge failed: {type(e).__name__}: {str(e)[:300]}"
+
+        return battle
+
+    def _judge_outputs(
+        self,
+        stage: PipelineStage,
+        question: dict[str, Any],
+        model_outputs: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        """
+        Use GPT-5.2-pro with high reasoning to comparatively judge model outputs.
+
+        Returns rankings with scores and detailed reasoning.
+        """
+        meta = STAGE_META[stage]
+
+        # Build the judge prompt with all outputs anonymised then revealed
+        outputs_text = ""
+        model_list = list(model_outputs.keys())
+        for i, model_id in enumerate(model_list):
+            label = chr(65 + i)  # A, B, C, D
+            output = model_outputs[model_id]
+            output_preview = output.get("output_text", "")[:3000]
+            latency = output.get("latency_seconds", 0)
+            cost = output.get("cost_usd", 0)
+            outputs_text += (
+                f"\n--- Model {label} ({model_id}) ---\n"
+                f"Latency: {latency:.1f}s | Cost: ${cost:.6f}\n"
+                f"Output:\n{output_preview}\n"
+            )
+
+        judge_system = (
+            "You are an expert evaluator for a regulatory compliance QA pipeline. "
+            "You are judging the quality of LLM outputs for a specific pipeline stage.\n\n"
+            "Evaluate ONLY the quality and correctness of each output for the given task. "
+            "Consider: structural correctness, completeness, accuracy, specificity, and "
+            "how well it would serve the downstream pipeline.\n\n"
+            "You MUST return valid JSON with this exact structure:\n"
+            "{\n"
+            '  "rankings": [\n'
+            '    {"model": "<model_id>", "rank": 1, "score": <0-100>, "reasoning": "<why>"},\n'
+            '    {"model": "<model_id>", "rank": 2, "score": <0-100>, "reasoning": "<why>"},\n'
+            "    ...\n"
+            "  ],\n"
+            '  "winner": "<model_id of rank 1>",\n'
+            '  "analysis": "<overall comparison summary>"\n'
+            "}\n\n"
+            "Score guidelines:\n"
+            "- 90-100: Excellent — correct, complete, well-structured\n"
+            "- 70-89: Good — mostly correct with minor issues\n"
+            "- 50-69: Acceptable — usable but with notable gaps\n"
+            "- 30-49: Poor — significant issues that affect downstream use\n"
+            "- 0-29: Failed — wrong, empty, or unusable output"
+        )
+
+        judge_user = (
+            f"## Task\n"
+            f"Pipeline Stage: **{meta['label']}** ({stage.value})\n"
+            f"Expected output keys: {meta['expected_keys']}\n\n"
+            f"## Question\n{question['query']}\n\n"
+            f"## Model Outputs to Judge\n{outputs_text}\n\n"
+            f"Rank all models from best to worst. Use the model IDs (e.g. gpt-5.2) in your response, not the letter labels."
+        )
+
+        self._llm.reset_usage()
+        start = time.time()
+        judge_output = self._llm.chat_json(
+            messages=[
+                {"role": "system", "content": judge_system},
+                {"role": "user", "content": judge_user},
+            ],
+            model="gpt-5.2-pro",
+            reasoning_effort="high",
+            max_tokens=4096,
+        )
+        judge_latency = time.time() - start
+        judge_usage = self._llm.get_usage_summary()
+        judge_cost = compute_cost(
+            "gpt-5.2-pro",
+            judge_usage.get("total_input_tokens", 0),
+            judge_usage.get("total_output_tokens", 0),
+        )
+
+        if isinstance(judge_output, dict):
+            judge_output["judge_model"] = "gpt-5.2-pro"
+            judge_output["judge_reasoning_effort"] = "high"
+            judge_output["judge_latency"] = round(judge_latency, 2)
+            judge_output["judge_cost"] = round(judge_cost, 6)
+            judge_output["judge_input_tokens"] = judge_usage.get("total_input_tokens", 0)
+            judge_output["judge_output_tokens"] = judge_usage.get("total_output_tokens", 0)
+            return judge_output
+        else:
+            return {
+                "rankings": [],
+                "winner": None,
+                "analysis": str(judge_output)[:1000],
+                "judge_model": "gpt-5.2-pro",
+                "judge_latency": round(judge_latency, 2),
+                "judge_cost": round(judge_cost, 6),
+            }
+
     def run_batch(
         self,
         stages: list[PipelineStage],
