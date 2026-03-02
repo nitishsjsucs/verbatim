@@ -250,7 +250,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
             {/* Expanded: 2-column layout */}
             {expanded && (
-                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-3">
+                <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
                     {/* Rejection reason banner */}
                     {taskStatus === "reworking" && item.rejection_reason && (
                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">

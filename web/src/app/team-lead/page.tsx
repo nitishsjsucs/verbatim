@@ -860,7 +860,7 @@ function OversightRow({
 
             {/* Expanded: 2-column layout */}
             {isExpanded && (
-                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-3">
+                <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
                     {/* Banners */}
                     {item.assigned_to && (
                         <div className="flex items-center gap-2">
