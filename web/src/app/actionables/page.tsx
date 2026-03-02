@@ -360,7 +360,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         <div
             className={cn(
                 "border rounded-lg overflow-hidden transition-all",
-                isSelected ? "border-primary/50 ring-1 ring-primary/20" : "border-border/30",
+                isSelected ? "border-primary/30 ring-1 ring-primary/10" : "border-border/30",
                 item.approval_status === "approved" && "border-emerald-500/20",
                 item.approval_status === "rejected" && "border-red-500/20 opacity-60",
             )}
@@ -474,10 +474,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
                                     <textarea
                                         value={draftEvidence}
-                                        onChange={e => setDraftEvidence(e.target.value)}
+                                        onChange={e => {
+                                            setDraftEvidence(e.target.value)
+                                            e.target.style.height = 'auto'
+                                            e.target.style.height = e.target.scrollHeight + 'px'
+                                        }}
                                         rows={2}
-                                        className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-y"
+                                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
                                         placeholder="Click to add evidence..."
+                                        style={{ minHeight: '48px' }}
                                     />
                                 </div>
                                 <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1 shrink-0 pt-4">
@@ -505,7 +510,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             if (prev.length <= 1) return prev
                                                             return prev.filter(t => t !== team)
                                                         }
-                                                        const next = [...prev, team]
+                                                        const next = [team, ...prev]
                                                         // Initialize impl/deadline drafts for newly added team
                                                         if (!draftTeamImpl[team]) {
                                                             setDraftTeamImpl(p => ({ ...p, [team]: safeStr(item.implementation_notes) }))
@@ -528,24 +533,24 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         )
                                     })}
                                 </div>
-                                {draftIsMulti && (
-                                    <p className="text-[9px] text-amber-400 mt-1">
-                                        Classification: {MIXED_TEAM_CLASSIFICATION} — Each team has separate implementation
-                                    </p>
-                                )}
                             </div>
 
                             {/* Single-team: Consolidated group box */}
                             {!draftIsMulti && (
-                                <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
+                                <div className="space-y-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                         <textarea
                                             value={draftImpl}
-                                            onChange={e => setDraftImpl(e.target.value)}
+                                            onChange={e => {
+                                                setDraftImpl(e.target.value)
+                                                e.target.style.height = 'auto'
+                                                e.target.style.height = e.target.scrollHeight + 'px'
+                                            }}
                                             rows={2}
-                                            className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-y"
+                                            className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
                                             placeholder="Click to add implementation notes..."
+                                            style={{ minHeight: '48px' }}
                                         />
                                     </div>
                                     <div>
@@ -594,7 +599,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
 
                                         return (
-                                            <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+                                            <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg.replace('/20', '/10').replace('/30', '/15'))}>
                                                 <div className="flex items-center gap-2">
                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
                                                         {team}
@@ -604,10 +609,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                                     <textarea
                                                         value={draftTeamImpl[team] || ""}
-                                                        onChange={e => setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value }))}
+                                                        onChange={e => {
+                                                            setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value }))
+                                                            e.target.style.height = 'auto'
+                                                            e.target.style.height = e.target.scrollHeight + 'px'
+                                                        }}
                                                         rows={2}
-                                                        className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-y"
+                                                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
                                                         placeholder="Click to add implementation notes..."
+                                                        style={{ minHeight: '48px' }}
                                                     />
                                                 </div>
                                                 <div>
