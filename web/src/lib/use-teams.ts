@@ -46,7 +46,7 @@ export function invalidateTeamsCache() {
  * Provides:
  *  - `teams`: Full Team[] array (ordered, system teams first)
  *  - `teamNames`: string[] of team names (excludes system Mixed Team)
- *  - `allTeamNames`: string[] including Mixed Team Projects
+ *  - `allTeamNames`: string[] including Mixed Team
  *  - `teamColors`: Record<string, Team["colors"]> lookup by name
  *  - `getTeamClass`: (name: string) => string — Tailwind class string for badges
  *  - `loading`: boolean

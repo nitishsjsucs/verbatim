@@ -1866,30 +1866,21 @@ function StorageTab({ data }: { data: AdminData }) {
 
 // Available color keys for the color picker — explicit Tailwind classes so they survive purge
 const TEAM_COLOR_OPTIONS: { key: string; label: string; bg: string }[] = [
-  { key: "purple",  label: "Purple",  bg: "bg-purple-500" },
   { key: "cyan",    label: "Cyan",    bg: "bg-cyan-500" },
+  { key: "rose",    label: "Rose",    bg: "bg-rose-500" },
+  { key: "emerald", label: "Emerald", bg: "bg-emerald-500" },
+  { key: "amber",   label: "Amber",   bg: "bg-amber-500" },
   { key: "blue",    label: "Blue",    bg: "bg-blue-500" },
   { key: "pink",    label: "Pink",    bg: "bg-pink-500" },
-  { key: "indigo",  label: "Indigo",  bg: "bg-indigo-500" },
-  { key: "sky",     label: "Sky",     bg: "bg-sky-500" },
-  { key: "violet",  label: "Violet",  bg: "bg-violet-500" },
-  { key: "fuchsia", label: "Fuchsia", bg: "bg-fuchsia-500" },
-  { key: "rose",    label: "Rose",    bg: "bg-rose-500" },
-  { key: "teal",    label: "Teal",    bg: "bg-teal-500" },
   { key: "lime",    label: "Lime",    bg: "bg-lime-500" },
+  { key: "indigo",  label: "Indigo",  bg: "bg-indigo-500" },
   { key: "orange",  label: "Orange",  bg: "bg-orange-500" },
-  { key: "amber",   label: "Amber",   bg: "bg-amber-500" },
-  { key: "emerald", label: "Emerald", bg: "bg-emerald-500" },
+  { key: "teal",    label: "Teal",    bg: "bg-teal-500" },
+  { key: "fuchsia", label: "Fuchsia", bg: "bg-fuchsia-500" },
+  { key: "sky",     label: "Sky",     bg: "bg-sky-500" },
   { key: "red",     label: "Red",     bg: "bg-red-500" },
-  { key: "zinc",    label: "Zinc",    bg: "bg-zinc-500" },
+  { key: "violet",  label: "Violet",  bg: "bg-violet-500" },
   { key: "yellow",  label: "Yellow",  bg: "bg-yellow-500" },
-  { key: "green",   label: "Green",   bg: "bg-green-500" },
-  { key: "stone",   label: "Stone",   bg: "bg-stone-500" },
-  { key: "slate",   label: "Slate",   bg: "bg-slate-500" },
-  { key: "neutral", label: "Neutral", bg: "bg-neutral-500" },
-  { key: "warmGray", label: "Warm Gray", bg: "bg-stone-400" },
-  { key: "coral",   label: "Coral",   bg: "bg-red-400" },
-  { key: "mint",    label: "Mint",    bg: "bg-emerald-400" },
 ]
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (key: string) => void }) {

@@ -24,6 +24,7 @@ import {
     Paperclip, Calendar, Save,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc, Users,
+    Undo2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -116,6 +117,67 @@ export default function DashboardPage() {
     const [rejectingTeamInfo, setRejectingTeamInfo] = React.useState<{ docId: string; itemId: string; team: string } | null>(null)
     const [rejectTeamReason, setRejectTeamReason] = React.useState("")
 
+    // Unpublish confirmation state
+    const [unpublishingItem, setUnpublishingItem] = React.useState<{ docId: string; itemId: string } | null>(null)
+
+    const handleUnpublish = React.useCallback(async (docId: string, item: ActionableItem) => {
+        // Reset actionable back to default state in Actionables section
+        // Preserve: deadline, text content, implementation, evidence structure, risk
+        // Reset: evidence submissions, comments, completion state, task_status, published_at
+        const resetUpdates: Record<string, unknown> = {
+            published_at: "",
+            task_status: "",
+            completion_date: "",
+            approval_status: "pending",
+            evidence_files: [],
+            comments: [],
+            rejection_reason: "",
+            justification: "",
+            justification_by: "",
+            justification_at: "",
+            justification_status: "",
+            is_delayed: false,
+            delay_detected_at: "",
+            submitted_at: "",
+            team_reviewer_name: "",
+            team_reviewer_approved_at: "",
+            team_reviewer_rejected_at: "",
+            reviewer_comments: "",
+        }
+        // For multi-team items, also reset each team workflow's submission fields
+        if (isMultiTeam(item) && item.team_workflows) {
+            const resetWorkflows: Record<string, unknown> = {}
+            for (const team of item.assigned_teams || []) {
+                const tw = item.team_workflows[team]
+                if (tw) {
+                    resetWorkflows[team] = {
+                        ...tw,
+                        task_status: "",
+                        completion_date: "",
+                        evidence_files: [],
+                        comments: [],
+                        rejection_reason: "",
+                        justification: "",
+                        justification_by: "",
+                        justification_at: "",
+                        justification_status: "",
+                        is_delayed: false,
+                        delay_detected_at: "",
+                        submitted_at: "",
+                        team_reviewer_name: "",
+                        team_reviewer_approved_at: "",
+                        team_reviewer_rejected_at: "",
+                        reviewer_comments: "",
+                    }
+                }
+            }
+            resetUpdates.team_workflows = resetWorkflows
+        }
+        await handleUpdate(docId, item.id, resetUpdates)
+        setUnpublishingItem(null)
+        toast.success("Actionable unpublished — returned to Actionables")
+    }, [handleUpdate])
+
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
         // Multi-team approval: approving any team marks ALL teams as approved
         const assignedTeams = item.assigned_teams || [item.workstream]
@@ -203,7 +265,7 @@ export default function DashboardPage() {
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                // Include classification in search so "Mixed Team Projects" is searchable
+                // Include classification in search so "Mixed Team" is searchable
                 const classification = getClassification(item)
                 const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${classification}`.toLowerCase()
                 if (!s.includes(q)) return false
@@ -243,11 +305,11 @@ export default function DashboardPage() {
         })
     }, [filtered])
 
-    // Group active items by classification (multi-team items go to "Mixed Team Projects")
+    // Group active items by classification (multi-team items go to "Mixed Team")
     const grouped = React.useMemo(() => {
         const groups: Record<string, FlatRow[]> = {}
         for (const row of activeRows) {
-            // Use getClassification to determine grouping - multi-team items go to "Mixed Team Projects"
+            // Use getClassification to determine grouping - multi-team items go to "Mixed Team"
             const classification = getClassification(row.item)
             if (!groups[classification]) groups[classification] = []
             groups[classification].push(row)
@@ -255,7 +317,7 @@ export default function DashboardPage() {
         return groups
     }, [activeRows])
 
-    // Ordered group keys: Mixed Team Projects first (if exists), then regular teams
+    // Ordered group keys: Mixed Team first (if exists), then regular teams
     const sortedGroupKeys = React.useMemo(() => {
         const keys = Object.keys(grouped)
         const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
@@ -266,7 +328,7 @@ export default function DashboardPage() {
         return [...teamNames, "Other"].filter(ws => grouped[ws] && grouped[ws].length > 0)
     }, [grouped, teamNames])
 
-    // Group completed by classification (multi-team items go to "Mixed Team Projects")
+    // Group completed by classification (multi-team items go to "Mixed Team")
     const completedByTeam = React.useMemo(() => {
         const groups: Record<string, FlatRow[]> = {}
         for (const row of completedRows) {
@@ -278,7 +340,7 @@ export default function DashboardPage() {
         return groups
     }, [completedRows])
 
-    // Ordered completed team keys: Mixed Team Projects first (if exists), then regular teams
+    // Ordered completed team keys: Mixed Team first (if exists), then regular teams
     const completedTeamKeys = React.useMemo(() => {
         const keys = Object.keys(completedByTeam)
         const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
@@ -573,27 +635,30 @@ export default function DashboardPage() {
                                     const statusStyle = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
                                     const isExpanded = expandedRow === rowKey
                                     const commentCount = (item.comments || []).length
+                                    const multi = isMultiTeam(item)
+                                    const assignedTeams = item.assigned_teams || []
+                                    // Multi-team progress
+                                    const teamCompletedCount = multi ? assignedTeams.filter(t => (item.team_workflows?.[t]?.task_status || "") === "completed").length : 0
 
                                     return (
                                         <div key={rowKey} className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70")}>
+                                            {/* ── Parent row ── */}
                                             <div
                                                 className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
                                                 style={{ gridTemplateColumns: gridCols }}
                                                 onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
                                             >
-                                                {/* Team - use getClassification for consistent tag */}
+                                                {/* Team */}
                                                 <div className="py-1.5 px-1">
                                                     <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(getClassification(item)))}>
                                                         {getClassification(item)}
                                                     </span>
                                                 </div>
-
                                                 {/* Risk icon */}
                                                 <div className="py-1.5 flex justify-center">
                                                     <RiskIcon modality={item.modality} />
                                                 </div>
-
-                                                {/* Actionable text (read-only) */}
+                                                {/* Actionable text + progress indicator for multi-team */}
                                                 <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                     {isExpanded
                                                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
@@ -604,52 +669,58 @@ export default function DashboardPage() {
                                                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
                                                         </span>
                                                     )}
+                                                    {multi && (
+                                                        <span className="shrink-0 text-[9px] font-medium text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                                                            {teamCompletedCount} of {assignedTeams.length} completed
+                                                        </span>
+                                                    )}
                                                 </div>
-
-                                                {/* Status (read-only) */}
+                                                {/* Status */}
                                                 <div className="py-1.5 px-1 text-center">
                                                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
                                                         {statusStyle.label}
                                                     </span>
                                                 </div>
-
-                                                {/* Deadline date (editable) */}
+                                                {/* Deadline date */}
                                                 <div className="py-1.5 px-1 text-center relative" onClick={e => e.stopPropagation()}>
-                                                    <DeadlineCell
-                                                        value={item.deadline || ""}
-                                                        onSave={v => handleUpdate(docId, item.id, { deadline: v })}
-                                                    />
+                                                    {!multi ? (
+                                                        <DeadlineCell
+                                                            value={item.deadline || ""}
+                                                            onSave={v => handleUpdate(docId, item.id, { deadline: v })}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                                                    )}
                                                 </div>
-
-                                                {/* Deadline time (from same field) */}
+                                                {/* Deadline time */}
                                                 <div className="py-1.5 px-1 text-center">
                                                     <span className="text-[10px] text-muted-foreground/60">
-                                                        {formatTime(item.deadline)}
+                                                        {!multi ? formatTime(item.deadline) : "—"}
                                                     </span>
                                                 </div>
-
-                                                {/* Evidence (clickable popover — only visible after review submission) */}
+                                                {/* Evidence */}
                                                 <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
-                                                    <EvidencePopover files={item.evidence_files || []} taskStatus={taskStatus} />
+                                                    {!multi ? (
+                                                        <EvidencePopover files={item.evidence_files || []} taskStatus={taskStatus} />
+                                                    ) : (
+                                                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                                                    )}
                                                 </div>
-
                                                 {/* Published date */}
                                                 <div className="py-1.5 px-1 text-center">
                                                     <span className="text-[10px] text-muted-foreground/60">
                                                         {formatDate(item.published_at)}
                                                     </span>
                                                 </div>
-
                                                 {/* Completion date */}
                                                 <div className="py-1.5 px-1 text-center">
                                                     <span className="text-[10px] text-muted-foreground/60">
                                                         {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
                                                     </span>
                                                 </div>
-
-                                                {/* Actions (approve/reject for compliance officer) */}
+                                                {/* Actions */}
                                                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-                                                    {taskStatus === "review" && !isMultiTeam(item) && (
+                                                    {taskStatus === "review" && !multi && (
                                                         <>
                                                             <button
                                                                 onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
@@ -667,9 +738,6 @@ export default function DashboardPage() {
                                                             </button>
                                                         </>
                                                     )}
-                                                    {taskStatus === "review" && isMultiTeam(item) && (
-                                                        <span className="text-[9px] text-amber-400 italic">Review per team ↓</span>
-                                                    )}
                                                     {taskStatus === "completed" && (
                                                         <span className="text-[9px] text-emerald-400 italic">Approved</span>
                                                     )}
@@ -683,19 +751,201 @@ export default function DashboardPage() {
                                                         <span className="text-[9px] text-rose-400 italic">Rejected by Reviewer</span>
                                                     )}
                                                     {taskStatus === "awaiting_justification" && (
-                                                        <span className="text-[9px] text-yellow-500 italic">Awaiting Lead Justification</span>
+                                                        <span className="text-[9px] text-yellow-500 italic">Awaiting Lead</span>
                                                     )}
                                                     {taskStatus === "pending_all_teams" && (
                                                         <span className="text-[9px] text-amber-400 italic">Pending Teams</span>
                                                     )}
-                                                    {(taskStatus === "assigned" || taskStatus === "in_progress") && (
+                                                    {!multi && (taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[9px] text-muted-foreground/30">—</span>
                                                     )}
+                                                    {/* Unpublish button */}
+                                                    <button
+                                                        onClick={() => setUnpublishingItem({ docId, itemId: item.id })}
+                                                        className="inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
+                                                        title="Unpublish — return to Actionables"
+                                                    >
+                                                        <Undo2 className="h-2.5 w-2.5" />
+                                                    </button>
                                                 </div>
                                             </div>
 
-                                            {/* Rejection reason input */}
-                                            {rejectingItem?.item.id === item.id && rejectingItem.docId === docId && (
+                                            {/* ── Multi-team: Cascading per-team rows ── */}
+                                            {multi && isExpanded && assignedTeams.map(team => {
+                                                const tw = item.team_workflows?.[team]
+                                                const twStatus = (tw?.task_status || "assigned") as TaskStatus
+                                                const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
+                                                const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                                const teamRowKey = `${rowKey}-team-${team}`
+                                                const isTeamExpanded = expandedRow === teamRowKey
+                                                const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
+                                                const teamCommentCount = (tw?.comments || []).length
+
+                                                return (
+                                                    <div key={teamRowKey} className="border-t border-border/5 bg-muted/5">
+                                                        {/* Team child row — same grid as parent */}
+                                                        <div
+                                                            className="grid gap-0 items-center hover:bg-muted/15 transition-colors px-3 cursor-pointer pl-8"
+                                                            style={{ gridTemplateColumns: gridCols }}
+                                                            onClick={() => setExpandedRow(isTeamExpanded ? rowKey : teamRowKey)}
+                                                        >
+                                                            {/* Team tag */}
+                                                            <div className="py-1.5 px-1">
+                                                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", teamColors.bg, teamColors.text)}>
+                                                                    {team}
+                                                                </span>
+                                                            </div>
+                                                            {/* Risk — inherit parent */}
+                                                            <div className="py-1.5 flex justify-center">
+                                                                <RiskIcon modality={item.modality} />
+                                                            </div>
+                                                            {/* Implementation text */}
+                                                            <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
+                                                                {isTeamExpanded
+                                                                    ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
+                                                                    : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                                                                <span className="text-xs text-foreground/70 truncate italic">{safeStr(tw?.implementation_notes || item.implementation_notes)}</span>
+                                                                {teamCommentCount > 0 && (
+                                                                    <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
+                                                                        <MessageSquare className="h-2.5 w-2.5" />{teamCommentCount}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {/* Status */}
+                                                            <div className="py-1.5 px-1 text-center">
+                                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", twStyle.bg, twStyle.text)}>
+                                                                    {twStyle.label}
+                                                                </span>
+                                                            </div>
+                                                            {/* Deadline date */}
+                                                            <div className="py-1.5 px-1 text-center relative" onClick={e => e.stopPropagation()}>
+                                                                <DeadlineCell
+                                                                    value={tw?.deadline || item.deadline || ""}
+                                                                    onSave={v => handleUpdate(docId, item.id, { deadline: v }, team)}
+                                                                />
+                                                            </div>
+                                                            {/* Deadline time */}
+                                                            <div className="py-1.5 px-1 text-center">
+                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                    {formatTime(tw?.deadline || item.deadline)}
+                                                                </span>
+                                                            </div>
+                                                            {/* Evidence */}
+                                                            <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
+                                                                <EvidencePopover files={tw?.evidence_files || []} taskStatus={twStatus} />
+                                                            </div>
+                                                            {/* Published date */}
+                                                            <div className="py-1.5 px-1 text-center">
+                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                    {formatDate(item.published_at)}
+                                                                </span>
+                                                            </div>
+                                                            {/* Completion date */}
+                                                            <div className="py-1.5 px-1 text-center">
+                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                    {twStatus === "completed" ? formatDate(tw?.completion_date) : "—"}
+                                                                </span>
+                                                            </div>
+                                                            {/* Actions */}
+                                                            <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                                                                {twStatus === "review" && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleApproveTeam(docId, item, team)}
+                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                        >
+                                                                            <CheckCircle2 className="h-2.5 w-2.5" /> Approve
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
+                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                        >
+                                                                            <XCircle className="h-2.5 w-2.5" /> Reject
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                {twStatus === "completed" && <span className="text-[9px] text-emerald-400 italic">Approved</span>}
+                                                                {twStatus === "reworking" && <span className="text-[9px] text-orange-400 italic">Reworking</span>}
+                                                                {(twStatus === "assigned" || twStatus === "in_progress") && <span className="text-[9px] text-muted-foreground/30">—</span>}
+                                                                {twStatus === "team_review" && <span className="text-[9px] text-teal-400 italic">Team Review</span>}
+                                                                {twStatus === "awaiting_justification" && <span className="text-[9px] text-yellow-500 italic">Awaiting Lead</span>}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Per-team rejection input */}
+                                                        {isRejectingThisTeam && (
+                                                            <div className="bg-red-500/5 border-t border-red-500/20 px-8 py-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                                <input
+                                                                    value={rejectTeamReason}
+                                                                    onChange={e => setRejectTeamReason(e.target.value)}
+                                                                    placeholder="Reason for rejection (required)..."
+                                                                    className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                                                                    autoFocus
+                                                                    onKeyDown={e => {
+                                                                        if (e.key === "Enter" && rejectTeamReason.trim()) {
+                                                                            handleRejectTeam(docId, item, team, rejectTeamReason.trim())
+                                                                            setRejectingTeamInfo(null)
+                                                                            setRejectTeamReason("")
+                                                                        }
+                                                                        if (e.key === "Escape") {
+                                                                            setRejectingTeamInfo(null)
+                                                                            setRejectTeamReason("")
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (rejectTeamReason.trim()) {
+                                                                            handleRejectTeam(docId, item, team, rejectTeamReason.trim())
+                                                                            setRejectingTeamInfo(null)
+                                                                            setRejectTeamReason("")
+                                                                        }
+                                                                    }}
+                                                                    disabled={!rejectTeamReason.trim()}
+                                                                    className="text-[9px] px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                >
+                                                                    Reject
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => { setRejectingTeamInfo(null); setRejectTeamReason("") }}
+                                                                    className="text-[9px] px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Per-team expanded: evidence + comments */}
+                                                        {isTeamExpanded && (
+                                                            <div className="bg-muted/5 border-t border-border/10 px-8 py-3 space-y-3">
+                                                                <div>
+                                                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                                                    <p className="text-xs text-foreground/80 italic">{safeStr(tw?.evidence_quote || item.evidence_quote)}</p>
+                                                                </div>
+                                                                <CommentThread
+                                                                    comments={tw?.comments || []}
+                                                                    currentUser={userName}
+                                                                    currentRole="compliance_officer"
+                                                                    onAddComment={async (text) => {
+                                                                        const newComment: ActionableComment = {
+                                                                            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                                                                            author: userName,
+                                                                            role: "compliance_officer",
+                                                                            text,
+                                                                            timestamp: new Date().toISOString(),
+                                                                        }
+                                                                        const existing = tw?.comments || []
+                                                                        await handleUpdate(docId, item.id, { comments: [...existing, newComment] }, team)
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+
+                                            {/* ── Single-team rejection reason input ── */}
+                                            {!multi && rejectingItem?.item.id === item.id && rejectingItem.docId === docId && (
                                                 <div className="bg-red-500/5 border-t border-red-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                     <input
                                                         value={rejectReason}
@@ -737,10 +987,31 @@ export default function DashboardPage() {
                                                 </div>
                                             )}
 
-                                            {/* Expanded: Comment thread */}
-                                            {isExpanded && (
+                                            {/* ── Unpublish confirmation ── */}
+                                            {unpublishingItem?.itemId === item.id && unpublishingItem.docId === docId && (
+                                                <div className="bg-amber-500/5 border-t border-amber-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                    <span className="text-xs text-amber-500 font-medium">Unpublish this actionable? It will return to the Actionables page with submissions reset.</span>
+                                                    <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                                                        <button
+                                                            onClick={() => handleUnpublish(docId, item)}
+                                                            className="text-[10px] px-2.5 py-1.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 font-medium transition-colors"
+                                                        >
+                                                            Confirm Unpublish
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setUnpublishingItem(null)}
+                                                            className="text-[10px] px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* ── Single-team expanded: justification + rejection + comments ── */}
+                                            {!multi && isExpanded && (
                                                 <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
-                                                    {/* Pending justification review banner */}
                                                     {item.justification && item.justification_status === "pending_review" && (
                                                         <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
                                                             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
@@ -757,7 +1028,6 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {/* Reviewed justification info */}
                                                     {item.justification && item.justification_status === "reviewed" && (
                                                         <div className="flex items-start gap-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-4 py-3">
                                                             <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
@@ -768,7 +1038,6 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {/* Rejection reason banner */}
                                                     {taskStatus === "reworking" && item.rejection_reason && (
                                                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
                                                             <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
@@ -776,99 +1045,6 @@ export default function DashboardPage() {
                                                                 <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
                                                                 <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
                                                             </div>
-                                                        </div>
-                                                    )}
-                                                    {/* Multi-team: Full per-team implementation blocks */}
-                                                    {isMultiTeam(item) && (
-                                                        <div className="space-y-3">
-                                                            <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Per-Team Implementation</p>
-                                                            {(item.assigned_teams || []).map(team => {
-                                                                const tw = item.team_workflows?.[team]
-                                                                const twStatus = (tw?.task_status || "assigned") as TaskStatus
-                                                                const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
-                                                                const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
-                                                                const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
-                                                                return (
-                                                                    <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
-                                                                        {/* Team header with status */}
-                                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>{team}</span>
-                                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-medium", twStyle.bg, twStyle.text)}>{twStyle.label}</span>
-                                                                            {tw?.deadline && <span className="text-[9px] text-muted-foreground/50"><Calendar className="h-2.5 w-2.5 inline" /> {tw.deadline.split("T")[0]}</span>}
-                                                                            {tw?.evidence_files && tw.evidence_files.length > 0 && <span className="text-[9px] text-muted-foreground/50"><Paperclip className="h-2.5 w-2.5 inline" /> {tw.evidence_files.length}</span>}
-                                                                            {twStatus === "review" && (
-                                                                                <div className="flex items-center gap-1 ml-auto">
-                                                                                    <button
-                                                                                        onClick={() => handleApproveTeam(docId, item, team)}
-                                                                                        className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
-                                                                                    >
-                                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> Approve
-                                                                                    </button>
-                                                                                    <button
-                                                                                        onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
-                                                                                        className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
-                                                                                    >
-                                                                                        <XCircle className="h-2.5 w-2.5" /> Reject
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                            {twStatus === "completed" && <span className="text-[9px] text-emerald-400 italic ml-auto">Approved</span>}
-                                                                        </div>
-                                                                        {/* Implementation */}
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
-                                                                            <p className="text-xs text-foreground/80">{safeStr(tw?.implementation_notes || item.implementation_notes)}</p>
-                                                                        </div>
-                                                                        {/* Evidence */}
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
-                                                                            <p className="text-xs text-foreground/80 italic">{safeStr(tw?.evidence_quote || item.evidence_quote)}</p>
-                                                                        </div>
-                                                                        {/* Per-team rejection reason input */}
-                                                                        {isRejectingThisTeam && (
-                                                                            <div className="flex items-center gap-2 mt-1.5">
-                                                                                <input
-                                                                                    value={rejectTeamReason}
-                                                                                    onChange={e => setRejectTeamReason(e.target.value)}
-                                                                                    placeholder="Reason for rejection (required)..."
-                                                                                    className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
-                                                                                    autoFocus
-                                                                                    onKeyDown={e => {
-                                                                                        if (e.key === "Enter" && rejectTeamReason.trim()) {
-                                                                                            handleRejectTeam(docId, item, team, rejectTeamReason.trim())
-                                                                                            setRejectingTeamInfo(null)
-                                                                                            setRejectTeamReason("")
-                                                                                        }
-                                                                                        if (e.key === "Escape") {
-                                                                                            setRejectingTeamInfo(null)
-                                                                                            setRejectTeamReason("")
-                                                                                        }
-                                                                                    }}
-                                                                                />
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        if (rejectTeamReason.trim()) {
-                                                                                            handleRejectTeam(docId, item, team, rejectTeamReason.trim())
-                                                                                            setRejectingTeamInfo(null)
-                                                                                            setRejectTeamReason("")
-                                                                                        }
-                                                                                    }}
-                                                                                    disabled={!rejectTeamReason.trim()}
-                                                                                    className="text-[9px] px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                                                                >
-                                                                                    Reject
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => { setRejectingTeamInfo(null); setRejectTeamReason("") }}
-                                                                                    className="text-[9px] px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
-                                                                                >
-                                                                                    Cancel
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )
-                                                            })}
                                                         </div>
                                                     )}
                                                     <CommentThread

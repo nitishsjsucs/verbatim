@@ -11,15 +11,15 @@ async function migrate() {
     const db = client.db(dbName);
     const col = db.collection("teams");
 
-    // 1. Fix Mixed Team Projects → purple
+    // 1. Fix Mixed Team → purple
     const r1 = await col.updateOne(
-        { name: "Mixed Team Projects" },
+        { name: "Mixed Team" },
         { $set: {
             colors: { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
             summary: "System-generated classification for actionables assigned to multiple teams.",
         }}
     );
-    console.log("Mixed Team Projects → purple:", r1.modifiedCount);
+    console.log("Mixed Team → purple:", r1.modifiedCount);
 
     // 2. Remove stale test team
     const r2 = await col.deleteOne({ name: "TEAM TEST" });

@@ -2730,30 +2730,25 @@ def rename_chat_channel(channel: str, body: RenameChatChannelRequest, role: str 
 # Dynamic Teams Management API
 # ---------------------------------------------------------------------------
 
-SYSTEM_TEAM = "Mixed Team Projects"
+SYSTEM_TEAM = "Mixed Team"
 
 # Color palette for auto-assigning to new teams
 _TEAM_COLOR_PALETTE = [
-    {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"},
-    {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"},
-    {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"},
-    {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"},
-    {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"},
-    {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"},
-    {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"},
-    {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"},
-    {"bg": "bg-rose-500/10", "text": "text-rose-400", "header": "bg-rose-500"},
-    {"bg": "bg-teal-500/10", "text": "text-teal-400", "header": "bg-teal-500"},
-    {"bg": "bg-lime-500/10", "text": "text-lime-400", "header": "bg-lime-500"},
-    {"bg": "bg-orange-500/10", "text": "text-orange-400", "header": "bg-orange-500"},
-    {"bg": "bg-amber-500/10", "text": "text-amber-400", "header": "bg-amber-500"},
+    {"bg": "bg-cyan-500/10",    "text": "text-cyan-400",    "header": "bg-cyan-500"},
+    {"bg": "bg-rose-500/10",    "text": "text-rose-400",    "header": "bg-rose-500"},
     {"bg": "bg-emerald-500/10", "text": "text-emerald-400", "header": "bg-emerald-500"},
-    {"bg": "bg-red-500/10", "text": "text-red-400", "header": "bg-red-500"},
-    {"bg": "bg-yellow-500/10", "text": "text-yellow-400", "header": "bg-yellow-500"},
-    {"bg": "bg-green-500/10", "text": "text-green-400", "header": "bg-green-500"},
-    {"bg": "bg-stone-500/10", "text": "text-stone-400", "header": "bg-stone-500"},
-    {"bg": "bg-slate-500/10", "text": "text-slate-400", "header": "bg-slate-500"},
-    {"bg": "bg-neutral-500/10", "text": "text-neutral-400", "header": "bg-neutral-500"},
+    {"bg": "bg-amber-500/10",   "text": "text-amber-400",   "header": "bg-amber-500"},
+    {"bg": "bg-blue-500/10",    "text": "text-blue-400",    "header": "bg-blue-500"},
+    {"bg": "bg-pink-500/10",    "text": "text-pink-400",    "header": "bg-pink-500"},
+    {"bg": "bg-lime-500/10",    "text": "text-lime-400",    "header": "bg-lime-500"},
+    {"bg": "bg-indigo-500/10",  "text": "text-indigo-400",  "header": "bg-indigo-500"},
+    {"bg": "bg-orange-500/10",  "text": "text-orange-400",  "header": "bg-orange-500"},
+    {"bg": "bg-teal-500/10",    "text": "text-teal-400",    "header": "bg-teal-500"},
+    {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"},
+    {"bg": "bg-sky-500/10",     "text": "text-sky-400",     "header": "bg-sky-500"},
+    {"bg": "bg-red-500/10",     "text": "text-red-400",     "header": "bg-red-500"},
+    {"bg": "bg-violet-500/10",  "text": "text-violet-400",  "header": "bg-violet-500"},
+    {"bg": "bg-yellow-500/10",  "text": "text-yellow-400",  "header": "bg-yellow-500"},
 ]
 
 MIXED_TEAM_COLORS = {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}
@@ -2771,10 +2766,15 @@ def _color_key_to_classes(color_key: str) -> dict:
 
 
 def _ensure_system_team():
-    """Ensure the Mixed Team Projects system team always exists with correct purple color."""
+    """Ensure the Mixed Team system team always exists with correct purple color."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
+    # Rename legacy "Mixed Team Projects" → "Mixed Team" if it still exists
+    old = col.find_one({"name": "Mixed Team Projects"})
+    if old:
+        col.update_one({"name": "Mixed Team Projects"}, {"$set": {"name": SYSTEM_TEAM}})
+        logger.info("Renamed system team: Mixed Team Projects → %s", SYSTEM_TEAM)
     existing = col.find_one({"name": SYSTEM_TEAM})
     if not existing:
         col.insert_one({

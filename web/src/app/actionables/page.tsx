@@ -270,13 +270,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
-                    {/* Team tag - shows "Mixed Team Projects" when multiple teams selected (live switch) */}
+                    {/* Risk icon — before team tag */}
+                    <RiskIcon modality={item.modality} />
+
+                    {/* Team tag - shows "Mixed Team" when multiple teams selected (live switch) */}
                     <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
                         {getClassification(item)}
                     </span>
-
-                    {/* Risk icon */}
-                    <RiskIcon modality={item.modality} />
 
                     {/* Actionable text */}
                     <div className="flex-1 min-w-0">
@@ -434,13 +434,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 value={deadlineDate}
                                                 min={new Date().toISOString().split("T")[0]}
                                                 onChange={e => setDeadlineDate(e.target.value)}
-                                                className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="w-44 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                             <input
                                                 type="time"
                                                 value={deadlineTime}
                                                 onChange={e => setDeadlineTime(e.target.value)}
-                                                className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                             <button
                                                 onClick={handleSaveDeadline}
@@ -909,7 +909,7 @@ export default function ActionablesPage() {
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                // Include classification in search so "Mixed Team Projects" is searchable
+                // Include classification in search so "Mixed Team" is searchable
                 const classification = getClassification(item)
                 const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)} ${classification}`.toLowerCase()
                 if (!searchable.includes(q)) return false
@@ -919,11 +919,11 @@ export default function ActionablesPage() {
     }, [allItems, docFilter, riskFilter, searchQuery])
 
     // Group by team/classification for the "by-team" view
-    // Multi-team items are grouped under "Mixed Team Projects" (system-generated classification)
+    // Multi-team items are grouped under "Mixed Team" (system-generated classification)
     const byTeam = React.useMemo(() => {
         const teams: Record<string, { item: ActionableItem; docId: string; docName: string }[]> = {}
         for (const entry of filtered) {
-            // Use getClassification to determine grouping - multi-team items go to "Mixed Team Projects"
+            // Use getClassification to determine grouping - multi-team items go to "Mixed Team"
             const classification = getClassification(entry.item)
             if (!teams[classification]) teams[classification] = []
             teams[classification].push(entry)
@@ -931,12 +931,12 @@ export default function ActionablesPage() {
         return teams
     }, [filtered])
 
-    // Ordered team keys: Mixed Team Projects first (if exists), then regular teams
+    // Ordered team keys: Mixed Team first (if exists), then regular teams
     const orderedTeamKeys = React.useMemo(() => {
         const keys = Object.keys(byTeam)
         const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
         if (mixedIndex > -1) {
-            // Move Mixed Team Projects to the front
+            // Move Mixed Team to the front
             keys.splice(mixedIndex, 1)
             return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
         }

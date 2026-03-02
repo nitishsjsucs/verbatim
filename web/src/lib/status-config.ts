@@ -102,7 +102,7 @@ export const RISK_OPTIONS: ActionableModality[] = ["High Risk", "Medium Risk", "
 
 export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: string }> = {
     Other:                    { bg: "bg-zinc-500/10",   text: "text-zinc-400",   header: "bg-zinc-500" },
-    "Mixed Team Projects":    { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
+    "Mixed Team":             { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
 }
 
 /**
@@ -112,7 +112,7 @@ export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; heade
 export function syncTeamColors(teams: { name: string; colors: { bg: string; text: string; header: string } }[]) {
     // Clear existing entries except keep fallbacks
     for (const key of Object.keys(WORKSTREAM_COLORS)) {
-        if (key !== "Other" && key !== "Mixed Team Projects") {
+        if (key !== "Other" && key !== "Mixed Team") {
             delete WORKSTREAM_COLORS[key]
         }
     }
@@ -133,7 +133,7 @@ export function getWorkstreamClass(name: string): string {
  * Returns the keys of WORKSTREAM_COLORS excluding system teams.
  */
 export function getWorkstreamOptions(): string[] {
-    return Object.keys(WORKSTREAM_COLORS).filter(k => k !== "Mixed Team Projects")
+    return Object.keys(WORKSTREAM_COLORS).filter(k => k !== "Mixed Team")
 }
 
 // ─── Task Status Styles (Tailwind — semi-transparent pills) ──────────────────
