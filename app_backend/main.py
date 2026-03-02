@@ -1326,6 +1326,17 @@ def serve_evidence_file(filename: str):
     return FileResponse(str(file_path), filename=filename)
 
 
+@app.delete("/evidence/files/{filename}")
+def delete_evidence_file(filename: str):
+    """Delete an uploaded evidence file from disk."""
+    sanitized = Path(filename).name
+    file_path = EVIDENCE_DIR / sanitized
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    file_path.unlink()
+    return {"detail": "deleted"}
+
+
 @app.post("/documents/{doc_id}/actionables")
 def create_manual_actionable(doc_id: str, body: dict = Body(...)):
     """Create a manually-added actionable for a document."""

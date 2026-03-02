@@ -24,7 +24,7 @@ import {
     Paperclip, Calendar, Save,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc, Users,
-    Undo2,
+    Undo2, FileText, ExternalLink, Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -935,6 +935,29 @@ export default function DashboardPage() {
                                                         {/* Per-team expanded: 2-column layout */}
                                                         {isTeamExpanded && (
                                                             <div className="bg-muted/5 border-t border-border/10 px-8 py-3">
+                                                                {/* Approve/Reject buttons for items under review */}
+                                                                {twStatus === "review" && (
+                                                                    <div className="flex items-center gap-3 mb-3">
+                                                                        <button
+                                                                            onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() }, team)}
+                                                                            className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                        >
+                                                                            <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Complete
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const reason = prompt("Reason for rejection:")
+                                                                                if (reason) {
+                                                                                    handleUpdate(docId, item.id, { task_status: "reworking", rejection_reason: reason }, team)
+                                                                                }
+                                                                            }}
+                                                                            className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
+                                                                        >
+                                                                            <XCircle className="h-3.5 w-3.5" /> Reject for Rework
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+
                                                                 <div className="grid grid-cols-2 gap-4">
                                                                     <div className="space-y-3">
                                                                         <div>
@@ -945,8 +968,61 @@ export default function DashboardPage() {
                                                                             <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                                                             <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(tw?.evidence_quote || item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                                                                         </div>
+
+                                                                        {/* Evidence Files */}
+                                                                        {(tw?.evidence_files && tw.evidence_files.length > 0) && (
+                                                                            <div>
+                                                                                <div className="flex items-center gap-2 mb-2">
+                                                                                    <Paperclip className="h-3.5 w-3.5 text-primary/60" />
+                                                                                    <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
+                                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{tw.evidence_files.length}</span>
+                                                                                </div>
+                                                                                <div className="space-y-1.5">
+                                                                                    {tw.evidence_files.map((file, idx) => {
+                                                                                        const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
+                                                                                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
+                                                                                        return (
+                                                                                            <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
+                                                                                                <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                                                                                                    <FileText className="h-3.5 w-3.5 text-primary/70" />
+                                                                                                </div>
+                                                                                                <div className="flex-1 min-w-0">
+                                                                                                    <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
+                                                                                                    <p className="text-[9px] text-muted-foreground/40">
+                                                                                                        Uploaded {formatDate(file.uploaded_at)}
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                                <div className="flex items-center gap-1 shrink-0">
+                                                                                                    {fileUrl && (
+                                                                                                        <>
+                                                                                                            <a
+                                                                                                                href={fileUrl}
+                                                                                                                target="_blank"
+                                                                                                                rel="noopener noreferrer"
+                                                                                                                className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                                                                                title="Open in new tab"
+                                                                                                            >
+                                                                                                                <ExternalLink className="h-3 w-3" />
+                                                                                                            </a>
+                                                                                                            <a
+                                                                                                                href={fileUrl}
+                                                                                                                download={file.name}
+                                                                                                                className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                                                                                title="Download"
+                                                                                                            >
+                                                                                                                <Download className="h-3 w-3" />
+                                                                                                            </a>
+                                                                                                        </>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        )
+                                                                                    })}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                    <div>
+                                                                    <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                                                         <CommentThread
                                                                             comments={tw?.comments || []}
                                                                             currentUser={userName}
@@ -1075,13 +1151,93 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {/* 2-column: left=impl, right=comments (full height) */}
+                                                    {/* Approve/Reject buttons for items under review */}
+                                                    {taskStatus === "review" && (
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            <button
+                                                                onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
+                                                                className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                            >
+                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Complete
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const reason = prompt("Reason for rejection:")
+                                                                    if (reason) {
+                                                                        handleUpdate(docId, item.id, { task_status: "reworking", rejection_reason: reason })
+                                                                    }
+                                                                }}
+                                                                className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
+                                                            >
+                                                                <XCircle className="h-3.5 w-3.5" /> Reject for Rework
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 2-column: left=impl+evidence, right=comments (full height) */}
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-3">
                                                             <div>
                                                                 <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                                             </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
+                                                            </div>
+
+                                                            {/* Evidence Files */}
+                                                            {(item.evidence_files && item.evidence_files.length > 0) && (
+                                                                <div>
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        <Paperclip className="h-3.5 w-3.5 text-primary/60" />
+                                                                        <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
+                                                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{item.evidence_files.length}</span>
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        {item.evidence_files.map((file, idx) => {
+                                                                            const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
+                                                                            const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
+                                                                            return (
+                                                                                <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
+                                                                                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                                                                                        <FileText className="h-3.5 w-3.5 text-primary/70" />
+                                                                                    </div>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
+                                                                                        <p className="text-[9px] text-muted-foreground/40">
+                                                                                            Uploaded {formatDate(file.uploaded_at)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                                        {fileUrl && (
+                                                                                            <>
+                                                                                                <a
+                                                                                                    href={fileUrl}
+                                                                                                    target="_blank"
+                                                                                                    rel="noopener noreferrer"
+                                                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                                                                    title="Open in new tab"
+                                                                                                >
+                                                                                                    <ExternalLink className="h-3 w-3" />
+                                                                                                </a>
+                                                                                                <a
+                                                                                                    href={fileUrl}
+                                                                                                    download={file.name}
+                                                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                                                                    title="Download"
+                                                                                                >
+                                                                                                    <Download className="h-3 w-3" />
+                                                                                                </a>
+                                                                                            </>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                                             <CommentThread

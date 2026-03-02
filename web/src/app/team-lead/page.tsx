@@ -8,6 +8,7 @@ import {
     submitJustification,
     updateActionable,
     uploadEvidence,
+    deleteEvidence,
 } from "@/lib/api"
 import {
     ActionableItem,
@@ -157,6 +158,7 @@ function TeamLeadContent() {
                 name: fileData.filename,
                 url: fileData.url,
                 uploaded_at: new Date().toISOString(),
+                stored_name: fileData.stored_name,
             }
             const updatedFiles = [...(item.evidence_files || []), newFile]
             await handleUpdate(docId, itemId, { evidence_files: updatedFiles })
@@ -671,9 +673,27 @@ function OversightRow({
     }
 
     const handleDeleteFile = async (idx: number) => {
+        const file = files[idx]
+        if (!file) return
         const updated = [...files]
         updated.splice(idx, 1)
-        await onUpdate(docId, item.id, { evidence_files: updated })
+        try {
+            await onUpdate(docId, item.id, { evidence_files: updated })
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to update task")
+            return
+        }
+
+        const storedName = file.stored_name || file.url?.split("/").pop()
+        if (storedName) {
+            try {
+                await deleteEvidence(storedName)
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "File removed from task but failed to delete from storage")
+                return
+            }
+        }
+
         toast.success("File removed")
     }
 

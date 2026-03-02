@@ -9,6 +9,7 @@ import {
     fetchAllActionables,
     updateActionable,
     uploadEvidence,
+    deleteEvidence,
 } from "@/lib/api"
 import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, getTeamView, isMultiTeam, getClassification, MIXED_TEAM_CLASSIFICATION } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
@@ -114,9 +115,27 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     }
 
     const handleDeleteFile = async (idx: number) => {
+        const file = files[idx]
+        if (!file) return
         const updated = [...files]
         updated.splice(idx, 1)
-        await onUpdate(docId, item.id, { evidence_files: updated })
+        try {
+            await onUpdate(docId, item.id, { evidence_files: updated })
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to update task")
+            return
+        }
+
+        const storedName = file.stored_name || file.url?.split("/").pop()
+        if (storedName) {
+            try {
+                await deleteEvidence(storedName)
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "File removed from task but failed to delete from storage")
+                return
+            }
+        }
+
         toast.success("File removed")
     }
 
@@ -446,7 +465,7 @@ function TeamBoardContent() {
     const handleEvidenceUpload = React.useCallback(async (docId: string, itemId: string, file: File) => {
         try {
             const result = await uploadEvidence(file)
-            const entry = { name: file.name, url: result.url, uploaded_at: new Date().toISOString() }
+            const entry = { name: file.name, url: result.url, uploaded_at: new Date().toISOString(), stored_name: result.stored_name }
             // Use viewItems to get team-projected evidence for multi-team items
             const item = viewItems.find(e => e.item.id === itemId)
             const existing = item?.item.evidence_files || []

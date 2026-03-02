@@ -265,6 +265,13 @@ export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" |
 
 // Per-team workflow state for multi-team actionables
 // Each team has its own implementation, evidence, status, and approval flow
+export interface EvidenceFile {
+    name: string;
+    url: string;
+    uploaded_at: string;
+    stored_name?: string;
+}
+
 export interface TeamWorkflow {
     task_status: TaskStatus;
     implementation_notes?: string;  // Per-team implementation text
@@ -281,7 +288,7 @@ export interface TeamWorkflow {
     justification_by?: string;
     justification_at?: string;
     justification_status?: string;
-    evidence_files?: { name: string; url: string; uploaded_at: string }[];
+    evidence_files?: EvidenceFile[];
     comments?: ActionableComment[];
     completion_date?: string;
     deadline?: string;  // Per-team deadline for mixed group projects
@@ -306,7 +313,7 @@ export interface ActionableItem {
     completion_date?: string;    // ISO datetime when task is completed
     reviewer_comments?: string;  // Comments from compliance officer on rejection/rework
     rejection_reason?: string;   // Reason provided when CO or team reviewer rejects a task
-    evidence_files?: { name: string; url: string; uploaded_at: string }[];
+    evidence_files?: EvidenceFile[];
     comments?: ActionableComment[];  // Thread of comments between team & compliance officer
     // Team reviewer audit fields
     submitted_at?: string;           // ISO datetime when team member submitted for review

@@ -60,6 +60,22 @@ export async function ingestDocument(file: File, force: boolean = false): Promis
     return res.json();
 }
 
+export async function deleteEvidence(filename: string): Promise<void> {
+    const encoded = encodeURIComponent(filename);
+    const res = await apiFetch(`/evidence/files/${encoded}`, {
+        method: 'DELETE',
+    });
+    if (!res.ok) {
+        let error: { detail?: string } | undefined;
+        try {
+            error = await res.json();
+        } catch {
+            /* noop */
+        }
+        throw new Error(error?.detail || 'Failed to delete evidence');
+    }
+}
+
 export async function runQuery(req: QueryRequest): Promise<QueryResponse> {
     const res = await apiFetch(`/query`, {
         method: 'POST',
