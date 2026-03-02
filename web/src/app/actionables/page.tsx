@@ -434,13 +434,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 value={deadlineDate}
                                                 min={new Date().toISOString().split("T")[0]}
                                                 onChange={e => setDeadlineDate(e.target.value)}
-                                                className="w-44 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="w-48 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                             <input
                                                 type="time"
                                                 value={deadlineTime}
                                                 onChange={e => setDeadlineTime(e.target.value)}
-                                                className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="w-20 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                             <button
                                                 onClick={handleSaveDeadline}
@@ -518,13 +518,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             value={draft.date}
                                                             min={new Date().toISOString().split("T")[0]}
                                                             onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, date: e.target.value } }))}
-                                                            className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                            className="w-48 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                         <input
                                                             type="time"
                                                             value={draft.time}
                                                             onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, time: e.target.value } }))}
-                                                            className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus-border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                            className="w-20 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                         <button
                                                             onClick={async () => {
@@ -1148,13 +1148,13 @@ export default function ActionablesPage() {
                                 value={globalDeadline}
                                 min={todayStr}
                                 onChange={e => setGlobalDeadline(e.target.value)}
-                                className="w-44 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                className="w-48 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                             />
                             <input
                                 type="time"
                                 value={globalDeadlineTime}
                                 onChange={e => setGlobalDeadlineTime(e.target.value)}
-                                className="w-28 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                className="w-20 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                             />
                             <button
                                 onClick={handleSaveGlobalDeadline}

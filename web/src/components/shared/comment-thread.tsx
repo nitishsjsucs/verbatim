@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2 } from "lucide-react"
+import { MessageSquare, Send, Loader2, Trash2, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ActionableComment } from "@/lib/types"
 import { ROLE_BADGE } from "@/lib/status-config"
@@ -11,6 +11,7 @@ interface CommentThreadProps {
     currentUser: string
     currentRole: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead"
     onAddComment?: (text: string) => Promise<void>
+    onClearChat?: () => Promise<void>
     readOnly?: boolean
 }
 
@@ -33,9 +34,11 @@ function formatTimestamp(iso: string): string {
     }
 }
 
-export function CommentThread({ comments, currentUser, currentRole, onAddComment, readOnly }: CommentThreadProps) {
+export function CommentThread({ comments, currentUser, currentRole, onAddComment, onClearChat, readOnly }: CommentThreadProps) {
     const [draft, setDraft] = React.useState("")
     const [sending, setSending] = React.useState(false)
+    const [showClearConfirm, setShowClearConfirm] = React.useState(false)
+    const [clearing, setClearing] = React.useState(false)
     const scrollRef = React.useRef<HTMLDivElement>(null)
 
     // Auto-scroll to bottom when new comments arrive
@@ -78,7 +81,47 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                 {comments.length > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{comments.length}</span>
                 )}
+                {onClearChat && comments.length > 0 && !showClearConfirm && (
+                    <button
+                        onClick={() => setShowClearConfirm(true)}
+                        className="ml-auto inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded text-muted-foreground/40 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                        title="Clear all comments"
+                    >
+                        <Trash2 className="h-2.5 w-2.5" /> Clear
+                    </button>
+                )}
             </div>
+
+            {/* Clear chat confirmation */}
+            {showClearConfirm && (
+                <div className="flex items-center gap-2 mb-2 bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">
+                    <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />
+                    <span className="text-[10px] text-red-500 font-medium">Clear all comments?</span>
+                    <div className="flex items-center gap-1 ml-auto shrink-0">
+                        <button
+                            onClick={async () => {
+                                setClearing(true)
+                                try {
+                                    await onClearChat?.()
+                                } finally {
+                                    setClearing(false)
+                                    setShowClearConfirm(false)
+                                }
+                            }}
+                            disabled={clearing}
+                            className="text-[9px] px-2 py-1 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40"
+                        >
+                            {clearing ? "Clearing..." : "Confirm"}
+                        </button>
+                        <button
+                            onClick={() => setShowClearConfirm(false)}
+                            className="text-[9px] px-1.5 py-1 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Messages area */}
             <div

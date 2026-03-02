@@ -468,6 +468,7 @@ function TeamReviewContent() {
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onAddComment={handleAddComment}
+                                            onClearChat={async (docId, itemId) => handleUpdate(docId, itemId, { comments: [] })}
                                         />
                                     ))}
                                 </>
@@ -510,6 +511,7 @@ function TeamReviewContent() {
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onAddComment={handleAddComment}
+                                            onClearChat={async (docId, itemId) => handleUpdate(docId, itemId, { comments: [] })}
                                         />
                                     ))}
                                 </>
@@ -533,6 +535,7 @@ function ReviewRow({
     onApprove,
     onReject,
     onAddComment,
+    onClearChat,
 }: {
     item: ActionableItem
     docId: string
@@ -542,6 +545,7 @@ function ReviewRow({
     onApprove: (docId: string, item: ActionableItem) => Promise<void>
     onReject: (docId: string, item: ActionableItem, reason: string) => Promise<void>
     onAddComment: (docId: string, item: ActionableItem, text: string) => Promise<void>
+    onClearChat: (docId: string, itemId: string) => Promise<void>
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -712,7 +716,7 @@ function ReviewRow({
 
             {/* Expanded: Comment thread */}
             {isExpanded && (
-                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
+                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-3">
                     {/* Rejection reason banner (CO or team reviewer rejection) */}
                     {(taskStatus === "reworking" || taskStatus === "in_progress") && item.rejection_reason && (
                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
@@ -723,12 +727,28 @@ function ReviewRow({
                             </div>
                         </div>
                     )}
-                    <CommentThread
-                        comments={item.comments || []}
-                        currentUser={userName}
-                        currentRole="team_reviewer"
-                        onAddComment={async (text) => onAddComment(docId, item, text)}
-                    />
+                    {/* 2-column: left=impl+evidence, right=comments */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <CommentThread
+                                comments={item.comments || []}
+                                currentUser={userName}
+                                currentRole="team_reviewer"
+                                onAddComment={async (text) => onAddComment(docId, item, text)}
+                                onClearChat={async () => onClearChat(docId, item.id)}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

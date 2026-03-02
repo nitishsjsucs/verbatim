@@ -133,6 +133,18 @@ function TeamLeadContent() {
         }
     }, [userName, allDocs, userTeam])
 
+    const handleClearChat = React.useCallback(async (docId: string, itemId: string) => {
+        try {
+            const updated = await updateActionable(docId, itemId, { comments: [] }, userTeam || undefined)
+            setAllDocs(prev => prev.map(d => {
+                if (d.doc_id !== docId) return d
+                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
+            }))
+        } catch {
+            toast.error("Failed to clear chat")
+        }
+    }, [userTeam])
+
     // Build flat rows — only published items for the lead's team
     const allRows: FlatRow[] = React.useMemo(() => {
         const rows: FlatRow[] = []
@@ -445,6 +457,7 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
+                                            onClearChat={handleClearChat}
                                         />
                                     ))}
                                 </>
@@ -487,6 +500,7 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
+                                            onClearChat={handleClearChat}
                                         />
                                     ))}
                                 </>
@@ -519,6 +533,7 @@ function TeamLeadContent() {
                                     userTeam={userTeam || ""}
                                     onJustify={handleJustify}
                                     onAddComment={handleAddComment}
+                                    onClearChat={handleClearChat}
                                 />
                             ))}
                         </>
@@ -559,6 +574,7 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
+                                            onClearChat={handleClearChat}
                                         />
                                     ))}
                                 </>
@@ -593,6 +609,7 @@ function OversightRow({
     userTeam,
     onJustify,
     onAddComment,
+    onClearChat,
 }: {
     item: ActionableItem
     docId: string
@@ -602,6 +619,7 @@ function OversightRow({
     userTeam: string
     onJustify: (docId: string, itemId: string, justification: string) => Promise<void>
     onAddComment: (docId: string, itemId: string, text: string) => Promise<void>
+    onClearChat: (docId: string, itemId: string) => Promise<void>
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -775,43 +793,50 @@ function OversightRow({
                 </div>
             )}
 
-            {/* Expanded: comments and detail info */}
+            {/* Expanded: 2-column layout */}
             {isExpanded && (
-                <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
-                    {/* Detail info */}
-                    <div className="mb-4 space-y-1.5">
-                        {item.implementation_notes && (
+                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-3">
+                    {/* Banners */}
+                    {item.assigned_to && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">Assigned To</span>
+                            <span className="text-[11px] text-foreground/70">{item.assigned_to}</span>
+                        </div>
+                    )}
+                    {hasJustification && (
+                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-md p-2.5">
+                            <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">Justification</span>
+                            <p className="text-[11px] text-foreground/70 mt-0.5">{item.justification}</p>
+                            {item.justification_by && (
+                                <p className="text-[9px] text-muted-foreground/40 mt-1">— {item.justification_by} {item.justification_at ? `on ${formatDate(item.justification_at)}` : ""}</p>
+                            )}
+                        </div>
+                    )}
+                    {/* 2-column: left=impl+evidence, right=comments */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
                             <div>
-                                <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">Implementation Notes</span>
-                                <p className="text-[11px] text-foreground/70 mt-0.5">{safeStr(item.implementation_notes)}</p>
+                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                             </div>
-                        )}
-                        {item.assigned_to && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">Assigned To</span>
-                                <span className="text-[11px] text-foreground/70">{item.assigned_to}</span>
+                            <div>
+                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                             </div>
-                        )}
-                        {hasJustification && (
-                            <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-md p-2.5 mt-2">
-                                <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">Justification</span>
-                                <p className="text-[11px] text-foreground/70 mt-0.5">{item.justification}</p>
-                                {item.justification_by && (
-                                    <p className="text-[9px] text-muted-foreground/40 mt-1">— {item.justification_by} {item.justification_at ? `on ${formatDate(item.justification_at)}` : ""}</p>
-                                )}
-                            </div>
-                        )}
+                        </div>
+                        <div>
+                            <CommentThread
+                                comments={item.comments || []}
+                                currentUser={userName}
+                                currentRole="team_lead"
+                                onAddComment={taskStatus !== "completed"
+                                    ? async (text) => onAddComment(docId, item.id, text)
+                                    : undefined
+                                }
+                                onClearChat={async () => onClearChat(docId, item.id)}
+                            />
+                        </div>
                     </div>
-
-                    <CommentThread
-                        comments={item.comments || []}
-                        currentUser={userName}
-                        currentRole="team_lead"
-                        onAddComment={taskStatus !== "completed"
-                            ? async (text) => onAddComment(docId, item.id, text)
-                            : undefined
-                        }
-                    />
                 </div>
             )}
         </div>

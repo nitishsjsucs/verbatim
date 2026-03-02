@@ -61,7 +61,15 @@ export default function DashboardPage() {
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
     const [activeCollapsed, setActiveCollapsed] = React.useState(false)
     const [completedCollapsed, setCompletedCollapsed] = React.useState(false)
-    const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
+    const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set())
+    const toggleRow = React.useCallback((key: string) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key)
+            else next.add(key)
+            return next
+        })
+    }, [])
 
     const userName = session?.user?.name || "Compliance Officer"
 
@@ -633,12 +641,19 @@ export default function DashboardPage() {
                                     const rowKey = `${docId}-${item.id}`
                                     const taskStatus = item.task_status || "assigned"
                                     const statusStyle = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
-                                    const isExpanded = expandedRow === rowKey
+                                    const isExpanded = expandedRows.has(rowKey)
                                     const commentCount = (item.comments || []).length
                                     const multi = isMultiTeam(item)
                                     const assignedTeams = item.assigned_teams || []
                                     // Multi-team progress
                                     const teamCompletedCount = multi ? assignedTeams.filter(t => (item.team_workflows?.[t]?.task_status || "") === "completed").length : 0
+                                    // Multi-team parent deadline: latest child deadline
+                                    const parentDeadline = multi
+                                        ? assignedTeams.reduce((latest, t) => {
+                                            const d = item.team_workflows?.[t]?.deadline || ""
+                                            return d > latest ? d : latest
+                                        }, item.deadline || "")
+                                        : (item.deadline || "")
 
                                     return (
                                         <div key={rowKey} className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70")}>
@@ -646,7 +661,7 @@ export default function DashboardPage() {
                                             <div
                                                 className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
                                                 style={{ gridTemplateColumns: gridCols }}
-                                                onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
+                                                onClick={() => toggleRow(rowKey)}
                                             >
                                                 {/* Team */}
                                                 <div className="py-1.5 px-1">
@@ -689,13 +704,15 @@ export default function DashboardPage() {
                                                             onSave={v => handleUpdate(docId, item.id, { deadline: v })}
                                                         />
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                                                        <span className="text-[10px] text-muted-foreground/60" title="Latest child deadline">
+                                                            {parentDeadline ? formatDate(parentDeadline) : "—"}
+                                                        </span>
                                                     )}
                                                 </div>
                                                 {/* Deadline time */}
                                                 <div className="py-1.5 px-1 text-center">
                                                     <span className="text-[10px] text-muted-foreground/60">
-                                                        {!multi ? formatTime(item.deadline) : "—"}
+                                                        {!multi ? formatTime(item.deadline) : (parentDeadline ? formatTime(parentDeadline) : "—")}
                                                     </span>
                                                 </div>
                                                 {/* Evidence */}
@@ -777,7 +794,7 @@ export default function DashboardPage() {
                                                 const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
                                                 const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
                                                 const teamRowKey = `${rowKey}-team-${team}`
-                                                const isTeamExpanded = expandedRow === teamRowKey
+                                                const isTeamExpanded = expandedRows.has(teamRowKey)
                                                 const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
                                                 const teamCommentCount = (tw?.comments || []).length
 
@@ -787,7 +804,7 @@ export default function DashboardPage() {
                                                         <div
                                                             className="grid gap-0 items-center hover:bg-muted/15 transition-colors px-3 cursor-pointer pl-8"
                                                             style={{ gridTemplateColumns: gridCols }}
-                                                            onClick={() => setExpandedRow(isTeamExpanded ? rowKey : teamRowKey)}
+                                                            onClick={() => toggleRow(teamRowKey)}
                                                         >
                                                             {/* Team tag */}
                                                             <div className="py-1.5 px-1">
@@ -915,29 +932,40 @@ export default function DashboardPage() {
                                                             </div>
                                                         )}
 
-                                                        {/* Per-team expanded: evidence + comments */}
+                                                        {/* Per-team expanded: 2-column layout */}
                                                         {isTeamExpanded && (
-                                                            <div className="bg-muted/5 border-t border-border/10 px-8 py-3 space-y-3">
-                                                                <div>
-                                                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
-                                                                    <p className="text-xs text-foreground/80 italic">{safeStr(tw?.evidence_quote || item.evidence_quote)}</p>
+                                                            <div className="bg-muted/5 border-t border-border/10 px-8 py-3">
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                                                            <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(tw?.implementation_notes || item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                                                            <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(tw?.evidence_quote || item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <CommentThread
+                                                                            comments={tw?.comments || []}
+                                                                            currentUser={userName}
+                                                                            currentRole="compliance_officer"
+                                                                            onAddComment={async (text) => {
+                                                                                const newComment: ActionableComment = {
+                                                                                    id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                                                                                    author: userName,
+                                                                                    role: "compliance_officer",
+                                                                                    text,
+                                                                                    timestamp: new Date().toISOString(),
+                                                                                }
+                                                                                const existing = tw?.comments || []
+                                                                                await handleUpdate(docId, item.id, { comments: [...existing, newComment] }, team)
+                                                                            }}
+                                                                            onClearChat={async () => handleUpdate(docId, item.id, { comments: [] }, team)}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                                <CommentThread
-                                                                    comments={tw?.comments || []}
-                                                                    currentUser={userName}
-                                                                    currentRole="compliance_officer"
-                                                                    onAddComment={async (text) => {
-                                                                        const newComment: ActionableComment = {
-                                                                            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                                                                            author: userName,
-                                                                            role: "compliance_officer",
-                                                                            text,
-                                                                            timestamp: new Date().toISOString(),
-                                                                        }
-                                                                        const existing = tw?.comments || []
-                                                                        await handleUpdate(docId, item.id, { comments: [...existing, newComment] }, team)
-                                                                    }}
-                                                                />
                                                             </div>
                                                         )}
                                                     </div>
@@ -1009,9 +1037,10 @@ export default function DashboardPage() {
                                                 </div>
                                             )}
 
-                                            {/* ── Single-team expanded: justification + rejection + comments ── */}
+                                            {/* ── Single-team expanded: 2-column layout ── */}
                                             {!multi && isExpanded && (
-                                                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-4">
+                                                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-3">
+                                                    {/* Banners: justification + rejection */}
                                                     {item.justification && item.justification_status === "pending_review" && (
                                                         <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
                                                             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
@@ -1047,12 +1076,28 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <CommentThread
-                                                        comments={item.comments || []}
-                                                        currentUser={userName}
-                                                        currentRole="compliance_officer"
-                                                        onAddComment={async (text) => handleAddComment(docId, item, text)}
-                                                    />
+                                                    {/* 2-column: left=impl+evidence, right=comments */}
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-3">
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <CommentThread
+                                                                comments={item.comments || []}
+                                                                currentUser={userName}
+                                                                currentRole="compliance_officer"
+                                                                onAddComment={async (text) => handleAddComment(docId, item, text)}
+                                                                onClearChat={async () => handleUpdate(docId, item.id, { comments: [] })}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -1109,7 +1154,7 @@ export default function DashboardPage() {
 
                                         {!isCollapsed && rows.map(({ item, docId }) => {
                                             const rowKey = `completed-${docId}-${item.id}`
-                                            const isExpanded = expandedRow === rowKey
+                                            const isExpanded = expandedRows.has(rowKey)
                                             const commentCount = (item.comments || []).length
 
                                             return (
@@ -1117,7 +1162,7 @@ export default function DashboardPage() {
                                                     <div
                                                         className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
                                                         style={{ gridTemplateColumns: gridCols }}
-                                                        onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
+                                                        onClick={() => toggleRow(rowKey)}
                                                     >
                                                         <div className="py-1.5 px-1">
                                                             <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(getClassification(item)))}>
@@ -1146,12 +1191,27 @@ export default function DashboardPage() {
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
-                                                            <CommentThread
-                                                                comments={item.comments || []}
-                                                                currentUser={userName}
-                                                                currentRole="compliance_officer"
-                                                                onAddComment={async (text) => handleAddComment(docId, item, text)}
-                                                            />
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                                                        <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                                                        <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <CommentThread
+                                                                        comments={item.comments || []}
+                                                                        currentUser={userName}
+                                                                        currentRole="compliance_officer"
+                                                                        onAddComment={async (text) => handleAddComment(docId, item, text)}
+                                                                        onClearChat={async () => handleUpdate(docId, item.id, { comments: [] })}
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
