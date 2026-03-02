@@ -191,11 +191,15 @@ class Synthesizer:
             if self._is_prealloc_enabled():
                 input_token_estimate = len(system_prompt + user_msg) // 4  # rough char-to-token
                 estimated_output = max(4096, int(input_token_estimate * 0.25))
-                # Reasoning tokens count toward max_output_tokens.  When
-                # reasoning is enabled the model may use 2-4× the visible
-                # output tokens internally, so we scale up the budget.
-                if effort != "none":
-                    estimated_output = max(estimated_output * 3, 16384)
+                # Reasoning tokens count toward max_output_tokens.  Scale
+                # budget by effort level — higher effort = more reasoning
+                # token overhead.  Keep floor proportional to input size.
+                _reasoning_multiplier = {"low": 1.5, "medium": 2.5, "high": 3.0}
+                if effort in _reasoning_multiplier:
+                    estimated_output = max(
+                        int(estimated_output * _reasoning_multiplier[effort]),
+                        8192,
+                    )
                 max_tokens_for_call = min(estimated_output, self._settings.llm.max_tokens_long)
                 logger.info(
                     "[BENCHMARK][synthesis_prealloc] input_est=%d estimated_output=%d actual_max=%d effort=%s",

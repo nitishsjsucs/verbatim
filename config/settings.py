@@ -173,22 +173,22 @@ class OptimizationConfig(BaseSettings):
     #
     #   Classify:    gpt-5-mini  (low)      — lightweight classification task
     #   Expand:      gpt-5-mini  (none)     — creative query expansion, no reasoning needed
-    #   Locate:      gpt-5-nano  (medium)   — node selection from tree index
+    #   Locate:      gpt-5-nano  (low)      — node selection from tree index
     #   Reflect:     gpt-5.2     (low)      — retrieval quality assessment
     #   Synthesize:  gpt-5.2     (medium)   — full answer generation with citations
-    #   Verify:      gpt-5-nano  (medium)   — factual verification pass
+    #   Verify:      gpt-5-nano  (low)       — factual verification pass
     stage_model_classify: str = "gpt-5-mini"
     stage_effort_classify: str = "low"
     stage_model_expand: str = "gpt-5-mini"
     stage_effort_expand: str = "low"
     stage_model_locate: str = "gpt-5-nano"
-    stage_effort_locate: str = "medium"
+    stage_effort_locate: str = "low"
     stage_model_reflect: str = "gpt-5.2"
     stage_effort_reflect: str = "low"
     stage_model_synthesize: str = "gpt-5.2"
     stage_effort_synthesize: str = "medium"
     stage_model_verify: str = "gpt-5-nano"
-    stage_effort_verify: str = "medium"
+    stage_effort_verify: str = "low"
 
     # Self-evolving memory toggles (Phase 3 — only active when retrieval_mode="optimized")
     enable_raptor_index: bool = Field(default=True, alias="OPT_RAPTOR_INDEX")

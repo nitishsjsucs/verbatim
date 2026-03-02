@@ -124,9 +124,10 @@ class Verifier:
                 _model = self._settings.llm.model_pro
                 _effort = "medium"
 
-            # Reasoning tokens count toward max_output_tokens — give
-            # reasoning-enabled models extra budget so visible output isn't starved.
-            _verify_max = 16384 if _effort != "none" else self._settings.llm.max_tokens_default
+            # Reasoning tokens count toward max_output_tokens — scale by
+            # effort level to avoid wasting reasoning tokens on small outputs.
+            _effort_budget = {"none": 4096, "low": 8192, "medium": 16384, "high": 16384}
+            _verify_max = _effort_budget.get(_effort, 8192)
 
             result = self._llm.chat_json(
                 messages=[
