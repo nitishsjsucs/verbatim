@@ -89,7 +89,7 @@ class MemoryManager:
             return self._raptor_indexes[doc_id]
         try:
             from memory.raptor_index import RaptorIndex
-            idx = RaptorIndex.load(doc_id, self._db) if self._db else None
+            idx = RaptorIndex.load(doc_id, self._db) if self._db is not None else None
             if idx is None:
                 idx = RaptorIndex(doc_id=doc_id)
             self._raptor_indexes[doc_id] = idx
@@ -104,7 +104,7 @@ class MemoryManager:
             return self._user_memories[user_id]
         try:
             from memory.user_memory import UserMemoryManager
-            mem = UserMemoryManager.load(user_id, self._db) if self._db else None
+            mem = UserMemoryManager.load(user_id, self._db) if self._db is not None else None
             if mem is None:
                 mem = UserMemoryManager(user_id=user_id)
             self._user_memories[user_id] = mem
@@ -119,7 +119,7 @@ class MemoryManager:
             return self._query_intel[doc_id]
         try:
             from memory.query_intelligence import QueryIntelligence
-            qi = QueryIntelligence.load(doc_id, self._db) if self._db else None
+            qi = QueryIntelligence.load(doc_id, self._db) if self._db is not None else None
             if qi is None:
                 qi = QueryIntelligence(doc_id=doc_id)
             self._query_intel[doc_id] = qi
@@ -134,7 +134,7 @@ class MemoryManager:
             return self._retrieval_fb[doc_id]
         try:
             from memory.retrieval_feedback import RetrievalFeedback
-            fb = RetrievalFeedback.load(doc_id, self._db) if self._db else None
+            fb = RetrievalFeedback.load(doc_id, self._db) if self._db is not None else None
             if fb is None:
                 fb = RetrievalFeedback(doc_id=doc_id)
             self._retrieval_fb[doc_id] = fb
@@ -149,7 +149,7 @@ class MemoryManager:
             return self._r2r_fallbacks[doc_id]
         try:
             from memory.r2r_fallback import R2RFallback
-            r2r = R2RFallback.load(doc_id, self._db) if self._db else None
+            r2r = R2RFallback.load(doc_id, self._db) if self._db is not None else None
             if r2r is None:
                 r2r = R2RFallback(doc_id=doc_id)
             self._r2r_fallbacks[doc_id] = r2r

@@ -129,6 +129,11 @@ class LLMClient:
             effort = "medium"
         else:
             effort = "none"
+        # Guard: only gpt-5.2 base supports effort="none".
+        # Mini / nano / pro require at minimum "low".
+        if effort == "none" and model != self._model:
+            effort = "low"
+
         kwargs["reasoning"] = {"effort": effort}
 
         # Temperature only works with reasoning_effort="none"
@@ -192,6 +197,11 @@ class LLMClient:
             effort = "medium"
         else:
             effort = "none"
+        # Guard: only gpt-5.2 base supports effort="none".
+        # Mini / nano / pro require at minimum "low".
+        if effort == "none" and model != self._model:
+            effort = "low"
+
         kwargs["reasoning"] = {"effort": effort}
 
         # Temperature only works with reasoning_effort="none"

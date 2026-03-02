@@ -180,7 +180,7 @@ class OptimizationConfig(BaseSettings):
     stage_model_classify: str = "gpt-5-mini"
     stage_effort_classify: str = "low"
     stage_model_expand: str = "gpt-5-mini"
-    stage_effort_expand: str = "none"
+    stage_effort_expand: str = "low"
     stage_model_locate: str = "gpt-5-nano"
     stage_effort_locate: str = "medium"
     stage_model_reflect: str = "gpt-5.2"
