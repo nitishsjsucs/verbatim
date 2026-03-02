@@ -133,18 +133,6 @@ function TeamLeadContent() {
         }
     }, [userName, allDocs, userTeam])
 
-    const handleClearChat = React.useCallback(async (docId: string, itemId: string) => {
-        try {
-            const updated = await updateActionable(docId, itemId, { comments: [] }, userTeam || undefined)
-            setAllDocs(prev => prev.map(d => {
-                if (d.doc_id !== docId) return d
-                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
-            }))
-        } catch {
-            toast.error("Failed to clear chat")
-        }
-    }, [userTeam])
-
     // Build flat rows — only published items for the lead's team
     const allRows: FlatRow[] = React.useMemo(() => {
         const rows: FlatRow[] = []
@@ -457,7 +445,6 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
-                                            onClearChat={handleClearChat}
                                         />
                                     ))}
                                 </>
@@ -500,7 +487,6 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
-                                            onClearChat={handleClearChat}
                                         />
                                     ))}
                                 </>
@@ -533,7 +519,6 @@ function TeamLeadContent() {
                                     userTeam={userTeam || ""}
                                     onJustify={handleJustify}
                                     onAddComment={handleAddComment}
-                                    onClearChat={handleClearChat}
                                 />
                             ))}
                         </>
@@ -574,7 +559,6 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
-                                            onClearChat={handleClearChat}
                                         />
                                     ))}
                                 </>
@@ -609,7 +593,6 @@ function OversightRow({
     userTeam,
     onJustify,
     onAddComment,
-    onClearChat,
 }: {
     item: ActionableItem
     docId: string
@@ -619,7 +602,6 @@ function OversightRow({
     userTeam: string
     onJustify: (docId: string, itemId: string, justification: string) => Promise<void>
     onAddComment: (docId: string, itemId: string, text: string) => Promise<void>
-    onClearChat: (docId: string, itemId: string) => Promise<void>
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -833,7 +815,6 @@ function OversightRow({
                                     ? async (text) => onAddComment(docId, item.id, text)
                                     : undefined
                                 }
-                                onClearChat={async () => onClearChat(docId, item.id)}
                             />
                         </div>
                     </div>

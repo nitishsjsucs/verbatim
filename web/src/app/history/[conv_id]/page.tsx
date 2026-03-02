@@ -79,7 +79,7 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                 {date && (
                     <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5" />
-                        {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {`${String(date.getDate()).padStart(2, "0")} ${date.toLocaleDateString("en-US", { month: "short" })} ${date.getFullYear()}`} {date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
                     </span>
                 )}
 

@@ -32,19 +32,26 @@ export function normalizeRisk(modality: string): string {
     return map[modality] || (RISK_STYLES[modality] ? modality : "Medium Risk")
 }
 
-/** Format ISO date → "Jan 5, 2025" */
+/** Format ISO date → "05 Jan 2025" */
 export function formatDate(iso: string | undefined): string {
     if (!iso) return "—"
     try {
-        return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        const d = new Date(iso)
+        const day = String(d.getDate()).padStart(2, "0")
+        const month = d.toLocaleDateString("en-US", { month: "short" })
+        const year = d.getFullYear()
+        return `${day} ${month} ${year}`
     } catch { return iso ?? "—" }
 }
 
-/** Format ISO date → "Jan 5" (no year) */
+/** Format ISO date → "05 Jan" (no year) */
 export function formatDateShort(iso: string | undefined): string {
     if (!iso) return "—"
     try {
-        return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        const d = new Date(iso)
+        const day = String(d.getDate()).padStart(2, "0")
+        const month = d.toLocaleDateString("en-US", { month: "short" })
+        return `${day} ${month}`
     } catch { return iso ?? "—" }
 }
 
@@ -52,7 +59,7 @@ export function formatDateShort(iso: string | undefined): string {
 export function formatTime(iso: string | undefined): string {
     if (!iso) return ""
     try {
-        return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+        return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
     } catch { return "" }
 }
 
@@ -100,8 +107,9 @@ export const RISK_OPTIONS: ActionableModality[] = ["High Risk", "Medium Risk", "
 // NOTE: This is now a RUNTIME MUTABLE cache populated from the database via
 // `syncTeamColors()`. It starts with a minimal fallback so early renders work.
 
+export const DEFAULT_WORKSTREAM_COLORS = { bg: "bg-zinc-500/10", text: "text-zinc-400", header: "bg-zinc-500" }
+
 export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; header: string }> = {
-    Other:                    { bg: "bg-zinc-500/10",   text: "text-zinc-400",   header: "bg-zinc-500" },
     "Mixed Team":             { bg: "bg-purple-500/10", text: "text-purple-400", header: "bg-purple-500" },
 }
 
@@ -112,7 +120,7 @@ export const WORKSTREAM_COLORS: Record<string, { bg: string; text: string; heade
 export function syncTeamColors(teams: { name: string; colors: { bg: string; text: string; header: string } }[]) {
     // Clear existing entries except keep fallbacks
     for (const key of Object.keys(WORKSTREAM_COLORS)) {
-        if (key !== "Other" && key !== "Mixed Team") {
+        if (key !== "Mixed Team") {
             delete WORKSTREAM_COLORS[key]
         }
     }

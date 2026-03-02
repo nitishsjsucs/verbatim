@@ -31,7 +31,7 @@ import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, getWorkstreamClass,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { RiskIcon } from "@/components/shared/status-components"
@@ -370,7 +370,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 <div className="flex flex-wrap gap-1.5">
                                     {teamNames.map(team => {
                                         const isSelected = team === item.workstream || (item.assigned_teams || []).includes(team)
-                                        const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                        const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
                                         return (
                                             <button
                                                 key={team}
@@ -474,7 +474,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </p>
                                     {item.assigned_teams!.map(team => {
                                         const tw = item.team_workflows?.[team]
-                                        const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                        const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
                                         const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
                                         const currentTeamDl = draft.date ? `${draft.date}T${draft.time || "23:59"}` : ""
                                         const savedTeamDl = tw?.deadline || ""
@@ -737,12 +737,15 @@ export default function ActionablesPage() {
     const [loading, setLoading] = React.useState(true)
     const [viewTab, setViewTab] = React.useState<ViewTab>("all")
 
-    // Global deadline (header bar)
-    const [globalDeadline, setGlobalDeadline] = React.useState("")
+    // Global deadline (header bar) — defaults to 1 month from now
+    const [globalDeadline, setGlobalDeadline] = React.useState(() => {
+        const d = new Date(); d.setMonth(d.getMonth() + 1)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    })
     const [globalDeadlineTime, setGlobalDeadlineTime] = React.useState("23:59")
     const [globalDeadlineSaved, setGlobalDeadlineSaved] = React.useState(false)
 
-    // Load persisted global deadline from localStorage
+    // Load persisted global deadline from localStorage (overrides default)
     React.useEffect(() => {
         try {
             const saved = localStorage.getItem("actionables_global_deadline")

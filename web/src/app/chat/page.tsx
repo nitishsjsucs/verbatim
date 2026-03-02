@@ -59,10 +59,10 @@ function formatMsgTime(ts: string) {
     yesterday.setDate(yesterday.getDate() - 1)
     const isYesterday = d.toDateString() === yesterday.toDateString()
 
-    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+    const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })
     if (isToday) return time
     if (isYesterday) return `Yesterday ${time}`
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ` ${time}`
+    return `${String(d.getDate()).padStart(2, "0")} ${d.toLocaleDateString("en-US", { month: "short" })} ${time}`
 }
 
 // ─── Chat Content ────────────────────────────────────────────────────────────

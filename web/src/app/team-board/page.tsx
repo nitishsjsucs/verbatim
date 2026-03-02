@@ -355,7 +355,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     currentUser={userName}
                                     currentRole="team_member"
                                     onAddComment={!isReadOnly ? handleAddComment : undefined}
-                                    onClearChat={async () => onUpdate(docId, item.id, { comments: [] })}
                                 />
                             )}
                             {isCompleted && (item.comments || []).length > 0 && (
@@ -363,7 +362,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     comments={item.comments || []}
                                     currentUser={userName}
                                     currentRole="team_member"
-                                    onClearChat={async () => onUpdate(docId, item.id, { comments: [] })}
                                 />
                             )}
                         </div>

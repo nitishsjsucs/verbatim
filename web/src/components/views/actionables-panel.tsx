@@ -531,7 +531,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                 {/* Showing count */}
                 <div className="text-[10px] text-muted-foreground/60">
                     Showing {filtered.length} of {result.total_extracted}
-                    {result.extracted_at && ` · Extracted ${new Date(result.extracted_at).toLocaleDateString()}`}
+                    {result.extracted_at && ` · Extracted ${(() => { const _d = new Date(result.extracted_at); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })} ${_d.getFullYear()}` })()}`}
                 </div>
             </div>
 

@@ -97,7 +97,7 @@ export function EvidencePopover({ files }: { files: EvidenceFile[]; taskStatus?:
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
                                     <p className="text-[9px] text-muted-foreground/40">
-                                        {file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                                        {file.uploaded_at ? (() => { const _d = new Date(file.uploaded_at); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })}` })() : ""}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">

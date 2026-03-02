@@ -126,7 +126,7 @@ function ConversationCard({
                     {updatedDate && (
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {updatedDate.toLocaleDateString()} {updatedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {`${String(updatedDate.getDate()).padStart(2, "0")} ${updatedDate.toLocaleDateString("en-US", { month: "short" })} ${updatedDate.getFullYear()}`} {updatedDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
                         </span>
                     )}
                 </div>

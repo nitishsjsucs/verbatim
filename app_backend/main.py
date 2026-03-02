@@ -1262,7 +1262,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
                     continue
             elif field_name == "workstream":
                 # Accept any string — teams are now dynamic (database-driven)
-                val = str(val) if val else "Other"
+                val = str(val) if val else "Technology"
 
             # Route team-specific fields to team_workflows when multi-team
             if is_team_update and field_name in team_workflow_fields:
@@ -1360,7 +1360,7 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
         modality = Modality.MANDATORY
 
     # Accept any workstream string — teams are now dynamic (database-driven)
-    workstream_str = str(body.get("workstream", "Other"))
+    workstream_str = str(body.get("workstream", "Technology"))
 
     item = AI(
         id=new_id,
@@ -1405,7 +1405,7 @@ def get_approved_by_team():
                 a["doc_id"] = doc_id
                 a["doc_name"] = doc_name
                 assigned = a.get("assigned_teams", [])
-                target_teams = assigned if len(assigned) > 0 else [a.get("workstream", "Other")]
+                target_teams = assigned if len(assigned) > 0 else [a.get("workstream", "Technology")]
                 for ws in target_teams:
                     if ws not in teams:
                         teams[ws] = []
@@ -2906,9 +2906,9 @@ def _cascade_team_delete(db, team_name: str) -> int:
         for a in result.actionables:
             ws = a.workstream.value if hasattr(a.workstream, "value") else str(a.workstream)
 
-            # Single-team item with this workstream → reassign to "Other"
+            # Single-team item with this workstream → reassign to "Technology"
             if ws == team_name and not a.is_multi_team:
-                a.workstream = "Other"
+                a.workstream = "Technology"
                 changed = True
                 reassigned += 1
 
@@ -2930,7 +2930,7 @@ def _cascade_team_delete(db, team_name: str) -> int:
                     a.team_workflows = {}
                     a.assigned_teams = []
                 elif len(a.assigned_teams) == 0:
-                    a.workstream = "Other"
+                    a.workstream = "Technology"
                     a.team_workflows = {}
                     a.assigned_teams = []
 
@@ -3054,7 +3054,6 @@ def seed_default_teams():
         ("Customer Communication", {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"}, "Customer-facing compliance communications"),
         ("Governance", {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"}, "Corporate governance and oversight"),
         ("Legal", {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"}, "Legal review and advisory"),
-        ("Other", {"bg": "bg-zinc-500/10", "text": "text-zinc-400", "header": "bg-zinc-500"}, "Uncategorized or cross-functional items"),
     ]
 
     _ensure_system_team()

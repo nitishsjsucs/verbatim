@@ -314,7 +314,7 @@ export function DocumentList() {
                         <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
                             {doc.ingested_at ? (
                                 <span className="text-muted-foreground/70">
-                                    {new Date(doc.ingested_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                                    {(() => { const _d = new Date(doc.ingested_at); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })} ${_d.getFullYear()}` })()}
                                 </span>
                             ) : (
                                 <span className="text-muted-foreground/60">—</span>

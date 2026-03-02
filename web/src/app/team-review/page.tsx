@@ -468,7 +468,6 @@ function TeamReviewContent() {
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onAddComment={handleAddComment}
-                                            onClearChat={async (docId, itemId) => handleUpdate(docId, itemId, { comments: [] })}
                                         />
                                     ))}
                                 </>
@@ -511,7 +510,6 @@ function TeamReviewContent() {
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onAddComment={handleAddComment}
-                                            onClearChat={async (docId, itemId) => handleUpdate(docId, itemId, { comments: [] })}
                                         />
                                     ))}
                                 </>
@@ -535,7 +533,6 @@ function ReviewRow({
     onApprove,
     onReject,
     onAddComment,
-    onClearChat,
 }: {
     item: ActionableItem
     docId: string
@@ -545,7 +542,6 @@ function ReviewRow({
     onApprove: (docId: string, item: ActionableItem) => Promise<void>
     onReject: (docId: string, item: ActionableItem, reason: string) => Promise<void>
     onAddComment: (docId: string, item: ActionableItem, text: string) => Promise<void>
-    onClearChat: (docId: string, itemId: string) => Promise<void>
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -745,7 +741,6 @@ function ReviewRow({
                                 currentUser={userName}
                                 currentRole="team_reviewer"
                                 onAddComment={async (text) => onAddComment(docId, item, text)}
-                                onClearChat={async () => onClearChat(docId, item.id)}
                             />
                         </div>
                     </div>

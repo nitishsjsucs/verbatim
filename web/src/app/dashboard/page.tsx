@@ -31,7 +31,7 @@ import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk, formatDate, formatTime, formatDateTime, deadlineCategory,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
+    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
@@ -600,7 +600,7 @@ export default function DashboardPage() {
                     {!loading && !activeCollapsed && sortedGroupKeys.map(ws => {
                         const rows = grouped[ws] || []
                         const isCollapsed = collapsedGroups.has(ws)
-                        const wsColors = WORKSTREAM_COLORS[ws] || WORKSTREAM_COLORS.Other
+                        const wsColors = WORKSTREAM_COLORS[ws] || DEFAULT_WORKSTREAM_COLORS
                         const groupCompleted = rows.filter(r => r.item.task_status === "completed").length
                         const pct = rows.length > 0 ? Math.round((groupCompleted / rows.length) * 100) : 0
 
@@ -792,7 +792,7 @@ export default function DashboardPage() {
                                                 const tw = item.team_workflows?.[team]
                                                 const twStatus = (tw?.task_status || "assigned") as TaskStatus
                                                 const twStyle = TASK_STATUS_STYLES[twStatus] || TASK_STATUS_STYLES.assigned
-                                                const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                                const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
                                                 const teamRowKey = `${rowKey}-team-${team}`
                                                 const isTeamExpanded = expandedRows.has(teamRowKey)
                                                 const isRejectingThisTeam = rejectingTeamInfo?.docId === docId && rejectingTeamInfo?.itemId === item.id && rejectingTeamInfo?.team === team
@@ -962,7 +962,6 @@ export default function DashboardPage() {
                                                                                 const existing = tw?.comments || []
                                                                                 await handleUpdate(docId, item.id, { comments: [...existing, newComment] }, team)
                                                                             }}
-                                                                            onClearChat={async () => handleUpdate(docId, item.id, { comments: [] }, team)}
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -1076,25 +1075,20 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {/* 2-column: left=impl+evidence, right=comments */}
+                                                    {/* 2-column: left=impl, right=comments (full height) */}
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-3">
                                                             <div>
                                                                 <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                                             </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
-                                                                <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
-                                                            </div>
                                                         </div>
-                                                        <div>
+                                                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                                             <CommentThread
                                                                 comments={item.comments || []}
                                                                 currentUser={userName}
                                                                 currentRole="compliance_officer"
                                                                 onAddComment={async (text) => handleAddComment(docId, item, text)}
-                                                                onClearChat={async () => handleUpdate(docId, item.id, { comments: [] })}
                                                             />
                                                         </div>
                                                     </div>
@@ -1122,7 +1116,7 @@ export default function DashboardPage() {
                                 const rows = completedByTeam[ws] || []
                                 if (rows.length === 0) return null
                                 const isCollapsed = collapsedCompletedTeams.has(ws)
-                                const wsColors = WORKSTREAM_COLORS[ws] || WORKSTREAM_COLORS.Other
+                                const wsColors = WORKSTREAM_COLORS[ws] || DEFAULT_WORKSTREAM_COLORS
 
                                 return (
                                     <div key={`completed-${ws}`} className="mb-0.5">
@@ -1197,18 +1191,13 @@ export default function DashboardPage() {
                                                                         <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                         <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
-                                                                        <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
-                                                                    </div>
                                                                 </div>
-                                                                <div>
+                                                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                                                     <CommentThread
                                                                         comments={item.comments || []}
                                                                         currentUser={userName}
                                                                         currentRole="compliance_officer"
                                                                         onAddComment={async (text) => handleAddComment(docId, item, text)}
-                                                                        onClearChat={async () => handleUpdate(docId, item.id, { comments: [] })}
                                                                     />
                                                                 </div>
                                                             </div>
@@ -1251,7 +1240,7 @@ function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) =>
         const v = localValue || value
         if (!v) return "—"
         try {
-            return new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            const _d = new Date(v); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })}`
         } catch { return v }
     }, [localValue, value])
 

@@ -2214,9 +2214,13 @@ function UsersTab() {
   const [newName, setNewName] = React.useState("")
   const [newRole, setNewRole] = React.useState("team_member")
   const [newTeam, setNewTeam] = React.useState("")
-  const [newStartDate, setNewStartDate] = React.useState("")
+  const [newStartDate, setNewStartDate] = React.useState(() => {
+    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
   const [creating, setCreating] = React.useState(false)
   const [createResult, setCreateResult] = React.useState<{ email: string; password: string } | null>(null)
+  // Password tracking (email -> password map for recently created users)
+  const [userPasswords, setUserPasswords] = React.useState<Record<string, string>>({})
   // Edit state
   const [editingEmail, setEditingEmail] = React.useState<string | null>(null)
   const [editRole, setEditRole] = React.useState("")
@@ -2273,10 +2277,11 @@ function UsersTab() {
         start_date: newStartDate || undefined,
       })
       setCreateResult({ email: result.generated_email, password: result.default_password })
+      setUserPasswords(prev => ({ ...prev, [result.generated_email]: result.default_password }))
       setNewName("")
       setNewRole("team_member")
       setNewTeam("")
-      setNewStartDate("")
+      { const d = new Date(); setNewStartDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`) }
       loadUsers()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to create user")
@@ -2489,6 +2494,7 @@ function UsersTab() {
                       <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Role</th>
                       <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Team</th>
                       <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
+                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Password</th>
                       <th className="text-right px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -2528,6 +2534,13 @@ function UsersTab() {
                           </td>
                           <td className="px-3 py-2 text-[12px] text-muted-foreground">
                             {u.start_date || "—"}
+                          </td>
+                          <td className="px-3 py-2">
+                            {userPasswords[u.email] ? (
+                              <span className="font-mono text-[11px] text-foreground bg-muted/30 px-2 py-0.5 rounded">{userPasswords[u.email]}</span>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground/40 italic">Not available</span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-right">
                             {isEditing ? (
