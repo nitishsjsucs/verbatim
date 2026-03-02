@@ -1137,15 +1137,18 @@ export default function ActionablesPage() {
                         </div>
 
                         {/* Global Deadline bar */}
-                        <div className="shrink-0 border-b border-border/40 px-4 py-2 flex items-center gap-2">
+                        <div className="shrink-0 border-b border-border/40 px-4 py-2 flex items-center gap-2 flex-wrap">
                             <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             <span className="text-[10px] font-medium text-muted-foreground/60 shrink-0">Global Deadline</span>
+                            <span className="text-[9px] text-muted-foreground/40">
+                                Applies to items without individual deadlines
+                            </span>
                             <input
                                 type="date"
                                 value={globalDeadline}
                                 min={todayStr}
                                 onChange={e => setGlobalDeadline(e.target.value)}
-                                className="w-36 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                className="w-44 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                             />
                             <input
                                 type="time"
@@ -1168,9 +1171,6 @@ export default function ActionablesPage() {
                                 <Save className="h-3 w-3" />
                                 {globalDeadlineSaved ? "Saved" : "Save"}
                             </button>
-                            <span className="text-[9px] text-muted-foreground/40 ml-auto">
-                                Applies to items without individual deadlines
-                            </span>
                         </div>
 
                         {/* Content */}
