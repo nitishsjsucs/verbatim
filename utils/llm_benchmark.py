@@ -462,10 +462,16 @@ class BenchmarkRunner:
             "expected_keys_missing": [],
         }
 
+        max_tokens = meta["max_tokens"]
+        # For synthesis, cap mini/nano to 2048 tokens (they can't produce
+        # quality 4096-token synthesis and it wastes time/money)
+        if stage == PipelineStage.SYNTHESIS and ("mini" in model_id or "nano" in model_id):
+            max_tokens = min(max_tokens, 2048)
+
         params: dict[str, Any] = {
             "messages": messages,
             "model": model_id,
-            "max_tokens": meta["max_tokens"],
+            "max_tokens": max_tokens,
         }
         if meta["reasoning_effort"]:
             effort = meta["reasoning_effort"]
@@ -480,6 +486,10 @@ class BenchmarkRunner:
             elif "mini" in model_id or "nano" in model_id:
                 if effort == "none":
                     effort = "minimal"
+                # For synthesis, drop mini/nano to low (medium + huge prompt
+                # causes them to fail JSON generation and burn retries)
+                if stage == PipelineStage.SYNTHESIS and effort == "medium":
+                    effort = "low"
             params["reasoning_effort"] = effort
         if meta["temperature"] is not None:
             # temperature only effective when reasoning_effort is "none"
@@ -489,7 +499,24 @@ class BenchmarkRunner:
         self._llm.reset_usage()
         start = time.time()
         try:
-            raw_output = self._llm.chat_json(**params)
+            # For synthesis/verification, use chat_json_with_status which has
+            # truncation repair logic (salvages broken JSON from long outputs).
+            # For other stages, use chat_json with retries=1 for speed.
+            if stage in (PipelineStage.SYNTHESIS, PipelineStage.VERIFICATION):
+                # Remove retries param — chat_json_with_status doesn't take it
+                status_params = {k: v for k, v in params.items()}
+                raw_output, was_truncated = self._llm.chat_json_with_status(
+                    **status_params
+                )
+                if was_truncated:
+                    result["was_truncated"] = True
+                    logger.info(
+                        "Benchmark truncated: stage=%s model=%s q=%s (salvaged)",
+                        stage.value, model_id, question["id"],
+                    )
+            else:
+                raw_output = self._llm.chat_json(**params, retries=1)
+
             elapsed = time.time() - start
 
             result["success"] = True
@@ -756,6 +783,7 @@ class BenchmarkRunner:
             model="gpt-5.2-pro",
             reasoning_effort="high",
             max_tokens=4096,
+            retries=1,
         )
         judge_latency = time.time() - start
         judge_usage = self._llm.get_usage_summary()
