@@ -178,13 +178,19 @@ class Locator:
                 }
                 effort = _effort_map.get(query.query_type.value, "medium")
 
+            # Reasoning tokens count toward max_output_tokens, so reasoning-
+            # enabled models need a much larger budget to leave room for
+            # visible output.  Without this, nano/mini exhaust the budget on
+            # internal reasoning and return empty text.
+            _locate_max = 16384 if effort != "none" else 4096
+
             result = self._llm.chat_json(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
                 model=_model,
-                max_tokens=4096,
+                max_tokens=_locate_max,
                 reasoning_effort=effort,
             )
 

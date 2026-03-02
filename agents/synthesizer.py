@@ -191,10 +191,15 @@ class Synthesizer:
             if self._is_prealloc_enabled():
                 input_token_estimate = len(system_prompt + user_msg) // 4  # rough char-to-token
                 estimated_output = max(4096, int(input_token_estimate * 0.25))
+                # Reasoning tokens count toward max_output_tokens.  When
+                # reasoning is enabled the model may use 2-4× the visible
+                # output tokens internally, so we scale up the budget.
+                if effort != "none":
+                    estimated_output = max(estimated_output * 3, 16384)
                 max_tokens_for_call = min(estimated_output, self._settings.llm.max_tokens_long)
                 logger.info(
-                    "[BENCHMARK][synthesis_prealloc] input_est=%d estimated_output=%d actual_max=%d",
-                    input_token_estimate, estimated_output, max_tokens_for_call,
+                    "[BENCHMARK][synthesis_prealloc] input_est=%d estimated_output=%d actual_max=%d effort=%s",
+                    input_token_estimate, estimated_output, max_tokens_for_call, effort,
                 )
 
             # Use chat_json_with_status to detect API-level truncation
