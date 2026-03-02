@@ -15,6 +15,7 @@ import logging
 from typing import Optional
 
 from config.prompt_loader import load_prompt, format_prompt
+from config.settings import get_active_retrieval_mode, get_settings
 from models.query import Query, QueryType
 from utils.llm_client import LLMClient
 
@@ -44,13 +45,24 @@ class QueryClassifier:
         user_msg = format_prompt(user_template, query_text=query_text)
 
         try:
+            # Optimized mode: use tournament-verified model for this stage
+            settings = get_settings()
+            opt = settings.optimization
+            if get_active_retrieval_mode() == "optimized":
+                _model = opt.stage_model_classify
+                _effort = opt.stage_effort_classify
+            else:
+                _model = None  # default (gpt-5.2)
+                _effort = "low"
+
             result = self._llm.chat_json(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
+                model=_model,
                 max_tokens=1024,
-                reasoning_effort="low",
+                reasoning_effort=_effort,
             )
 
             query_type_str = result.get("query_type", "single_hop")

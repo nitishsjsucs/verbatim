@@ -166,6 +166,30 @@ class OptimizationConfig(BaseSettings):
     synthesis_token_budget: int = 25000  # Max section tokens sent to synthesizer
     synthesis_reasoning_effort: str = "medium"  # Override reasoning effort in optimized mode
 
+    # ── Per-stage model overrides (optimized mode only) ──────────────
+    # Tournament-verified optimal model assignments.
+    # Each stage maps to a model ID and reasoning effort level.
+    # These override the default model/model_pro when retrieval_mode="optimized".
+    #
+    #   Classify:    gpt-5-mini  (low)      — lightweight classification task
+    #   Expand:      gpt-5-mini  (none)     — creative query expansion, no reasoning needed
+    #   Locate:      gpt-5-nano  (medium)   — node selection from tree index
+    #   Reflect:     gpt-5.2     (low)      — retrieval quality assessment
+    #   Synthesize:  gpt-5.2     (medium)   — full answer generation with citations
+    #   Verify:      gpt-5-nano  (medium)   — factual verification pass
+    stage_model_classify: str = "gpt-5-mini"
+    stage_effort_classify: str = "low"
+    stage_model_expand: str = "gpt-5-mini"
+    stage_effort_expand: str = "none"
+    stage_model_locate: str = "gpt-5-nano"
+    stage_effort_locate: str = "medium"
+    stage_model_reflect: str = "gpt-5.2"
+    stage_effort_reflect: str = "low"
+    stage_model_synthesize: str = "gpt-5.2"
+    stage_effort_synthesize: str = "medium"
+    stage_model_verify: str = "gpt-5-nano"
+    stage_effort_verify: str = "medium"
+
     # Self-evolving memory toggles (Phase 3 — only active when retrieval_mode="optimized")
     enable_raptor_index: bool = Field(default=True, alias="OPT_RAPTOR_INDEX")
     enable_user_memory: bool = Field(default=True, alias="OPT_USER_MEMORY")
@@ -204,3 +228,15 @@ class Settings:
 def get_settings() -> Settings:
     """Return cached singleton settings instance."""
     return Settings()
+
+
+def get_active_retrieval_mode() -> str:
+    """Return the effective retrieval mode (runtime override > .env default).
+
+    Safe to call from any module — uses lazy import to avoid circular deps.
+    """
+    try:
+        from app_backend.main import get_retrieval_mode
+        return get_retrieval_mode()
+    except Exception:
+        return get_settings().optimization.retrieval_mode

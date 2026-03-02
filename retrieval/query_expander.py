@@ -15,6 +15,7 @@ import logging
 from typing import Optional
 
 from config.prompt_loader import load_prompt, format_prompt
+from config.settings import get_active_retrieval_mode, get_settings
 from models.query import Query
 from utils.llm_client import LLMClient
 
@@ -58,14 +59,25 @@ class QueryExpander:
         )
 
         try:
+            # Optimized mode: use tournament-verified model for this stage
+            settings = get_settings()
+            opt = settings.optimization
+            if get_active_retrieval_mode() == "optimized":
+                _model = opt.stage_model_expand
+                _effort = opt.stage_effort_expand
+            else:
+                _model = None  # default (gpt-5.2)
+                _effort = "none"
+
             result = self._llm.chat_json(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
+                model=_model,
                 max_tokens=1024,
-                reasoning_effort="none",
-                temperature=0.3,  # Slight creativity for diverse formulations
+                reasoning_effort=_effort,
+                temperature=0.3 if _effort == "none" else None,
             )
 
             expanded = result.get("expanded_queries", [])

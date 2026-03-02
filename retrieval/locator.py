@@ -15,7 +15,7 @@ import logging
 from typing import Optional
 
 from config.prompt_loader import load_prompt, format_prompt
-from config.settings import get_settings
+from config.settings import get_active_retrieval_mode, get_settings
 from models.document import DocumentTree
 from models.query import LocatedNode, Query
 from utils.llm_client import LLMClient
@@ -161,20 +161,29 @@ class Locator:
         )
 
         try:
-            # Adaptive reasoning effort based on query complexity
-            _effort_map = {
-                "definitional": "low",
-                "single_hop": "medium",
-                "multi_hop": "medium",
-                "global": "high",
-            }
-            effort = _effort_map.get(query.query_type.value, "medium")
+            # Optimized mode: use tournament-verified model for this stage
+            settings = get_settings()
+            opt = settings.optimization
+            if get_active_retrieval_mode() == "optimized":
+                _model = opt.stage_model_locate
+                effort = opt.stage_effort_locate
+            else:
+                _model = None  # default (gpt-5.2)
+                # Adaptive reasoning effort based on query complexity
+                _effort_map = {
+                    "definitional": "low",
+                    "single_hop": "medium",
+                    "multi_hop": "medium",
+                    "global": "high",
+                }
+                effort = _effort_map.get(query.query_type.value, "medium")
 
             result = self._llm.chat_json(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
+                model=_model,
                 max_tokens=4096,
                 reasoning_effort=effort,
             )

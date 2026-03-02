@@ -20,7 +20,7 @@ from config.prompt_loader import load_prompt, format_prompt
 from models.document import DocumentTree
 from models.query import Query, QueryType, RetrievedSection
 from utils.llm_client import LLMClient
-from config.settings import get_settings
+from config.settings import get_active_retrieval_mode, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -359,13 +359,24 @@ class RetrievalReflector:
         )
 
         try:
+            # Optimized mode: use tournament-verified model for this stage
+            settings = get_settings()
+            opt = settings.optimization
+            if get_active_retrieval_mode() == "optimized":
+                _model = opt.stage_model_reflect
+                _effort = opt.stage_effort_reflect
+            else:
+                _model = None  # default (gpt-5.2)
+                _effort = "low"
+
             result = self._llm.chat_json(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
+                model=_model,
                 max_tokens=1024,
-                reasoning_effort="low",
+                reasoning_effort=_effort,
             )
             return result if isinstance(result, dict) else None
         except Exception as e:

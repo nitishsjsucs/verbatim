@@ -15,7 +15,7 @@ import time
 from typing import Optional
 
 from config.prompt_loader import load_prompt, format_prompt
-from config.settings import get_settings
+from config.settings import get_active_retrieval_mode, get_settings
 from models.query import (
     Answer,
     Citation,
@@ -156,8 +156,20 @@ class Synthesizer:
         start = time.time()
 
         try:
+            # Optimized mode: use tournament-verified model for this stage
+            opt = self._settings.optimization
+            _optimized = get_active_retrieval_mode() == "optimized"
+
             # Adaptive reasoning effort based on query complexity
-            if _fast:
+            if _optimized:
+                _synth_model = opt.stage_model_synthesize
+                effort = opt.stage_effort_synthesize
+                logger.info(
+                    "[SYNTH] optimized mode: model=%s effort=%s sections=%d tokens=%d",
+                    _synth_model, effort, len(sections), sum(s.token_count for s in sections),
+                )
+            elif _fast:
+                _synth_model = self._settings.llm.model_pro
                 # Fast synthesis: use configured effort for all query types
                 effort = self._settings.optimization.synthesis_reasoning_effort
                 logger.info(
@@ -165,6 +177,7 @@ class Synthesizer:
                     effort, len(sections), sum(s.token_count for s in sections),
                 )
             else:
+                _synth_model = self._settings.llm.model_pro
                 _effort_map = {
                     "definitional": "medium",
                     "single_hop": "medium",
@@ -190,7 +203,7 @@ class Synthesizer:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
-                model=self._settings.llm.model_pro,
+                model=_synth_model,
                 max_tokens=max_tokens_for_call,
                 reasoning_effort=effort,
             )

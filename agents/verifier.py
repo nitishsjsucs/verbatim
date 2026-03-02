@@ -15,7 +15,7 @@ import time
 from typing import Optional
 
 from config.prompt_loader import load_prompt, format_prompt
-from config.settings import get_settings
+from config.settings import get_active_retrieval_mode, get_settings
 from models.query import Answer, InferredPoint, RetrievedSection
 from utils.llm_client import LLMClient
 
@@ -115,14 +115,23 @@ class Verifier:
         start = time.time()
 
         try:
+            # Optimized mode: use tournament-verified model for this stage
+            opt = self._settings.optimization
+            if get_active_retrieval_mode() == "optimized":
+                _model = opt.stage_model_verify
+                _effort = opt.stage_effort_verify
+            else:
+                _model = self._settings.llm.model_pro
+                _effort = "medium"
+
             result = self._llm.chat_json(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_msg},
                 ],
-                model=self._settings.llm.model_pro,
+                model=_model,
                 max_tokens=self._settings.llm.max_tokens_default,
-                reasoning_effort="medium",
+                reasoning_effort=_effort,
             )
 
             elapsed = time.time() - start
