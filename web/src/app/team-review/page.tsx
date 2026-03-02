@@ -864,7 +864,7 @@ function ReviewRow({
                                 )}
                             </div>
                         </div>
-                        <div>
+                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                             <CommentThread
                                 comments={item.comments || []}
                                 currentUser={userName}

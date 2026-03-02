@@ -348,7 +348,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         </div>
 
                         {/* Right column: comments */}
-                        <div>
+                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                             {!isCompleted && (
                                 <CommentThread
                                     comments={item.comments || []}
