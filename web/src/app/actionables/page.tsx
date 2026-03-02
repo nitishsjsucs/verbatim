@@ -146,6 +146,14 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
 
 // --- Actionable Card ---
 
+// Helper: format YYYY-MM-DD to DD-MM-YYYY for display
+function formatDateDMY(isoDate: string): string {
+    if (!isoDate) return ""
+    const parts = isoDate.split("T")[0].split("-")
+    if (parts.length !== 3) return isoDate
+    return `${parts[2]}-${parts[1]}-${parts[0]}`
+}
+
 function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, globalDeadline, globalDeadlineTime }: {
     item: ActionableItem
     docId: string
@@ -161,8 +169,31 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const { teamNames } = useTeams()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
+
+    // --- Draft state: all editable fields are local until Save ---
+    const [draftImpl, setDraftImpl] = React.useState(safeStr(item.implementation_notes))
+    const [draftEvidence, setDraftEvidence] = React.useState(safeStr(item.evidence_quote))
+    const [draftRisk, setDraftRisk] = React.useState(normalizeRisk(item.modality))
     const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
     const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
+
+    // Draft teams: local selection, only sent on Save
+    const [draftTeams, setDraftTeams] = React.useState<string[]>(() => {
+        return (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
+    })
+
+    // Per-team implementation drafts (for multi-team)
+    const [draftTeamImpl, setDraftTeamImpl] = React.useState<Record<string, string>>(() => {
+        const d: Record<string, string> = {}
+        if (item.assigned_teams) {
+            for (const team of item.assigned_teams) {
+                d[team] = safeStr(item.team_workflows?.[team]?.implementation_notes || item.implementation_notes)
+            }
+        }
+        return d
+    })
+
+    // Per-team deadline drafts
     const [teamDeadlineDrafts, setTeamDeadlineDrafts] = React.useState<Record<string, { date: string; time: string }>>(() => {
         const drafts: Record<string, { date: string; time: string }> = {}
         if (item.assigned_teams) {
@@ -177,36 +208,99 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         return drafts
     })
 
+    // Sync drafts when item changes externally
     React.useEffect(() => {
-        const drafts: Record<string, { date: string; time: string }> = {}
+        setDraftImpl(safeStr(item.implementation_notes))
+        setDraftEvidence(safeStr(item.evidence_quote))
+        setDraftRisk(normalizeRisk(item.modality))
+        setDeadlineDate(item.deadline ? item.deadline.split("T")[0] || "" : "")
+        setDeadlineTime(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
+        const teams = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
+        setDraftTeams(teams)
+        const d: Record<string, string> = {}
+        const dlDrafts: Record<string, { date: string; time: string }> = {}
         if (item.assigned_teams) {
             for (const team of item.assigned_teams) {
+                d[team] = safeStr(item.team_workflows?.[team]?.implementation_notes || item.implementation_notes)
                 const tw = item.team_workflows?.[team]
-                drafts[team] = {
+                dlDrafts[team] = {
                     date: tw?.deadline ? tw.deadline.split("T")[0] || "" : "",
                     time: tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59",
                 }
             }
         }
-        setTeamDeadlineDrafts(drafts)
-    }, [item.assigned_teams, item.team_workflows])
+        setDraftTeamImpl(d)
+        setTeamDeadlineDrafts(dlDrafts)
+    }, [item])
 
-    const handleFieldSave = async (field: string, value: unknown) => {
-        setSaving(true)
-        try {
-            await onUpdate(docId, item.id, { [field]: value })
-        } finally {
-            setSaving(false)
+    // Determine if any draft differs from saved
+    const isDirty = React.useMemo(() => {
+        if (draftImpl !== safeStr(item.implementation_notes)) return true
+        if (draftEvidence !== safeStr(item.evidence_quote)) return true
+        if (draftRisk !== normalizeRisk(item.modality)) return true
+        const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
+        if (currentDl !== (item.deadline || "")) return true
+        // Check teams
+        const savedTeams = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
+        if (draftTeams.length !== savedTeams.length || !draftTeams.every(t => savedTeams.includes(t))) return true
+        // Check per-team impl for multi
+        if (draftTeams.length > 1) {
+            for (const team of draftTeams) {
+                const saved = safeStr(item.team_workflows?.[team]?.implementation_notes || item.implementation_notes)
+                if ((draftTeamImpl[team] || "") !== saved) return true
+                const savedTw = item.team_workflows?.[team]
+                const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
+                const currentTeamDl = draft.date ? `${draft.date}T${draft.time || "23:59"}` : ""
+                if (currentTeamDl !== (savedTw?.deadline || "")) return true
+            }
         }
-    }
+        return false
+    }, [draftImpl, draftEvidence, draftRisk, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
-    const handleSaveDeadline = async () => {
-        if (!deadlineDate) { toast.error("Set a date first"); return }
+    // --- Unified Save: sends all draft changes at once ---
+    const handleSaveAll = async () => {
         setSaving(true)
         try {
-            const dl = `${deadlineDate}T${deadlineTime || "23:59"}`
-            await onUpdate(docId, item.id, { deadline: dl })
-            toast.success("Deadline saved")
+            const updates: Record<string, unknown> = {}
+            // Implementation & Evidence (shared/top-level)
+            if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
+            if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
+            if (draftRisk !== normalizeRisk(item.modality)) updates.modality = draftRisk
+            // Deadline
+            const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
+            if (dl !== (item.deadline || "")) updates.deadline = dl
+            // Teams
+            const savedTeams = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
+            const teamsChanged = draftTeams.length !== savedTeams.length || !draftTeams.every(t => savedTeams.includes(t))
+            if (teamsChanged) {
+                updates.workstream = draftTeams[0]
+                updates.assigned_teams = draftTeams.length > 1 ? draftTeams : []
+            }
+            // Per-team workflows for multi-team
+            if (draftTeams.length > 1) {
+                const workflows = { ...(item.team_workflows || {}) }
+                for (const team of draftTeams) {
+                    const existing = workflows[team] || { task_status: "assigned" }
+                    workflows[team] = {
+                        ...existing,
+                        implementation_notes: draftTeamImpl[team] || "",
+                    }
+                    const draft = teamDeadlineDrafts[team]
+                    if (draft?.date) {
+                        workflows[team] = { ...workflows[team], deadline: `${draft.date}T${draft.time || "23:59"}` }
+                    }
+                }
+                // Remove workflows for deselected teams
+                for (const key of Object.keys(workflows)) {
+                    if (!draftTeams.includes(key)) delete workflows[key]
+                }
+                updates.team_workflows = workflows
+            }
+            await onUpdate(docId, item.id, updates)
+            toast.success("Changes saved")
+        } catch (err) {
+            console.error("Failed to save:", err)
+            toast.error(`Failed to save: ${err instanceof Error ? err.message : String(err)}`)
         } finally {
             setSaving(false)
         }
@@ -215,7 +309,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     // Approve & Publish: resolves deadline, sets published_at + task_status, moves to tracker
     const handleApprove = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        // Resolve deadline: individual > global fallback
         let dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : (item.deadline || "")
         if (!dl && globalDeadline) {
             dl = `${globalDeadline}T${globalDeadlineTime || "23:59"}`
@@ -224,11 +317,20 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             toast.error("Set a deadline (or a global deadline) before approving")
             return
         }
+        // Save any pending draft changes first, then approve
         const updates: Record<string, unknown> = {
             approval_status: "approved",
             published_at: new Date().toISOString(),
             deadline: dl,
             task_status: "assigned",
+        }
+        if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
+        if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
+        if (draftRisk !== normalizeRisk(item.modality)) updates.modality = draftRisk
+        const teamsChanged = draftTeams.length !== ((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).length
+        if (teamsChanged) {
+            updates.workstream = draftTeams[0]
+            updates.assigned_teams = draftTeams.length > 1 ? draftTeams : []
         }
         await onUpdate(docId, item.id, updates)
         toast.success("Approved & sent to tracker")
@@ -251,10 +353,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         }
     }
 
-    // Track if local deadline differs from saved
-    const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
-    const savedDl = item.deadline || ""
-    const deadlineDirty = currentDl !== savedDl
+    // Determine if current draft is multi-team (local, not yet saved)
+    const draftIsMulti = draftTeams.length > 1
 
     return (
         <div
@@ -273,7 +373,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     {/* Risk icon — before team tag */}
                     <RiskIcon modality={item.modality} />
 
-                    {/* Team tag - shows "Mixed Team" when multiple teams selected (live switch) */}
+                    {/* Team tag - uses saved classification (not draft) */}
                     <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
                         {getClassification(item)}
                     </span>
@@ -319,7 +419,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 </div>
             </div>
 
-            {/* Expanded details: Implementation, Evidence, Team */}
+            {/* Expanded details */}
             {expanded && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border/20 pt-2.5">
                     {saving && (
@@ -330,13 +430,20 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                     {item.approval_status === "approved" ? (
                         <>
+                            {/* Evidence + source side by side at top */}
+                            <div className="flex items-start gap-3">
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                    <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote) || "—"}</p>
+                                </div>
+                                <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1 shrink-0 pt-3">
+                                    <FileText className="h-3 w-3" />
+                                    {item.source_location || "Source"}
+                                </button>
+                            </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                 <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes) || "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
-                                <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote) || "—"}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                 <div>
@@ -355,13 +462,31 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             {item.deadline && (
                                 <div>
                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
-                                    <span className="text-xs text-blue-400 font-mono">{item.deadline.split("T")[0]}</span>
+                                    <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
                                 </div>
                             )}
                         </>
                     ) : (
                         <>
-                            {/* Team multi-select — moved to top */}
+                            {/* Evidence + source link side by side at top */}
+                            <div className="flex items-start gap-3">
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                    <textarea
+                                        value={draftEvidence}
+                                        onChange={e => setDraftEvidence(e.target.value)}
+                                        rows={2}
+                                        className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-y"
+                                        placeholder="Click to add evidence..."
+                                    />
+                                </div>
+                                <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1 shrink-0 pt-4">
+                                    <FileText className="h-3 w-3" />
+                                    {item.source_location || "Source"}
+                                </button>
+                            </div>
+
+                            {/* Team multi-select */}
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                     <Users className="h-3 w-3" />
@@ -369,39 +494,31 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {teamNames.map(team => {
-                                        const isSelected = team === item.workstream || (item.assigned_teams || []).includes(team)
+                                        const isTeamSelected = draftTeams.includes(team)
                                         const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
                                         return (
                                             <button
                                                 key={team}
-                                                onClick={async () => {
-                                                    const current = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
-                                                    let next: string[]
-                                                    if (current.includes(team)) {
-                                                        if (current.length <= 1) return
-                                                        next = current.filter(t => t !== team)
-                                                    } else {
-                                                        next = [...current, team]
-                                                    }
-                                                    const updates: Record<string, unknown> = { workstream: next[0] }
-                                                    if (next.length > 1) {
-                                                        updates.assigned_teams = next
-                                                    } else {
-                                                        updates.assigned_teams = []
-                                                    }
-                                                    setSaving(true)
-                                                    try {
-                                                        await onUpdate(docId, item.id, updates)
-                                                    } catch (err) {
-                                                        console.error("Failed to update teams:", err)
-                                                        alert(`Failed to update teams: ${err instanceof Error ? err.message : String(err)}`)
-                                                    } finally {
-                                                        setSaving(false)
-                                                    }
+                                                onClick={() => {
+                                                    setDraftTeams(prev => {
+                                                        if (prev.includes(team)) {
+                                                            if (prev.length <= 1) return prev
+                                                            return prev.filter(t => t !== team)
+                                                        }
+                                                        const next = [...prev, team]
+                                                        // Initialize impl/deadline drafts for newly added team
+                                                        if (!draftTeamImpl[team]) {
+                                                            setDraftTeamImpl(p => ({ ...p, [team]: safeStr(item.implementation_notes) }))
+                                                        }
+                                                        if (!teamDeadlineDrafts[team]) {
+                                                            setTeamDeadlineDrafts(p => ({ ...p, [team]: { date: "", time: "23:59" } }))
+                                                        }
+                                                        return next
+                                                    })
                                                 }}
                                                 className={cn(
                                                     "text-[10px] px-2 py-1 rounded-md border transition-colors font-medium",
-                                                    isSelected
+                                                    isTeamSelected
                                                         ? `${teamColors.bg} ${teamColors.text} border-current`
                                                         : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
                                                 )}
@@ -411,18 +528,28 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         )
                                     })}
                                 </div>
-                                {isMultiTeam(item) && (
+                                {draftIsMulti && (
                                     <p className="text-[9px] text-amber-400 mt-1">
                                         Classification: {MIXED_TEAM_CLASSIFICATION} — Each team has separate implementation
                                     </p>
                                 )}
                             </div>
 
-                            {/* Single-team: Consolidated group box with Implementation/Evidence/Deadline */}
-                            {!isMultiTeam(item) && (
-                                <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
-                                    <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
-                                    <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+                            {/* Single-team: Consolidated group box */}
+                            {!draftIsMulti && (() => {
+                                const teamColors = WORKSTREAM_COLORS[draftTeams[0]] || DEFAULT_WORKSTREAM_COLORS
+                                return (
+                                <div className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                        <textarea
+                                            value={draftImpl}
+                                            onChange={e => setDraftImpl(e.target.value)}
+                                            rows={2}
+                                            className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-y"
+                                            placeholder="Click to add implementation notes..."
+                                        />
+                                    </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                             <Calendar className="h-3 w-3" />
@@ -434,7 +561,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 value={deadlineDate}
                                                 min={new Date().toISOString().split("T")[0]}
                                                 onChange={e => setDeadlineDate(e.target.value)}
-                                                className="w-48 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                             <input
                                                 type="time"
@@ -442,43 +569,32 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 onChange={e => setDeadlineTime(e.target.value)}
                                                 className="w-20 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
-                                            <button
-                                                onClick={handleSaveDeadline}
-                                                disabled={!deadlineDirty || saving || !deadlineDate}
-                                                className={cn(
-                                                    "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
-                                                    deadlineDirty && deadlineDate
-                                                        ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                                        : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                                )}
-                                            >
-                                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                Save
-                                            </button>
                                         </div>
+                                        {deadlineDate && (
+                                            <p className="text-[9px] text-muted-foreground/50 mt-1">
+                                                {formatDateDMY(deadlineDate)}
+                                            </p>
+                                        )}
                                         {!deadlineDate && globalDeadline && (
                                             <p className="text-[9px] text-muted-foreground/40 mt-1">
-                                                No individual deadline — will use global deadline ({globalDeadline}) on approve
+                                                No individual deadline — will use global deadline ({formatDateDMY(globalDeadline)}) on approve
                                             </p>
                                         )}
                                     </div>
                                 </div>
-                            )}
+                                )
+                            })()}
 
-                            {/* Multi-team: Per-team group boxes with Implementation/Evidence/Deadline */}
-                            {isMultiTeam(item) && (
+                            {/* Multi-team: Per-team group boxes (Implementation + Deadline only, no evidence) */}
+                            {draftIsMulti && (
                                 <div className="space-y-3">
                                     <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
                                         <Users className="h-3 w-3" />
                                         Per-Team Implementation
                                     </p>
-                                    {item.assigned_teams!.map(team => {
-                                        const tw = item.team_workflows?.[team]
+                                    {draftTeams.map(team => {
                                         const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
                                         const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
-                                        const currentTeamDl = draft.date ? `${draft.date}T${draft.time || "23:59"}` : ""
-                                        const savedTeamDl = tw?.deadline || ""
-                                        const teamDeadlineDirty = currentTeamDl !== savedTeamDl
 
                                         return (
                                             <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
@@ -487,26 +603,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                         {team}
                                                     </span>
                                                 </div>
-                                                <EditableField 
-                                                    label="Implementation" 
-                                                    value={tw?.implementation_notes || item.implementation_notes} 
-                                                    onSave={async v => {
-                                                        const workflows = { ...(item.team_workflows || {}) }
-                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), implementation_notes: v }
-                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
-                                                    }} 
-                                                    type="textarea" 
-                                                />
-                                                <EditableField 
-                                                    label="Evidence" 
-                                                    value={tw?.evidence_quote || item.evidence_quote} 
-                                                    onSave={async v => {
-                                                        const workflows = { ...(item.team_workflows || {}) }
-                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), evidence_quote: v }
-                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
-                                                    }} 
-                                                    type="textarea" 
-                                                />
+                                                <div>
+                                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                                    <textarea
+                                                        value={draftTeamImpl[team] || ""}
+                                                        onChange={e => setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value }))}
+                                                        rows={2}
+                                                        className="w-full bg-muted/40 text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-y"
+                                                        placeholder="Click to add implementation notes..."
+                                                    />
+                                                </div>
                                                 <div>
                                                     <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
@@ -518,7 +624,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             value={draft.date}
                                                             min={new Date().toISOString().split("T")[0]}
                                                             onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, date: e.target.value } }))}
-                                                            className="w-48 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                            className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                         <input
                                                             type="time"
@@ -526,33 +632,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, time: e.target.value } }))}
                                                             className="w-20 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (!draft.date) return
-                                                                setSaving(true)
-                                                                try {
-                                                                    const workflows = { ...(item.team_workflows || {}) }
-                                                                    workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), deadline: currentTeamDl }
-                                                                    await onUpdate(docId, item.id, { team_workflows: workflows })
-                                                                } finally {
-                                                                    setSaving(false)
-                                                                }
-                                                            }}
-                                                            disabled={!teamDeadlineDirty || saving || !draft.date}
-                                                            className={cn(
-                                                                "flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md font-medium transition-colors",
-                                                                teamDeadlineDirty && draft.date
-                                                                    ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                                                    : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                                            )}
-                                                        >
-                                                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                            Save
-                                                        </button>
                                                     </div>
+                                                    {draft.date && (
+                                                        <p className="text-[9px] text-muted-foreground/50 mt-1">
+                                                            {formatDateDMY(draft.date)}
+                                                        </p>
+                                                    )}
                                                     {!draft.date && globalDeadline && (
                                                         <p className="text-[9px] text-muted-foreground/40 mt-1">
-                                                            Will use global deadline ({globalDeadline}) on approve
+                                                            Will use global deadline ({formatDateDMY(globalDeadline)}) on approve
                                                         </p>
                                                     )}
                                                 </div>
@@ -566,27 +654,38 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
                                 <select
-                                    value={normalizeRisk(item.modality)}
-                                    onChange={e => handleFieldSave("modality", e.target.value)}
+                                    value={draftRisk}
+                                    onChange={e => setDraftRisk(e.target.value)}
                                     className={cn(
                                         "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                        RISK_STYLES[normalizeRisk(item.modality)]?.bg || "bg-muted/40",
-                                        RISK_STYLES[normalizeRisk(item.modality)]?.text || "text-foreground"
+                                        RISK_STYLES[draftRisk]?.bg || "bg-muted/40",
+                                        RISK_STYLES[draftRisk]?.text || "text-foreground"
                                     )}
                                 >
                                     {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             </div>
+
+                            {/* Unified Save button */}
+                            <button
+                                onClick={handleSaveAll}
+                                disabled={!isDirty || saving}
+                                className={cn(
+                                    "w-full flex items-center justify-center gap-1.5 text-xs px-4 py-2 rounded-lg font-medium transition-colors",
+                                    isDirty
+                                        ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                        : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                )}
+                            >
+                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                {isDirty ? "Save Changes" : "No Changes"}
+                            </button>
                         </>
                     )}
 
                     {/* Footer: source + actions */}
                     <div className="flex items-center justify-between pt-2 border-t border-border/10">
                         <div className="flex items-center gap-3">
-                            <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                {item.source_location || "No source"}
-                            </button>
                             <span className="text-[10px] text-muted-foreground/40">{docName}</span>
                         </div>
                         {item.approval_status !== "approved" && (
@@ -824,8 +923,17 @@ export default function ActionablesPage() {
         return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp) }
     }, [])
 
-    // Collapsed teams for by-team view
-    const [collapsedTeams, setCollapsedTeams] = React.useState<Set<string>>(new Set())
+    // Collapsed teams for by-team view - initialize all teams as collapsed
+    const [collapsedTeams, setCollapsedTeams] = React.useState<Set<string>>(() => {
+        const allTeams = new Set<string>()
+        teamNames.forEach(team => {
+            allTeams.add(team)
+            allTeams.add(`approved-${team}`)
+        })
+        allTeams.add(MIXED_TEAM_CLASSIFICATION)
+        allTeams.add(`approved-${MIXED_TEAM_CLASSIFICATION}`)
+        return allTeams
+    })
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -906,7 +1014,6 @@ export default function ActionablesPage() {
 
     // Filter based on current tab (all / by-team only)
     const filtered = React.useMemo(() => {
-        const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
         return allItems.filter(({ item, docId }) => {
             if (docFilter !== "all" && docId !== docFilter) return false
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
@@ -918,7 +1025,8 @@ export default function ActionablesPage() {
                 if (!searchable.includes(q)) return false
             }
             return true
-        }).sort((a, b) => (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1))
+        })
+        // Keep actionables in creation order - no sorting by risk
     }, [allItems, docFilter, riskFilter, searchQuery])
 
     // Group by team/classification for the "by-team" view
@@ -1004,7 +1112,15 @@ export default function ActionablesPage() {
         return docs
     }, [filtered])
 
-    const [collapsedDocs, setCollapsedDocs] = React.useState<Set<string>>(new Set())
+    // Initialize all docs and teams as collapsed by default
+    const [collapsedDocs, setCollapsedDocs] = React.useState<Set<string>>(() => {
+        const allDocIds = new Set<string>()
+        for (const doc of allDocs) {
+            allDocIds.add(doc.doc_id)
+            allDocIds.add(`approved-${doc.doc_id}`)
+        }
+        return allDocIds
+    })
     const toggleDoc = (docId: string) => {
         setCollapsedDocs(prev => {
             const next = new Set(prev)
@@ -1138,41 +1254,45 @@ export default function ActionablesPage() {
                             )}
                         </div>
 
-                        {/* Global Deadline bar */}
-                        <div className="shrink-0 border-b border-border/40 px-4 py-2 flex items-center gap-2 flex-wrap">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-[10px] font-medium text-muted-foreground/60 shrink-0">Global Deadline</span>
-                            <span className="text-[9px] text-muted-foreground/40">
-                                Applies to items without individual deadlines
-                            </span>
-                            <input
-                                type="date"
-                                value={globalDeadline}
-                                min={todayStr}
-                                onChange={e => setGlobalDeadline(e.target.value)}
-                                className="w-48 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                            />
-                            <input
-                                type="time"
-                                value={globalDeadlineTime}
-                                onChange={e => setGlobalDeadlineTime(e.target.value)}
-                                className="w-20 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                            />
-                            <button
-                                onClick={handleSaveGlobalDeadline}
-                                disabled={!globalDeadline}
-                                className={cn(
-                                    "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
-                                    globalDeadlineSaved
-                                        ? "bg-emerald-500/15 text-emerald-500"
-                                        : globalDeadline
-                                            ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                            : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                )}
-                            >
-                                <Save className="h-3 w-3" />
-                                {globalDeadlineSaved ? "Saved" : "Save"}
-                            </button>
+                        {/* Global Deadline bar - full width layout */}
+                        <div className="shrink-0 border-b border-border/40 px-4 py-3">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-[11px] font-semibold text-foreground">Set Global Deadline</span>
+                                <span className="text-[9px] text-muted-foreground/50">
+                                    Applies to items without individual deadlines
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 w-full">
+                                <input
+                                    type="date"
+                                    value={globalDeadline}
+                                    min={todayStr}
+                                    onChange={e => setGlobalDeadline(e.target.value)}
+                                    className="flex-1 bg-muted/30 text-xs rounded-md px-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                />
+                                <input
+                                    type="time"
+                                    value={globalDeadlineTime}
+                                    onChange={e => setGlobalDeadlineTime(e.target.value)}
+                                    className="w-28 bg-muted/30 text-xs rounded-md px-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                />
+                                <button
+                                    onClick={handleSaveGlobalDeadline}
+                                    disabled={!globalDeadline}
+                                    className={cn(
+                                        "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md font-medium transition-colors shrink-0",
+                                        globalDeadlineSaved
+                                            ? "bg-emerald-500/15 text-emerald-500"
+                                            : globalDeadline
+                                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                    )}
+                                >
+                                    <Save className="h-3.5 w-3.5" />
+                                    {globalDeadlineSaved ? "Saved" : "Save"}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Content */}
@@ -1274,9 +1394,9 @@ export default function ActionablesPage() {
                                                 const isCollapsed = collapsedTeams.has(team)
                                                 return (
                                                     <div key={team} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
-                                                            {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                                            <Users className="h-3 w-3" /> {team}
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
+                                                            {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
                                                             <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
                                                         {!isCollapsed && (
