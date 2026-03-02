@@ -936,7 +936,7 @@ export default function DashboardPage() {
 
                                                         {/* Per-team expanded: 2-column layout */}
                                                         {isTeamExpanded && (
-                                                            <div className="bg-muted/5 border-t border-border/10 px-8 py-3">
+                                                            <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
                                                                 {/* Approve/Reject buttons for items under review */}
                                                                 {twStatus === "review" && (
                                                                     <div className="flex items-center gap-3 mb-3">
@@ -1336,7 +1336,7 @@ export default function DashboardPage() {
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[9px] text-emerald-400 italic">Approved</span></div>
                                                     </div>
                                                     {isExpanded && (
-                                                        <div className="bg-muted/5 border-t border-border/10 px-6 py-4">
+                                                        <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div className="space-y-3">
                                                                     <div>
