@@ -2225,7 +2225,6 @@ function UsersTab() {
   const [editingEmail, setEditingEmail] = React.useState<string | null>(null)
   const [editRole, setEditRole] = React.useState("")
   const [editTeam, setEditTeam] = React.useState("")
-  const [editStartDate, setEditStartDate] = React.useState("")
   const [editName, setEditName] = React.useState("")
   const [saving, setSaving] = React.useState(false)
   // Delete
@@ -2296,7 +2295,6 @@ function UsersTab() {
     setEditName(u.name)
     setEditRole(u.role)
     setEditTeam(u.team)
-    setEditStartDate(u.start_date || "")
   }
 
   const cancelEdit = () => {
@@ -2304,23 +2302,17 @@ function UsersTab() {
     setEditName("")
     setEditRole("")
     setEditTeam("")
-    setEditStartDate("")
   }
 
   const handleSaveEdit = async () => {
     if (!editingEmail) return
-    if (!["admin", "compliance_officer"].includes(editRole) && !editTeam) {
-      alert("Select a team for this role")
-      return
-    }
     setSaving(true)
     try {
       await updateUser({
         email: editingEmail,
         name: editName.trim() || undefined,
         role: editRole || undefined,
-        team: editTeam || undefined,
-        start_date: editStartDate || undefined,
+        team: editTeam,
       })
       cancelEdit()
       loadUsers()
@@ -2541,16 +2533,7 @@ function UsersTab() {
                             )}
                           </td>
                           <td className="px-3 py-2 text-[12px] text-muted-foreground">
-                            {isEditing ? (
-                              <input
-                                type="date"
-                                value={editStartDate}
-                                onChange={e => setEditStartDate(e.target.value)}
-                                className="h-6 rounded border border-input bg-background px-2 text-[11px] text-foreground"
-                              />
-                            ) : (
-                              u.start_date || "—"
-                            )}
+                            {u.start_date || "—"}
                           </td>
                           <td className="px-3 py-2">
                             {userPasswords[u.email] ? (
