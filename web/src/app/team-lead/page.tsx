@@ -7,6 +7,7 @@ import {
     fetchDelayedActionables,
     submitJustification,
     updateActionable,
+    uploadEvidence,
 } from "@/lib/api"
 import {
     ActionableItem,
@@ -29,7 +30,7 @@ import {
     Loader2, Search, AlertTriangle,
     CheckCircle2,
     MessageSquare, SortAsc, SortDesc,
-    Eye, Clock, Users,
+    Eye, Clock, Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -132,6 +133,38 @@ function TeamLeadContent() {
             toast.error("Failed to add comment")
         }
     }, [userName, allDocs, userTeam])
+
+    const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
+        try {
+            const updated = await updateActionable(docId, itemId, updates, userTeam || undefined)
+            setAllDocs(prev => prev.map(d => {
+                if (d.doc_id !== docId) return d
+                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
+            }))
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Update failed")
+        }
+    }, [userTeam])
+
+    const handleUpload = React.useCallback(async (docId: string, itemId: string, file: File) => {
+        try {
+            const fileData = await uploadEvidence(file)
+            const doc = allDocs.find(d => d.doc_id === docId)
+            const item = doc?.actionables.find(a => a.id === itemId)
+            if (!item) return
+            
+            const newFile = {
+                name: fileData.filename,
+                url: fileData.url,
+                uploaded_at: new Date().toISOString(),
+            }
+            const updatedFiles = [...(item.evidence_files || []), newFile]
+            await handleUpdate(docId, itemId, { evidence_files: updatedFiles })
+            toast.success(`File "${file.name}" uploaded`)
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Upload failed")
+        }
+    }, [allDocs, handleUpdate])
 
     // Build flat rows — only published items for the lead's team
     const allRows: FlatRow[] = React.useMemo(() => {
@@ -445,6 +478,8 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
+                                            onUpload={handleUpload}
+                                            onUpdate={handleUpdate}
                                         />
                                     ))}
                                 </>
@@ -487,6 +522,8 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
+                                            onUpload={handleUpload}
+                                            onUpdate={handleUpdate}
                                         />
                                     ))}
                                 </>
@@ -519,6 +556,8 @@ function TeamLeadContent() {
                                     userTeam={userTeam || ""}
                                     onJustify={handleJustify}
                                     onAddComment={handleAddComment}
+                                    onUpload={handleUpload}
+                                    onUpdate={handleUpdate}
                                 />
                             ))}
                         </>
@@ -559,6 +598,8 @@ function TeamLeadContent() {
                                             userTeam={userTeam || ""}
                                             onJustify={handleJustify}
                                             onAddComment={handleAddComment}
+                                            onUpload={handleUpload}
+                                            onUpdate={handleUpdate}
                                         />
                                     ))}
                                 </>
@@ -593,6 +634,8 @@ function OversightRow({
     userTeam,
     onJustify,
     onAddComment,
+    onUpload,
+    onUpdate,
 }: {
     item: ActionableItem
     docId: string
@@ -602,6 +645,8 @@ function OversightRow({
     userTeam: string
     onJustify: (docId: string, itemId: string, justification: string) => Promise<void>
     onAddComment: (docId: string, itemId: string, text: string) => Promise<void>
+    onUpload: (docId: string, itemId: string, file: File) => void
+    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -614,6 +659,23 @@ function OversightRow({
 
     const [showJustifyInput, setShowJustifyInput] = React.useState(false)
     const [justifyText, setJustifyText] = React.useState("")
+    const inputRef = React.useRef<HTMLInputElement>(null)
+    const files = item.evidence_files || []
+
+    const handleUploadClick = () => {
+        inputRef.current?.click()
+    }
+
+    const handleFileSelected = async (file: File) => {
+        onUpload(docId, item.id, file)
+    }
+
+    const handleDeleteFile = async (idx: number) => {
+        const updated = [...files]
+        updated.splice(idx, 1)
+        await onUpdate(docId, item.id, { evidence_files: updated })
+        toast.success("File removed")
+    }
 
 
     const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
@@ -794,7 +856,7 @@ function OversightRow({
                             )}
                         </div>
                     )}
-                    {/* 2-column: left=impl+evidence, right=comments */}
+                    {/* 2-column: left=impl+evidence+files, right=comments */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                             <div>
@@ -804,6 +866,89 @@ function OversightRow({
                             <div>
                                 <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
+                            </div>
+
+                            {/* Evidence files */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Paperclip className="h-3.5 w-3.5 text-primary/60" />
+                                        <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
+                                        {files.length > 0 && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={handleUploadClick}
+                                        className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                    >
+                                        <Upload className="h-3 w-3" /> Upload File
+                                    </button>
+                                    <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = "" }} />
+                                </div>
+
+                                {files.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-4 bg-background rounded-lg border border-dashed border-border/40">
+                                        <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
+                                        <p className="text-[10px] text-muted-foreground/40">No evidence files uploaded yet</p>
+                                        <button
+                                            onClick={handleUploadClick}
+                                            className="text-[10px] text-primary hover:underline mt-1"
+                                        >
+                                            Click to upload
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        {files.map((file, idx) => {
+                                            const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
+                                            const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
+                                            return (
+                                                <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
+                                                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                                                        <FileText className="h-3.5 w-3.5 text-primary/70" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
+                                                        <p className="text-[9px] text-muted-foreground/40">
+                                                            Uploaded {formatDate(file.uploaded_at)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        {fileUrl && (
+                                                            <>
+                                                                <a
+                                                                    href={fileUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                                    title="Open in new tab"
+                                                                >
+                                                                    <ExternalLink className="h-3 w-3" />
+                                                                </a>
+                                                                <a
+                                                                    href={fileUrl}
+                                                                    download={file.name}
+                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                                                    title="Download"
+                                                                >
+                                                                    <Download className="h-3 w-3" />
+                                                                </a>
+                                                            </>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDeleteFile(idx)}
+                                                            className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
+                                                            title="Remove file"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div>
