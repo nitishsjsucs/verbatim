@@ -163,6 +163,33 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [saving, setSaving] = React.useState(false)
     const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
     const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
+    const [teamDeadlineDrafts, setTeamDeadlineDrafts] = React.useState<Record<string, { date: string; time: string }>>(() => {
+        const drafts: Record<string, { date: string; time: string }> = {}
+        if (item.assigned_teams) {
+            for (const team of item.assigned_teams) {
+                const tw = item.team_workflows?.[team]
+                drafts[team] = {
+                    date: tw?.deadline ? tw.deadline.split("T")[0] || "" : "",
+                    time: tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59",
+                }
+            }
+        }
+        return drafts
+    })
+
+    React.useEffect(() => {
+        const drafts: Record<string, { date: string; time: string }> = {}
+        if (item.assigned_teams) {
+            for (const team of item.assigned_teams) {
+                const tw = item.team_workflows?.[team]
+                drafts[team] = {
+                    date: tw?.deadline ? tw.deadline.split("T")[0] || "" : "",
+                    time: tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59",
+                }
+            }
+        }
+        setTeamDeadlineDrafts(drafts)
+    }, [item.assigned_teams, item.team_workflows])
 
     const handleFieldSave = async (field: string, value: unknown) => {
         setSaving(true)
@@ -263,9 +290,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <div className="flex items-center gap-1 shrink-0">
                     {item.approval_status === "pending" && (
                         <>
-                            <button onClick={handleApprove} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium" title="Approve & send to tracker">
-                                <Send className="h-3 w-3" />
-                                Approve
+                            <button onClick={handleApprove} className="p-1 rounded hover:bg-emerald-400/10 text-muted-foreground/40 hover:text-emerald-400 transition-colors" title="Approve & send to tracker">
+                                <Check className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={handleReject} className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors" title="Reject">
                                 <X className="h-3.5 w-3.5" />
@@ -449,11 +475,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     {item.assigned_teams!.map(team => {
                                         const tw = item.team_workflows?.[team]
                                         const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
-                                        const teamDeadlineDate = tw?.deadline ? tw.deadline.split("T")[0] || "" : ""
-                                        const teamDeadlineTime = tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59"
-                                        const [localTeamDeadlineDate, setLocalTeamDeadlineDate] = React.useState(teamDeadlineDate)
-                                        const [localTeamDeadlineTime, setLocalTeamDeadlineTime] = React.useState(teamDeadlineTime)
-                                        const currentTeamDl = localTeamDeadlineDate ? `${localTeamDeadlineDate}T${localTeamDeadlineTime || "23:59"}` : ""
+                                        const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
+                                        const currentTeamDl = draft.date ? `${draft.date}T${draft.time || "23:59"}` : ""
                                         const savedTeamDl = tw?.deadline || ""
                                         const teamDeadlineDirty = currentTeamDl !== savedTeamDl
 
@@ -492,20 +515,20 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     <div className="flex items-center gap-2">
                                                         <input
                                                             type="date"
-                                                            value={localTeamDeadlineDate}
+                                                            value={draft.date}
                                                             min={new Date().toISOString().split("T")[0]}
-                                                            onChange={e => setLocalTeamDeadlineDate(e.target.value)}
+                                                            onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, date: e.target.value } }))}
                                                             className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                         <input
                                                             type="time"
-                                                            value={localTeamDeadlineTime}
-                                                            onChange={e => setLocalTeamDeadlineTime(e.target.value)}
-                                                            className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                            value={draft.time}
+                                                            onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, time: e.target.value } }))}
+                                                            className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus-border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                         <button
                                                             onClick={async () => {
-                                                                if (!localTeamDeadlineDate) return
+                                                                if (!draft.date) return
                                                                 setSaving(true)
                                                                 try {
                                                                     const workflows = { ...(item.team_workflows || {}) }
@@ -515,10 +538,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                                     setSaving(false)
                                                                 }
                                                             }}
-                                                            disabled={!teamDeadlineDirty || saving || !localTeamDeadlineDate}
+                                                            disabled={!teamDeadlineDirty || saving || !draft.date}
                                                             className={cn(
                                                                 "flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md font-medium transition-colors",
-                                                                teamDeadlineDirty && localTeamDeadlineDate
+                                                                teamDeadlineDirty && draft.date
                                                                     ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
                                                                     : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
                                                             )}
@@ -527,7 +550,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             Save
                                                         </button>
                                                     </div>
-                                                    {!localTeamDeadlineDate && globalDeadline && (
+                                                    {!draft.date && globalDeadline && (
                                                         <p className="text-[9px] text-muted-foreground/40 mt-1">
                                                             Will use global deadline ({globalDeadline}) on approve
                                                         </p>
