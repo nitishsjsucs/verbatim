@@ -85,7 +85,7 @@ STAGE_META: dict[str, dict[str, Any]] = {
         "prompt_name": "synthesis",
         "llm_method": "chat_json",
         "default_model": "pro",
-        "max_tokens": 16384,
+        "max_tokens": 4096,           # capped from 16384 for benchmark (avoids ngrok timeout)
         "reasoning_effort": "medium",
         "temperature": None,
         "expected_keys": ["answer_text"],

@@ -121,6 +121,16 @@ export function LLMTournament({
   const [judgeCost, setJudgeCost] = React.useState(0)
   const abortRef = React.useRef(false)
 
+  // ── Stage / Model selectors ──
+  const [selStages, setSelStages] = React.useState<string[]>([])
+  const [selModels, setSelModels] = React.useState<string[]>([])
+
+  const toggleStage = (s: string) => setSelStages(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s])
+  const toggleModel = (m: string) => setSelModels(p => p.includes(m) ? p.filter(x => x !== m) : [...p, m])
+
+  const activeStages = selStages.length > 0 ? STAGES.filter(s => selStages.includes(s)) : [...STAGES]
+  const activeModels = selModels.length > 0 ? MODELS.filter(m => selModels.includes(m)) : [...MODELS]
+
   // Timer
   React.useEffect(() => {
     if (status !== "running") return
@@ -128,36 +138,35 @@ export function LLMTournament({
     return () => clearInterval(timer)
   }, [status, startTime])
 
-  const total = STAGES.length * questions.length
+  const total = activeStages.length * questions.length
 
-  // ── Run tournament ──
+  // ── Run tournament (merges into existing battles) ──
   const runTournament = async () => {
     setStatus("running")
     setErrorMsg("")
-    setBattles({})
     setProgress(0)
     setTotalBattles(total)
     setStartTime(Date.now())
     setElapsed(0)
-    setJudgeCost(0)
     abortRef.current = false
 
-    const newCells: Record<string, BattleStatus> = {}
-    for (const stage of STAGES) {
+    // Merge: keep old cell status, mark targeted ones as pending
+    const newCells: Record<string, BattleStatus> = { ...cellStatus }
+    for (const stage of activeStages) {
       for (const q of questions) {
         newCells[`${stage}|${q.id}`] = "pending"
       }
     }
     setCellStatus({ ...newCells })
 
-    const accumulated: Record<string, BattleResult> = {}
+    const accumulated: Record<string, BattleResult> = { ...battles }
     let done = 0
-    let totalJudgeCost = 0
+    let runJudgeCost = 0
 
-    for (const stage of STAGES) {
+    for (const stage of activeStages) {
       for (const question of questions) {
         if (abortRef.current) {
-          setStatus("idle")
+          setStatus("done")
           return
         }
 
@@ -169,13 +178,13 @@ export function LLMTournament({
           const result = await runTournamentBattle({
             stage,
             question_id: question.id,
-            models: MODELS,
+            models: activeModels,
           }) as unknown as BattleResult
 
           accumulated[key] = result
           newCells[key] = result.error && !result.judge ? "error" : "done"
           if (result.judge) {
-            totalJudgeCost += result.judge.judge_cost || 0
+            runJudgeCost += result.judge.judge_cost || 0
           }
         } catch (e) {
           newCells[key] = "error"
@@ -184,7 +193,7 @@ export function LLMTournament({
             stage_label: STAGE_LABELS[stage] || stage,
             question_id: question.id,
             question_text: question.query,
-            models: MODELS,
+            models: activeModels,
             results: {},
             judge: null,
             error: e instanceof Error ? e.message : "Request failed",
@@ -195,10 +204,11 @@ export function LLMTournament({
         setProgress(done)
         setBattles({ ...accumulated })
         setCellStatus({ ...newCells })
-        setJudgeCost(totalJudgeCost)
+        setJudgeCost(prev => prev + 0) // keep cumulative
       }
     }
 
+    setJudgeCost(prev => prev + runJudgeCost)
     setStatus("done")
   }
 
@@ -286,8 +296,8 @@ export function LLMTournament({
             Tournament Mode
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {STAGES.length} stages &times; {questions.length} questions = {total} battles.
-            Each battle: 4 models compete, GPT-5.2-pro (high reasoning) judges.
+            {activeStages.length} stage{activeStages.length !== 1 ? "s" : ""} &times; {questions.length} questions = {total} battles.
+            {activeModels.length < MODELS.length ? ` (${activeModels.map(m => MODEL_SHORT[m]).join(" vs ")})` : " Each: 4 models compete."} GPT-5.2-pro judges.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -302,7 +312,7 @@ export function LLMTournament({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-600 text-white text-xs font-medium hover:bg-orange-700 transition-colors"
             >
               <Play className="h-3 w-3" />
-              {status === "done" ? "Re-run Tournament" : "Start Tournament"}
+              {Object.keys(battles).length > 0 ? "Run Selected" : "Start Tournament"}
             </button>
           ) : (
             <button
@@ -312,6 +322,56 @@ export function LLMTournament({
               <Square className="h-3 w-3" />
               Stop
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* Stage / Model filter chips */}
+      <div className="flex flex-wrap gap-3 items-start">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase">Stages:</span>
+          {STAGES.map(s => (
+            <button
+              key={s}
+              onClick={() => toggleStage(s)}
+              disabled={status === "running"}
+              className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-medium border transition-colors",
+                selStages.includes(s)
+                  ? "bg-orange-500/20 border-orange-500/40 text-orange-400"
+                  : selStages.length === 0
+                    ? "bg-muted/50 border-border text-muted-foreground"
+                    : "bg-muted/20 border-border/50 text-muted-foreground/50"
+              )}
+            >
+              {STAGE_LABELS[s]}
+            </button>
+          ))}
+          {selStages.length > 0 && (
+            <button onClick={() => setSelStages([])} className="text-[9px] text-muted-foreground hover:text-foreground ml-1">clear</button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase">Models:</span>
+          {MODELS.map(m => (
+            <button
+              key={m}
+              onClick={() => toggleModel(m)}
+              disabled={status === "running"}
+              className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-medium border transition-colors",
+                selModels.includes(m)
+                  ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
+                  : selModels.length === 0
+                    ? "bg-muted/50 border-border text-muted-foreground"
+                    : "bg-muted/20 border-border/50 text-muted-foreground/50"
+              )}
+            >
+              {MODEL_SHORT[m]}
+            </button>
+          ))}
+          {selModels.length > 0 && (
+            <button onClick={() => setSelModels([])} className="text-[9px] text-muted-foreground hover:text-foreground ml-1">clear</button>
           )}
         </div>
       </div>
@@ -545,7 +605,7 @@ export function LLMTournament({
               {status === "done" && (
                 <div className="text-[10px] text-muted-foreground text-right">
                   Total judge cost: ${judgeCost.toFixed(4)} &bull;
-                  Completed: {completedBattles}/{total} &bull;
+                  Completed: {completedBattles}/{totalBattles} &bull;
                   Errors: {errorBattles} &bull;
                   Time: {fmtTime(elapsed)}
                 </div>
@@ -554,6 +614,9 @@ export function LLMTournament({
           )}
         </div>
       )}
+
+      {/* Head-to-Head: 5.2 vs 5.2-pro */}
+      <HeadToHead battles={battles} questions={questions} stageWins={stageWins} />
 
       {/* Idle state */}
       {status === "idle" && Object.keys(battles).length === 0 && (
@@ -691,6 +754,268 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
               )}
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// ─── Head-to-Head Analysis: 5.2 vs 5.2-pro ──────────────────────────────────
+
+function HeadToHead({
+  battles,
+  questions,
+  stageWins,
+}: {
+  battles: Record<string, BattleResult>
+  questions: BenchmarkQuestion[]
+  stageWins: Record<string, Record<string, { totalScore: number; wins: number; battles: number; avgScore: number }>>
+}) {
+  const [expanded, setExpanded] = React.useState(true)
+
+  const M_A = "gpt-5.2"
+  const M_B = "gpt-5.2-pro"
+
+  // Check if we have any data for both models
+  const hasData = Object.values(battles).some(b =>
+    b.judge?.rankings?.some(r => r.model === M_A) && b.judge?.rankings?.some(r => r.model === M_B)
+  )
+
+  if (!hasData) return null
+
+  // Per-stage comparison
+  type StageComp = {
+    stage: string
+    scoreA: number
+    scoreB: number
+    delta: number
+    winsA: number
+    winsB: number
+    battlesA: number
+    battlesB: number
+    perQuestion: Array<{
+      qid: string
+      scoreA: number | null
+      scoreB: number | null
+      delta: number | null
+      winner: string | null
+    }>
+  }
+
+  const stageComps: StageComp[] = []
+  let totalScoreA = 0, totalScoreB = 0, totalQuestionsCompared = 0
+
+  for (const stage of STAGES) {
+    const swA = stageWins[stage]?.[M_A]
+    const swB = stageWins[stage]?.[M_B]
+    if (!swA && !swB) continue
+
+    const perQuestion: StageComp["perQuestion"] = []
+    for (const q of questions) {
+      const key = `${stage}|${q.id}`
+      const battle = battles[key]
+      if (!battle?.judge?.rankings) {
+        perQuestion.push({ qid: q.id, scoreA: null, scoreB: null, delta: null, winner: null })
+        continue
+      }
+      const rA = battle.judge.rankings.find(r => r.model === M_A)
+      const rB = battle.judge.rankings.find(r => r.model === M_B)
+      const sA = rA?.score ?? null
+      const sB = rB?.score ?? null
+      const d = sA !== null && sB !== null ? sB - sA : null
+      if (sA !== null && sB !== null) {
+        totalScoreA += sA
+        totalScoreB += sB
+        totalQuestionsCompared++
+      }
+      perQuestion.push({
+        qid: q.id,
+        scoreA: sA,
+        scoreB: sB,
+        delta: d,
+        winner: d !== null ? (d > 0 ? M_B : d < 0 ? M_A : "tie") : null,
+      })
+    }
+
+    stageComps.push({
+      stage,
+      scoreA: swA?.avgScore || 0,
+      scoreB: swB?.avgScore || 0,
+      delta: (swB?.avgScore || 0) - (swA?.avgScore || 0),
+      winsA: swA?.wins || 0,
+      winsB: swB?.wins || 0,
+      battlesA: swA?.battles || 0,
+      battlesB: swB?.battles || 0,
+      perQuestion,
+    })
+  }
+
+  const avgA = totalQuestionsCompared > 0 ? Math.round(totalScoreA / totalQuestionsCompared * 10) / 10 : 0
+  const avgB = totalQuestionsCompared > 0 ? Math.round(totalScoreB / totalQuestionsCompared * 10) / 10 : 0
+  const overallDelta = Math.round((avgB - avgA) * 10) / 10
+
+  // Count how many questions pro wins vs 5.2 wins
+  let proWinsCount = 0, baseWinsCount = 0, tiesCount = 0
+  for (const sc of stageComps) {
+    for (const pq of sc.perQuestion) {
+      if (pq.winner === M_B) proWinsCount++
+      else if (pq.winner === M_A) baseWinsCount++
+      else if (pq.winner === "tie") tiesCount++
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-blue-500/20 bg-card p-4 space-y-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider w-full"
+      >
+        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <Zap className="h-3.5 w-3.5 text-blue-500" />
+        Head-to-Head: {MODEL_SHORT[M_A]} vs {MODEL_SHORT[M_B]}
+      </button>
+
+      {expanded && (
+        <div className="space-y-4">
+          {/* Overall summary */}
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg bg-muted/30 p-3">
+              <div className="text-lg font-bold text-foreground">{avgA}</div>
+              <div className="text-[10px] text-muted-foreground">{MODEL_SHORT[M_A]} avg score</div>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-3">
+              <div className={cn(
+                "text-lg font-bold",
+                overallDelta > 0 ? "text-emerald-500" : overallDelta < 0 ? "text-red-500" : "text-muted-foreground"
+              )}>
+                {overallDelta > 0 ? "+" : ""}{overallDelta}
+              </div>
+              <div className="text-[10px] text-muted-foreground">pro advantage</div>
+            </div>
+            <div className="rounded-lg bg-muted/30 p-3">
+              <div className="text-lg font-bold text-foreground">{avgB}</div>
+              <div className="text-[10px] text-muted-foreground">{MODEL_SHORT[M_B]} avg score</div>
+            </div>
+          </div>
+
+          {/* Win/loss summary */}
+          <div className="flex items-center justify-center gap-4 text-xs">
+            <span className="text-blue-400 font-semibold">{MODEL_SHORT[M_B]} wins: {proWinsCount}</span>
+            <span className="text-muted-foreground">Ties: {tiesCount}</span>
+            <span className="text-orange-400 font-semibold">{MODEL_SHORT[M_A]} wins: {baseWinsCount}</span>
+            <span className="text-muted-foreground/60">({totalQuestionsCompared} compared)</span>
+          </div>
+
+          {/* Per-stage comparison table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Stage</th>
+                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">{MODEL_SHORT[M_A]}</th>
+                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">{MODEL_SHORT[M_B]}</th>
+                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">Delta</th>
+                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">Better</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stageComps.map(sc => (
+                  <tr key={sc.stage} className="border-b border-border/30">
+                    <td className="px-2 py-2 font-medium text-foreground">{STAGE_LABELS[sc.stage]}</td>
+                    <td className="text-center px-2 py-2">
+                      <span className="font-bold">{sc.scoreA}</span>
+                      <span className="text-[9px] text-muted-foreground ml-1">({sc.winsA}w)</span>
+                    </td>
+                    <td className="text-center px-2 py-2">
+                      <span className="font-bold">{sc.scoreB}</span>
+                      <span className="text-[9px] text-muted-foreground ml-1">({sc.winsB}w)</span>
+                    </td>
+                    <td className="text-center px-2 py-2">
+                      <span className={cn(
+                        "font-bold",
+                        sc.delta > 0 ? "text-emerald-500" : sc.delta < 0 ? "text-red-500" : "text-muted-foreground"
+                      )}>
+                        {sc.delta > 0 ? "+" : ""}{sc.delta}
+                      </span>
+                    </td>
+                    <td className="text-center px-2 py-2">
+                      {sc.delta > 2 ? (
+                        <span className="text-blue-400 font-semibold">{MODEL_SHORT[M_B]}</span>
+                      ) : sc.delta < -2 ? (
+                        <span className="text-orange-400 font-semibold">{MODEL_SHORT[M_A]}</span>
+                      ) : (
+                        <span className="text-muted-foreground">~same</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Per-question delta grid */}
+          <div className="space-y-1">
+            <h5 className="text-[10px] font-semibold text-muted-foreground uppercase">Per-Question Score Delta ({MODEL_SHORT[M_B]} − {MODEL_SHORT[M_A]})</h5>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[10px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-1.5 py-1 text-muted-foreground">Stage</th>
+                    {questions.map(q => (
+                      <th key={q.id} className="text-center px-1.5 py-1 text-muted-foreground" title={q.query}>
+                        {q.id.replace(/^[a-z]+\d*_/, "").slice(0, 8)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {stageComps.map(sc => (
+                    <tr key={sc.stage} className="border-b border-border/20">
+                      <td className="px-1.5 py-1 font-medium text-foreground">{STAGE_LABELS[sc.stage]}</td>
+                      {sc.perQuestion.map(pq => (
+                        <td key={pq.qid} className="text-center px-1.5 py-1">
+                          {pq.delta !== null ? (
+                            <span className={cn(
+                              "font-semibold",
+                              pq.delta > 5 ? "text-emerald-500" :
+                              pq.delta > 0 ? "text-emerald-400/70" :
+                              pq.delta < -5 ? "text-red-500" :
+                              pq.delta < 0 ? "text-red-400/70" :
+                              "text-muted-foreground"
+                            )}>
+                              {pq.delta > 0 ? "+" : ""}{pq.delta}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/30">&mdash;</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Verdict */}
+          <div className={cn(
+            "rounded-lg border p-3 text-xs",
+            overallDelta > 3 ? "border-blue-500/30 bg-blue-500/5" :
+            overallDelta < -3 ? "border-orange-500/30 bg-orange-500/5" :
+            "border-border bg-muted/20"
+          )}>
+            <strong>Verdict:</strong>{" "}
+            {overallDelta > 3 ? (
+              <span>{MODEL_SHORT[M_B]} is clearly better overall by +{overallDelta} avg points. Pro wins {proWinsCount}/{totalQuestionsCompared} head-to-head comparisons.</span>
+            ) : overallDelta > 0 ? (
+              <span>{MODEL_SHORT[M_B]} has a marginal edge (+{overallDelta}). The difference is small — {MODEL_SHORT[M_A]} could be used for cost savings with minimal quality loss.</span>
+            ) : overallDelta === 0 ? (
+              <span>Both models perform identically on average. Use {MODEL_SHORT[M_A]} for cost savings.</span>
+            ) : (
+              <span>{MODEL_SHORT[M_A]} actually outperforms {MODEL_SHORT[M_B]} by {Math.abs(overallDelta)} avg points. No benefit to using Pro here.</span>
+            )}
+          </div>
         </div>
       )}
     </div>
