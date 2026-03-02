@@ -654,6 +654,7 @@ export default function DashboardPage() {
                                             return d > latest ? d : latest
                                         }, item.deadline || "")
                                         : (item.deadline || "")
+                                    const parentDeadlineOverdue = parentDeadline ? new Date(parentDeadline).getTime() < Date.now() : false
 
                                     return (
                                         <div key={rowKey} className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70")}>
@@ -705,7 +706,16 @@ export default function DashboardPage() {
                                                             disabled={taskStatus === "completed"}
                                                         />
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground/60" title="Latest child deadline">
+                                                        <span
+                                                            className={cn(
+                                                                "text-[10px] px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1 mx-auto w-fit",
+                                                                parentDeadlineOverdue
+                                                                    ? "text-red-400 border-red-400/30"
+                                                                    : "text-muted-foreground/70 border-muted-foreground/20"
+                                                            )}
+                                                            title="Latest child deadline"
+                                                        >
+                                                            <Calendar className="h-2.5 w-2.5" />
                                                             {parentDeadline ? formatDate(parentDeadline) : "—"}
                                                         </span>
                                                     )}
