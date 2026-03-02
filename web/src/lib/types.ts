@@ -298,10 +298,10 @@ export interface ActionableItem {
     workstream: ActionableWorkstream;
     approval_status: "pending" | "approved" | "rejected";
     is_manual: boolean;
-    // Publish fields (set when compliance officer publishes from Publish tab)
+    // Publish fields (set when compliance officer approves from Actionables page)
     published_at?: string;
     deadline?: string;           // ISO datetime for deadline
-    // Task lifecycle fields (populated after publish)
+    // Task lifecycle fields (populated after approval)
     task_status?: TaskStatus;
     completion_date?: string;    // ISO datetime when task is completed
     reviewer_comments?: string;  // Comments from compliance officer on rejection/rework

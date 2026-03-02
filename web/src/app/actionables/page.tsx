@@ -14,6 +14,7 @@ import {
     ActionablesResult,
     ActionableModality,
     ActionableWorkstream,
+    TeamWorkflow,
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
     isMultiTeam,
@@ -22,7 +23,7 @@ import {
     Shield,
     Check, X, Loader2, Plus, FileText, Search,
     ChevronDown, ChevronRight, Pencil,
-    Trash2, Users, Save, Undo2,
+    Trash2, Users, Save, Undo2, Calendar, Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -143,9 +144,93 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
     )
 }
 
+// --- Per-Team Deadline Block (for multi-team actionables in Actionables card) ---
+
+function PerTeamDeadlineBlock({ team, tw, item, docId, onUpdate, globalDeadline, globalDeadlineTime }: {
+    team: string
+    tw: TeamWorkflow | undefined
+    item: ActionableItem
+    docId: string
+    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
+    globalDeadline: string
+    globalDeadlineTime: string
+}) {
+    const [deadlineDate, setDeadlineDate] = React.useState(tw?.deadline ? tw.deadline.split("T")[0] || "" : "")
+    const [deadlineTime, setDeadlineTime] = React.useState(tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59")
+    const [saving, setSaving] = React.useState(false)
+    const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+
+    const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
+    const savedDl = tw?.deadline || ""
+    const deadlineDirty = currentDl !== savedDl
+
+    const handleSaveTeamDeadline = async () => {
+        if (!deadlineDate) return
+        setSaving(true)
+        try {
+            const workflows = { ...(item.team_workflows || {}) }
+            workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), deadline: currentDl }
+            await onUpdate(docId, item.id, { team_workflows: workflows })
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+            <div className="flex items-center gap-2">
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
+                    {team}
+                </span>
+                {tw?.deadline && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono ml-auto">
+                        {tw.deadline.split("T")[0]}
+                    </span>
+                )}
+            </div>
+            <div>
+                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Deadline for {team}</p>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="date"
+                        value={deadlineDate}
+                        min={new Date().toISOString().split("T")[0]}
+                        onChange={e => setDeadlineDate(e.target.value)}
+                        className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                    <input
+                        type="time"
+                        value={deadlineTime}
+                        onChange={e => setDeadlineTime(e.target.value)}
+                        className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                    <button
+                        onClick={handleSaveTeamDeadline}
+                        disabled={!deadlineDirty || saving || !deadlineDate}
+                        className={cn(
+                            "flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md font-medium transition-colors",
+                            deadlineDirty && deadlineDate
+                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                        )}
+                    >
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Save
+                    </button>
+                </div>
+                {!deadlineDate && globalDeadline && (
+                    <p className="text-[9px] text-muted-foreground/40 mt-1">
+                        Will use global deadline ({globalDeadline}) on approve
+                    </p>
+                )}
+            </div>
+        </div>
+    )
+}
+
 // --- Actionable Card ---
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, globalDeadline, globalDeadlineTime }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -154,10 +239,14 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     onSourceClick: (docId: string, pageNumber: number) => void
     isSelected: boolean
     onSelect: () => void
+    globalDeadline: string
+    globalDeadlineTime: string
 }) {
     const { teamNames } = useTeams()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
+    const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
+    const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
 
     const handleFieldSave = async (field: string, value: unknown) => {
         setSaving(true)
@@ -168,9 +257,38 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         }
     }
 
+    const handleSaveDeadline = async () => {
+        if (!deadlineDate) { toast.error("Set a date first"); return }
+        setSaving(true)
+        try {
+            const dl = `${deadlineDate}T${deadlineTime || "23:59"}`
+            await onUpdate(docId, item.id, { deadline: dl })
+            toast.success("Deadline saved")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    // Approve & Publish: resolves deadline, sets published_at + task_status, moves to tracker
     const handleApprove = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        await onUpdate(docId, item.id, { approval_status: "approved" })
+        // Resolve deadline: individual > global fallback
+        let dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : (item.deadline || "")
+        if (!dl && globalDeadline) {
+            dl = `${globalDeadline}T${globalDeadlineTime || "23:59"}`
+        }
+        if (!dl) {
+            toast.error("Set a deadline (or a global deadline) before approving")
+            return
+        }
+        const updates: Record<string, unknown> = {
+            approval_status: "approved",
+            published_at: new Date().toISOString(),
+            deadline: dl,
+            task_status: "assigned",
+        }
+        await onUpdate(docId, item.id, updates)
+        toast.success("Approved & sent to tracker")
     }
 
     const handleReject = async (e: React.MouseEvent) => {
@@ -180,7 +298,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
     const handleRevert = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        await onUpdate(docId, item.id, { approval_status: "pending", published_at: "" })
+        await onUpdate(docId, item.id, { approval_status: "pending", published_at: "", task_status: "", deadline: "" })
     }
 
     const handleSourceClick = () => {
@@ -189,6 +307,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             onSourceClick(docId, parseInt(match[1], 10))
         }
     }
+
+    // Track if local deadline differs from saved
+    const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
+    const savedDl = item.deadline || ""
+    const deadlineDirty = currentDl !== savedDl
 
     return (
         <div
@@ -222,10 +345,17 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                 {/* Right-side buttons */}
                 <div className="flex items-center gap-1 shrink-0">
+                    {/* Show saved deadline badge in header */}
+                    {item.deadline && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">
+                            {item.deadline.split("T")[0]}
+                        </span>
+                    )}
                     {item.approval_status === "pending" && (
                         <>
-                            <button onClick={handleApprove} className="p-1 rounded hover:bg-emerald-400/10 text-muted-foreground/40 hover:text-emerald-400 transition-colors" title="Approve">
-                                <Check className="h-3.5 w-3.5" />
+                            <button onClick={handleApprove} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium" title="Approve & send to tracker">
+                                <Send className="h-3 w-3" />
+                                Approve
                             </button>
                             <button onClick={handleReject} className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors" title="Reject">
                                 <X className="h-3.5 w-3.5" />
@@ -286,6 +416,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", RISK_STYLES[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_STYLES[normalizeRisk(item.modality)]?.text || "text-foreground")}>{normalizeRisk(item.modality)}</span>
                                 </div>
                             </div>
+                            {item.deadline && (
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
+                                    <span className="text-xs text-blue-400 font-mono">{item.deadline.split("T")[0]}</span>
+                                </div>
+                            )}
                         </>
                     ) : (
                         <>
@@ -414,6 +550,71 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             </div>
+
+                            {/* Individual Deadline (below Risk Level) — single-team */}
+                            {!isMultiTeam(item) && (
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        Deadline
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            value={deadlineDate}
+                                            min={new Date().toISOString().split("T")[0]}
+                                            onChange={e => setDeadlineDate(e.target.value)}
+                                            className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                        />
+                                        <input
+                                            type="time"
+                                            value={deadlineTime}
+                                            onChange={e => setDeadlineTime(e.target.value)}
+                                            className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                        />
+                                        <button
+                                            onClick={handleSaveDeadline}
+                                            disabled={!deadlineDirty || saving || !deadlineDate}
+                                            className={cn(
+                                                "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
+                                                deadlineDirty && deadlineDate
+                                                    ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                                    : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                            )}
+                                        >
+                                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                            Save
+                                        </button>
+                                    </div>
+                                    {!deadlineDate && globalDeadline && (
+                                        <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                            No individual deadline — will use global deadline ({globalDeadline}) on approve
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Per-team Deadlines (below Risk Level) — multi-team */}
+                            {isMultiTeam(item) && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        Per-Team Deadlines
+                                    </p>
+                                    {item.assigned_teams!.map(team => (
+                                        <PerTeamDeadlineBlock
+                                            key={team}
+                                            team={team}
+                                            tw={item.team_workflows?.[team]}
+                                            item={item}
+                                            docId={docId}
+                                            onUpdate={onUpdate}
+                                            globalDeadline={globalDeadline}
+                                            globalDeadlineTime={globalDeadlineTime}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </>
                     )}
 
@@ -573,6 +774,35 @@ export default function ActionablesPage() {
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
     const [viewTab, setViewTab] = React.useState<ViewTab>("all")
+
+    // Global deadline (header bar)
+    const [globalDeadline, setGlobalDeadline] = React.useState("")
+    const [globalDeadlineTime, setGlobalDeadlineTime] = React.useState("23:59")
+    const [globalDeadlineSaved, setGlobalDeadlineSaved] = React.useState(false)
+
+    // Load persisted global deadline from localStorage
+    React.useEffect(() => {
+        try {
+            const saved = localStorage.getItem("actionables_global_deadline")
+            if (saved) {
+                const { date, time } = JSON.parse(saved)
+                if (date) setGlobalDeadline(date)
+                if (time) setGlobalDeadlineTime(time)
+            }
+        } catch { /* ignore */ }
+    }, [])
+
+    const handleSaveGlobalDeadline = () => {
+        if (!globalDeadline) { toast.error("Set a date first"); return }
+        const today = new Date().toISOString().split("T")[0]
+        if (globalDeadline < today) { toast.error("Deadline cannot be in the past"); return }
+        localStorage.setItem("actionables_global_deadline", JSON.stringify({ date: globalDeadline, time: globalDeadlineTime }))
+        setGlobalDeadlineSaved(true)
+        toast.success("Global deadline saved")
+        setTimeout(() => setGlobalDeadlineSaved(false), 2000)
+    }
+
+    const todayStr = React.useMemo(() => new Date().toISOString().split("T")[0], [])
 
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")
@@ -768,13 +998,28 @@ export default function ActionablesPage() {
 
     const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
 
-    // Handlers for bulk actions
+    // Handlers for bulk actions — approve & publish directly to tracker
     const handleApproveAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
         const pending = items.filter(e => e.item.approval_status === "pending")
         if (pending.length === 0) { toast.info("No pending items to approve"); return }
-        await Promise.all(pending.map(({ item, docId }) => handleUpdate(docId, item.id, { approval_status: "approved" })))
-        toast.success(`Approved ${pending.length} actionables`)
-    }, [handleUpdate])
+        const globalDl = globalDeadline ? `${globalDeadline}T${globalDeadlineTime || "23:59"}` : ""
+        // Check if any item lacks both individual and global deadline
+        const noDeadline = pending.filter(({ item }) => !item.deadline && !globalDl)
+        if (noDeadline.length > 0) {
+            toast.error("Set a global deadline first — some items have no individual deadline")
+            return
+        }
+        await Promise.all(pending.map(({ item, docId }) => {
+            const dl = item.deadline || globalDl
+            return handleUpdate(docId, item.id, {
+                approval_status: "approved",
+                published_at: new Date().toISOString(),
+                deadline: dl,
+                task_status: "assigned",
+            })
+        }))
+        toast.success(`Approved & sent ${pending.length} actionables to tracker`)
+    }, [handleUpdate, globalDeadline, globalDeadlineTime])
 
     const toggleTeam = (team: string) => {
         setCollapsedTeams(prev => {
@@ -866,9 +1111,8 @@ export default function ActionablesPage() {
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 text-[10px]">
                             <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
-                            <span className="px-2 py-0.5 rounded bg-emerald-400/10 text-emerald-400 font-mono">{stats.approved} approved</span>
                             <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
-                            <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} published</span>
+                            <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} in tracker</span>
                         </div>
                         <Button
                             variant="outline"
@@ -928,6 +1172,43 @@ export default function ActionablesPage() {
                                     Approve All
                                 </Button>
                             )}
+                        </div>
+
+                        {/* Global Deadline bar */}
+                        <div className="shrink-0 border-b border-border/40 px-4 py-2 flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-[10px] font-medium text-muted-foreground/60 shrink-0">Global Deadline</span>
+                            <input
+                                type="date"
+                                value={globalDeadline}
+                                min={todayStr}
+                                onChange={e => setGlobalDeadline(e.target.value)}
+                                className="w-36 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                            />
+                            <input
+                                type="time"
+                                value={globalDeadlineTime}
+                                onChange={e => setGlobalDeadlineTime(e.target.value)}
+                                className="w-28 bg-muted/30 text-xs rounded-md px-2.5 py-1.5 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                            />
+                            <button
+                                onClick={handleSaveGlobalDeadline}
+                                disabled={!globalDeadline}
+                                className={cn(
+                                    "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors shrink-0",
+                                    globalDeadlineSaved
+                                        ? "bg-emerald-500/15 text-emerald-500"
+                                        : globalDeadline
+                                            ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                            : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                )}
+                            >
+                                <Save className="h-3 w-3" />
+                                {globalDeadlineSaved ? "Saved" : "Save"}
+                            </button>
+                            <span className="text-[9px] text-muted-foreground/40 ml-auto">
+                                Applies to items without individual deadlines
+                            </span>
                         </div>
 
                         {/* Content */}
@@ -992,6 +1273,8 @@ export default function ActionablesPage() {
                                                                 setSelectedItemKey(`${docId}-${item.id}`)
                                                                 if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
                                                             }}
+                                                            globalDeadline={globalDeadline}
+                                                            globalDeadlineTime={globalDeadlineTime}
                                                         />
                                                     ))}
 
@@ -1013,7 +1296,7 @@ export default function ActionablesPage() {
                                                                     </Button>
                                                                 </div>
                                                                 {!isCollapsed && pendingEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                                 ))}
                                                             </div>
                                                         )
@@ -1037,7 +1320,7 @@ export default function ActionablesPage() {
                                                                     </Button>
                                                                 </div>
                                                                 {!isCollapsed && pendingEntries.map(({ item, docId, docName }) => (
-                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} />
+                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                                 ))}
                                                             </div>
                                                         )
@@ -1075,6 +1358,8 @@ export default function ActionablesPage() {
                                                                 setSelectedItemKey(`${docId}-${item.id}`)
                                                                 if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
                                                             }}
+                                                            globalDeadline={globalDeadline}
+                                                            globalDeadlineTime={globalDeadlineTime}
                                                         />
                                                     ))}
 
@@ -1093,7 +1378,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                                 ))}
                                                             </div>
                                                         )
@@ -1114,7 +1399,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId, docName }) => (
-                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} />
+                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                                 ))}
                                                             </div>
                                                         )

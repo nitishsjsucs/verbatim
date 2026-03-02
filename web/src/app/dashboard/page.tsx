@@ -509,9 +509,9 @@ export default function DashboardPage() {
                             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                                 <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
                             </div>
-                            <h3 className="text-sm font-medium mb-1">No published actionables to track</h3>
+                            <h3 className="text-sm font-medium mb-1">No actionables to track yet</h3>
                             <p className="text-xs text-muted-foreground/60 max-w-sm">
-                                Publish approved actionables from the Actionables &gt; Publish tab to see them here.
+                                Approve actionables from the Actionables page to see them here.
                             </p>
                         </div>
                     )}

@@ -14,7 +14,6 @@ import {
   BarChart3,
   ClipboardList,
   LogOut,
-  Send,
   Users,
   Lock,
   Eye,
@@ -173,14 +172,6 @@ export function Sidebar({ className }: SidebarProps) {
                 iconClassName="text-amber-500"
                 label="Actionables"
                 active={pathname === "/actionables"}
-                collapsed={collapsed}
-              />
-              <NavItem
-                href="/publish"
-                icon={<Send className="h-4 w-4" />}
-                iconClassName="text-amber-500"
-                label="Publish"
-                active={pathname === "/publish"}
                 collapsed={collapsed}
               />
               <div className="my-2 border-t border-sidebar-border/50" />
