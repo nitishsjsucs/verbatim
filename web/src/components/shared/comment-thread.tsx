@@ -70,9 +70,9 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
     )
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 shrink-0">
                 <MessageSquare className="h-3.5 w-3.5 text-primary/60" />
                 <span className="text-xs font-semibold text-foreground/80">Comments</span>
                 {comments.length > 0 && (
@@ -84,7 +84,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
             <div
                 ref={scrollRef}
                 className={cn(
-                    "space-y-2 overflow-y-auto pr-1",
+                    "flex-1 space-y-2 overflow-y-auto pr-1 min-h-0",
                     comments.length > 4 ? "max-h-[200px]" : ""
                 )}
             >
@@ -126,8 +126,8 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                 })}
             </div>
 
-            {/* Input */}
-            {onAddComment && !readOnly && <div className="flex items-end gap-2 mt-2 pt-2 border-t border-border/20">
+            {/* Input - always anchored at bottom */}
+            {onAddComment && !readOnly && <div className="flex items-end gap-2 mt-2 pt-2 border-t border-border/20 shrink-0">
                 <textarea
                     value={draft}
                     onChange={e => setDraft(e.target.value)}
