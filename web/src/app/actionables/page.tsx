@@ -541,8 +541,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </div>
 
                             {/* Single-team: Consolidated group box */}
-                            {!draftIsMulti && (
-                                <div className="space-y-3">
+                            {!draftIsMulti && (() => {
+                                const teamColors = WORKSTREAM_COLORS[draftTeams[0]] || DEFAULT_WORKSTREAM_COLORS
+                                return (
+                                <div className={cn("rounded-lg p-3 space-y-3 border-2", teamColors.text.replace('text-', 'border-'))}>
                                     <div className="flex items-center gap-2">
                                         <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(draftTeams[0]))}>
                                             {draftTeams[0]}
@@ -595,7 +597,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         )}
                                     </div>
                                 </div>
-                            )}
+                                )
+                            })()}
 
                             {/* Multi-team: Per-team group boxes (Implementation + Deadline only, no evidence) */}
                             {draftIsMulti && (
@@ -609,7 +612,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
 
                                         return (
-                                            <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg.replace('/20', '/10').replace('/30', '/15'))}>
+                                            <div key={team} className={cn("rounded-lg p-3 space-y-2 border-2", teamColors.text.replace('text-', 'border-'))}>
                                                 <div className="flex items-center gap-2">
                                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
                                                         {team}
