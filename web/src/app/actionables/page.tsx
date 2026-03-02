@@ -169,6 +169,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const { teamNames } = useTeams()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
+    const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
+        if (!el) return
+        el.style.height = "auto"
+        el.style.height = `${el.scrollHeight}px`
+    }, [])
 
     // --- Draft state: all editable fields are local until Save ---
     const [draftImpl, setDraftImpl] = React.useState(safeStr(item.implementation_notes))
@@ -476,11 +481,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         value={draftEvidence}
                                         onChange={e => {
                                             setDraftEvidence(e.target.value)
-                                            e.target.style.height = 'auto'
-                                            e.target.style.height = e.target.scrollHeight + 'px'
+                                            autoGrow(e.target)
                                         }}
+                                        ref={el => autoGrow(el)}
                                         rows={2}
-                                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
+                                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
                                         placeholder="Click to add evidence..."
                                         style={{ minHeight: '48px' }}
                                     />
@@ -537,18 +542,23 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                             {/* Single-team: Consolidated group box */}
                             {!draftIsMulti && (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(draftTeams[0]))}>
+                                            {draftTeams[0]}
+                                        </span>
+                                    </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                         <textarea
                                             value={draftImpl}
                                             onChange={e => {
                                                 setDraftImpl(e.target.value)
-                                                e.target.style.height = 'auto'
-                                                e.target.style.height = e.target.scrollHeight + 'px'
+                                                autoGrow(e.target)
                                             }}
+                                            ref={autoGrow}
                                             rows={2}
-                                            className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
+                                            className="w-full bg-background text-xs rounded px-2 py-1 border border-border/60 focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
                                             placeholder="Click to add implementation notes..."
                                             style={{ minHeight: '48px' }}
                                         />
@@ -564,13 +574,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 value={deadlineDate}
                                                 min={new Date().toISOString().split("T")[0]}
                                                 onChange={e => setDeadlineDate(e.target.value)}
-                                                className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="flex-1 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border/60 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                             <input
                                                 type="time"
                                                 value={deadlineTime}
                                                 onChange={e => setDeadlineTime(e.target.value)}
-                                                className="w-20 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                className="w-20 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border/60 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                             />
                                         </div>
                                         {deadlineDate && (
@@ -611,11 +621,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                         value={draftTeamImpl[team] || ""}
                                                         onChange={e => {
                                                             setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value }))
-                                                            e.target.style.height = 'auto'
-                                                            e.target.style.height = e.target.scrollHeight + 'px'
+                                                            autoGrow(e.target)
                                                         }}
+                                                        ref={autoGrow}
                                                         rows={2}
-                                                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none"
+                                                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
                                                         placeholder="Click to add implementation notes..."
                                                         style={{ minHeight: '48px' }}
                                                     />
