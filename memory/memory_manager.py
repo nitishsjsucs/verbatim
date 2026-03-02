@@ -22,7 +22,7 @@ import threading
 import time
 from typing import Any, Optional
 
-from config.settings import get_settings
+from config.settings import get_active_retrieval_mode, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +74,10 @@ class MemoryManager:
         """Check if a specific memory feature is enabled."""
         if not self._initialized:
             return False
-        settings = get_settings()
-        mode = getattr(settings.optimization, "retrieval_mode", "legacy")
-        if mode != "optimized":
+        # Use runtime-aware mode check (respects UI toggle, not just .env)
+        if get_active_retrieval_mode() != "optimized":
             return False
-        return getattr(settings.optimization, feature, False)
+        return getattr(get_settings().optimization, feature, False)
 
     # ------------------------------------------------------------------
     # Lazy loading helpers
