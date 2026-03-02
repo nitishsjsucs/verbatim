@@ -1234,12 +1234,15 @@ export default function ActionablesPage() {
                                             {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
                                                 if (pendingEntries.length === 0) return null
+                                                const isCollapsed = collapsedDocs.has(docId)
                                                 return (
                                                     <div key={docId} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold text-muted-foreground flex items-center gap-2">
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleDoc(docId)}>
+                                                            {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                                             <FileText className="h-3 w-3" /> {docName}
                                                             <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
+                                                        {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
                                                             {pendingEntries.map(({ item }) => (
                                                                 <ActionableCard
@@ -1260,6 +1263,7 @@ export default function ActionablesPage() {
                                                                 />
                                                             ))}
                                                         </div>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
@@ -1267,12 +1271,15 @@ export default function ActionablesPage() {
                                             {viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
                                                 if (pendingEntries.length === 0) return null
+                                                const isCollapsed = collapsedTeams.has(team)
                                                 return (
                                                     <div key={team} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold text-muted-foreground flex items-center gap-2">
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
+                                                            {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                                             <Users className="h-3 w-3" /> {team}
                                                             <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
+                                                        {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
                                                             {pendingEntries.map(({ item, docId, docName }) => (
                                                                 <ActionableCard
@@ -1293,6 +1300,7 @@ export default function ActionablesPage() {
                                                                 />
                                                             ))}
                                                         </div>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
