@@ -580,6 +580,7 @@ function ReviewRow({
     const isExpanded = expandedRow === rowKey
     const commentCount = (item.comments || []).length
     const isTeamReviewStatus = taskStatus === "team_review"
+    const isReadOnly = taskStatus === "completed" || taskStatus === "review"
 
     const [rejectReason, setRejectReason] = React.useState("")
     const [showRejectInput, setShowRejectInput] = React.useState(false)
@@ -811,25 +812,31 @@ function ReviewRow({
                                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
                                         )}
                                     </div>
-                                    <button
-                                        onClick={handleUploadClick}
-                                        className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
-                                    >
-                                        <Upload className="h-3 w-3" /> Upload File
-                                    </button>
-                                    <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = "" }} />
+                                    {!isReadOnly && (
+                                        <>
+                                            <button
+                                                onClick={handleUploadClick}
+                                                className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                            >
+                                                <Upload className="h-3 w-3" /> Upload File
+                                            </button>
+                                            <input ref={inputRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = "" }} />
+                                        </>
+                                    )}
                                 </div>
 
                                 {files.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-4 bg-background rounded-lg border border-dashed border-border/40">
                                         <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
                                         <p className="text-[10px] text-muted-foreground/40">No evidence files uploaded yet</p>
-                                        <button
-                                            onClick={handleUploadClick}
-                                            className="text-[10px] text-primary hover:underline mt-1"
-                                        >
-                                            Click to upload
-                                        </button>
+                                        {!isReadOnly && (
+                                            <button
+                                                onClick={handleUploadClick}
+                                                className="text-[10px] text-primary hover:underline mt-1"
+                                            >
+                                                Click to upload
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-1.5">
@@ -869,13 +876,15 @@ function ReviewRow({
                                                                 </a>
                                                             </>
                                                         )}
-                                                        <button
-                                                            onClick={() => handleDeleteFile(idx)}
-                                                            className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
-                                                            title="Remove file"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </button>
+                                                        {!isReadOnly && (
+                                                            <button
+                                                                onClick={() => handleDeleteFile(idx)}
+                                                                className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
+                                                                title="Remove file"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )

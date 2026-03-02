@@ -702,6 +702,7 @@ export default function DashboardPage() {
                                                         <DeadlineCell
                                                             value={item.deadline || ""}
                                                             onSave={v => handleUpdate(docId, item.id, { deadline: v })}
+                                                            disabled={taskStatus === "completed"}
                                                         />
                                                     ) : (
                                                         <span className="text-[10px] text-muted-foreground/60" title="Latest child deadline">
@@ -839,6 +840,7 @@ export default function DashboardPage() {
                                                                 <DeadlineCell
                                                                     value={tw?.deadline || item.deadline || ""}
                                                                     onSave={v => handleUpdate(docId, item.id, { deadline: v }, team)}
+                                                                    disabled={twStatus === "completed"}
                                                                 />
                                                             </div>
                                                             {/* Deadline time */}
@@ -939,18 +941,13 @@ export default function DashboardPage() {
                                                                 {twStatus === "review" && (
                                                                     <div className="flex items-center gap-3 mb-3">
                                                                         <button
-                                                                            onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() }, team)}
+                                                                            onClick={() => handleApproveTeam(docId, item, team)}
                                                                             className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                         >
                                                                             <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Complete
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => {
-                                                                                const reason = prompt("Reason for rejection:")
-                                                                                if (reason) {
-                                                                                    handleUpdate(docId, item.id, { task_status: "reworking", rejection_reason: reason }, team)
-                                                                                }
-                                                                            }}
+                                                                            onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
                                                                             className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
                                                                         >
                                                                             <XCircle className="h-3.5 w-3.5" /> Reject for Rework
@@ -1161,12 +1158,7 @@ export default function DashboardPage() {
                                                                 <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Complete
                                                             </button>
                                                             <button
-                                                                onClick={() => {
-                                                                    const reason = prompt("Reason for rejection:")
-                                                                    if (reason) {
-                                                                        handleUpdate(docId, item.id, { task_status: "reworking", rejection_reason: reason })
-                                                                    }
-                                                                }}
+                                                                onClick={() => { setRejectingItem({ docId, item }); setRejectReason("") }}
                                                                 className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
                                                             >
                                                                 <XCircle className="h-3.5 w-3.5" /> Reject for Rework
@@ -1382,7 +1374,7 @@ export default function DashboardPage() {
 
 // ─── Deadline editable cell ──────────────────────────────────────────────────
 
-function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+function DeadlineCell({ value, onSave, disabled = false }: { value: string; onSave: (v: string) => void; disabled?: boolean }) {
     const inputRef = React.useRef<HTMLInputElement>(null)
     const [localValue, setLocalValue] = React.useState(value || "")
     const [saving, setSaving] = React.useState(false)
@@ -1419,6 +1411,14 @@ function DeadlineCell({ value, onSave }: { value: string; onSave: (v: string) =>
         } finally {
             setSaving(false)
         }
+    }
+
+    if (disabled) {
+        return (
+            <span className={cn("text-[10px]", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
+                {display}
+            </span>
+        )
     }
 
     return (
