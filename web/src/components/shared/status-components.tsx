@@ -51,7 +51,7 @@ interface EvidenceFile {
     uploaded_at: string
 }
 
-export function EvidencePopover({ files }: { files: EvidenceFile[]; taskStatus?: string }) {
+export function EvidencePopover({ files, canDownload = true }: { files: EvidenceFile[]; taskStatus?: string; canDownload?: boolean }) {
     const [open, setOpen] = React.useState(false)
     const popoverRef = React.useRef<HTMLDivElement>(null)
 
@@ -106,9 +106,11 @@ export function EvidencePopover({ files }: { files: EvidenceFile[]; taskStatus?:
                                             <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Open">
                                                 <ExternalLink className="h-3 w-3" />
                                             </a>
-                                            <a href={fileUrl} download={file.name} className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Download">
-                                                <Download className="h-3 w-3" />
-                                            </a>
+                                            {canDownload && (
+                                                <a href={fileUrl} download={file.name} className="p-1 rounded hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors" title="Download">
+                                                    <Download className="h-3 w-3" />
+                                                </a>
+                                            )}
                                         </>
                                     )}
                                 </div>

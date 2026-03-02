@@ -1110,8 +1110,11 @@ export default function DashboardPage() {
                                             )}
 
                                             {/* ── Single-team expanded: 2-column layout ── */}
-                                            {!multi && isExpanded && (
-                                                <div className="bg-muted/5 border-t border-border/10 px-6 py-4 space-y-3">
+                                            {!multi && isExpanded && (() => {
+                                                const teamColor = WORKSTREAM_COLORS[item.workstream] || DEFAULT_WORKSTREAM_COLORS
+                                                return (
+                                                <div className={cn("border-t border-border/10 px-6 py-4 space-y-3", teamColor.bg)}>
+                                                
                                                     {/* Banners: justification + rejection */}
                                                     {item.justification && item.justification_status === "pending_review" && (
                                                         <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
@@ -1241,7 +1244,8 @@ export default function DashboardPage() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                            )}
+                                                )
+                                            })()}
                                         </div>
                                     )
                                 })}
