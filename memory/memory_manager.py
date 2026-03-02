@@ -193,7 +193,7 @@ class MemoryManager:
         if self._is_enabled("enable_raptor_index"):
             try:
                 raptor = self._get_raptor(doc_id)
-                if raptor and raptor._built:
+                if raptor and raptor.is_built:
                     results = raptor.query(
                         query_text,
                         self._embedding_client,
@@ -364,7 +364,7 @@ class MemoryManager:
             raptor = RaptorIndex(doc_id=doc_id)
             raptor.build(tree, self._embedding_client, self._llm_client)
             self._raptor_indexes[doc_id] = raptor
-            if self._db:
+            if self._db is not None:
                 raptor.save(self._db)
             logger.info("[MemoryManager] Built RAPTOR index for %s", doc_id)
             return True
@@ -381,7 +381,7 @@ class MemoryManager:
             r2r = R2RFallback(doc_id=doc_id)
             r2r.build_index(tree, self._embedding_client)
             self._r2r_fallbacks[doc_id] = r2r
-            if self._db:
+            if self._db is not None:
                 r2r.save(self._db)
             logger.info("[MemoryManager] Built R2R index for %s", doc_id)
             return True
@@ -395,7 +395,7 @@ class MemoryManager:
 
     def save_all(self, doc_id: Optional[str] = None) -> None:
         """Persist all subsystems to MongoDB."""
-        if not self._db:
+        if self._db is None:
             logger.warning("[MemoryManager] No DB connection — skipping save")
             return
 
