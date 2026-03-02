@@ -277,6 +277,18 @@ class MemoryManager:
         Called after the answer is generated and the QueryRecord is saved.
         """
         t0 = time.time()
+        _mode = get_active_retrieval_mode()
+        logger.info(
+            "[MemoryManager] post_query called: doc=%s user=%s mode=%s initialized=%s",
+            doc_id, user_id, _mode, self._initialized,
+        )
+        _flags = {
+            "raptor": self._is_enabled("enable_raptor_index"),
+            "user_mem": self._is_enabled("enable_user_memory"),
+            "query_intel": self._is_enabled("enable_query_intelligence"),
+            "retrieval_fb": self._is_enabled("enable_retrieval_feedback"),
+        }
+        logger.info("[MemoryManager] Feature flags: %s", _flags)
 
         # Loop 1: RAPTOR heat map update
         if self._is_enabled("enable_raptor_index"):
@@ -284,6 +296,7 @@ class MemoryManager:
                 raptor = self._get_raptor(doc_id)
                 if raptor:
                     raptor.record_citations_from_answer(record)
+                    logger.info("[MemoryManager] Loop 1 RAPTOR: OK (doc=%s)", doc_id)
             except Exception as e:
                 logger.warning("[MemoryManager] RAPTOR post-query failed: %s", e)
 
@@ -302,15 +315,16 @@ class MemoryManager:
                         else str(record.query_type)
                     )
                     user_mem.add_interaction(
-                        query=record.query_text,
-                        answer=record.answer_text[:500] if record.answer_text else "",
+                        query_text=record.query_text,
+                        answer_text=record.answer_text[:500] if record.answer_text else "",
                         doc_id=doc_id,
                         key_terms=key_terms,
                         query_type=query_type,
-                        rating=(
+                        feedback_rating=(
                             record.feedback.rating if record.feedback else None
                         ),
                     )
+                    logger.info("[MemoryManager] Loop 2 UserMemory: OK (user=%s)", user_id)
             except Exception as e:
                 logger.warning("[MemoryManager] User memory post-query failed: %s", e)
 
@@ -320,6 +334,7 @@ class MemoryManager:
                 qi = self._get_query_intel(doc_id)
                 if qi:
                     qi.learn_from_query(record, self._embedding_client)
+                    logger.info("[MemoryManager] Loop 3 QueryIntel: OK (doc=%s)", doc_id)
             except Exception as e:
                 logger.warning("[MemoryManager] Query intel post-query failed: %s", e)
 
@@ -329,6 +344,7 @@ class MemoryManager:
                 fb = self._get_retrieval_fb(doc_id)
                 if fb:
                     fb.grade_retrieval(record)
+                    logger.info("[MemoryManager] Loop 4 RetrievalFB: OK (doc=%s)", doc_id)
             except Exception as e:
                 logger.warning("[MemoryManager] Retrieval feedback post-query failed: %s", e)
 
