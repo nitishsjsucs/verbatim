@@ -536,10 +536,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </div>
 
                             {/* Single-team: Consolidated group box */}
-                            {!draftIsMulti && (() => {
-                                const teamColors = WORKSTREAM_COLORS[draftTeams[0]] || DEFAULT_WORKSTREAM_COLORS
-                                return (
-                                <div className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+                            {!draftIsMulti && (
+                                <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                         <textarea
@@ -582,8 +580,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         )}
                                     </div>
                                 </div>
-                                )
-                            })()}
+                            )}
 
                             {/* Multi-team: Per-team group boxes (Implementation + Deadline only, no evidence) */}
                             {draftIsMulti && (
