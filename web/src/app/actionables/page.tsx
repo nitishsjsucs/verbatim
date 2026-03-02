@@ -144,90 +144,6 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
     )
 }
 
-// --- Per-Team Deadline Block (for multi-team actionables in Actionables card) ---
-
-function PerTeamDeadlineBlock({ team, tw, item, docId, onUpdate, globalDeadline, globalDeadlineTime }: {
-    team: string
-    tw: TeamWorkflow | undefined
-    item: ActionableItem
-    docId: string
-    onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
-    globalDeadline: string
-    globalDeadlineTime: string
-}) {
-    const [deadlineDate, setDeadlineDate] = React.useState(tw?.deadline ? tw.deadline.split("T")[0] || "" : "")
-    const [deadlineTime, setDeadlineTime] = React.useState(tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59")
-    const [saving, setSaving] = React.useState(false)
-    const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
-
-    const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
-    const savedDl = tw?.deadline || ""
-    const deadlineDirty = currentDl !== savedDl
-
-    const handleSaveTeamDeadline = async () => {
-        if (!deadlineDate) return
-        setSaving(true)
-        try {
-            const workflows = { ...(item.team_workflows || {}) }
-            workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), deadline: currentDl }
-            await onUpdate(docId, item.id, { team_workflows: workflows })
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    return (
-        <div className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
-            <div className="flex items-center gap-2">
-                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
-                    {team}
-                </span>
-                {tw?.deadline && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono ml-auto">
-                        {tw.deadline.split("T")[0]}
-                    </span>
-                )}
-            </div>
-            <div>
-                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Deadline for {team}</p>
-                <div className="flex items-center gap-2">
-                    <input
-                        type="date"
-                        value={deadlineDate}
-                        min={new Date().toISOString().split("T")[0]}
-                        onChange={e => setDeadlineDate(e.target.value)}
-                        className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                    />
-                    <input
-                        type="time"
-                        value={deadlineTime}
-                        onChange={e => setDeadlineTime(e.target.value)}
-                        className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                    />
-                    <button
-                        onClick={handleSaveTeamDeadline}
-                        disabled={!deadlineDirty || saving || !deadlineDate}
-                        className={cn(
-                            "flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md font-medium transition-colors",
-                            deadlineDirty && deadlineDate
-                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                        )}
-                    >
-                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                        Save
-                    </button>
-                </div>
-                {!deadlineDate && globalDeadline && (
-                    <p className="text-[9px] text-muted-foreground/40 mt-1">
-                        Will use global deadline ({globalDeadline}) on approve
-                    </p>
-                )}
-            </div>
-        </div>
-    )
-}
-
 // --- Actionable Card ---
 
 function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, globalDeadline, globalDeadlineTime }: {
@@ -345,12 +261,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                 {/* Right-side buttons */}
                 <div className="flex items-center gap-1 shrink-0">
-                    {/* Show saved deadline badge in header */}
-                    {item.deadline && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">
-                            {item.deadline.split("T")[0]}
-                        </span>
-                    )}
                     {item.approval_status === "pending" && (
                         <>
                             <button onClick={handleApprove} className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors font-medium" title="Approve & send to tracker">
@@ -425,58 +335,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </>
                     ) : (
                         <>
-                            {/* Single-team: Show single implementation/evidence block */}
-                            {!isMultiTeam(item) && (
-                                <>
-                                    <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
-                                    <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
-                                </>
-                            )}
-
-                            {/* Multi-team: Show per-team implementation blocks */}
-                            {isMultiTeam(item) && (
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
-                                        <Users className="h-3 w-3" />
-                                        Per-Team Implementation
-                                    </p>
-                                    {item.assigned_teams!.map(team => {
-                                        const tw = item.team_workflows?.[team]
-                                        const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
-                                        return (
-                                            <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
-                                                        {team}
-                                                    </span>
-                                                </div>
-                                                <EditableField 
-                                                    label="Implementation" 
-                                                    value={tw?.implementation_notes || item.implementation_notes} 
-                                                    onSave={async v => {
-                                                        const workflows = { ...(item.team_workflows || {}) }
-                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), implementation_notes: v }
-                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
-                                                    }} 
-                                                    type="textarea" 
-                                                />
-                                                <EditableField 
-                                                    label="Evidence" 
-                                                    value={tw?.evidence_quote || item.evidence_quote} 
-                                                    onSave={async v => {
-                                                        const workflows = { ...(item.team_workflows || {}) }
-                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), evidence_quote: v }
-                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
-                                                    }} 
-                                                    type="textarea" 
-                                                />
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Team multi-select */}
+                            {/* Team multi-select — moved to top */}
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                     <Users className="h-3 w-3" />
@@ -493,13 +352,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     const current = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
                                                     let next: string[]
                                                     if (current.includes(team)) {
-                                                        // Don't allow deselecting the last team
                                                         if (current.length <= 1) return
                                                         next = current.filter(t => t !== team)
                                                     } else {
                                                         next = [...current, team]
                                                     }
-                                                    // First team becomes workstream
                                                     const updates: Record<string, unknown> = { workstream: next[0] }
                                                     if (next.length > 1) {
                                                         updates.assigned_teams = next
@@ -535,6 +392,153 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 )}
                             </div>
 
+                            {/* Single-team: Consolidated group box with Implementation/Evidence/Deadline */}
+                            {!isMultiTeam(item) && (
+                                <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
+                                    <EditableField label="Implementation" value={item.implementation_notes} onSave={v => handleFieldSave("implementation_notes", v)} type="textarea" />
+                                    <EditableField label="Evidence" value={item.evidence_quote} onSave={v => handleFieldSave("evidence_quote", v)} type="textarea" />
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            Deadline
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="date"
+                                                value={deadlineDate}
+                                                min={new Date().toISOString().split("T")[0]}
+                                                onChange={e => setDeadlineDate(e.target.value)}
+                                                className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                            />
+                                            <input
+                                                type="time"
+                                                value={deadlineTime}
+                                                onChange={e => setDeadlineTime(e.target.value)}
+                                                className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                            />
+                                            <button
+                                                onClick={handleSaveDeadline}
+                                                disabled={!deadlineDirty || saving || !deadlineDate}
+                                                className={cn(
+                                                    "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
+                                                    deadlineDirty && deadlineDate
+                                                        ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                                        : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                Save
+                                            </button>
+                                        </div>
+                                        {!deadlineDate && globalDeadline && (
+                                            <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                                No individual deadline — will use global deadline ({globalDeadline}) on approve
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Multi-team: Per-team group boxes with Implementation/Evidence/Deadline */}
+                            {isMultiTeam(item) && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        Per-Team Implementation
+                                    </p>
+                                    {item.assigned_teams!.map(team => {
+                                        const tw = item.team_workflows?.[team]
+                                        const teamColors = WORKSTREAM_COLORS[team] || WORKSTREAM_COLORS.Other
+                                        const teamDeadlineDate = tw?.deadline ? tw.deadline.split("T")[0] || "" : ""
+                                        const teamDeadlineTime = tw?.deadline ? tw.deadline.split("T")[1] || "23:59" : "23:59"
+                                        const [localTeamDeadlineDate, setLocalTeamDeadlineDate] = React.useState(teamDeadlineDate)
+                                        const [localTeamDeadlineTime, setLocalTeamDeadlineTime] = React.useState(teamDeadlineTime)
+                                        const currentTeamDl = localTeamDeadlineDate ? `${localTeamDeadlineDate}T${localTeamDeadlineTime || "23:59"}` : ""
+                                        const savedTeamDl = tw?.deadline || ""
+                                        const teamDeadlineDirty = currentTeamDl !== savedTeamDl
+
+                                        return (
+                                            <div key={team} className={cn("border rounded-lg p-3 space-y-2", teamColors.bg)}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
+                                                        {team}
+                                                    </span>
+                                                </div>
+                                                <EditableField 
+                                                    label="Implementation" 
+                                                    value={tw?.implementation_notes || item.implementation_notes} 
+                                                    onSave={async v => {
+                                                        const workflows = { ...(item.team_workflows || {}) }
+                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), implementation_notes: v }
+                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
+                                                    }} 
+                                                    type="textarea" 
+                                                />
+                                                <EditableField 
+                                                    label="Evidence" 
+                                                    value={tw?.evidence_quote || item.evidence_quote} 
+                                                    onSave={async v => {
+                                                        const workflows = { ...(item.team_workflows || {}) }
+                                                        workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), evidence_quote: v }
+                                                        await onUpdate(docId, item.id, { team_workflows: workflows })
+                                                    }} 
+                                                    type="textarea" 
+                                                />
+                                                <div>
+                                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" />
+                                                        Deadline
+                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="date"
+                                                            value={localTeamDeadlineDate}
+                                                            min={new Date().toISOString().split("T")[0]}
+                                                            onChange={e => setLocalTeamDeadlineDate(e.target.value)}
+                                                            className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                        />
+                                                        <input
+                                                            type="time"
+                                                            value={localTeamDeadlineTime}
+                                                            onChange={e => setLocalTeamDeadlineTime(e.target.value)}
+                                                            className="w-24 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                        />
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (!localTeamDeadlineDate) return
+                                                                setSaving(true)
+                                                                try {
+                                                                    const workflows = { ...(item.team_workflows || {}) }
+                                                                    workflows[team] = { ...(workflows[team] || { task_status: "assigned" }), deadline: currentTeamDl }
+                                                                    await onUpdate(docId, item.id, { team_workflows: workflows })
+                                                                } finally {
+                                                                    setSaving(false)
+                                                                }
+                                                            }}
+                                                            disabled={!teamDeadlineDirty || saving || !localTeamDeadlineDate}
+                                                            className={cn(
+                                                                "flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-md font-medium transition-colors",
+                                                                teamDeadlineDirty && localTeamDeadlineDate
+                                                                    ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                                                                    : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                                                            )}
+                                                        >
+                                                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                            Save
+                                                        </button>
+                                                    </div>
+                                                    {!localTeamDeadlineDate && globalDeadline && (
+                                                        <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                                            Will use global deadline ({globalDeadline}) on approve
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+
                             {/* Risk Level */}
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
@@ -550,71 +554,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
                             </div>
-
-                            {/* Individual Deadline (below Risk Level) — single-team */}
-                            {!isMultiTeam(item) && (
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" />
-                                        Deadline
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="date"
-                                            value={deadlineDate}
-                                            min={new Date().toISOString().split("T")[0]}
-                                            onChange={e => setDeadlineDate(e.target.value)}
-                                            className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                                        />
-                                        <input
-                                            type="time"
-                                            value={deadlineTime}
-                                            onChange={e => setDeadlineTime(e.target.value)}
-                                            className="w-28 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                                        />
-                                        <button
-                                            onClick={handleSaveDeadline}
-                                            disabled={!deadlineDirty || saving || !deadlineDate}
-                                            className={cn(
-                                                "flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md font-medium transition-colors",
-                                                deadlineDirty && deadlineDate
-                                                    ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                                    : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                            )}
-                                        >
-                                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                            Save
-                                        </button>
-                                    </div>
-                                    {!deadlineDate && globalDeadline && (
-                                        <p className="text-[9px] text-muted-foreground/40 mt-1">
-                                            No individual deadline — will use global deadline ({globalDeadline}) on approve
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Per-team Deadlines (below Risk Level) — multi-team */}
-                            {isMultiTeam(item) && (
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" />
-                                        Per-Team Deadlines
-                                    </p>
-                                    {item.assigned_teams!.map(team => (
-                                        <PerTeamDeadlineBlock
-                                            key={team}
-                                            team={team}
-                                            tw={item.team_workflows?.[team]}
-                                            item={item}
-                                            docId={docId}
-                                            onUpdate={onUpdate}
-                                            globalDeadline={globalDeadline}
-                                            globalDeadlineTime={globalDeadlineTime}
-                                        />
-                                    ))}
-                                </div>
-                            )}
                         </>
                     )}
 
