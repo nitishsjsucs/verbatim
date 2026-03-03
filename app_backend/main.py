@@ -193,6 +193,7 @@ class IngestResponse(BaseModel):
     node_count: int
     total_pages: int
     time_seconds: float
+    memory_indexes: dict = {}
 
 
 class QueryRequest(BaseModel):
@@ -631,6 +632,24 @@ async def ingest_document(
         tree = pipeline.ingest(str(dest_path), force=force)
         elapsed = time.time() - start_time
 
+        # Auto-build RAPTOR + R2R memory indexes in optimized mode
+        memory_build = {}
+        if get_retrieval_mode() == "optimized":
+            try:
+                from memory.memory_manager import get_memory_manager
+                mm = get_memory_manager()
+                if mm._initialized:
+                    raptor_ok = mm.build_raptor_index(tree, tree.doc_id)
+                    r2r_ok = mm.build_r2r_index(tree, tree.doc_id)
+                    memory_build = {"raptor_built": raptor_ok, "r2r_built": r2r_ok}
+                    logger.info(
+                        "Auto-built memory indexes for %s: raptor=%s r2r=%s",
+                        tree.doc_id, raptor_ok, r2r_ok,
+                    )
+            except Exception as mem_err:
+                logger.warning("Memory index auto-build failed (non-fatal): %s", mem_err)
+                memory_build = {"error": str(mem_err)}
+
         return {
             "doc_id": tree.doc_id,
             "doc_name": tree.doc_name,
@@ -640,6 +659,7 @@ async def ingest_document(
             "node_count": tree.node_count,
             "total_pages": tree.total_pages,
             "time_seconds": elapsed,
+            "memory_indexes": memory_build,
         }
     except Exception as e:
         logger.error("Ingestion failed: %s", e)
