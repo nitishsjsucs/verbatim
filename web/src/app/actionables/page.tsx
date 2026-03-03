@@ -1214,16 +1214,6 @@ export default function ActionablesPage() {
                             <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
                             <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} in tracker</span>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1.5 px-2.5 text-xs"
-                            onClick={() => setShowCreateForm(true)}
-                            disabled={allDocs.length === 0}
-                        >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add
-                        </Button>
                     </div>
                 </div>
 
@@ -1312,6 +1302,16 @@ export default function ActionablesPage() {
                                     <Save className="h-3.5 w-3.5" />
                                     {globalDeadlineSaved ? "Saved" : "Save"}
                                 </button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-1.5 px-3 text-xs"
+                                    onClick={() => setShowCreateForm(true)}
+                                    disabled={allDocs.length === 0}
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Add
+                                </Button>
                             </div>
                         </div>
 
