@@ -3551,18 +3551,101 @@ def llm_benchmark_experiment(req: ModelExperimentRequest):
 
 
 # ---------------------------------------------------------------------------
-# Memory Health Endpoints
+# Memory Health & Diagnostics Endpoints
 # ---------------------------------------------------------------------------
 
 @app.get("/admin/memory/health")
-def admin_memory_health():
+def admin_memory_health(doc_id: str = ""):
     """
     Run health checks on all memory subsystems and infrastructure.
-    Tests MongoDB, LLM, embeddings, and each memory loop.
+    Tests MongoDB, feature flags, each loop's status, data freshness,
+    and contribution tracking.
     """
-    from utils.llm_benchmark import MemoryHealthChecker
+    from memory.memory_diagnostics import MemoryHealthChecker
     checker = MemoryHealthChecker()
-    return checker.check_all()
+    return checker.check_all(doc_id=doc_id or None)
+
+
+@app.get("/admin/memory/diagnostics/trends")
+def admin_memory_trends(doc_id: str = "", last_n: int = 50):
+    """
+    Compute improvement trends from stored per-query contribution snapshots.
+
+    Returns:
+    - overall: aggregate precision, contribution rate, memory-assisted citations
+    - per_loop: fire rate, error rate, utilization for each of the 5 loops
+    - precision_series: list for charting precision over time
+    - improvement_score: composite 0-100 score with A-F grade
+    """
+    from memory.memory_diagnostics import MemoryTrendAnalyzer
+    from utils.mongo import get_db
+    try:
+        db = get_db()
+        analyzer = MemoryTrendAnalyzer(db)
+        return analyzer.get_trends(
+            doc_id=doc_id or None,
+            last_n=min(last_n, 200),
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/admin/memory/diagnostics/recent")
+def admin_memory_recent(doc_id: str = "", limit: int = 20):
+    """
+    Return the most recent per-query memory contribution snapshots.
+
+    Each snapshot shows what each loop contributed and whether memory
+    measurably helped that particular query.
+    """
+    from memory.memory_diagnostics import load_recent_contributions
+    from utils.mongo import get_db
+    try:
+        db = get_db()
+        contributions = load_recent_contributions(
+            db, doc_id=doc_id or None, limit=min(limit, 50),
+        )
+        return {
+            "count": len(contributions),
+            "contributions": [c.to_dict() for c in contributions],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/admin/memory/diagnostics")
+def admin_memory_diagnostics(doc_id: str = ""):
+    """
+    Full memory diagnostics dashboard — combines health, trends, and recent data.
+
+    Single endpoint that returns everything needed to assess whether the
+    5 feedback loops are working and how much they contribute.
+    """
+    from memory.memory_diagnostics import (
+        MemoryHealthChecker,
+        MemoryTrendAnalyzer,
+        load_recent_contributions,
+    )
+    from utils.mongo import get_db
+    try:
+        db = get_db()
+        _doc_id = doc_id or None
+
+        checker = MemoryHealthChecker()
+        health = checker.check_all(doc_id=_doc_id)
+
+        analyzer = MemoryTrendAnalyzer(db)
+        trends = analyzer.get_trends(doc_id=_doc_id, last_n=50)
+
+        recent = load_recent_contributions(db, doc_id=_doc_id, limit=10)
+
+        return {
+            "health": health,
+            "trends": trends,
+            "recent_contributions": [c.to_dict() for c in recent],
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":

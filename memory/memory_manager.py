@@ -23,6 +23,7 @@ import time
 from typing import Any, Optional
 
 from config.settings import get_active_retrieval_mode, get_settings
+from memory.memory_diagnostics import LoopContribution, MemoryContribution
 
 logger = logging.getLogger(__name__)
 
@@ -168,17 +169,17 @@ class MemoryManager:
         doc_id: str,
         user_id: str = "default",
         query_type: str = "",
-    ) -> dict:
+    ) -> tuple[dict, MemoryContribution]:
         """
         Gather all memory context before the retrieval pipeline runs.
 
-        Returns a dict with keys from each active subsystem:
-        - raptor_candidates: list[str] — node_ids from RAPTOR pre-filter
-        - user_context: str — formatted user memory context for LLM prompt
-        - retrieval_hints: dict — from query intelligence
-        - reliability_scores: dict[str, float] — node reliability from feedback
-        - r2r_results: list[dict] — R2R fallback search results
+        Returns:
+            tuple of (context_dict, MemoryContribution)
+            - context_dict has keys from each active subsystem
+            - MemoryContribution tracks per-loop timing and items for diagnostics
         """
+        from datetime import datetime, timezone
+
         context = {
             "raptor_candidates": [],
             "user_context": "",
@@ -187,10 +188,20 @@ class MemoryManager:
             "r2r_results": [],
         }
 
+        mc = MemoryContribution(
+            doc_id=doc_id,
+            user_id=user_id,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            query_type=query_type,
+            query_text_preview=query_text[:120],
+        )
+
         t0 = time.time()
 
         # Loop 1: RAPTOR pre-filter
-        if self._is_enabled("enable_raptor_index"):
+        mc.raptor.enabled = self._is_enabled("enable_raptor_index")
+        if mc.raptor.enabled:
+            t_loop = time.time()
             try:
                 raptor = self._get_raptor(doc_id)
                 if raptor and raptor.is_built:
@@ -198,25 +209,40 @@ class MemoryManager:
                         query_text,
                         self._embedding_client,
                         top_k=15,
-                        heat_boost=True,
+                        heat_boost=0.3,
                     )
-                    context["raptor_candidates"] = [r["node_id"] for r in results]
+                    # raptor.query() returns list[str] (node IDs directly)
+                    context["raptor_candidates"] = list(results)
+                    mc.raptor.fired = True
+                    mc.raptor.items_returned = len(results)
                     logger.debug("[MemoryManager] RAPTOR returned %d candidates", len(results))
             except Exception as e:
+                mc.raptor.error = str(e)
                 logger.warning("[MemoryManager] RAPTOR pre-query failed: %s", e)
+            mc.raptor.latency_ms = round((time.time() - t_loop) * 1000, 1)
 
         # Loop 2: User memory context
-        if self._is_enabled("enable_user_memory"):
+        mc.user_memory.enabled = self._is_enabled("enable_user_memory")
+        if mc.user_memory.enabled:
+            t_loop = time.time()
             try:
                 user_mem = self._get_user_memory(user_id)
                 if user_mem:
-                    mem_context = user_mem.get_user_context(query_text, doc_id)
-                    context["user_context"] = mem_context.get("formatted_context", "")
+                    # format_context_for_prompt returns a ready-to-inject string
+                    context["user_context"] = user_mem.format_context_for_prompt(
+                        query_text, doc_id,
+                    )
+                    mc.user_memory.fired = True
+                    mc.user_memory.items_returned = 1 if context["user_context"] else 0
             except Exception as e:
+                mc.user_memory.error = str(e)
                 logger.warning("[MemoryManager] User memory pre-query failed: %s", e)
+            mc.user_memory.latency_ms = round((time.time() - t_loop) * 1000, 1)
 
         # Loop 3: Query intelligence hints
-        if self._is_enabled("enable_query_intelligence"):
+        mc.query_intel.enabled = self._is_enabled("enable_query_intelligence")
+        if mc.query_intel.enabled:
+            t_loop = time.time()
             try:
                 qi = self._get_query_intel(doc_id)
                 if qi:
@@ -226,21 +252,33 @@ class MemoryManager:
                         embedding_client=self._embedding_client,
                     )
                     context["retrieval_hints"] = hints
-                    logger.debug("[MemoryManager] Query intel: %d hints", hints.get("similar_facts_found", 0))
+                    mc.query_intel.fired = True
+                    mc.query_intel.items_returned = hints.get("similar_facts_found", 0)
+                    logger.debug("[MemoryManager] Query intel: %d hints", mc.query_intel.items_returned)
             except Exception as e:
+                mc.query_intel.error = str(e)
                 logger.warning("[MemoryManager] Query intel pre-query failed: %s", e)
+            mc.query_intel.latency_ms = round((time.time() - t_loop) * 1000, 1)
 
         # Loop 4: Retrieval feedback reliability scores
-        if self._is_enabled("enable_retrieval_feedback"):
+        mc.retrieval_fb.enabled = self._is_enabled("enable_retrieval_feedback")
+        if mc.retrieval_fb.enabled:
+            t_loop = time.time()
             try:
                 fb = self._get_retrieval_fb(doc_id)
                 if fb:
                     context["reliability_scores"] = fb.get_node_score_map()
+                    mc.retrieval_fb.fired = True
+                    mc.retrieval_fb.items_returned = len(context["reliability_scores"])
             except Exception as e:
+                mc.retrieval_fb.error = str(e)
                 logger.warning("[MemoryManager] Retrieval feedback pre-query failed: %s", e)
+            mc.retrieval_fb.latency_ms = round((time.time() - t_loop) * 1000, 1)
 
         # Loop 5: R2R fallback search
-        if self._is_enabled("enable_r2r_fallback"):
+        mc.r2r_fallback.enabled = self._is_enabled("enable_r2r_fallback")
+        if mc.r2r_fallback.enabled:
+            t_loop = time.time()
             try:
                 r2r = self._get_r2r(doc_id)
                 if r2r and r2r._built:
@@ -253,13 +291,18 @@ class MemoryManager:
                         {"node_id": r.node_id, "score": r.score, "source": r.source}
                         for r in results
                     ]
-                    logger.debug("[MemoryManager] R2R returned %d results", len(results))
+                    mc.r2r_fallback.fired = True
+                    mc.r2r_fallback.items_returned = len(context["r2r_results"])
+                    logger.debug("[MemoryManager] R2R returned %d results", len(context["r2r_results"]))
             except Exception as e:
+                mc.r2r_fallback.error = str(e)
                 logger.warning("[MemoryManager] R2R pre-query failed: %s", e)
+            mc.r2r_fallback.latency_ms = round((time.time() - t_loop) * 1000, 1)
 
         elapsed = time.time() - t0
+        mc.pre_query_ms = round(elapsed * 1000, 1)
         logger.info("[MemoryManager] pre_query completed in %.3fs", elapsed)
-        return context
+        return context, mc
 
     # ------------------------------------------------------------------
     # POST-QUERY: Learn from completed query
@@ -270,11 +313,14 @@ class MemoryManager:
         record: Any,  # QueryRecord
         doc_id: str,
         user_id: str = "default",
-    ) -> None:
+        contribution: Optional[MemoryContribution] = None,
+    ) -> Optional[MemoryContribution]:
         """
         Learn from a completed query across all active subsystems.
 
         Called after the answer is generated and the QueryRecord is saved.
+        If a MemoryContribution is passed (from pre_query), enriches it
+        with post-query learning results and returns it.
         """
         t0 = time.time()
         _mode = get_active_retrieval_mode()
@@ -290,14 +336,21 @@ class MemoryManager:
         }
         logger.info("[MemoryManager] Feature flags: %s", _flags)
 
+        mc = contribution  # alias for brevity
+
         # Loop 1: RAPTOR heat map update
         if self._is_enabled("enable_raptor_index"):
             try:
                 raptor = self._get_raptor(doc_id)
                 if raptor:
                     raptor.record_citations_from_answer(record)
+                    if mc:
+                        mc.raptor.learned = True
+                        mc.raptor.learn_detail = f"cited={len(getattr(record, 'citations', []))}"
                     logger.info("[MemoryManager] Loop 1 RAPTOR: OK (doc=%s)", doc_id)
             except Exception as e:
+                if mc:
+                    mc.raptor.error = mc.raptor.error or str(e)
                 logger.warning("[MemoryManager] RAPTOR post-query failed: %s", e)
 
         # Loop 2: User memory update
@@ -324,8 +377,13 @@ class MemoryManager:
                             record.feedback.rating if record.feedback else None
                         ),
                     )
+                    if mc:
+                        mc.user_memory.learned = True
+                        mc.user_memory.learn_detail = f"terms={len(key_terms)}"
                     logger.info("[MemoryManager] Loop 2 UserMemory: OK (user=%s)", user_id)
             except Exception as e:
+                if mc:
+                    mc.user_memory.error = mc.user_memory.error or str(e)
                 logger.warning("[MemoryManager] User memory post-query failed: %s", e)
 
         # Loop 3: Query intelligence learning
@@ -334,8 +392,22 @@ class MemoryManager:
                 qi = self._get_query_intel(doc_id)
                 if qi:
                     qi.learn_from_query(record, self._embedding_client)
+                    if mc:
+                        mc.query_intel.learned = True
+                        # Compute precision from routing log
+                        cited = len(getattr(record, "citations", []))
+                        located = getattr(
+                            getattr(record, "routing_log", None),
+                            "total_nodes_located", 0,
+                        )
+                        precision = round(cited / max(located, 1), 2)
+                        mc.query_intel.learn_detail = (
+                            f"precision={precision} cited={cited} located={located}"
+                        )
                     logger.info("[MemoryManager] Loop 3 QueryIntel: OK (doc=%s)", doc_id)
             except Exception as e:
+                if mc:
+                    mc.query_intel.error = mc.query_intel.error or str(e)
                 logger.warning("[MemoryManager] Query intel post-query failed: %s", e)
 
         # Loop 4: Retrieval feedback grading
@@ -344,12 +416,20 @@ class MemoryManager:
                 fb = self._get_retrieval_fb(doc_id)
                 if fb:
                     fb.grade_retrieval(record)
+                    if mc:
+                        mc.retrieval_fb.learned = True
+                        mc.retrieval_fb.learn_detail = "graded"
                     logger.info("[MemoryManager] Loop 4 RetrievalFB: OK (doc=%s)", doc_id)
             except Exception as e:
+                if mc:
+                    mc.retrieval_fb.error = mc.retrieval_fb.error or str(e)
                 logger.warning("[MemoryManager] Retrieval feedback post-query failed: %s", e)
 
         elapsed = time.time() - t0
+        if mc:
+            mc.post_query_ms = round(elapsed * 1000, 1)
         logger.info("[MemoryManager] post_query completed in %.3fs", elapsed)
+        return mc
 
     # ------------------------------------------------------------------
     # Index building

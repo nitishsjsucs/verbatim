@@ -65,6 +65,7 @@ class StructuralRouter:
         # Phase 3: Memory-driven candidates and reliability scores
         self._memory_candidates: list[str] = []
         self._reliability_scores: dict[str, float] = {}
+        self._avoid_nodes: list[str] = []
 
     def set_embedding_context(self, embedding_index, embedding_client) -> None:
         """Set embedding index and client for pre-filter support."""
@@ -78,6 +79,16 @@ class StructuralRouter:
     def set_reliability_scores(self, scores: dict[str, float]) -> None:
         """Set node reliability scores from retrieval feedback."""
         self._reliability_scores = scores
+
+    def set_avoid_nodes(self, node_ids: list[str]) -> None:
+        """Set node IDs to deprioritize (from Query Intelligence avoid list)."""
+        self._avoid_nodes = node_ids
+
+    def reset_memory_state(self) -> None:
+        """Clear per-query memory state to prevent stale data across queries."""
+        self._memory_candidates = []
+        self._reliability_scores = {}
+        self._avoid_nodes = []
 
     def retrieve(
         self, query_text: str, tree: DocumentTree
@@ -156,6 +167,21 @@ class StructuralRouter:
                     eq_text[:50],
                     len(located),
                 )
+        # Apply avoid_nodes from Query Intelligence: penalize known-wasted nodes
+        if self._avoid_nodes and located:
+            _avoid_set = set(self._avoid_nodes)
+            _penalized = 0
+            for node in located:
+                if node.node_id in _avoid_set:
+                    node.confidence = max(0.05, node.confidence * 0.3)
+                    _penalized += 1
+            if _penalized:
+                located.sort(key=lambda n: n.confidence, reverse=True)
+                logger.info(
+                    "  -> QI avoid_nodes: penalized %d/%d located nodes",
+                    _penalized, len(located),
+                )
+
         locate_time = time.time() - t0
 
         routing_log.locate_results = [
@@ -306,8 +332,23 @@ class StructuralRouter:
             query_text[:80],
         )
 
-        # Step 2: Locate relevant nodes
-        located = self._locator.locate(query, tree)
+        # Step 2: Locate relevant nodes (with memory context if available)
+        located = self._locator.locate(
+            query, tree,
+            embedding_index=self._embedding_index,
+            embedding_client=self._embedding_client,
+            memory_candidates=self._memory_candidates or None,
+            reliability_scores=self._reliability_scores or None,
+        )
+
+        # Apply avoid_nodes from Query Intelligence
+        if self._avoid_nodes and located:
+            _avoid_set = set(self._avoid_nodes)
+            for node in located:
+                if node.node_id in _avoid_set:
+                    node.confidence = max(0.05, node.confidence * 0.3)
+            located.sort(key=lambda n: n.confidence, reverse=True)
+
         routing_log.locate_results = [
             {
                 "node_id": n.node_id,

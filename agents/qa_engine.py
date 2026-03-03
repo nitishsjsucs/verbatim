@@ -144,6 +144,7 @@ class QAEngine:
         """Legacy retrieval path — exact original pipeline, untouched."""
         start = time.time()
         self._llm.reset_usage()
+        self._router.reset_memory_state()
         timings: dict[str, float] = {}
 
         # Step 1: Load tree
@@ -201,17 +202,19 @@ class QAEngine:
         """Optimized retrieval path — with benchmarking, caching, pre-filter, and memory."""
         start = time.time()
         self._llm.reset_usage()
+        self._router.reset_memory_state()
         timings: dict[str, float] = {}
         tracker = self._tracker
 
         # Phase 0: Memory pre-query — gather context from all learning loops
         memory_context: dict = {}
+        _memory_contribution = None  # MemoryContribution for diagnostics
         t_mem = time.time()
         try:
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
             if mm._initialized:
-                memory_context = mm.pre_query(
+                memory_context, _memory_contribution = mm.pre_query(
                     query_text=query_text,
                     doc_id=doc_id,
                     user_id=getattr(self, "_current_user_id", "default"),
@@ -251,9 +254,30 @@ class QAEngine:
 
             # Inject RAPTOR candidates as additional pre-filter candidates
             raptor_candidates = memory_context.get("raptor_candidates", [])
-            if raptor_candidates:
-                self._router.set_memory_candidates(raptor_candidates)
+
+            # Merge Query Intelligence suggested_nodes into candidates
+            qi_hints = memory_context.get("retrieval_hints", {})
+            qi_suggested = qi_hints.get("suggested_nodes", [])
+            qi_avoid = qi_hints.get("avoid_nodes", [])
+
+            all_memory_candidates = list(raptor_candidates)
+            if qi_suggested:
+                # Add QI-suggested nodes (deduplicate)
+                existing = set(all_memory_candidates)
+                for nid in qi_suggested:
+                    if nid not in existing:
+                        all_memory_candidates.append(nid)
+                s.set_metadata("qi_suggested_nodes", len(qi_suggested))
+
+            if all_memory_candidates:
+                self._router.set_memory_candidates(all_memory_candidates)
                 s.set_metadata("raptor_candidates", len(raptor_candidates))
+                s.set_metadata("total_memory_candidates", len(all_memory_candidates))
+
+            # Pass avoid_nodes so router can filter them out
+            if qi_avoid:
+                self._router.set_avoid_nodes(qi_avoid)
+                s.set_metadata("qi_avoid_nodes", len(qi_avoid))
 
             # Inject reliability scores for node weighting
             reliability_scores = memory_context.get("reliability_scores", {})
@@ -347,7 +371,7 @@ class QAEngine:
             tracker.record_skip("reflection", reason="opt-in disabled")
             timings["3_reflection"] = 0.0
 
-        return RetrievalResult(
+        rr = RetrievalResult(
             query=query,
             sections=sections,
             routing_log=routing_log,
@@ -356,6 +380,11 @@ class QAEngine:
             llm_usage_snapshot=self._llm.get_usage_summary(),
             start_time=start,
         )
+        # Attach memory contribution for diagnostics (not part of dataclass)
+        rr._memory_contribution = _memory_contribution  # type: ignore[attr-defined]
+        # Attach memory context for use in synthesis phase
+        rr._memory_context = memory_context  # type: ignore[attr-defined]
+        return rr
 
     # ------------------------------------------------------------------
     # Phase 2 — Synthesis + Verification (slow, ~100-180s)
@@ -377,6 +406,23 @@ class QAEngine:
         query = rr.query
         sections = rr.sections
         tree = rr.tree
+
+        # Apply Query Intelligence hints for skip_reflection / skip_verification
+        _mem_ctx = getattr(rr, "_memory_context", {})
+        _qi_hints = _mem_ctx.get("retrieval_hints", {}) if _mem_ctx else {}
+        if _qi_hints.get("skip_reflection") and reflect:
+            logger.info("[QA] QI hint: skipping reflection (help rate < 15%% for this query type)")
+            reflect = False
+        if _qi_hints.get("skip_verification") and verify:
+            logger.info("[QA] QI hint: skipping verification (clean rate > 90%% for this query type)")
+            verify = False
+
+        # Inject user memory context into query for synthesis
+        _user_ctx = _mem_ctx.get("user_context", "") if _mem_ctx else ""
+        _original_query_text = query.text
+        if _user_ctx and self._get_retrieval_mode() == "optimized":
+            query.text = f"{query.text}\n\n[User Context]: {_user_ctx}"
+            logger.info("[QA] Injecting user memory context into synthesis prompt")
 
         # Step 4: Synthesis (or planner for multi-hop)
         t0 = time.time()
@@ -400,6 +446,9 @@ class QAEngine:
             logger.info("[QA 4/6] Synthesizing answer...")
             # Request synthesis and optional verification in a single LLM call
             answer = self._synthesizer.synthesize(query, sections, verify=verify)
+
+        # Restore original query text after synthesis
+        query.text = _original_query_text
         timings["4_synthesis"] = time.time() - t0
         logger.info("  -> Synthesis complete (%.1fs)", timings["4_synthesis"])
 
@@ -484,12 +533,18 @@ class QAEngine:
         It constructs a lightweight QueryRecord-like object for the
         memory manager, so learning happens without depending on the
         full persistence layer.
+
+        Also enriches and persists the MemoryContribution snapshot
+        for diagnostics / trend analysis.
         """
         try:
             from memory.memory_manager import get_memory_manager
             mm = get_memory_manager()
             if not mm._initialized:
                 return
+
+            # Retrieve the MemoryContribution created during pre_query
+            mc = getattr(rr, "_memory_contribution", None)
 
             # Build a lightweight record-like object for the learning hooks
             _Record = type("_Record", (), {})
@@ -508,16 +563,120 @@ class QAEngine:
             if not doc_id and rr.tree:
                 doc_id = rr.tree.doc_id
 
-            mm.post_query(
+            mc = mm.post_query(
                 record=record,
                 doc_id=doc_id,
                 user_id=getattr(self, "_current_user_id", "default"),
+                contribution=mc,
             )
 
             logger.info("[QA] Memory learning completed for doc=%s", doc_id)
 
+            # Persist all learned data to MongoDB so it survives restarts
+            try:
+                mm.save_all(doc_id=doc_id)
+            except Exception as save_err:
+                logger.warning("[QA] Memory save_all failed (non-fatal): %s", save_err)
+
+            # ── Enrich contribution with answer-level metrics ──
+            if mc:
+                self._enrich_memory_contribution(mc, answer, rr)
+
+                # Persist to MongoDB
+                try:
+                    from memory.memory_diagnostics import save_contribution
+                    save_contribution(mm._db, mc)
+                    logger.info(
+                        "[QA] Memory contribution saved: contributed=%s precision=%.2f",
+                        mc.memory_contributed, mc.retrieval_precision,
+                    )
+                except Exception as save_err:
+                    logger.warning("[QA] Failed to save memory contribution: %s", save_err)
+
         except Exception as e:
             logger.warning("[QA] Memory learning failed (non-fatal): %s", e)
+
+    @staticmethod
+    def _enrich_memory_contribution(mc: Any, answer: Answer, rr: Any) -> None:
+        """
+        Fill in answer-level fields on a MemoryContribution after synthesis.
+
+        Computes:
+        - retrieval_precision (citations / sections)
+        - memory_assisted_citations (cited nodes that came from RAPTOR or R2R)
+        - r2r fallback usage
+        - user context injection
+        - overall verdict
+        """
+        sections = rr.sections
+        cited_node_ids = {c.node_id for c in answer.citations}
+        mc.total_sections_retrieved = len(sections)
+        mc.total_citations = len(answer.citations)
+        mc.retrieval_precision = round(
+            len(cited_node_ids) / max(len(sections), 1), 3
+        )
+        mc.query_type = (
+            rr.query.query_type.value
+            if hasattr(rr.query.query_type, "value")
+            else str(rr.query.query_type)
+        )
+
+        # Track RAPTOR-assisted citations: nodes that were in RAPTOR candidate list AND cited
+        memory_context = getattr(rr, "_memory_context", {}) or {}
+        raptor_candidate_ids = set(memory_context.get("raptor_candidates", []))
+        if mc.raptor.fired and raptor_candidate_ids:
+            mc.raptor.items_used = len(raptor_candidate_ids & cited_node_ids)
+
+        # Track QI-suggested nodes that ended up cited
+        qi_hints = memory_context.get("retrieval_hints", {}) or {}
+        qi_suggested_ids = set(qi_hints.get("suggested_nodes", []))
+        if mc.query_intel.fired and qi_suggested_ids:
+            mc.query_intel.items_used = len(qi_suggested_ids & cited_node_ids)
+
+        # Track R2R fallback-assisted citations
+        r2r_sections = [s for s in sections if getattr(s, "source", "") == "r2r_fallback"]
+        mc.r2r_fallback_sections_added = len(r2r_sections)
+        mc.r2r_fallback_sections_cited = sum(
+            1 for s in r2r_sections if s.node_id in cited_node_ids
+        )
+        if mc.r2r_fallback.fired:
+            mc.r2r_fallback.items_used = mc.r2r_fallback_sections_cited
+
+        # Track user context injection
+        mc.user_context_injected = mc.user_memory.fired and mc.user_memory.items_returned > 0
+
+        # Track reliability scores applied
+        if mc.retrieval_fb.fired:
+            mc.reliability_scores_applied = mc.retrieval_fb.items_returned
+
+        # Count memory-assisted citations (from any memory source)
+        mc.memory_assisted_citations = (
+            mc.raptor.items_used
+            + mc.query_intel.items_used
+            + mc.r2r_fallback_sections_cited
+        )
+
+        # Overall verdict: did memory measurably help?
+        mc.memory_contributed = (
+            mc.memory_assisted_citations > 0
+            or mc.user_context_injected
+            or (mc.query_intel.fired and mc.query_intel.items_returned > 0)
+            or mc.reliability_scores_applied > 0
+        )
+
+        # Human-readable summary
+        parts = []
+        if mc.raptor.items_used > 0:
+            parts.append(f"RAPTOR: {mc.raptor.items_used} cited")
+        if mc.r2r_fallback_sections_cited > 0:
+            parts.append(f"R2R: {mc.r2r_fallback_sections_cited} cited")
+        if mc.user_context_injected:
+            parts.append("user context injected")
+        if mc.query_intel.items_returned > 0:
+            parts.append(f"QI: {mc.query_intel.items_returned} hints")
+        if mc.reliability_scores_applied > 0:
+            parts.append(f"FB: {mc.reliability_scores_applied} scored nodes")
+        mc.contribution_summary = " | ".join(parts) if parts else "no measurable contribution"
 
     # ------------------------------------------------------------------
     # Convenience wrapper (backward-compatible)
