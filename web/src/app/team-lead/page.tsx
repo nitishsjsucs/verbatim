@@ -427,15 +427,15 @@ function TeamLeadContent() {
                             {!activeCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
                                     </div>
                                     {activeRows.map(({ item, docId }) => (
                                         <OversightRow
@@ -461,15 +461,15 @@ function TeamLeadContent() {
                     {!loading && tab === "delayed" && filtered.length > 0 && (
                         <>
                             <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
                             </div>
                             {filtered.map(({ item, docId }) => (
                                 <OversightRow
@@ -492,20 +492,20 @@ function TeamLeadContent() {
                     {/* ── Completed section ── */}
                     {!loading && tab === "overview" && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-emerald-500/20" textClass="text-emerald-500" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
+                            <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Delay</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Delay</div>
                                     </div>
                                     {completedRows.map(({ item, docId }) => (
                                         <OversightRow
@@ -628,7 +628,7 @@ function OversightRow({
             >
                 {/* Team */}
                 <div className="py-1.5 px-1">
-                    <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
                         {item.workstream}
                     </span>
                 </div>
@@ -643,7 +643,7 @@ function OversightRow({
                     {isExpanded
                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
-                    <span className={cn("text-xs text-foreground/90 truncate", taskStatus === "completed" && "line-through decoration-emerald-500/40")}>
+                    <span className="text-xs text-foreground/90 truncate">
                         {safeStr(item.action)}
                     </span>
                     {isMultiTeam(item) && (
@@ -665,7 +665,7 @@ function OversightRow({
 
                 {/* Status */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", statusStyle.bg, statusStyle.text)}>
+                    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
                         {statusStyle.label}
                     </span>
                 </div>
@@ -673,7 +673,7 @@ function OversightRow({
                 {/* Deadline */}
                 <div className="py-1.5 px-1 text-center">
                     <span className={cn(
-                        "text-xs",
+                        "text-[10px]",
                         item.deadline && new Date(item.deadline).getTime() < Date.now()
                             ? "text-red-400 font-semibold"
                             : "text-muted-foreground/60"
@@ -684,7 +684,7 @@ function OversightRow({
 
                 {/* Time */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-xs text-muted-foreground/60">
+                    <span className="text-[10px] text-muted-foreground/60">
                         {formatTime(item.deadline)}
                     </span>
                 </div>
@@ -696,7 +696,7 @@ function OversightRow({
 
                 {/* Published */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-xs text-muted-foreground/60">
+                    <span className="text-[10px] text-muted-foreground/60">
                         {formatDate(item.published_at)}
                     </span>
                 </div>
@@ -706,29 +706,29 @@ function OversightRow({
                     {isAwaitingJustification && !hasJustification && (
                         <button
                             onClick={() => setShowJustifyInput(true)}
-                            className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
+                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
                             title="BLOCKED — Submit justification to release to Compliance"
                         >
                             ⚠ Justify Now
                         </button>
                     )}
                     {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status === "reviewed" && (
-                        <span className="text-xs text-indigo-400 italic font-medium" title={`Justified: ${item.justification}`}>Justified</span>
+                        <span className="text-[10px] text-indigo-400 italic font-medium" title={`Justified: ${item.justification}`}>Justified</span>
                     )}
                     {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status !== "reviewed" && (
-                        <span className="text-xs text-amber-400 italic font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
+                        <span className="text-[10px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
                     )}
                     {!isAwaitingJustification && isDelayed && !hasJustification && (
                         <button
                             onClick={() => setShowJustifyInput(true)}
-                            className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                             title="Submit justification"
                         >
                             Justify
                         </button>
                     )}
                     {!isDelayed && !isAwaitingJustification && (
-                        <span className="text-xs text-muted-foreground/30">—</span>
+                        <span className="text-[10px] text-muted-foreground/30">—</span>
                     )}
                 </div>
             </div>

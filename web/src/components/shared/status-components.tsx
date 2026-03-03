@@ -266,8 +266,8 @@ export function StatCell({ value, label, colorClass }: {
 }) {
     return (
         <div className="text-center">
-            <p className={cn("text-xs font-bold", colorClass)}>{value}</p>
-            <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">{label}</p>
+            <p className={cn("text-[10px] font-bold", colorClass)}>{value}</p>
+            <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{label}</p>
         </div>
     )
 }

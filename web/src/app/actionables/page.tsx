@@ -1373,10 +1373,10 @@ export default function ActionablesPage() {
                                                 const isCollapsed = collapsedDocs.has(docId)
                                                 return (
                                                     <div key={docId} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-xs font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleDoc(docId)}>
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleDoc(docId)}>
                                                             {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                                             <FileText className="h-3 w-3" /> {docName}
-                                                            <span className="ml-auto text-xs text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                                            <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -1410,10 +1410,10 @@ export default function ActionablesPage() {
                                                 const isCollapsed = collapsedTeams.has(team)
                                                 return (
                                                     <div key={team} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
                                                             {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                                                            <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", getWorkstreamClass(team))}>{team}</span>
-                                                            <span className="ml-auto text-xs text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
+                                                            <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -1451,7 +1451,7 @@ export default function ActionablesPage() {
                                                     ? <ChevronRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                     : <ChevronDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                 }
-                                                <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
+                                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
                                                 <div className="h-px bg-emerald-400/20 flex-1" />
                                             </div>
                                             {!approvedCollapsed && (
@@ -1486,8 +1486,8 @@ export default function ActionablesPage() {
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(`approved-${docId}`)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                                                                     <FileText className="h-3.5 w-3.5 text-emerald-500/60 shrink-0" />
-                                                                    <span className="text-xs font-semibold text-foreground/70 truncate">{docName}</span>
-                                                                    <span className="text-xs text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
+                                                                    <span className="text-[10px] font-semibold text-foreground/70 truncate">{docName}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
@@ -1507,8 +1507,8 @@ export default function ActionablesPage() {
                                                             <div key={team} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                                                                    <span className={cn("px-2 py-0.5 rounded text-xs font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
-                                                                    <span className="text-xs text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
+                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId, docName }) => (
@@ -1546,7 +1546,7 @@ export default function ActionablesPage() {
                             <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-xs font-medium text-foreground truncate">
+                                    <span className="text-[10px] font-medium text-foreground truncate">
                                         {pdfDocName || pdfDocId}
                                     </span>
                                 </div>

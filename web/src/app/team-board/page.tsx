@@ -174,14 +174,14 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                 {/* Status */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", statusCfg.bg, statusCfg.text)}>
+                    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", statusCfg.bg, statusCfg.text)}>
                         {statusCfg.label}
                     </span>
                 </div>
 
                 {/* Deadline date */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("text-xs px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
                         isOverdue ? "text-red-400 border-red-400/30" : "text-muted-foreground/70 border-muted-foreground/20"
                     )}>
                         <Calendar className="h-2.5 w-2.5" />
@@ -191,7 +191,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                 {/* Deadline time */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-xs text-muted-foreground/60">
+                    <span className="text-[10px] text-muted-foreground/60">
                         {formatTime(item.deadline)}
                     </span>
                 </div>
@@ -203,7 +203,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                 {/* Published date */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-xs text-muted-foreground/60">
+                    <span className="text-[10px] text-muted-foreground/60">
                         {formatDate(item.published_at)}
                     </span>
                 </div>
@@ -557,14 +557,14 @@ function TeamBoardContent() {
 
     const renderHeader = () => (
         <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
         </div>
     )
 
@@ -737,7 +737,7 @@ function TeamBoardContent() {
                     {/* ── Completed section — matches dashboard ── */}
                     {!loading && completedItems.length > 0 && (
                         <div className="mt-4">
-                            <SectionDivider label="Completed" count={completedItems.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-emerald-500/20" textClass="text-emerald-500" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
+                            <SectionDivider label="Completed" count={completedItems.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && (
                                 <>

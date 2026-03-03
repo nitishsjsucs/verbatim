@@ -529,16 +529,16 @@ export default function DashboardPage() {
                                 {/* ── Column headers ── */}
                                 {!isCollapsed && (
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
+                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
                                 )}
 
@@ -571,7 +571,7 @@ export default function DashboardPage() {
                                             >
                                                 {/* Team */}
                                                 <div className="py-1.5 px-1">
-                                                    <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(getClassification(item)))}>
+                                                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(getClassification(item)))}>
                                                         {getClassification(item)}
                                                     </span>
                                                 </div>
@@ -591,14 +591,14 @@ export default function DashboardPage() {
                                                         </span>
                                                     )}
                                                     {multi && (
-                                                        <span className="shrink-0 text-xs font-medium text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
-                                                            {teamCompletedCount} of {assignedTeams.length} completed
+                                                        <span className="shrink-0 text-xs font-medium text-purple-400/70 bg-purple-500/10 px-1 py-0.5 rounded">
+                                                            {teamCompletedCount}/{assignedTeams.length}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {/* Status */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", statusStyle.bg, statusStyle.text)}>
+                                                    <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
                                                         {statusStyle.label}
                                                     </span>
                                                 </div>
@@ -611,14 +611,20 @@ export default function DashboardPage() {
                                                             disabled={taskStatus === "completed"}
                                                         />
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground/60" title="Latest child deadline">
+                                                        <span className={cn(
+                                                            "text-xs px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
+                                                            parentDeadline && new Date(parentDeadline).getTime() < Date.now()
+                                                                ? "text-red-400 border-red-400/30"
+                                                                : "text-muted-foreground/70 border-muted-foreground/20"
+                                                        )} title="Latest child deadline">
+                                                            <Calendar className="h-2.5 w-2.5" />
                                                             {parentDeadline ? formatDate(parentDeadline) : "—"}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {/* Deadline time */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-xs text-muted-foreground/60">
+                                                    <span className="text-[10px] text-muted-foreground/60">
                                                         {!multi ? formatTime(item.deadline) : (parentDeadline ? formatTime(parentDeadline) : "—")}
                                                     </span>
                                                 </div>
@@ -632,13 +638,13 @@ export default function DashboardPage() {
                                                 </div>
                                                 {/* Published date */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-xs text-muted-foreground/60">
+                                                    <span className="text-[10px] text-muted-foreground/60">
                                                         {formatDate(item.published_at)}
                                                     </span>
                                                 </div>
                                                 {/* Completion date */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-xs text-muted-foreground/60">
+                                                    <span className="text-[10px] text-muted-foreground/60">
                                                         {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
                                                     </span>
                                                 </div>
@@ -648,7 +654,7 @@ export default function DashboardPage() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
-                                                                className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                 title="Approve — mark as completed"
                                                             >
                                                                 <CheckCircle2 className="h-2.5 w-2.5" /> Approve
@@ -1088,7 +1094,7 @@ export default function DashboardPage() {
                     {/* ── Completed Section ── */}
                     {!loading && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-emerald-500/20" textClass="text-emerald-500" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
+                            <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && completedTeamKeys.map(ws => {
                                 const rows = completedByTeam[ws] || []
@@ -1111,16 +1117,16 @@ export default function DashboardPage() {
 
                                         {!isCollapsed && (
                                             <div className="grid gap-0 border-b border-border/10 bg-muted/5 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
-                                                <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
+                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
                                             </div>
                                         )}
 
@@ -1137,29 +1143,29 @@ export default function DashboardPage() {
                                                         onClick={() => toggleRow(rowKey)}
                                                     >
                                                         <div className="py-1.5 px-1">
-                                                            <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(getClassification(item)))}>
+                                                            <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(getClassification(item)))}>
                                                                 {getClassification(item)}
                                                             </span>
                                                         </div>
                                                         <div className="py-1.5 flex justify-center"><RiskIcon modality={item.modality} /></div>
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
-                                                            <span className="text-xs text-foreground/90 truncate line-through decoration-emerald-500/40">{safeStr(item.action)}</span>
+                                                            <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                             {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
-                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
+                                                            <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
                                                                 {TASK_STATUS_STYLES.completed.label}
                                                             </span>
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-xs text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-xs text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
                                                         <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
                                                             <EvidencePopover files={item.evidence_files || []} taskStatus="completed" />
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-xs text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-xs text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-xs text-emerald-400 italic">Approved</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400 italic">Approved</span></div>
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
