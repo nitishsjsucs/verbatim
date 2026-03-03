@@ -6,6 +6,7 @@ import {
     ActionableItem,
     TaskStatus,
     ActionableComment,
+    Team,
     isMultiTeam,
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
@@ -43,7 +44,7 @@ interface FlatRow {
 // ─── Main Tracker Page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-    const { teamNames, leafTeamNames } = useTeams()
+    const { teamTree } = useTeams()
     const { data: session } = useSession()
     const userName = session?.user?.name || "Compliance Officer"
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
@@ -276,16 +277,42 @@ export default function DashboardPage() {
         return groups
     }, [activeRows])
 
-    // Ordered group keys: Mixed Team first (if exists), then regular teams
-    const sortedGroupKeys = React.useMemo(() => {
-        const keys = Object.keys(grouped)
-        const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
-        if (mixedIndex > -1) {
-            keys.splice(mixedIndex, 1)
-            return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
+    // Hierarchical ordered entries: walks teamTree producing parent headers + leaf groups
+    type TreeEntry = { type: "parent"; name: string; depth: number; totalCount: number } | { type: "leaf"; name: string; depth: number }
+    const orderedEntries = React.useMemo(() => {
+        const entries: TreeEntry[] = []
+        // Mixed Team first if present
+        if (grouped[MIXED_TEAM_CLASSIFICATION]?.length) {
+            entries.push({ type: "leaf", name: MIXED_TEAM_CLASSIFICATION, depth: 0 })
         }
-        return [...teamNames, "Other"].filter(ws => grouped[ws] && grouped[ws].length > 0)
-    }, [grouped, teamNames])
+        // Walk tree recursively
+        function countDescendantItems(node: Team): number {
+            const own = (grouped[node.name] || []).length
+            return own + (node.children || []).reduce((sum: number, c: Team) => sum + countDescendantItems(c), 0)
+        }
+        function walk(node: Team, depth: number) {
+            const total = countDescendantItems(node)
+            if (total === 0) return
+            const isLeaf = !node.children?.length
+            if (isLeaf) {
+                entries.push({ type: "leaf", name: node.name, depth })
+            } else {
+                entries.push({ type: "parent", name: node.name, depth, totalCount: total })
+                for (const child of node.children || []) {
+                    walk(child as Team, depth + 1)
+                }
+            }
+        }
+        for (const root of teamTree) walk(root, 0)
+        // Any teams not in tree (e.g. "Other")
+        const treeNames = new Set(entries.map(e => e.name))
+        for (const key of Object.keys(grouped)) {
+            if (!treeNames.has(key) && key !== MIXED_TEAM_CLASSIFICATION && grouped[key].length > 0) {
+                entries.push({ type: "leaf", name: key, depth: 0 })
+            }
+        }
+        return entries
+    }, [grouped, teamTree])
 
     // Group completed by classification (multi-team items go to "Mixed Team")
     const completedByTeam = React.useMemo(() => {
@@ -299,16 +326,36 @@ export default function DashboardPage() {
         return groups
     }, [completedRows])
 
-    // Ordered completed team keys: Mixed Team first (if exists), then regular teams
-    const completedTeamKeys = React.useMemo(() => {
-        const keys = Object.keys(completedByTeam)
-        const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
-        if (mixedIndex > -1) {
-            keys.splice(mixedIndex, 1)
-            return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
+    // Hierarchical completed entries: walks teamTree producing parent headers + leaf groups
+    const completedEntries = React.useMemo(() => {
+        const entries: TreeEntry[] = []
+        if (completedByTeam[MIXED_TEAM_CLASSIFICATION]?.length) {
+            entries.push({ type: "leaf", name: MIXED_TEAM_CLASSIFICATION, depth: 0 })
         }
-        return [...teamNames, "Other"].filter(ws => completedByTeam[ws] && completedByTeam[ws].length > 0)
-    }, [completedByTeam, teamNames])
+        function countDescendantCompleted(node: Team): number {
+            const own = (completedByTeam[node.name] || []).length
+            return own + (node.children || []).reduce((sum: number, c: Team) => sum + countDescendantCompleted(c), 0)
+        }
+        function walk(node: Team, depth: number) {
+            const total = countDescendantCompleted(node)
+            if (total === 0) return
+            const isLeaf = !node.children?.length
+            if (isLeaf) {
+                entries.push({ type: "leaf", name: node.name, depth })
+            } else {
+                entries.push({ type: "parent", name: node.name, depth, totalCount: total })
+                for (const child of node.children || []) walk(child as Team, depth + 1)
+            }
+        }
+        for (const root of teamTree) walk(root, 0)
+        const treeNames = new Set(entries.map(e => e.name))
+        for (const key of Object.keys(completedByTeam)) {
+            if (!treeNames.has(key) && key !== MIXED_TEAM_CLASSIFICATION && completedByTeam[key].length > 0) {
+                entries.push({ type: "leaf", name: key, depth: 0 })
+            }
+        }
+        return entries
+    }, [completedByTeam, teamTree])
 
     const [collapsedCompletedTeams, setCollapsedCompletedTeams] = React.useState<Set<string>>(new Set())
     const toggleCompletedTeam = (ws: string) => {
@@ -503,7 +550,43 @@ export default function DashboardPage() {
                         <SectionDivider label="Active" count={activeRows.length} icon={<AlertTriangle className="h-3.5 w-3.5" />} borderClass="border-b border-yellow-500/20" textClass="text-yellow-500" collapsed={activeCollapsed} onToggle={() => setActiveCollapsed(!activeCollapsed)} />
                     )}
 
-                    {!loading && !activeCollapsed && sortedGroupKeys.map(ws => {
+                    {!loading && !activeCollapsed && orderedEntries.map(entry => {
+                        // Check if any ancestor parent is collapsed — applies to both parent and leaf entries
+                        const isHiddenByAncestor = (() => {
+                            for (let i = orderedEntries.indexOf(entry) - 1; i >= 0; i--) {
+                                const prev = orderedEntries[i]
+                                if (prev.type === "parent" && prev.depth < entry.depth) {
+                                    if (collapsedGroups.has(prev.name)) return true
+                                }
+                            }
+                            return false
+                        })()
+                        if (isHiddenByAncestor) return null
+
+                        // Parent team header — expandable container
+                        if (entry.type === "parent") {
+                            const wsColors = WORKSTREAM_COLORS[entry.name] || DEFAULT_WORKSTREAM_COLORS
+                            const isCollapsed = collapsedGroups.has(entry.name)
+                            return (
+                                <div key={`parent-${entry.name}`} style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
+                                    <div
+                                        className="flex items-center gap-2 px-3 py-2 bg-background/95 backdrop-blur-sm border-b border-border/30 cursor-pointer hover:bg-muted/20 transition-colors"
+                                        onClick={() => toggleGroup(entry.name)}
+                                    >
+                                        {isCollapsed
+                                            ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                        <div className={cn("h-5 w-1.5 rounded-full shrink-0", wsColors.header)} />
+                                        <span className="text-xs font-bold text-foreground">{entry.name}</span>
+                                        <span className="text-[10px] text-muted-foreground/50 font-mono">{entry.totalCount} items</span>
+                                        <div className="h-px bg-border/30 flex-1" />
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        // Leaf team group — render existing table group
+                        const ws = entry.name
                         const rows = grouped[ws] || []
                         const isCollapsed = collapsedGroups.has(ws)
                         const wsColors = WORKSTREAM_COLORS[ws] || DEFAULT_WORKSTREAM_COLORS
@@ -511,7 +594,7 @@ export default function DashboardPage() {
                         const pct = rows.length > 0 ? Math.round((groupCompleted / rows.length) * 100) : 0
 
                         return (
-                            <div key={ws} className="mb-1">
+                            <div key={ws} className="mb-1" style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
                                 {/* ── Group header ── */}
                                 <div className="flex items-center gap-2 px-3 py-1.5 sticky top-0 z-10 bg-background border-b border-border/20">
                                     <button onClick={() => toggleGroup(ws)} className="flex items-center gap-2 flex-1 min-w-0">
@@ -1138,14 +1221,50 @@ export default function DashboardPage() {
                         <div className="mt-4">
                             <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
-                            {!completedCollapsed && completedTeamKeys.map(ws => {
+                            {!completedCollapsed && completedEntries.map(entry => {
+                                // Check if any ancestor parent is collapsed
+                                const isHiddenByAncestor = (() => {
+                                    for (let i = completedEntries.indexOf(entry) - 1; i >= 0; i--) {
+                                        const prev = completedEntries[i]
+                                        if (prev.type === "parent" && prev.depth < entry.depth) {
+                                            if (collapsedCompletedTeams.has(prev.name)) return true
+                                        }
+                                    }
+                                    return false
+                                })()
+                                if (isHiddenByAncestor) return null
+
+                                // Parent team header
+                                if (entry.type === "parent") {
+                                    const wsColors = WORKSTREAM_COLORS[entry.name] || DEFAULT_WORKSTREAM_COLORS
+                                    const isCollapsed = collapsedCompletedTeams.has(entry.name)
+                                    return (
+                                        <div key={`completed-parent-${entry.name}`} style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
+                                            <div
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-background/95 backdrop-blur-sm border-b border-border/20 cursor-pointer hover:bg-muted/20 transition-colors"
+                                                onClick={() => toggleCompletedTeam(entry.name)}
+                                            >
+                                                {isCollapsed
+                                                    ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                    : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                <div className={cn("h-4 w-1 rounded-full shrink-0", wsColors.header)} />
+                                                <span className="text-xs font-bold text-muted-foreground">{entry.name}</span>
+                                                <span className="text-[10px] text-muted-foreground/40 font-mono">{entry.totalCount}</span>
+                                                <div className="h-px bg-border/20 flex-1" />
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
+                                // Leaf team group
+                                const ws = entry.name
                                 const rows = completedByTeam[ws] || []
                                 if (rows.length === 0) return null
                                 const isCollapsed = collapsedCompletedTeams.has(ws)
                                 const wsColors = WORKSTREAM_COLORS[ws] || DEFAULT_WORKSTREAM_COLORS
 
                                 return (
-                                    <div key={`completed-${ws}`} className="mb-0.5">
+                                    <div key={`completed-${ws}`} className="mb-0.5" style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
                                         <div className="flex items-center gap-2 px-3 py-1 bg-background/50 border-b border-border/10">
                                             <button onClick={() => toggleCompletedTeam(ws)} className="flex items-center gap-2 flex-1 min-w-0">
                                                 {isCollapsed

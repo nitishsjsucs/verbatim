@@ -16,6 +16,7 @@ import {
     ActionableModality,
     ActionableWorkstream,
     TeamWorkflow,
+    Team,
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
     isMultiTeam,
@@ -35,6 +36,7 @@ import {
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
+import { HierarchicalTeamMultiSelect, HierarchicalTeamSelect } from "@/components/shared/hierarchical-team-selector"
 import { RiskIcon, EmptyState } from "@/components/shared/status-components"
 
 const PdfViewer = dynamic(
@@ -496,48 +498,24 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 </button>
                             </div>
 
-                            {/* Team multi-select */}
+                            {/* Team multi-select (hierarchical) */}
                             <div>
                                 <p className="text-xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                     <Users className="h-3 w-3" />
                                     Assign Teams
                                 </p>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {leafTeamNames.map(team => {
-                                        const isTeamSelected = draftTeams.includes(team)
-                                        const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
-                                        return (
-                                            <button
-                                                key={team}
-                                                onClick={() => {
-                                                    setDraftTeams(prev => {
-                                                        if (prev.includes(team)) {
-                                                            if (prev.length <= 1) return prev
-                                                            return prev.filter(t => t !== team)
-                                                        }
-                                                        const next = [team, ...prev]
-                                                        // Initialize impl/deadline drafts for newly added team
-                                                        if (!draftTeamImpl[team]) {
-                                                            setDraftTeamImpl(p => ({ ...p, [team]: safeStr(item.implementation_notes) }))
-                                                        }
-                                                        if (!teamDeadlineDrafts[team]) {
-                                                            setTeamDeadlineDrafts(p => ({ ...p, [team]: { date: "", time: "23:59" } }))
-                                                        }
-                                                        return next
-                                                    })
-                                                }}
-                                                className={cn(
-                                                    "text-xs px-2 py-1 rounded-md border transition-colors font-medium",
-                                                    isTeamSelected
-                                                        ? `${teamColors.bg} ${teamColors.text} border-current`
-                                                        : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
-                                                )}
-                                            >
-                                                {team}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
+                                <HierarchicalTeamMultiSelect
+                                    selected={draftTeams}
+                                    onChange={setDraftTeams}
+                                    onTeamAdded={(team) => {
+                                        if (!draftTeamImpl[team]) {
+                                            setDraftTeamImpl(p => ({ ...p, [team]: safeStr(item.implementation_notes) }))
+                                        }
+                                        if (!teamDeadlineDrafts[team]) {
+                                            setTeamDeadlineDrafts(p => ({ ...p, [team]: { date: "", time: "23:59" } }))
+                                        }
+                                    }}
+                                />
                             </div>
 
                             {/* Single-team: Consolidated group box */}
@@ -821,9 +799,10 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 </div>
                 <div>
                     <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
-                    <select value={form.workstream} onChange={e => setForm(f => ({ ...f, workstream: e.target.value as ActionableWorkstream }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
-                        {leafTeamNames.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                    <HierarchicalTeamSelect
+                        value={form.workstream}
+                        onChange={(team) => setForm(f => ({ ...f, workstream: team as ActionableWorkstream }))}
+                    />
                 </div>
             </div>
 
@@ -848,10 +827,97 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     )
 }
 
+// --- Hierarchical By-Team Tree Node ---
+// Renders a team node in the by-team view. Parent teams show as expandable containers
+// with their sub-teams nested inside. Only leaf teams show actionables directly.
+
+function ByTeamTreeNode({ node, byTeam, collapsedTeams, toggleTeam, renderCard, depth, filterFn }: {
+    node: Team
+    byTeam: Record<string, { item: ActionableItem; docId: string; docName: string }[]>
+    collapsedTeams: Set<string>
+    toggleTeam: (team: string) => void
+    renderCard: (entry: { item: ActionableItem; docId: string; docName: string }) => React.ReactNode
+    depth: number
+    filterFn?: (entry: { item: ActionableItem; docId: string; docName: string }) => boolean
+}) {
+    const isLeaf = !node.children?.length
+    const entries = byTeam[node.name] || []
+    const filteredEntries = filterFn ? entries.filter(filterFn) : entries
+    
+    // For parent nodes, count total items across all descendants
+    const descendantCount = React.useMemo(() => {
+        if (isLeaf) return filteredEntries.length
+        let count = filteredEntries.length
+        function countChildren(n: Team) {
+            for (const child of n.children || []) {
+                const childEntries = byTeam[child.name] || []
+                count += filterFn ? childEntries.filter(filterFn).length : childEntries.length
+                countChildren(child)
+            }
+        }
+        countChildren(node)
+        return count
+    }, [node, byTeam, filteredEntries, isLeaf, filterFn])
+
+    if (descendantCount === 0) return null
+
+    const isCollapsed = collapsedTeams.has(node.name)
+
+    if (isLeaf) {
+        // Leaf team: show actionables directly
+        if (filteredEntries.length === 0) return null
+        return (
+            <div className="border border-border/30 rounded-lg" style={{ marginLeft: depth > 0 ? `${depth * 12}px` : undefined }}>
+                <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(node.name)}>
+                    {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(node.name))}>{node.name}</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground/60">{filteredEntries.length}</span>
+                </div>
+                {!isCollapsed && (
+                    <div className="p-2 space-y-2">
+                        {filteredEntries.map(entry => renderCard(entry))}
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // Parent team: expandable container with children
+    return (
+        <div className="space-y-1" style={{ marginLeft: depth > 0 ? `${depth * 12}px` : undefined }}>
+            <div
+                className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => toggleTeam(node.name)}
+            >
+                {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", getWorkstreamClass(node.name))}>{node.name}</span>
+                <span className="text-[10px] text-muted-foreground/50 font-mono">{descendantCount} total</span>
+                <div className="h-px bg-border/30 flex-1" />
+            </div>
+            {!isCollapsed && (
+                <div className="space-y-1.5">
+                    {(node.children || []).map((child: Team) => (
+                        <ByTeamTreeNode
+                            key={child.name}
+                            node={child}
+                            byTeam={byTeam}
+                            collapsedTeams={collapsedTeams}
+                            toggleTeam={toggleTeam}
+                            renderCard={renderCard}
+                            depth={depth + 1}
+                            filterFn={filterFn}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
 // --- Main Page ---
 
 export default function ActionablesPage() {
-    const { teamNames } = useTeams()
+    const { teamNames, teamTree, getTeamByName } = useTeams()
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
     const [viewTab, setViewTab] = React.useState<ViewTab>("all")
@@ -1404,42 +1470,42 @@ export default function ActionablesPage() {
                                                 )
                                             })}
 
-                                            {viewTab === "by-team" && Object.entries(byTeam).map(([team, entries]) => {
-                                                const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
-                                                if (pendingEntries.length === 0) return null
-                                                const isCollapsed = collapsedTeams.has(team)
-                                                return (
-                                                    <div key={team} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
-                                                            {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
-                                                            <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                            {viewTab === "by-team" && (
+                                                <>
+                                                    {/* Mixed Team first if it has pending items */}
+                                                    {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status !== "approved") && (
+                                                        <div className="border border-border/30 rounded-lg">
+                                                            <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(MIXED_TEAM_CLASSIFICATION)}>
+                                                                {collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status !== "approved").length} pending</span>
+                                                            </div>
+                                                            {!collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) && (
+                                                                <div className="p-2 space-y-2">
+                                                                    {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status !== "approved").map(({ item, docId, docName }) => (
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        {!isCollapsed && (
-                                                        <div className="p-2 space-y-2">
-                                                            {pendingEntries.map(({ item, docId, docName }) => (
-                                                                <ActionableCard
-                                                                    key={`${docId}-${item.id}`}
-                                                                    item={item}
-                                                                    docId={docId}
-                                                                    docName={docName}
-                                                                    onUpdate={handleUpdate}
-                                                                    onDelete={handleDelete}
-                                                                    onSourceClick={handleSourceClick}
-                                                                    isSelected={selectedItemKey === `${docId}-${item.id}`}
-                                                                    onSelect={() => {
-                                                                        setSelectedItemKey(`${docId}-${item.id}`)
-                                                                        if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
-                                                                    }}
-                                                                    globalDeadline={globalDeadline}
-                                                                    globalDeadlineTime={globalDeadlineTime}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
+                                                    )}
+                                                    {/* Hierarchical tree rendering for all other teams */}
+                                                    {teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={toggleTeam}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status !== "approved"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
                                         </div>
                                     )}
 
@@ -1497,26 +1563,21 @@ export default function ActionablesPage() {
                                                         )
                                                     })}
 
-                                                    {/* By Team tab — approved (using orderedTeamKeys for proper ordering) */}
-                                                    {viewTab === "by-team" && orderedTeamKeys.map(team => {
-                                                        const entries = byTeam[team] || []
-                                                        const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
-                                                        if (approvedEntries.length === 0) return null
-                                                        const isCollapsed = collapsedTeams.has(`approved-${team}`)
-                                                        return (
-                                                            <div key={team} className="space-y-1.5">
-                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
-                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
-                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
-                                                                    <div className="h-px bg-border/30 flex-1" />
-                                                                </div>
-                                                                {!isCollapsed && approvedEntries.map(({ item, docId, docName }) => (
-                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
-                                                                ))}
-                                                            </div>
-                                                        )
-                                                    })}
+                                                    {/* By Team tab — approved (hierarchical tree) */}
+                                                    {viewTab === "by-team" && teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={(t) => toggleTeam(`approved-${t}`)}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status === "approved"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                            )}
+                                                        />
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
