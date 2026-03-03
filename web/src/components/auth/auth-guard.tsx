@@ -85,7 +85,7 @@ export function AuthGuard({ children, fallback, allowedRoles }: AuthGuardProps) 
                 <div className="flex items-center justify-center h-screen bg-background">
                     <div className="text-center">
                         <ShieldAlert className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Redirecting...</p>
+                        <p className="text-xs text-muted-foreground">Redirecting...</p>
                     </div>
                 </div>
             )

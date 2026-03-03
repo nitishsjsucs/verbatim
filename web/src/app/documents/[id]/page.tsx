@@ -219,7 +219,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                         />
                     </div>
                     <div className="flex-1" />
-                    <div className="text-xs-plus text-muted-foreground/40 font-medium truncate" title={doc.doc_name}>
+                    <div className="text-xs text-muted-foreground/40 font-medium truncate" title={doc.doc_name}>
                         {doc.doc_name} &middot; {doc.total_pages}p
                     </div>
                 </div>
@@ -232,7 +232,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                             {/* Tree Explorer Panel — resizable */}
                             <div style={{ width: `${docSplit}%` }} className="min-w-0 border-r border-border flex flex-col bg-sidebar/50 shrink-0">
                                 <div className="p-3 border-b border-border/40 flex-shrink-0">
-                                    <h2 className="font-semibold text-sm truncate" title={doc.doc_name}>
+                                    <h2 className="font-semibold text-xs truncate" title={doc.doc_name}>
                                         Document Structure
                                     </h2>
                                     <p className="text-xs text-muted-foreground mt-1">
@@ -328,7 +328,7 @@ function TabButton({ active, onClick, icon, label }: {
         <button
             onClick={onClick}
             className={cn(
-                "relative flex items-center gap-1.5 px-3 h-full text-sm-minus font-medium transition-colors border-b-2",
+                "relative flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-colors border-b-2",
                 active
                     ? "text-foreground border-primary"
                     : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"

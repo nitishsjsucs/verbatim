@@ -13,7 +13,7 @@ export default function RiskPage() {
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
           <div className="h-11 border-b border-border flex items-center px-5 shrink-0 bg-background">
-            <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <h1 className="text-xs font-semibold text-foreground flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-primary" />
               Risk
             </h1>

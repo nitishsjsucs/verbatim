@@ -21,7 +21,7 @@ export function RiskIcon({ modality }: { modality: string }) {
     const risk = normalizeRisk(modality)
     const cfg = RISK_STYLES[risk] || RISK_STYLES["Medium Risk"]
     return (
-        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-xs-plus font-bold shrink-0", cfg.bg, cfg.text)} title={risk}>
+        <span className={cn("inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold shrink-0", cfg.bg, cfg.text)} title={risk}>
             !
         </span>
     )
@@ -30,14 +30,14 @@ export function RiskIcon({ modality }: { modality: string }) {
 // ─── ProgressBar ─────────────────────────────────────────────────────────────
 
 export function ProgressBar({ completed, total }: { completed: number; total: number }) {
-    if (total === 0) return <span className="text-2xs text-muted-foreground/40">—</span>
+    if (total === 0) return <span className="text-xs text-muted-foreground/40">—</span>
     const pct = (completed / total) * 100
     return (
         <div className="flex items-center gap-2 w-full">
             <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
                 <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-2xs font-mono text-muted-foreground shrink-0">
+            <span className="text-xs font-mono text-muted-foreground shrink-0">
                 {completed}/{total}
             </span>
         </div>
@@ -66,14 +66,14 @@ export function EvidencePopover({ files, canDownload = true }: { files: Evidence
     }, [open])
 
     if (files.length === 0) {
-        return <span className="text-2xs text-muted-foreground/30 italic">empty</span>
+        return <span className="text-xs text-muted-foreground/30 italic">empty</span>
     }
 
     return (
         <div className="relative" ref={popoverRef}>
             <button
                 onClick={() => setOpen(!open)}
-                className="text-2xs text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
+                className="text-xs text-foreground/70 flex items-center justify-center gap-1 hover:text-primary transition-colors rounded px-1.5 py-0.5 hover:bg-primary/10"
             >
                 <Paperclip className="h-2.5 w-2.5" />{files.length}
             </button>
@@ -81,7 +81,7 @@ export function EvidencePopover({ files, canDownload = true }: { files: Evidence
             {open && (
                 <div className="absolute z-50 top-full mt-1 right-0 w-72 bg-background border border-border rounded-lg shadow-xl p-3 space-y-2">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs-plus font-semibold text-foreground/80">Evidence Files</span>
+                        <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
                         <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground/40">
                             <X className="h-3 w-3" />
                         </button>
@@ -94,8 +94,8 @@ export function EvidencePopover({ files, canDownload = true }: { files: Evidence
                                     <FileText className="h-3.5 w-3.5 text-primary/70" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs-plus font-medium text-foreground/90 truncate">{file.name}</p>
-                                    <p className="text-3xs text-muted-foreground/40">
+                                    <p className="text-xs font-medium text-foreground/90 truncate">{file.name}</p>
+                                    <p className="text-xs text-muted-foreground/40">
                                         {file.uploaded_at ? (() => { const _d = new Date(file.uploaded_at); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })}` })() : ""}
                                     </p>
                                 </div>
@@ -184,12 +184,12 @@ export function CitationCard({ title, subtitle, pageRange, excerpt, onClick }: {
                     <div className="min-w-0">
                         <span className="text-xs font-medium truncate text-foreground/90 block">{title}</span>
                         {subtitle && (
-                            <span className="text-2xs text-muted-foreground/60 truncate block">{subtitle}</span>
+                            <span className="text-xs text-muted-foreground/60 truncate block">{subtitle}</span>
                         )}
                     </div>
                 </div>
                 {pageRange && (
-                    <span className="text-2xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
+                    <span className="text-xs text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
                         {pageRange}
                     </span>
                 )}
@@ -222,9 +222,9 @@ export function EmptyState({ icon, title, description, className, children }: {
             <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
                 {icon}
             </div>
-            <h3 className="font-semibold mb-2">{title}</h3>
+            <h3 className="text-xs font-semibold mb-2">{title}</h3>
             {description && (
-                <p className="text-sm text-muted-foreground text-balance max-w-md">{description}</p>
+                <p className="text-xs text-muted-foreground text-balance max-w-md">{description}</p>
             )}
             {children}
         </div>
@@ -245,7 +245,7 @@ export function QueryBadge({ label, colorClass = "bg-primary/10 text-primary" }:
     colorClass?: string
 }) {
     return (
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium", colorClass)}>
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium", colorClass)}>
             {label}
         </span>
     )
@@ -266,8 +266,8 @@ export function StatCell({ value, label, colorClass }: {
 }) {
     return (
         <div className="text-center">
-            <p className={cn("text-sm-plus font-bold", colorClass)}>{value}</p>
-            <p className="text-3xs text-muted-foreground/50 uppercase tracking-wider">{label}</p>
+            <p className={cn("text-xs font-bold", colorClass)}>{value}</p>
+            <p className="text-xs text-muted-foreground/50 uppercase tracking-wider">{label}</p>
         </div>
     )
 }
@@ -333,8 +333,8 @@ export function EvidenceFileList({ files, formatDate: fmtDate, onDelete, readOnl
                             <FileText className="h-3.5 w-3.5 text-primary/70" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-xs-plus font-medium text-foreground/90 truncate">{file.name}</p>
-                            <p className="text-3xs text-muted-foreground/40">
+                            <p className="text-xs font-medium text-foreground/90 truncate">{file.name}</p>
+                            <p className="text-xs text-muted-foreground/40">
                                 Uploaded {fmtDate(file.uploaded_at)}
                             </p>
                         </div>
@@ -388,7 +388,7 @@ export function VerificationBadge({ status }: { status: string }) {
 
     const Icon = config.icon
     return (
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium", config.color)}>
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", config.color)}>
             <Icon className="h-3 w-3" />
             {config.label}
         </span>
@@ -407,7 +407,7 @@ export function ConfidenceIndicator({ confidence }: { confidence: string }) {
 export function StageTimingBar({ name, seconds, maxSeconds }: { name: string; seconds: number; maxSeconds: number }) {
     const pct = maxSeconds > 0 ? Math.min((seconds / maxSeconds) * 100, 100) : 0
     return (
-        <div className="flex items-center gap-2 text-xs-plus">
+        <div className="flex items-center gap-2 text-xs">
             <span className="w-28 text-muted-foreground truncate">{name}</span>
             <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
                 <div className="h-full bg-primary/60 rounded-full transition-all" style={{ width: `${pct}%` }} />

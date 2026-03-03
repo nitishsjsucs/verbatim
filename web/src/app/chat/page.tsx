@@ -34,7 +34,7 @@ import { ROLE_BADGE } from "@/lib/status-config"
 function roleTag(role: string) {
     const t = ROLE_BADGE[role] || { label: role, className: "bg-muted text-muted-foreground" }
     return (
-        <span className={cn("px-1.5 py-0.5 rounded text-3xs font-semibold uppercase tracking-wider", t.className)}>
+        <span className={cn("px-1.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider", t.className)}>
             {t.label}
         </span>
     )
@@ -195,7 +195,7 @@ function ChatContent() {
                     {/* Header */}
                     <div className="h-11 border-b border-border/40 flex items-center px-4 shrink-0">
                         <MessageSquare className="h-4 w-4 text-primary mr-2" />
-                        <span className="text-sm font-semibold text-foreground">Chat</span>
+                        <span className="text-xs font-semibold text-foreground">Chat</span>
                     </div>
 
                     {/* Channel list */}
@@ -211,7 +211,7 @@ function ChatContent() {
                                 {/* Compliance Internal */}
                                 {complianceInternalChannels.length > 0 && (
                                     <div className="mb-3">
-                                        <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Internal</p>
+                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Internal</p>
                                         {complianceInternalChannels.map(ch => (
                                             <ChannelButton
                                                 key={ch.channel}
@@ -226,7 +226,7 @@ function ChatContent() {
                                 {/* Team conversations */}
                                 {teamComplianceChannels.length > 0 && (
                                     <div>
-                                        <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Team Conversations</p>
+                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Team Conversations</p>
                                         {teamComplianceChannels.map(ch => (
                                             <ChannelButton
                                                 key={ch.channel}
@@ -274,10 +274,10 @@ function ChatContent() {
                         {activeChannelData ? (
                             <>
                                 <ChannelIcon type={activeChannelData.type} />
-                                <span className="text-sm font-semibold text-foreground truncate">
+                                <span className="text-xs font-semibold text-foreground truncate">
                                     {activeChannelData.label}
                                 </span>
-                                <span className="text-2xs text-muted-foreground/40 ml-1">
+                                <span className="text-xs text-muted-foreground/40 ml-1">
                                     {activeChannelData.type === "compliance_internal"
                                         ? "Compliance officers only"
                                         : activeChannelData.type === "team_internal"
@@ -286,7 +286,7 @@ function ChatContent() {
                                 </span>
                             </>
                         ) : (
-                            <span className="text-sm text-muted-foreground/50">Select a channel</span>
+                            <span className="text-xs text-muted-foreground/50">Select a channel</span>
                         )}
                     </div>
 
@@ -301,15 +301,15 @@ function ChatContent() {
                         {!loadingMessages && messages.length === 0 && activeChannel && (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
                                 <MessageSquare className="h-8 w-8 text-muted-foreground/20 mb-3" />
-                                <p className="text-sm text-muted-foreground/50">No messages yet</p>
-                                <p className="text-xs-plus text-muted-foreground/30 mt-1">Start the conversation</p>
+                                <p className="text-xs text-muted-foreground/50">No messages yet</p>
+                                <p className="text-xs text-muted-foreground/30 mt-1">Start the conversation</p>
                             </div>
                         )}
 
                         {!loadingMessages && !activeChannel && (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
                                 <ChevronRight className="h-8 w-8 text-muted-foreground/20 mb-3" />
-                                <p className="text-sm text-muted-foreground/50">Select a channel to begin</p>
+                                <p className="text-xs text-muted-foreground/50">Select a channel to begin</p>
                             </div>
                         )}
 
@@ -319,7 +319,7 @@ function ChatContent() {
                                 <div key={msg.id} className={cn("flex gap-2.5", isMe && "flex-row-reverse")}>
                                     {/* Avatar */}
                                     <div className={cn(
-                                        "h-7 w-7 rounded-full flex items-center justify-center text-2xs font-bold shrink-0",
+                                        "h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                                         isMe ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
                                     )}>
                                         {(msg.author || "?")[0].toUpperCase()}
@@ -328,7 +328,7 @@ function ChatContent() {
                                     {/* Bubble */}
                                     <div className={cn("max-w-[65%] min-w-[120px]", isMe ? "items-end" : "items-start")}>
                                         <div className="flex items-center gap-1.5 mb-0.5" style={{ flexDirection: isMe ? "row-reverse" : "row" }}>
-                                            <span className="text-xs-plus font-semibold text-foreground/80 truncate max-w-[140px]">
+                                            <span className="text-xs font-semibold text-foreground/80 truncate max-w-[140px]">
                                                 {isMe ? "You" : msg.author}
                                             </span>
                                             {roleTag(msg.role)}
@@ -342,7 +342,7 @@ function ChatContent() {
                                             {msg.text}
                                         </div>
                                         <p className={cn(
-                                            "text-3xs text-muted-foreground/30 mt-0.5",
+                                            "text-xs text-muted-foreground/30 mt-0.5",
                                             isMe ? "text-right" : "text-left"
                                         )}>
                                             {formatMsgTime(msg.timestamp)}
@@ -369,7 +369,7 @@ function ChatContent() {
                                         }
                                     }}
                                     placeholder="Type a message..."
-                                    className="flex-1 bg-muted/20 text-sm rounded-lg px-4 py-2.5 border border-border/40 focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                                    className="flex-1 bg-muted/20 text-xs rounded-lg px-4 py-2.5 border border-border/40 focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
                                     autoComplete="off"
                                 />
                                 <button
@@ -486,7 +486,7 @@ function ChannelButton({ channel, active, onClick, canRename, onRename }: {
                 </button>
             )}
             {channel.unread > 0 && (
-                <span className="bg-primary text-primary-foreground text-3xs font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
+                <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
                     {channel.unread}
                 </span>
             )}

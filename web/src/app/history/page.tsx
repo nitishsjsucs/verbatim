@@ -30,11 +30,11 @@ function StorageBar({ stats }: { stats: StorageStats | null }) {
     return (
         <div className="bg-muted/30 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-medium">
+                <div className="flex items-center gap-2 text-xs font-medium">
                     <Database className="h-4 w-4 text-muted-foreground" />
                     Storage Usage
                 </div>
-                <span className="text-sm font-mono text-muted-foreground">
+                <span className="text-xs font-mono text-muted-foreground">
                     {stats.total_mb.toFixed(1)} / {stats.limit_mb} MB
                 </span>
             </div>
@@ -44,7 +44,7 @@ function StorageBar({ stats }: { stats: StorageStats | null }) {
                     style={{ width: `${Math.min(pct, 100)}%` }}
                 />
             </div>
-            <div className="flex items-center justify-between text-2xs text-muted-foreground/60">
+            <div className="flex items-center justify-between text-xs text-muted-foreground/60">
                 <span>{pct.toFixed(1)}% used</span>
                 <div className="flex gap-3">
                     {Object.entries(stats.collections).map(([name, col]) => (
@@ -92,11 +92,11 @@ function ConversationCard({
             {/* Body */}
             <Link href={href} className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-sm-minus font-medium text-foreground truncate">
+                    <h3 className="text-xs font-medium text-foreground truncate">
                         {conv.title || conv.doc_name || conv.doc_id}
                     </h3>
                     <span className={cn(
-                        "text-2xs px-1.5 py-0.5 rounded font-medium shrink-0",
+                        "text-xs px-1.5 py-0.5 rounded font-medium shrink-0",
                         isResearch
                             ? "bg-muted text-foreground"
                             : "bg-muted text-muted-foreground"
@@ -119,7 +119,7 @@ function ConversationCard({
                     </p>
                 )}
 
-                <div className="flex items-center gap-3 text-xs-plus text-muted-foreground/50">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground/50">
                     <span className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
                         {conv.message_count}
@@ -138,7 +138,7 @@ function ConversationCard({
                 <Link
                     href={continueHref}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs-plus text-primary hover:text-primary/80 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
+                    className="text-xs text-primary hover:text-primary/80 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
                     title="Continue this conversation"
                 >
                     Continue →
@@ -147,13 +147,13 @@ function ConversationCard({
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => { onDelete(conv.conv_id); setConfirmDelete(false) }}
-                            className="text-xs-plus text-destructive hover:text-destructive px-2 py-1 rounded bg-destructive/10"
+                            className="text-xs text-destructive hover:text-destructive px-2 py-1 rounded bg-destructive/10"
                         >
                             Delete
                         </button>
                         <button
                             onClick={() => setConfirmDelete(false)}
-                            className="text-xs-plus text-muted-foreground hover:text-foreground px-2 py-1"
+                            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1"
                         >
                             Cancel
                         </button>
@@ -245,11 +245,11 @@ export default function HistoryPage() {
                 {/* Header */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-6 shrink-0 bg-background">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-sm font-semibold flex items-center gap-2">
+                        <h1 className="text-xs font-semibold flex items-center gap-2">
                             <History className="h-4 w-4 text-primary" />
                             Chat History
                         </h1>
-                        <span className="text-xs-plus text-muted-foreground/50 font-medium">
+                        <span className="text-xs text-muted-foreground/50 font-medium">
                             {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
                         </span>
                     </div>
@@ -313,7 +313,7 @@ export default function HistoryPage() {
 
                         {/* Error */}
                         {error && (
-                            <div className="flex items-center gap-2 text-sm text-red-400 bg-red-400/10 rounded-lg px-4 py-3">
+                            <div className="flex items-center gap-2 text-xs text-red-400 bg-red-400/10 rounded-lg px-4 py-3">
                                 <AlertTriangle className="h-4 w-4 shrink-0" />
                                 {error}
                             </div>
@@ -323,7 +323,7 @@ export default function HistoryPage() {
                         {loading && (
                             <div className="flex items-center justify-center py-20 text-muted-foreground">
                                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                                <span className="text-sm">Loading conversations...</span>
+                                <span className="text-xs">Loading conversations...</span>
                             </div>
                         )}
 

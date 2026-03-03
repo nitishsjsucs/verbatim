@@ -24,12 +24,12 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                 {/* Header — fixed at top, does not scroll */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 shrink-0 bg-sidebar/80">
                     <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold truncate text-sidebar-foreground" title={node.title}>
+                        <h3 className="text-xs font-semibold truncate text-sidebar-foreground" title={node.title}>
                             {node.title || `Untitled ${node.node_type}`}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-2xs font-mono text-muted-foreground/60">{node.node_id}</span>
-                            <span className="text-2xs px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{node.node_type}</span>
+                            <span className="text-xs font-mono text-muted-foreground/60">{node.node_id}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary capitalize">{node.node_type}</span>
                         </div>
                     </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
@@ -43,7 +43,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                         {/* 1. Description FIRST */}
                         {node.description && (
                             <DetailSection title="Description" icon={<FileText className="h-3.5 w-3.5" />}>
-                                <Markdown content={node.description} className="text-sm text-muted-foreground" />
+                                <Markdown content={node.description} className="text-xs text-muted-foreground" />
                             </DetailSection>
                         )}
 
@@ -55,7 +55,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                     className="w-full text-left group cursor-pointer"
                                 >
                                     <div className="line-clamp-4 group-hover:text-foreground transition-colors">
-                                        <Markdown content={node.summary} className="text-sm text-muted-foreground" />
+                                        <Markdown content={node.summary} className="text-xs text-muted-foreground" />
                                     </div>
                                     <span className="inline-flex items-center gap-1 text-xs text-primary/70 mt-1 group-hover:text-primary transition-colors">
                                         <Maximize2 className="h-3 w-3" />
@@ -100,7 +100,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                         <div key={table.table_id} className="border border-border/20 rounded-md p-2">
                                             <div className="flex items-center justify-between mb-1">
                                                 <span className="text-xs font-medium text-foreground/80">{table.caption || table.table_id}</span>
-                                                <span className="text-2xs text-muted-foreground/50">{table.num_rows}&times;{table.num_cols}</span>
+                                                <span className="text-xs text-muted-foreground/50">{table.num_rows}&times;{table.num_cols}</span>
                                             </div>
                                             {table.markdown && (
                                                 <pre className="text-xs text-muted-foreground/70 whitespace-pre-wrap font-mono overflow-x-auto max-h-40 overflow-y-auto">
@@ -122,7 +122,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
                                             <span className={cn("h-1.5 w-1.5 rounded-full", cr.resolved ? "bg-green-400" : "bg-red-400")} />
                                             <span className="truncate">{cr.target_identifier}</span>
                                             {cr.target_node_id && (
-                                                <span className="font-mono text-2xs text-muted-foreground/50">&rarr; {cr.target_node_id}</span>
+                                                <span className="font-mono text-xs text-muted-foreground/50">&rarr; {cr.target_node_id}</span>
                                             )}
                                         </div>
                                     ))}
@@ -167,7 +167,7 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
 
                         {/* Dialog Content */}
                         <div className="flex-1 overflow-y-auto px-6 py-5">
-                            <Markdown content={node.summary} className="text-sm text-foreground/90 [&_p]:leading-7" />
+                            <Markdown content={node.summary} className="text-xs text-foreground/90 [&_p]:leading-7" />
                         </div>
 
                         {/* Dialog Footer */}

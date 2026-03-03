@@ -203,7 +203,7 @@ export function DocumentList() {
             <div className="flex flex-col items-center justify-center h-[400px] border border-dashed rounded-lg bg-card/50">
                 <FileText className="h-10 w-10 text-muted-foreground/50 mb-4" />
                 <h3 className="font-semibold">No documents yet</h3>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                     Upload a PDF to get started.
                 </p>
             </div>
@@ -220,7 +220,7 @@ export function DocumentList() {
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search documents by name..."
-                    className="w-full bg-muted/30 text-sm rounded-md pl-8 pr-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full bg-muted/30 text-xs rounded-md pl-8 pr-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground placeholder:text-muted-foreground/50"
                 />
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -283,16 +283,16 @@ export function DocumentList() {
         <Table>
             <TableHeader>
                 <TableRow className="border-b border-border hover:bg-transparent">
-                    <TableHead className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4" style={{ width: '50%'}}>Name</TableHead>
-                    <TableHead className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
-                    <TableHead className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[130px] text-right">Date Ingested</TableHead>
+                    <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4" style={{ width: '50%'}}>Name</TableHead>
+                    <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
+                    <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[130px] text-right">Date Ingested</TableHead>
                     <TableHead className="h-9 w-[480px]"></TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {filteredDocuments.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-sm text-muted-foreground/60">
+                        <TableCell colSpan={4} className="text-center py-8 text-xs text-muted-foreground/60">
                             No documents match your search
                         </TableCell>
                     </TableRow>
@@ -305,7 +305,7 @@ export function DocumentList() {
                                 className="flex items-center gap-2 group/link"
                             >
                                 <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
-                                <span className="text-sm-minus font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
+                                <span className="text-xs font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
                             </Link>
                         </TableCell>
                         <TableCell className="text-right text-xs font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
@@ -323,7 +323,7 @@ export function DocumentList() {
                                 <div>
                                     <Link
                                         href={`/documents/${doc.id}?tab=chat`}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs-plus font-medium"
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-medium"
                                         title="Chat with document"
                                     >
                                         <MessageSquare className="h-3 w-3" />
@@ -334,7 +334,7 @@ export function DocumentList() {
                                     {doc.description ? (
                                         <button
                                             onClick={() => setExpandedDoc(doc)}
-                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-xs-plus font-medium"
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-xs font-medium"
                                             title="Read full summary"
                                         >
                                             <BookOpen className="h-3 w-3" />
@@ -345,7 +345,7 @@ export function DocumentList() {
                                 <div>
                                     <button
                                         onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-xs-plus font-medium"
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-xs font-medium"
                                         title="Rename document"
                                     >
                                         <Pencil className="h-3 w-3" />
@@ -355,7 +355,7 @@ export function DocumentList() {
                                 <div>
                                     {doc.has_actionables ? (
                                         <span
-                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-emerald-500/10 text-emerald-500 text-xs-plus font-medium cursor-default"
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-emerald-500/10 text-emerald-500 text-xs font-medium cursor-default"
                                             title="Actionables already extracted"
                                         >
                                             <CheckCircle2 className="h-3 w-3" />
@@ -365,7 +365,7 @@ export function DocumentList() {
                                         <button
                                             onClick={() => setExtractConfirmDocId(doc.id)}
                                             disabled={extractingDocId === doc.id}
-                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-xs-plus font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                                             title="Extract actionables from document"
                                         >
                                             {extractingDocId === doc.id
@@ -378,7 +378,7 @@ export function DocumentList() {
                                 <div>
                                     <button
                                         onClick={() => setDeletingDocId(doc.id)}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-xs-plus font-medium"
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-xs font-medium"
                                         title="Delete document"
                                     >
                                         <Trash2 className="h-3 w-3" />
@@ -406,7 +406,7 @@ export function DocumentList() {
                             <Shield className="h-5 w-5 text-amber-500" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-semibold text-foreground">Extract Actionables</h2>
+                            <h2 className="text-xs font-semibold text-foreground">Extract Actionables</h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 {documents.find(d => d.id === extractConfirmDocId)?.name}
                             </p>
@@ -457,7 +457,7 @@ export function DocumentList() {
                                 <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
                             </div>
                             <div>
-                                <h2 className="text-sm font-semibold text-foreground">Extracting Actionables</h2>
+                                <h2 className="text-xs font-semibold text-foreground">Extracting Actionables</h2>
                                 <p className="text-xs text-muted-foreground mt-0.5">
                                     {documents.find(d => d.id === extractingDocId)?.name}
                                 </p>
@@ -475,7 +475,7 @@ export function DocumentList() {
                                     style={{ width: `${overallPct}%` }}
                                 />
                             </div>
-                            <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
                                 <span>{overallPct}% complete</span>
                                 {extStage === "extracting" && extTotalBatches > 0 && (
                                     <span>Batch {extCurrentBatch}/{extTotalBatches}</span>
@@ -486,25 +486,25 @@ export function DocumentList() {
                         {/* Stats grid */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-sm-plus font-semibold font-mono">
+                                <p className="text-xs font-semibold font-mono">
                                     {extCandidates > 0 ? extCandidates : "..."}
                                 </p>
-                                <p className="text-2xs text-muted-foreground">Sections scanned</p>
+                                <p className="text-xs text-muted-foreground">Sections scanned</p>
                                 {extTotalNodes > 0 && (
-                                    <p className="text-3xs text-muted-foreground/50">of {extTotalNodes} total</p>
+                                    <p className="text-xs text-muted-foreground/50">of {extTotalNodes} total</p>
                                 )}
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-sm-plus font-semibold font-mono text-amber-500">
+                                <p className="text-xs font-semibold font-mono text-amber-500">
                                     {extCumulative}
                                 </p>
-                                <p className="text-2xs text-muted-foreground">Found so far</p>
+                                <p className="text-xs text-muted-foreground">Found so far</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-sm-plus font-semibold font-mono">
+                                <p className="text-xs font-semibold font-mono">
                                     {extStage === "done" ? `${extValidated}/${extFlagged}` : "..."}
                                 </p>
-                                <p className="text-2xs text-muted-foreground">
+                                <p className="text-xs text-muted-foreground">
                                     {extStage === "done" ? "Valid / Flagged" : "Validation"}
                                 </p>
                             </div>
@@ -517,7 +517,7 @@ export function DocumentList() {
                             </div>
                         )}
 
-                        <p className="text-2xs text-muted-foreground/50 text-center">
+                        <p className="text-xs text-muted-foreground/50 text-center">
                             This may take several minutes depending on document size.
                         </p>
                     </div>
@@ -540,7 +540,7 @@ export function DocumentList() {
                             <Trash2 className="h-5 w-5 text-red-500" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-semibold text-foreground">Delete Document</h2>
+                            <h2 className="text-xs font-semibold text-foreground">Delete Document</h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
                                 {documents.find(d => d.id === deletingDocId)?.name}
                             </p>
@@ -575,13 +575,13 @@ export function DocumentList() {
                     className="bg-background border border-border rounded-xl shadow-2xl w-[400px] p-6 space-y-4"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <h2 className="text-sm font-semibold text-foreground">Rename Document</h2>
+                    <h2 className="text-xs font-semibold text-foreground">Rename Document</h2>
                     <input
                         autoFocus
                         value={renameValue}
                         onChange={e => setRenameValue(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") handleRename(renamingDocId, renameValue) }}
-                        className="w-full bg-muted/30 text-sm rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none text-foreground"
+                        className="w-full bg-muted/30 text-xs rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none text-foreground"
                         placeholder="Document name..."
                     />
                     <div className="flex justify-end gap-2">
@@ -607,14 +607,14 @@ export function DocumentList() {
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-primary shrink-0" />
-                                <h2 className="text-base font-semibold text-foreground truncate">
+                                <h2 className="text-xs font-semibold text-foreground truncate">
                                     {expandedDoc.name}
                                 </h2>
                             </div>
                             <div className="flex items-center gap-3 mt-1.5 pl-6">
-                                <span className="text-2xs font-mono text-muted-foreground/50">{expandedDoc.id}</span>
-                                <span className="text-2xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.pages} pages</span>
-                                <span className="text-2xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.nodes} nodes</span>
+                                <span className="text-xs font-mono text-muted-foreground/50">{expandedDoc.id}</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.pages} pages</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.nodes} nodes</span>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setExpandedDoc(null)}>
@@ -625,9 +625,9 @@ export function DocumentList() {
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto px-6 py-5">
                         {expandedDoc.description ? (
-                            <Markdown content={expandedDoc.description} className="text-sm text-foreground/90 [&_p]:leading-7" />
+                            <Markdown content={expandedDoc.description} className="text-xs text-foreground/90 [&_p]:leading-7" />
                         ) : (
-                            <p className="text-sm text-muted-foreground italic">No description available.</p>
+                            <p className="text-xs text-muted-foreground italic">No description available.</p>
                         )}
                     </div>
 

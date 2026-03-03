@@ -57,9 +57,9 @@ function Section({ title, icon, children, defaultOpen = true }: {
 function Stat({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
         <div className="bg-card border border-border/40 rounded-lg px-4 py-3 text-center min-w-[110px]">
-            <p className="text-sm-plus font-bold font-mono" style={{ color: color || "var(--foreground)" }}>{value}</p>
-            <p className="text-3xs text-muted-foreground/60 mt-0.5">{label}</p>
-            {sub && <p className="text-4xs text-muted-foreground/40 mt-0.5">{sub}</p>}
+            <p className="text-xs font-bold font-mono" style={{ color: color || "var(--foreground)" }}>{value}</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">{label}</p>
+            {sub && <p className="text-xs text-muted-foreground/40 mt-0.5">{sub}</p>}
         </div>
     )
 }
@@ -81,8 +81,8 @@ function KpiCard({ title, value, color, filterActive, onClick }: {
                 filterActive && "ring-2 ring-primary"
             )}
         >
-            <h3 className="text-xs-plus font-medium text-muted-foreground mb-2">{title}</h3>
-            <p className="text-sm-plus font-bold" style={{ color: color || "var(--foreground)" }}>{value}</p>
+            <h3 className="text-xs font-medium text-muted-foreground mb-2">{title}</h3>
+            <p className="text-xs font-bold" style={{ color: color || "var(--foreground)" }}>{value}</p>
         </button>
     )
 }
@@ -92,7 +92,7 @@ function KpiCard({ title, value, color, filterActive, onClick }: {
 function PieChart({ data }: { data: { label: string; value: number; color: string }[] }) {
     const total = data.reduce((sum, d) => sum + d.value, 0)
     if (total === 0) {
-        return <div className="flex items-center justify-center h-full text-muted-foreground/40 text-sm">No data</div>
+        return <div className="flex items-center justify-center h-full text-muted-foreground/40 text-xs">No data</div>
     }
 
     let cumulative = 0
@@ -141,7 +141,7 @@ function PieChart({ data }: { data: { label: string; value: number; color: strin
                     <div key={i} className="flex items-center gap-2">
                         <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                         <span className="text-xs text-foreground">{s.label}</span>
-                        <span className="text-2xs text-muted-foreground font-mono">{s.value} ({s.pct}%)</span>
+                        <span className="text-xs text-muted-foreground font-mono">{s.value} ({s.pct}%)</span>
                     </div>
                 ))}
             </div>
@@ -169,7 +169,7 @@ function BarChart({ data }: { data: { label: string; value: number; color: strin
                     return (
                         <g key={i}>
                             <line x1={30} y1={y} x2={chartWidth} y2={y} stroke="var(--border)" strokeWidth="0.5" />
-                            <text x={25} y={y + 3} textAnchor="end" className="text-4xs fill-muted-foreground/50">{val}</text>
+                            <text x={25} y={y + 3} textAnchor="end" className="text-xs fill-muted-foreground/50">{val}</text>
                         </g>
                     )
                 })}
@@ -180,8 +180,8 @@ function BarChart({ data }: { data: { label: string; value: number; color: strin
                     return (
                         <g key={i}>
                             <rect x={x} y={y} width={barWidth} height={Math.max(barHeight, 1)} fill={d.color} rx={3} />
-                            <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="text-3xs fill-foreground font-medium">{d.value}</text>
-                            <text x={x + barWidth / 2} y={chartHeight + 14} textAnchor="middle" className="text-4xs fill-muted-foreground/60">
+                            <text x={x + barWidth / 2} y={y - 4} textAnchor="middle" className="text-xs fill-foreground font-medium">{d.value}</text>
+                            <text x={x + barWidth / 2} y={chartHeight + 14} textAnchor="middle" className="text-xs fill-muted-foreground/60">
                                 {d.label.length > 10 ? d.label.slice(0, 9) + "…" : d.label}
                             </text>
                         </g>
@@ -453,11 +453,11 @@ function ReportsContent() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* ── Top bar ── */}
                 <div className="h-11 flex items-center justify-between px-5 shrink-0 bg-background">
-                    <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <h1 className="text-xs font-semibold text-foreground flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4 text-primary" />
                         Reports & Analytics
                     </h1>
-                    <button className="flex items-center gap-1 text-xs-plus text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
+                    <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted/30 transition-colors">
                         <Download className="h-3 w-3" /> Export
                     </button>
                 </div>
@@ -467,7 +467,7 @@ function ReportsContent() {
                     {loading && (
                         <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                            <span className="text-sm">Loading dashboard...</span>
+                            <span className="text-xs">Loading dashboard...</span>
                         </div>
                     )}
 
@@ -488,11 +488,11 @@ function ReportsContent() {
                                 <Stat label="Avg Review (d)" value={stats.avgReviewDays} />
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="text-2xs text-muted-foreground">Completion</span>
+                                <span className="text-xs text-muted-foreground">Completion</span>
                                 <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
                                     <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${stats.completionRate}%` }} />
                                 </div>
-                                <span className="text-2xs font-mono">{stats.completionRate}%</span>
+                                <span className="text-xs font-mono">{stats.completionRate}%</span>
                             </div>
                         </Section>
 
@@ -500,11 +500,11 @@ function ReportsContent() {
                         <Section title="Section 2 — Deadline Pressure" icon={<Clock className="h-3.5 w-3.5 text-amber-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Overdue Bucket Distribution</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Overdue Bucket Distribution</h3>
                                     <BarChart data={delayBarData} />
                                 </div>
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Upcoming Deadlines</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Upcoming Deadlines</h3>
                                     <div className="flex gap-3 flex-wrap">
                                         <Stat label="Next 7 Days" value={stats.upcoming7} color={stats.upcoming7 > 0 ? "#ef4444" : "#22c55e"} />
                                         <Stat label="Next 14 Days" value={stats.upcoming14} color="#f59e0b" />
@@ -518,11 +518,11 @@ function ReportsContent() {
                         <Section title="Section 3 — Risk Exposure" icon={<AlertTriangle className="h-3.5 w-3.5 text-red-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Open Tasks by Risk Level</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Open Tasks by Risk Level</h3>
                                     <PieChart data={openRiskPieData} />
                                 </div>
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Overdue Tasks by Risk Level</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Overdue Tasks by Risk Level</h3>
                                     <BarChart data={overdueRiskBarData} />
                                 </div>
                             </div>
@@ -564,8 +564,8 @@ function ReportsContent() {
                                 </div>
                             </div>
                             <div className="bg-card border border-border/30 rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-foreground mb-3">Tasks by Team</h3>
-                                {workstreamBarData.length > 0 ? <BarChart data={workstreamBarData} /> : <p className="text-sm text-muted-foreground/40 text-center py-4">No data</p>}
+                                <h3 className="text-xs font-medium text-foreground mb-3">Tasks by Team</h3>
+                                {workstreamBarData.length > 0 ? <BarChart data={workstreamBarData} /> : <p className="text-xs text-muted-foreground/40 text-center py-4">No data</p>}
                             </div>
                         </Section>
 
@@ -583,8 +583,8 @@ function ReportsContent() {
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                 {(["assigned", "in_progress", "review", "reworking", "completed"] as TaskStatus[]).map(s => (
                                     <div key={s} className="bg-muted/20 rounded-lg p-3 text-center">
-                                        <p className="text-sm-plus font-bold" style={{ color: STATUS_COLORS_HEX[s] }}>{stats.byStatus[s]}</p>
-                                        <p className="text-3xs text-muted-foreground mt-1">{STATUS_LABELS[s]}</p>
+                                        <p className="text-xs font-bold" style={{ color: STATUS_COLORS_HEX[s] }}>{stats.byStatus[s]}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{STATUS_LABELS[s]}</p>
                                     </div>
                                 ))}
                             </div>
@@ -594,16 +594,16 @@ function ReportsContent() {
                         <Section title="Section 6 — Trend Analysis" icon={<BarChart3 className="h-3.5 w-3.5 text-cyan-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Tasks by Status</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Tasks by Status</h3>
                                     <PieChart data={statusPieData} />
                                 </div>
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Deadline Adherence</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Deadline Adherence</h3>
                                     <PieChart data={deadlinePieData} />
                                 </div>
                             </div>
                             <div className="bg-card border border-border/30 rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-foreground mb-3">Completion Progress by Team</h3>
+                                <h3 className="text-xs font-medium text-foreground mb-3">Completion Progress by Team</h3>
                                 <div className="space-y-2">
                                     {Object.entries(stats.byWorkstream).sort((a, b) => b[1].total - a[1].total).map(([team, { total, done }]) => {
                                         const pct = total > 0 ? ((done / total) * 100).toFixed(0) : "0"
@@ -613,7 +613,7 @@ function ReportsContent() {
                                                 <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
                                                     <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                                                 </div>
-                                                <span className="text-2xs font-mono font-bold">{pct}%</span>
+                                                <span className="text-xs font-mono font-bold">{pct}%</span>
                                             </div>
                                         )
                                     })}
@@ -625,11 +625,11 @@ function ReportsContent() {
                         <Section title="Section 7 — Regulatory Exposure" icon={<Shield className="h-3.5 w-3.5 text-amber-500" />}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Tasks by Risk Level</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Tasks by Risk Level</h3>
                                     <PieChart data={riskPieData} />
                                 </div>
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium text-foreground mb-3">Risk Distribution by Team</h3>
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Risk Distribution by Team</h3>
                                     <div className="space-y-2">
                                         {(() => {
                                             const teamRisk: Record<string, Record<string, number>> = {}
@@ -655,7 +655,7 @@ function ReportsContent() {
                                                                 return <div key={r} className="h-full" style={{ width: `${pct}%`, backgroundColor: RISK_COLORS_HEX[r] }} title={`${r}: ${risks[r]}`} />
                                                             })}
                                                         </div>
-                                                        <div className="flex gap-1 shrink-0 text-3xs font-mono">
+                                                        <div className="flex gap-1 shrink-0 text-xs font-mono">
                                                             <span className="text-red-500">{risks["High Risk"]}</span>
                                                             <span className="text-muted-foreground/30">/</span>
                                                             <span className="text-yellow-500">{risks["Medium Risk"]}</span>
@@ -683,11 +683,11 @@ function ReportsContent() {
                             </div>
                             {stats.totalActionables > 0 && (
                                 <div className="flex items-center gap-3">
-                                    <span className="text-2xs text-muted-foreground">Approval Rate</span>
+                                    <span className="text-xs text-muted-foreground">Approval Rate</span>
                                     <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
                                         <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(stats.approved / stats.totalActionables) * 100}%` }} />
                                     </div>
-                                    <span className="text-2xs font-mono">{((stats.approved / stats.totalActionables) * 100).toFixed(1)}%</span>
+                                    <span className="text-xs font-mono">{((stats.approved / stats.totalActionables) * 100).toFixed(1)}%</span>
                                 </div>
                             )}
                         </Section>
@@ -714,21 +714,21 @@ function ReportsContent() {
                                 <Stat label="Completed" value={myStats.byStatus.completed} color={STATUS_COLORS_HEX.completed} />
                             </div>
                             <div className="flex items-center gap-4">
-                                <span className="text-2xs text-muted-foreground">Completion</span>
+                                <span className="text-xs text-muted-foreground">Completion</span>
                                 <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
                                     <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${myStats.completionRate}%` }} />
                                 </div>
-                                <span className="text-2xs font-mono font-bold">{myStats.completionRate}%</span>
+                                <span className="text-xs font-mono font-bold">{myStats.completionRate}%</span>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium mb-3">Tasks by Status</h3>
+                                    <h3 className="text-xs font-medium mb-3">Tasks by Status</h3>
                                     <PieChart data={(["assigned", "in_progress", "team_review", "review", "completed", "reworking"] as TaskStatus[]).map((s, i) => ({
                                         label: STATUS_LABELS[s], value: myStats.byStatus[s], color: PIE_COLORS[i],
                                     }))} />
                                 </div>
                                 <div className="bg-card border border-border/30 rounded-lg p-4">
-                                    <h3 className="text-sm font-medium mb-3">Tasks by Risk Level</h3>
+                                    <h3 className="text-xs font-medium mb-3">Tasks by Risk Level</h3>
                                     <PieChart data={["High Risk", "Medium Risk", "Low Risk"].map((r, i) => ({
                                         label: r, value: myStats.byRisk[r], color: RISK_PIE_COLORS[i],
                                     }))} />

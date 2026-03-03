@@ -76,7 +76,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                 <MessageSquare className="h-3.5 w-3.5 text-primary/60" />
                 <span className="text-xs font-semibold text-foreground/80">Comments</span>
                 {comments.length > 0 && (
-                    <span className="text-2xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{comments.length}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{comments.length}</span>
                 )}
             </div>
 
@@ -89,7 +89,7 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                 )}
             >
                 {sorted.length === 0 && (
-                    <p className="text-2xs text-muted-foreground/30 italic py-3 text-center">
+                    <p className="text-xs text-muted-foreground/30 italic py-3 text-center">
                         No comments yet. Start the conversation.
                     </p>
                 )}
@@ -104,17 +104,17 @@ export function CommentThread({ comments, currentUser, currentRole, onAddComment
                             )}
                         >
                             <div className="flex items-center gap-1.5">
-                                <span className="text-3xs font-medium text-foreground/60">{c.author}</span>
+                                <span className="text-xs font-medium text-foreground/60">{c.author}</span>
                                 <span className={cn(
-                                    "text-4xs px-1 py-0 rounded font-medium",
+                                    "text-xs px-1 py-0 rounded font-medium",
                                     (ROLE_BADGE[c.role] || ROLE_BADGE.team_member).className
                                 )}>
                                     {(ROLE_BADGE[c.role] || ROLE_BADGE.team_member).label}
                                 </span>
-                                <span className="text-4xs text-muted-foreground/30">{formatTimestamp(c.timestamp)}</span>
+                                <span className="text-xs text-muted-foreground/30">{formatTimestamp(c.timestamp)}</span>
                             </div>
                             <div className={cn(
-                                "text-xs-plus px-3 py-1.5 rounded-lg max-w-[85%] whitespace-pre-wrap break-words",
+                                "text-xs px-3 py-1.5 rounded-lg max-w-[85%] whitespace-pre-wrap break-words",
                                 isMe
                                     ? "bg-primary/10 text-foreground/90 rounded-br-sm"
                                     : "bg-muted/30 text-foreground/80 rounded-bl-sm"

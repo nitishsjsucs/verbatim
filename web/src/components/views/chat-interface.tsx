@@ -277,9 +277,9 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                 <div className="h-11 border-b border-border flex items-center px-4 shrink-0 bg-background justify-between">
                     <div className="flex items-center gap-2">
                         <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        <h2 className="text-sm-minus font-medium text-foreground">Q&A</h2>
+                        <h2 className="text-xs font-medium text-foreground">Q&A</h2>
                         {/* {activeConvId && (
-                            <span className="text-xs-plus text-muted-foreground/50 truncate max-w-[200px]">
+                            <span className="text-xs text-muted-foreground/50 truncate max-w-[200px]">
                                 {conversations.find(c => c.conv_id === activeConvId)?.title?.slice(0, 40) || ""}
                             </span>
                         )} */}
@@ -294,7 +294,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                             <Plus className="h-3.5 w-3.5" />
                             New
                         </Button>
-                        <div className="text-xs-plus text-muted-foreground/40 flex items-center gap-1.5 pr-1">
+                        <div className="text-xs text-muted-foreground/40 flex items-center gap-1.5 pr-1">
                             <div className="h-1.5 w-1.5 rounded-full bg-green-500/60" />
                             Active
                         </div>
@@ -307,7 +307,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                         {loadingHistory && (
                             <div className="flex items-center justify-center h-[30vh] text-muted-foreground">
                                 <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                                <span className="text-sm">Loading chat history...</span>
+                                <span className="text-xs">Loading chat history...</span>
                             </div>
                         )}
 
@@ -338,7 +338,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                             <QueryBadge label={QUERY_TYPE_LABELS[msg.queryType] || msg.queryType} />
                                             {msg.verificationStatus && <VerificationBadge status={msg.verificationStatus} />}
                                             {msg.totalTimeSeconds !== undefined && msg.totalTimeSeconds > 0 && (
-                                                <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/60">
+                                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60">
                                                     <Clock className="h-3 w-3" />
                                                     {msg.totalTimeSeconds.toFixed(1)}s
                                                 </span>
@@ -348,7 +348,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
 
                                     {/* Answer text */}
                                     <div className={cn(
-                                        "px-4 py-3 rounded-lg text-sm-minus leading-relaxed",
+                                        "px-4 py-3 rounded-lg text-xs leading-relaxed",
                                         msg.role === 'user'
                                             ? "bg-primary text-primary-foreground whitespace-pre-wrap"
                                             : "bg-card border border-border text-foreground"
@@ -365,7 +365,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                         <div className="mt-3 w-full space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-px bg-border w-4" />
-                                                <span className="text-2xs font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
+                                                <span className="text-xs font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
                                                 <div className="h-px bg-border flex-1" />
                                             </div>
                                             <div className="grid gap-2">
@@ -395,7 +395,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                 <CollapsibleSection
                                                     title="Inferred Points"
                                                     icon={<Brain className="h-3 w-3" />}
-                                                    badge={<span className="text-2xs text-muted-foreground/60">{msg.inferredPoints.length}</span>}
+                                                    badge={<span className="text-xs text-muted-foreground/60">{msg.inferredPoints.length}</span>}
                                                 >
                                                     <div className="space-y-3">
                                                         {msg.inferredPoints.map((ip, i) => (
@@ -410,7 +410,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                 {ip.supporting_definitions.length > 0 && (
                                                                     <div className="pl-4 space-y-0.5">
                                                                         {ip.supporting_definitions.map((def, j) => (
-                                                                            <p key={j} className="text-2xs text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
+                                                                            <p key={j} className="text-xs text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
                                                                         ))}
                                                                     </div>
                                                                 )}
@@ -435,7 +435,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                 <CollapsibleSection
                                                     title="Retrieved Sections"
                                                     icon={<Search className="h-3 w-3" />}
-                                                    badge={<span className="text-2xs text-muted-foreground/60">{msg.retrievedSections.length}</span>}
+                                                    badge={<span className="text-xs text-muted-foreground/60">{msg.retrievedSections.length}</span>}
                                                 >
                                                     <div className="space-y-2">
                                                         {msg.retrievedSections
@@ -469,10 +469,10 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                             <span className="font-medium text-foreground/80 truncate">{section.title}</span>
                                                                             <div className="flex items-center gap-2 shrink-0">
                                                                                 {confPct !== null && (
-                                                                                    <span className={cn("font-mono text-2xs", confColor)}>{confPct}%</span>
+                                                                                    <span className={cn("font-mono text-xs", confColor)}>{confPct}%</span>
                                                                                 )}
-                                                                                <span className="text-2xs text-muted-foreground/50 font-mono">{section.page_range}</span>
-                                                                                <span className="text-2xs px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
+                                                                                <span className="text-xs text-muted-foreground/50 font-mono">{section.page_range}</span>
+                                                                                <span className="text-xs px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
                                                                             </div>
                                                                         </div>
                                                                         <p className="text-muted-foreground/70 line-clamp-2">{section.text.slice(0, 300)}</p>
@@ -492,25 +492,25 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                     <div className="space-y-3">
                                                         <div className="grid grid-cols-2 gap-2">
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-2xs text-muted-foreground">Response Time</p>
-                                                                <p className="text-sm font-medium font-mono">{msg.totalTimeSeconds?.toFixed(1)}s</p>
+                                                                <p className="text-xs text-muted-foreground">Response Time</p>
+                                                                <p className="text-xs font-medium font-mono">{msg.totalTimeSeconds?.toFixed(1)}s</p>
                                                             </div>
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-2xs text-muted-foreground">Total Tokens</p>
-                                                                <p className="text-sm font-medium font-mono">{msg.totalTokens?.toLocaleString()}</p>
+                                                                <p className="text-xs text-muted-foreground">Total Tokens</p>
+                                                                <p className="text-xs font-medium font-mono">{msg.totalTokens?.toLocaleString()}</p>
                                                             </div>
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-2xs text-muted-foreground">LLM Calls</p>
-                                                                <p className="text-sm font-medium font-mono">{msg.llmCalls}</p>
+                                                                <p className="text-xs text-muted-foreground">LLM Calls</p>
+                                                                <p className="text-xs font-medium font-mono">{msg.llmCalls}</p>
                                                             </div>
                                                             <div className="bg-muted/30 rounded-md p-2">
-                                                                <p className="text-2xs text-muted-foreground">Sections Read</p>
-                                                                <p className="text-sm font-medium font-mono">{msg.retrievedSections?.length || 0}</p>
+                                                                <p className="text-xs text-muted-foreground">Sections Read</p>
+                                                                <p className="text-xs font-medium font-mono">{msg.retrievedSections?.length || 0}</p>
                                                             </div>
                                                         </div>
                                                         {msg.stageTimings && Object.keys(msg.stageTimings).length > 0 && (
                                                             <div className="space-y-1.5">
-                                                                <p className="text-2xs font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
+                                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
                                                                 {(() => {
                                                                     const entries = Object.entries(msg.stageTimings)
                                                                     const maxVal = Math.max(...entries.map(([, v]) => v), 0.1)
@@ -533,7 +533,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                     <div className="space-y-3 text-xs">
                                                         {msg.subQueries && msg.subQueries.length > 0 && (
                                                             <div>
-                                                                <p className="text-2xs font-medium text-muted-foreground mb-1">Sub-queries</p>
+                                                                <p className="text-xs font-medium text-muted-foreground mb-1">Sub-queries</p>
                                                                 <div className="space-y-0.5">
                                                                     {msg.subQueries.map((sq, i) => (
                                                                         <p key={i} className="text-muted-foreground/70 pl-2 border-l-2 border-primary/10">{sq}</p>
@@ -543,17 +543,17 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                         )}
                                                         {msg.keyTerms && msg.keyTerms.length > 0 && (
                                                             <div>
-                                                                <p className="text-2xs font-medium text-muted-foreground mb-1">Key Terms</p>
+                                                                <p className="text-xs font-medium text-muted-foreground mb-1">Key Terms</p>
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {msg.keyTerms.map((term, i) => (
-                                                                        <span key={i} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-2xs">{term}</span>
+                                                                        <span key={i} className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs">{term}</span>
                                                                     ))}
                                                                 </div>
                                                             </div>
                                                         )}
                                                         {msg.routingLog.locate_results.length > 0 && (
                                                             <div>
-                                                                <p className="text-2xs font-medium text-muted-foreground mb-1">
+                                                                <p className="text-xs font-medium text-muted-foreground mb-1">
                                                                     Located Nodes ({msg.routingLog.total_nodes_located})
                                                                 </p>
                                                                 <div className="space-y-1">
@@ -562,9 +562,9 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                         const conf = typeof rec.confidence === "number" ? Math.round((rec.confidence as number) * 100) : null
                                                                         return (
                                                                             <div key={i} className="flex items-center gap-2 text-muted-foreground/70">
-                                                                                <span className="font-mono text-2xs text-muted-foreground/50">{rec.node_id as string}</span>
+                                                                                <span className="font-mono text-xs text-muted-foreground/50">{rec.node_id as string}</span>
                                                                                 <span className="truncate flex-1">{rec.title as string || rec.relevance_reason as string || ""}</span>
-                                                                                {conf !== null && <span className="font-mono text-2xs">{conf}%</span>}
+                                                                                {conf !== null && <span className="font-mono text-xs">{conf}%</span>}
                                                                             </div>
                                                                         )
                                                                     })}
@@ -573,14 +573,14 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                         )}
                                                         {msg.routingLog.cross_ref_follows.length > 0 && (
                                                             <div>
-                                                                <p className="text-2xs font-medium text-muted-foreground mb-1">Cross-Reference Follows</p>
+                                                                <p className="text-xs font-medium text-muted-foreground mb-1">Cross-Reference Follows</p>
                                                                 <div className="space-y-1">
                                                                     {msg.routingLog.cross_ref_follows.map((cr, i) => {
                                                                         const rec = cr as Record<string, unknown>
                                                                         return (
                                                                             <div key={i} className="flex items-center gap-1.5 text-muted-foreground/70">
                                                                                 {rec.resolved ? <CheckCircle2 className="h-3 w-3 text-green-400" /> : <XCircle className="h-3 w-3 text-red-400" />}
-                                                                                <span className="font-mono text-2xs">{rec.source_node_id as string}</span>
+                                                                                <span className="font-mono text-xs">{rec.source_node_id as string}</span>
                                                                                 <span className="text-muted-foreground/40">→</span>
                                                                                 <span>{rec.target_identifier as string}</span>
                                                                             </div>
@@ -589,7 +589,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                                                 </div>
                                                             </div>
                                                         )}
-                                                        <div className="flex gap-4 text-2xs text-muted-foreground/50 pt-1 border-t border-border/20">
+                                                        <div className="flex gap-4 text-xs text-muted-foreground/50 pt-1 border-t border-border/20">
                                                             <span>{msg.routingLog.total_nodes_located} nodes located</span>
                                                             <span>{msg.routingLog.total_sections_read} sections read</span>
                                                             <span>{msg.routingLog.total_tokens_retrieved.toLocaleString()} tokens retrieved</span>
@@ -631,12 +631,12 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Ask a question about this document…"
-                                className="flex-1 border-0 bg-transparent p-0 h-auto text-sm-minus focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/40"
+                                className="flex-1 border-0 bg-transparent p-0 h-auto text-xs focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/40"
                                 disabled={loading}
                             />
                             {/* Options */}
                             <div className="flex items-center gap-2 border-l border-border pl-2 shrink-0">
-                                <label className="flex items-center gap-1 text-xs-plus text-muted-foreground cursor-pointer select-none" title="Verify answer against source">
+                                <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer select-none" title="Verify answer against source">
                                     <input
                                         type="checkbox"
                                         checked={verify}
@@ -645,7 +645,7 @@ export function ChatInterface({ docId, onCitationClick, continueConvId }: ChatIn
                                     />
                                     <ShieldCheck className="h-3 w-3" />
                                 </label>
-                                <label className="flex items-center gap-1 text-xs-plus text-muted-foreground cursor-pointer select-none" title="Enable reflection">
+                                <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer select-none" title="Enable reflection">
                                     <input
                                         type="checkbox"
                                         checked={reflect}

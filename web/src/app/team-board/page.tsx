@@ -161,12 +161,12 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                     {isMultiTeam(item) && (
-                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-3xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
+                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
                             {MIXED_TEAM_CLASSIFICATION}
                         </span>
                     )}
                     {commentCount > 0 && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-3xs text-primary/60">
+                        <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60">
                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
                         </span>
                     )}
@@ -174,14 +174,14 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                 {/* Status */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium", statusCfg.bg, statusCfg.text)}>
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", statusCfg.bg, statusCfg.text)}>
                         {statusCfg.label}
                     </span>
                 </div>
 
                 {/* Deadline date */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("text-2xs px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
                         isOverdue ? "text-red-400 border-red-400/30" : "text-muted-foreground/70 border-muted-foreground/20"
                     )}>
                         <Calendar className="h-2.5 w-2.5" />
@@ -191,7 +191,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                 {/* Deadline time */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-2xs text-muted-foreground/60">
+                    <span className="text-xs text-muted-foreground/60">
                         {formatTime(item.deadline)}
                     </span>
                 </div>
@@ -203,7 +203,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                 {/* Published date */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-2xs text-muted-foreground/60">
+                    <span className="text-xs text-muted-foreground/60">
                         {formatDate(item.published_at)}
                     </span>
                 </div>
@@ -214,7 +214,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         <button
                             onClick={() => onStatusTransition(docId, item)}
                             className={cn(
-                                "inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded transition-colors font-medium",
+                                "inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded transition-colors font-medium",
                                 taskStatus === "assigned"
                                     ? "bg-slate-500/15 text-slate-400 hover:bg-slate-500/25"
                                     : "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
@@ -231,7 +231,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             {canRevert && (
                                 <button
                                     onClick={() => onRevert(docId, item)}
-                                    className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 transition-colors font-medium"
+                                    className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 transition-colors font-medium"
                                     title="Revert to In Progress (available for 10 min after submission)"
                                 >
                                     <Undo2 className="h-2.5 w-2.5" /> Revert
@@ -240,10 +240,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         </div>
                     )}
                     {isUnderReview && (
-                        <span className="text-3xs text-blue-400 italic">CO Review</span>
+                        <span className="text-xs text-blue-400 italic">CO Review</span>
                     )}
                     {isCompleted && (
-                        <span className="text-3xs text-emerald-400 italic">Done</span>
+                        <span className="text-xs text-emerald-400 italic">Done</span>
                     )}
                 </div>
             </div>
@@ -258,7 +258,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 <XCircle className="h-4 w-4 text-red-400" />
                             </div>
                             <div>
-                                <p className="text-2xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
                                 <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
                             </div>
                         </div>
@@ -268,11 +268,11 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                             <div>
-                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                             </div>
                             <div>
-                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                             </div>
 
@@ -283,13 +283,13 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                         <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                         <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
                                         {files.length > 0 && (
-                                            <span className="text-2xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
                                         )}
                                     </div>
                                     {!isReadOnly && (
                                         <button
                                             onClick={handleUploadClick}
-                                            className="flex items-center gap-1.5 text-xs-plus px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
                                         >
                                             <Upload className="h-3 w-3" /> Upload File
                                         </button>
@@ -300,11 +300,11 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 {files.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-4 bg-background rounded-lg border border-dashed border-border/40">
                                         <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
-                                        <p className="text-2xs text-muted-foreground/40">No evidence files uploaded yet</p>
+                                        <p className="text-xs text-muted-foreground/40">No evidence files uploaded yet</p>
                                         {!isReadOnly && (
                                             <button
                                                 onClick={handleUploadClick}
-                                                className="text-2xs text-primary hover:underline mt-1"
+                                                className="text-xs text-primary hover:underline mt-1"
                                             >
                                                 Click to upload
                                             </button>
@@ -342,7 +342,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                     </div>
 
                     {/* Source info */}
-                    <div className="text-2xs text-muted-foreground/30 pt-2 border-t border-border/10">
+                    <div className="text-xs text-muted-foreground/30 pt-2 border-t border-border/10">
                         Source: {docName}
                     </div>
                 </div>
@@ -557,14 +557,14 @@ function TeamBoardContent() {
 
     const renderHeader = () => (
         <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-            <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+            <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
         </div>
     )
 
@@ -588,7 +588,7 @@ function TeamBoardContent() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* ── Top bar — matches dashboard ── */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
-                    <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <h1 className="text-xs font-semibold text-foreground flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4 text-primary" />
                         {`My Tasks - ${userTeam || "Team"}`}
                     </h1>
@@ -615,7 +615,7 @@ function TeamBoardContent() {
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-3xs text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
+                        <p className="text-xs text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -679,7 +679,7 @@ function TeamBoardContent() {
                     )}
 
                     <div className="flex items-center gap-1 ml-auto">
-                        <span className="text-2xs text-muted-foreground/50">Sort:</span>
+                        <span className="text-xs text-muted-foreground/50">Sort:</span>
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
@@ -705,7 +705,7 @@ function TeamBoardContent() {
                     {loading && (
                         <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                            <span className="text-sm">Loading tracker...</span>
+                            <span className="text-xs">Loading tracker...</span>
                         </div>
                     )}
 
@@ -749,7 +749,7 @@ function TeamBoardContent() {
                     )}
 
                     {!loading && filtered.length === 0 && viewItems.length > 0 && (
-                        <div className="text-center text-sm text-muted-foreground/60 py-12">
+                        <div className="text-center text-xs text-muted-foreground/60 py-12">
                             No actionables match the current filters
                         </div>
                     )}

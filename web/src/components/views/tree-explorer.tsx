@@ -41,7 +41,7 @@ export function TreeExplorer({ structure, className, onNodeSelect, selectedNodeI
     return (
         <div className={cn("flex flex-col h-full bg-sidebar border-r border-sidebar-border", className)}>
             <div className="h-11 border-b border-sidebar-border flex items-center px-4 shrink-0">
-                <h3 className="text-sm-minus font-medium text-sidebar-foreground">Structure</h3>
+                <h3 className="text-xs font-medium text-sidebar-foreground">Structure</h3>
             </div>
             {/* Search */}
             <div className="px-3 pt-2 pb-1 shrink-0">
@@ -122,7 +122,7 @@ function TreeItem({ node, level = 0, onSelect, selectedId, defaultExpanded }: Tr
         <div className="select-none">
             <div
                 className={cn(
-                    "group flex items-center py-1.5 px-2 rounded-md cursor-pointer text-sm transition-colors",
+                    "group flex items-center py-1.5 px-2 rounded-md cursor-pointer text-xs transition-colors",
                     isSelected
                         ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
@@ -155,7 +155,7 @@ function TreeItem({ node, level = 0, onSelect, selectedId, defaultExpanded }: Tr
                 </span>
 
                 {node.start_page > 0 && (
-                    <span className="text-2xs opacity-40 group-hover:opacity-100 ml-2 font-mono">
+                    <span className="text-xs opacity-40 group-hover:opacity-100 ml-2 font-mono">
                         p.{node.start_page}
                     </span>
                 )}

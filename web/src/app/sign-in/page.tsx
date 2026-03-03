@@ -85,7 +85,7 @@ export default function SignInPage() {
             </div>
             <div className="w-full max-w-sm mx-auto">
                 <div className="text-center mb-8">
-                    <h1 className="text-xl font-bold text-foreground">RegTECH Pre-Pilot</h1>
+                    <h1 className="text-xs font-bold text-foreground">RegTECH Pre-Pilot</h1>
                     <p className="text-xs text-muted-foreground mt-1">
                         Sign in to your account
                     </p>
@@ -93,19 +93,19 @@ export default function SignInPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
-                        <label className="text-xs-plus font-medium text-muted-foreground block mb-1">Email</label>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">Email</label>
                         <input
                             type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             required
                             placeholder="you@example.com"
-                            className="w-full bg-muted/30 text-sm rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                            className="w-full bg-muted/30 text-xs rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs-plus font-medium text-muted-foreground block mb-1">Password</label>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">Password</label>
                         <input
                             type="password"
                             value={password}
@@ -113,7 +113,7 @@ export default function SignInPage() {
                             required
                             minLength={8}
                             placeholder="Enter your password"
-                            className="w-full bg-muted/30 text-sm rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                            className="w-full bg-muted/30 text-xs rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
                         />
                     </div>
 
@@ -125,7 +125,7 @@ export default function SignInPage() {
                         type="submit"
                         disabled={loading}
                         className={cn(
-                            "w-full flex items-center justify-center gap-2 text-sm font-medium rounded-md px-4 py-2 transition-colors",
+                            "w-full flex items-center justify-center gap-2 text-xs font-medium rounded-md px-4 py-2 transition-colors",
                             "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                         )}
                     >
@@ -134,7 +134,7 @@ export default function SignInPage() {
                     </button>
                 </form>
 
-                <p className="text-center text-2xs text-muted-foreground/40 mt-6">
+                <p className="text-center text-xs text-muted-foreground/40 mt-6">
                     Contact your administrator if you need an account.
                 </p>
             </div>

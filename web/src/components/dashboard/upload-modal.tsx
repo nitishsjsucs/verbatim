@@ -117,7 +117,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                                 <CheckCircle2 className="h-7 w-7 text-green-500" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-sm font-semibold text-foreground truncate">{result.doc_name}</p>
+                                <p className="text-xs font-semibold text-foreground truncate">{result.doc_name}</p>
                                 {result.doc_description && (
                                     <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                         <Markdown content={result.doc_description} className="[&_p]:mb-0 [&_p]:inline text-xs" />
@@ -131,7 +131,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div className="h-full bg-green-500/70 rounded-full transition-all duration-700 ease-out" style={{ width: "100%" }} />
                             </div>
-                            <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
                                 <span>100% complete</span>
                                 <span>Ingestion finished</span>
                             </div>
@@ -140,16 +140,16 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                         {/* Stats grid — matches extraction style */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-sm-plus font-semibold font-mono">{result.total_pages}</p>
-                                <p className="text-2xs text-muted-foreground">Pages</p>
+                                <p className="text-xs font-semibold font-mono">{result.total_pages}</p>
+                                <p className="text-xs text-muted-foreground">Pages</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-sm-plus font-semibold font-mono">{result.node_count}</p>
-                                <p className="text-2xs text-muted-foreground">Nodes</p>
+                                <p className="text-xs font-semibold font-mono">{result.node_count}</p>
+                                <p className="text-xs text-muted-foreground">Nodes</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-sm-plus font-semibold font-mono">{result.time_seconds.toFixed(1)}s</p>
-                                <p className="text-2xs text-muted-foreground">Time</p>
+                                <p className="text-xs font-semibold font-mono">{result.time_seconds.toFixed(1)}s</p>
+                                <p className="text-xs text-muted-foreground">Time</p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -170,7 +170,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                                 <Loader2 className="h-7 w-7 text-purple-500 animate-spin" />
                             </div>
                             <div>
-                                <h2 className="text-sm font-semibold text-foreground">Ingesting Document</h2>
+                                <h2 className="text-xs font-semibold text-foreground">Ingesting Document</h2>
                                 <p className="text-xs text-muted-foreground mt-0.5">{customName || file?.name}</p>
                             </div>
                         </div>
@@ -182,7 +182,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div className="h-full bg-purple-500/70 rounded-full animate-pulse w-full" />
                             </div>
-                            <div className="text-2xs text-muted-foreground text-center">
+                            <div className="text-xs text-muted-foreground text-center">
                                 This may take upwards of 10 minutes depending on document size.
                             </div>
                         </div>
@@ -203,7 +203,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             {!file ? (
                                 <>
                                     <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-                                    <p className="text-sm text-muted-foreground text-center mb-2">
+                                    <p className="text-xs text-muted-foreground text-center mb-2">
                                         Drag PDF here
                                     </p>
                                     <div className="relative">
@@ -219,7 +219,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             ) : (
                                 <div className="flex flex-col items-center w-full">
                                     <div className="flex items-center justify-between w-full p-2 bg-background border rounded mb-2">
-                                        <span className="text-sm truncate max-w-[200px]">{file.name}</span>
+                                        <span className="text-xs truncate max-w-[200px]">{file.name}</span>
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -233,13 +233,13 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
 
                                     {/* Editable document name */}
                                     <div className="w-full mb-4">
-                                        <label className="text-2xs font-medium text-muted-foreground/60 block mb-1">Document Name</label>
+                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Document Name</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 value={customName}
                                                 onChange={e => setCustomName(e.target.value)}
                                                 placeholder="Enter document name..."
-                                                className="flex-1 bg-muted/30 text-sm rounded-md px-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                                className="flex-1 bg-muted/30 text-xs rounded-md px-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
                                             />
                                             <Pencil className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                                         </div>

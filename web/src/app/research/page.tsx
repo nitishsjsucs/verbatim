@@ -161,7 +161,7 @@ function ResearchPageContent() {
                                     <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => setRightPanel("corpus")}
-                                            className="text-xs-plus text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+                                            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
                                         >
                                             Corpus
                                         </button>

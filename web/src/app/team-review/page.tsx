@@ -246,7 +246,7 @@ function TeamReviewContent() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* ── Top bar ── */}
                 <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
-                    <h1 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <h1 className="text-xs font-semibold text-foreground flex items-center gap-2">
                         <Users className="h-4 w-4 text-teal-500" />
                         Team Review Board
                     </h1>
@@ -267,7 +267,7 @@ function TeamReviewContent() {
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-3xs text-muted-foreground/50 uppercase tracking-wider mb-1">Review Progress</p>
+                        <p className="text-xs text-muted-foreground/50 uppercase tracking-wider mb-1">Review Progress</p>
                         <ProgressBar completed={stats.review + stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -345,7 +345,7 @@ function TeamReviewContent() {
                     )}
 
                     <div className="flex items-center gap-1 ml-auto">
-                        <span className="text-2xs text-muted-foreground/50">Sort:</span>
+                        <span className="text-xs text-muted-foreground/50">Sort:</span>
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
@@ -371,7 +371,7 @@ function TeamReviewContent() {
                     {loading && (
                         <div className="flex items-center justify-center py-20 text-muted-foreground">
                             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                            <span className="text-sm">Loading review items...</span>
+                            <span className="text-xs">Loading review items...</span>
                         </div>
                     )}
 
@@ -396,15 +396,15 @@ function TeamReviewContent() {
                                 <>
                                     {/* Column headers */}
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
 
                                     {/* Rows */}
@@ -436,15 +436,15 @@ function TeamReviewContent() {
                             {!completedCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
-                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                        <div className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
                                     </div>
                                     {completedRows.map(({ item, docId }) => (
                                         <ReviewRow
@@ -553,7 +553,7 @@ function ReviewRow({
             >
                 {/* Team */}
                 <div className="py-1.5 px-1">
-                    <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
                         {item.workstream}
                     </span>
                 </div>
@@ -572,12 +572,12 @@ function ReviewRow({
                         {safeStr(item.action)}
                     </span>
                     {isMultiTeam(item) && (
-                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-3xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
+                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
                             {MIXED_TEAM_CLASSIFICATION}
                         </span>
                     )}
                     {commentCount > 0 && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-3xs text-primary/60">
+                        <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60">
                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
                         </span>
                     )}
@@ -585,7 +585,7 @@ function ReviewRow({
 
                 {/* Status */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium", statusStyle.bg, statusStyle.text)}>
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", statusStyle.bg, statusStyle.text)}>
                         {statusStyle.label}
                     </span>
                 </div>
@@ -593,7 +593,7 @@ function ReviewRow({
                 {/* Deadline */}
                 <div className="py-1.5 px-1 text-center">
                     <span className={cn(
-                        "text-2xs",
+                        "text-xs",
                         item.deadline && new Date(item.deadline).getTime() < Date.now()
                             ? "text-red-400"
                             : "text-muted-foreground/60"
@@ -604,7 +604,7 @@ function ReviewRow({
 
                 {/* Time */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-2xs text-muted-foreground/60">
+                    <span className="text-xs text-muted-foreground/60">
                         {formatTime(item.deadline)}
                     </span>
                 </div>
@@ -616,7 +616,7 @@ function ReviewRow({
 
                 {/* Published */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-2xs text-muted-foreground/60">
+                    <span className="text-xs text-muted-foreground/60">
                         {formatDate(item.published_at)}
                     </span>
                 </div>
@@ -627,14 +627,14 @@ function ReviewRow({
                         <>
                             <button
                                 onClick={() => onApprove(docId, item)}
-                                className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                 title="Approve — forward to Compliance Officer"
                             >
                                 <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                             </button>
                             <button
                                 onClick={() => setShowRejectInput(true)}
-                                className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                 title="Reject — send back to Team Member"
                             >
                                 <XCircle className="h-2.5 w-2.5" /> Reject
@@ -642,16 +642,16 @@ function ReviewRow({
                         </>
                     )}
                     {taskStatus === "review" && (
-                        <span className="text-3xs text-blue-400 italic">CO Review</span>
+                        <span className="text-xs text-blue-400 italic">CO Review</span>
                     )}
                     {taskStatus === "completed" && (
-                        <span className="text-3xs text-emerald-400 italic">Approved</span>
+                        <span className="text-xs text-emerald-400 italic">Approved</span>
                     )}
                     {taskStatus === "reworking" && (
-                        <span className="text-3xs text-orange-400 italic">Reworking</span>
+                        <span className="text-xs text-orange-400 italic">Reworking</span>
                     )}
                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
-                        <span className="text-3xs text-muted-foreground/30">—</span>
+                        <span className="text-xs text-muted-foreground/30">—</span>
                     )}
                 </div>
             </div>
@@ -686,13 +686,13 @@ function ReviewRow({
                             }
                         }}
                         disabled={!rejectReason.trim()}
-                        className="text-2xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Confirm Reject
                     </button>
                     <button
                         onClick={() => { setShowRejectInput(false); setRejectReason("") }}
-                        className="text-2xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
                     >
                         Cancel
                     </button>
@@ -707,7 +707,7 @@ function ReviewRow({
                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
                             <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-2xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
                                 <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
                             </div>
                         </div>
@@ -716,11 +716,11 @@ function ReviewRow({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                             <div>
-                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                             </div>
                             <div>
-                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                             </div>
 
@@ -731,14 +731,14 @@ function ReviewRow({
                                         <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                         <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
                                         {files.length > 0 && (
-                                            <span className="text-2xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
                                         )}
                                     </div>
                                     {!isReadOnly && (
                                         <>
                                             <button
                                                 onClick={handleUploadClick}
-                                                className="flex items-center gap-1.5 text-xs-plus px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
                                             >
                                                 <Upload className="h-3 w-3" /> Upload File
                                             </button>
@@ -750,11 +750,11 @@ function ReviewRow({
                                 {files.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-4 bg-background rounded-lg border border-dashed border-border/40">
                                         <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
-                                        <p className="text-2xs text-muted-foreground/40">No evidence files uploaded yet</p>
+                                        <p className="text-xs text-muted-foreground/40">No evidence files uploaded yet</p>
                                         {!isReadOnly && (
                                             <button
                                                 onClick={handleUploadClick}
-                                                className="text-2xs text-primary hover:underline mt-1"
+                                                className="text-xs text-primary hover:underline mt-1"
                                             >
                                                 Click to upload
                                             </button>
