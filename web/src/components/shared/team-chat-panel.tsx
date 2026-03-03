@@ -100,7 +100,7 @@ export function TeamChatPanel({ team, userName, userRole, open, onClose }: TeamC
                 <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold text-foreground">Team Chat</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/30 text-muted-foreground font-medium">{team}</span>
+                    <span className="text-2xs px-1.5 py-0.5 rounded bg-muted/30 text-muted-foreground font-medium">{team}</span>
                 </div>
                 <button onClick={onClose} className="p-1 rounded hover:bg-muted/30 text-muted-foreground hover:text-foreground transition-colors">
                     <X className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function TeamChatPanel({ team, userName, userRole, open, onClose }: TeamC
                     <button
                         onClick={() => setChannel("internal")}
                         className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 text-[10px] rounded font-medium transition-colors",
+                            "flex items-center gap-1 px-2.5 py-1 text-2xs rounded font-medium transition-colors",
                             channel === "internal"
                                 ? "bg-indigo-500/10 text-indigo-400"
                                 : "text-muted-foreground/50 hover:text-foreground"
@@ -126,7 +126,7 @@ export function TeamChatPanel({ team, userName, userRole, open, onClose }: TeamC
                 <button
                     onClick={() => setChannel("compliance")}
                     className={cn(
-                        "flex items-center gap-1 px-2.5 py-1 text-[10px] rounded font-medium transition-colors",
+                        "flex items-center gap-1 px-2.5 py-1 text-2xs rounded font-medium transition-colors",
                         channel === "compliance"
                             ? "bg-pink-500/10 text-pink-400"
                             : "text-muted-foreground/50 hover:text-foreground"
@@ -155,14 +155,14 @@ export function TeamChatPanel({ team, userName, userRole, open, onClose }: TeamC
                     return (
                         <div key={msg.id || idx} className={cn("flex flex-col gap-0.5", isMe && "items-end")}>
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-semibold text-foreground/80">{msg.author}</span>
-                                <span className={cn("text-[8px] px-1 py-0.5 rounded font-medium", badge.className)}>
+                                <span className="text-2xs font-semibold text-foreground/80">{msg.author}</span>
+                                <span className={cn("text-4xs px-1 py-0.5 rounded font-medium", badge.className)}>
                                     {badge.label}
                                 </span>
-                                <span className="text-[8px] text-muted-foreground/30">{formatTimestamp(msg.timestamp)}</span>
+                                <span className="text-4xs text-muted-foreground/30">{formatTimestamp(msg.timestamp)}</span>
                             </div>
                             <div className={cn(
-                                "max-w-[85%] px-3 py-1.5 rounded-lg text-[11px]",
+                                "max-w-[85%] px-3 py-1.5 rounded-lg text-xs-plus",
                                 isMe
                                     ? "bg-primary/10 text-foreground/90"
                                     : "bg-muted/10 text-foreground/80"

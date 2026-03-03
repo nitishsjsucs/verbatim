@@ -27,9 +27,9 @@ const MODALITY_CONFIG: Record<string, { color: string; bg: string; icon: React.R
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
     return (
         <div className="bg-muted/30 rounded-lg p-3">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
-            <p className="text-[15px] font-semibold font-mono mt-0.5">{value}</p>
-            {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
+            <p className="text-2xs text-muted-foreground uppercase tracking-wider">{label}</p>
+            <p className="text-sm-plus font-semibold font-mono mt-0.5">{value}</p>
+            {sub && <p className="text-2xs text-muted-foreground/60 mt-0.5">{sub}</p>}
         </div>
     )
 }
@@ -83,7 +83,7 @@ function ActionableCard({ item, onSourceClick }: {
                 {expanded ? <ChevronDown className="h-3 w-3 mt-1 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 mt-1 shrink-0 text-muted-foreground" />}
 
                 {/* Modality badge */}
-                <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", cfg.color, cfg.bg)}>
+                <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium shrink-0", cfg.color, cfg.bg)}>
                     {cfg.icon}
                     {item.modality}
                 </span>
@@ -105,7 +105,7 @@ function ActionableCard({ item, onSourceClick }: {
                             <AlertTriangle className="h-3 w-3" />
                         </span>
                     )}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(item.workstream))}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium", getWorkstreamClass(item.workstream))}>
                         {item.workstream}
                     </span>
                 </div>
@@ -117,7 +117,7 @@ function ActionableCard({ item, onSourceClick }: {
                     {/* Evidence quote */}
                     {item.evidence_quote && (
                         <div>
-                            <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Evidence</p>
+                            <p className="text-2xs font-medium text-muted-foreground mb-0.5">Evidence</p>
                             <p className="text-xs text-muted-foreground/80 italic border-l-2 border-primary/20 pl-2">
                                 &ldquo;{item.evidence_quote}&rdquo;
                             </p>
@@ -128,31 +128,31 @@ function ActionableCard({ item, onSourceClick }: {
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                         {item.trigger_or_condition && (
                             <div className="col-span-2">
-                                <span className="text-muted-foreground/60 text-[10px]">Condition: </span>
+                                <span className="text-muted-foreground/60 text-2xs">Condition: </span>
                                 <span className="text-muted-foreground/90">{item.trigger_or_condition}</span>
                             </div>
                         )}
                         {item.thresholds && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[10px]">Threshold: </span>
+                                <span className="text-muted-foreground/60 text-2xs">Threshold: </span>
                                 <span className="text-muted-foreground/90 font-mono">{item.thresholds}</span>
                             </div>
                         )}
                         {item.deadline_or_frequency && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[10px]">Deadline/Freq: </span>
+                                <span className="text-muted-foreground/60 text-2xs">Deadline/Freq: </span>
                                 <span className="text-muted-foreground/90">{item.deadline_or_frequency}</span>
                             </div>
                         )}
                         {item.effective_date && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[10px]">Effective: </span>
+                                <span className="text-muted-foreground/60 text-2xs">Effective: </span>
                                 <span className="text-muted-foreground/90">{item.effective_date}</span>
                             </div>
                         )}
                         {item.reporting_or_notification_to && (
                             <div>
-                                <span className="text-muted-foreground/60 text-[10px]">Report to: </span>
+                                <span className="text-muted-foreground/60 text-2xs">Report to: </span>
                                 <span className="text-muted-foreground/90">{item.reporting_or_notification_to}</span>
                             </div>
                         )}
@@ -161,7 +161,7 @@ function ActionableCard({ item, onSourceClick }: {
                     {/* Implementation notes */}
                     {item.implementation_notes && (
                         <div>
-                            <p className="text-[10px] font-medium text-muted-foreground mb-0.5">Implementation</p>
+                            <p className="text-2xs font-medium text-muted-foreground mb-0.5">Implementation</p>
                             <p className="text-xs text-muted-foreground/80">{item.implementation_notes}</p>
                         </div>
                     )}
@@ -170,14 +170,14 @@ function ActionableCard({ item, onSourceClick }: {
                     <div className="flex items-center justify-between pt-1 border-t border-border/10">
                         <button
                             onClick={handleSourceClick}
-                            className="text-[10px] text-primary hover:underline flex items-center gap-1"
+                            className="text-2xs text-primary hover:underline flex items-center gap-1"
                         >
                             <FileText className="h-3 w-3" />
                             {item.source_location}
                         </button>
                         <div className="flex items-center gap-2">
                             <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded",
+                                "text-3xs px-1.5 py-0.5 rounded",
                                 item.validation_status === "validated" ? "bg-green-400/10 text-green-400" :
                                 item.validation_status === "flagged" ? "bg-red-400/10 text-red-400" :
                                 item.validation_status === "added_by_validator" ? "bg-blue-400/10 text-blue-400" :
@@ -185,13 +185,13 @@ function ActionableCard({ item, onSourceClick }: {
                             )}>
                                 {item.validation_status}
                             </span>
-                            <span className="text-[10px] font-mono text-muted-foreground/50">{item.id}</span>
+                            <span className="text-2xs font-mono text-muted-foreground/50">{item.id}</span>
                         </div>
                     </div>
 
                     {/* Validation notes */}
                     {item.validation_notes && (
-                        <p className="text-[10px] text-muted-foreground/60 italic">{item.validation_notes}</p>
+                        <p className="text-2xs text-muted-foreground/60 italic">{item.validation_notes}</p>
                     )}
                 </div>
             )}
@@ -375,7 +375,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                                     style={{ width: `${batchPct}%` }}
                                 />
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <div className="flex items-center justify-between text-2xs text-muted-foreground">
                                 <span>{batchPct}%</span>
                                 <span>Batch {progress.currentBatch}/{progress.totalBatches}</span>
                             </div>
@@ -388,7 +388,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div className="h-full bg-primary/40 rounded-full animate-pulse w-full" />
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-2xs text-muted-foreground">
                                 Verifying {progress.cumulativeActionables} actionables against source text...
                             </p>
                         </div>
@@ -397,32 +397,32 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                     {/* Stats cards */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nodes scanned</p>
-                            <p className="text-[15px] font-semibold font-mono mt-0.5">
+                            <p className="text-2xs text-muted-foreground uppercase tracking-wider">Nodes scanned</p>
+                            <p className="text-sm-plus font-semibold font-mono mt-0.5">
                                 {progress.candidateCount > 0 ? progress.candidateCount : "..."}
                             </p>
-                            <p className="text-[10px] text-muted-foreground/60">of {progress.totalNodes || "?"} total</p>
+                            <p className="text-2xs text-muted-foreground/60">of {progress.totalNodes || "?"} total</p>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Found so far</p>
-                            <p className="text-[15px] font-semibold font-mono mt-0.5 text-primary">
+                            <p className="text-2xs text-muted-foreground uppercase tracking-wider">Found so far</p>
+                            <p className="text-sm-plus font-semibold font-mono mt-0.5 text-primary">
                                 {progress.cumulativeActionables}
                             </p>
-                            <p className="text-[10px] text-muted-foreground/60">actionables</p>
+                            <p className="text-2xs text-muted-foreground/60">actionables</p>
                         </div>
                         <div className="bg-muted/30 rounded-lg p-3 text-left">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Last batch</p>
-                            <p className="text-[15px] font-semibold font-mono mt-0.5">
+                            <p className="text-2xs text-muted-foreground uppercase tracking-wider">Last batch</p>
+                            <p className="text-sm-plus font-semibold font-mono mt-0.5">
                                 +{progress.lastBatchActionables}
                             </p>
-                            <p className="text-[10px] text-muted-foreground/60">new items</p>
+                            <p className="text-2xs text-muted-foreground/60">new items</p>
                         </div>
                     </div>
 
                     {/* Current sections being processed */}
                     {progress.currentSections.length > 0 && (
                         <div className="text-left">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                            <p className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">
                                 Processing sections
                             </p>
                             <div className="space-y-0.5">
@@ -529,7 +529,7 @@ export function ActionablesPanel({ docId, className, onSourceClick }: Actionable
                 </div>
 
                 {/* Showing count */}
-                <div className="text-[10px] text-muted-foreground/60">
+                <div className="text-2xs text-muted-foreground/60">
                     Showing {filtered.length} of {result.total_extracted}
                     {result.extracted_at && ` · Extracted ${(() => { const _d = new Date(result.extracted_at); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })} ${_d.getFullYear()}` })()}`}
                 </div>

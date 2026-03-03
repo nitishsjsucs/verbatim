@@ -106,8 +106,8 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
             {/* Header */}
             <div className="h-11 border-b border-border flex items-center px-4 shrink-0 gap-2">
                 <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[13px] font-medium text-foreground">Corpus</span>
-                <span className="text-[11px] text-muted-foreground/50 ml-1">
+                <span className="text-sm-minus font-medium text-foreground">Corpus</span>
+                <span className="text-xs-plus text-muted-foreground/50 ml-1">
                     {corpus.documents.length} docs · {corpus.relationships.length} links
                 </span>
             </div>
@@ -130,11 +130,11 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
                                 <span className="text-xs font-medium text-foreground/90 truncate flex-1">
                                     {doc.doc_name}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                                <span className="text-2xs text-muted-foreground/50 shrink-0">
                                     {doc.total_pages}p / {doc.node_count}n
                                 </span>
                                 {rels.length > 0 && (
-                                    <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full shrink-0">
+                                    <span className="text-2xs px-1.5 py-0.5 bg-primary/10 text-primary rounded-full shrink-0">
                                         {rels.length}
                                     </span>
                                 )}
@@ -146,7 +146,7 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
                                     {/* Description */}
                                     {doc.doc_description && (
                                         <div className="mt-2">
-                                            <p className="text-[10px] font-medium text-muted-foreground mb-1 uppercase tracking-wider">Description</p>
+                                            <p className="text-2xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Description</p>
                                             <div className="text-xs text-muted-foreground/80 line-clamp-4">
                                                 <Markdown content={doc.doc_description} />
                                             </div>
@@ -156,10 +156,10 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
                                     {/* Topics */}
                                     {doc.top_topics.length > 0 && (
                                         <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground mb-1 uppercase tracking-wider">Topics</p>
+                                            <p className="text-2xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Topics</p>
                                             <div className="flex flex-wrap gap-1">
                                                 {doc.top_topics.slice(0, 12).map((topic, i) => (
-                                                    <span key={i} className="px-1.5 py-0.5 bg-muted/50 text-muted-foreground rounded text-[10px]">
+                                                    <span key={i} className="px-1.5 py-0.5 bg-muted/50 text-muted-foreground rounded text-2xs">
                                                         {topic}
                                                     </span>
                                                 ))}
@@ -170,7 +170,7 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
                                     {/* Relationships */}
                                     {rels.length > 0 && (
                                         <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Relationships</p>
+                                            <p className="text-2xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Relationships</p>
                                             <div className="space-y-1.5">
                                                 {rels.map((rel, i) => {
                                                     const isSource = rel.source_doc_id === doc.doc_id
@@ -180,7 +180,7 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
 
                                                     return (
                                                         <div key={i} className="flex items-start gap-2 text-xs">
-                                                            <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5", relConfig.color)}>
+                                                            <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium shrink-0 mt-0.5", relConfig.color)}>
                                                                 {relConfig.icon}
                                                                 {relConfig.label}
                                                             </span>
@@ -207,7 +207,7 @@ export function CorpusPanel({ className, onDocumentClick }: CorpusPanelProps) {
                                     {/* Open document link */}
                                     <button
                                         onClick={() => onDocumentClick?.(doc.doc_id)}
-                                        className="text-[11px] text-primary hover:text-primary/80 hover:underline transition-colors"
+                                        className="text-xs-plus text-primary hover:text-primary/80 hover:underline transition-colors"
                                     >
                                         Open document →
                                     </button>

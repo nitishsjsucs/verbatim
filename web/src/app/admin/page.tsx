@@ -220,7 +220,7 @@ function AdminLoginGate({ children }: { children: React.ReactNode }) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 autoFocus
               />
             </div>
@@ -230,7 +230,7 @@ function AdminLoginGate({ children }: { children: React.ReactNode }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             {error && (
@@ -241,7 +241,7 @@ function AdminLoginGate({ children }: { children: React.ReactNode }) {
             <button
               type="submit"
               disabled={loading || !username || !password}
-              className="w-full h-9 rounded-md bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm-minus font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Sign In
@@ -275,7 +275,7 @@ function StatCard({
         <span className="text-xs font-medium text-muted-foreground truncate">{label}</span>
       </div>
       <p className="text-2xl font-semibold text-foreground">{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs-plus text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   )
 }
@@ -286,7 +286,7 @@ function ToggleBadge({ on, label }: { on: boolean; label: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs-plus font-medium",
         on
           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
           : "bg-zinc-500/10 text-zinc-500"
@@ -327,7 +327,7 @@ function TabBtn({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3 h-8 rounded-md text-[13px] font-medium transition-colors",
+        "flex items-center gap-1.5 px-3 h-8 rounded-md text-sm-minus font-medium transition-colors",
         active
           ? "bg-primary text-primary-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -471,10 +471,10 @@ function AdminDashboardContent() {
         <div className="flex items-center justify-between px-6 h-12">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-red-500" />
-            <h1 className="text-[15px] font-semibold text-foreground">Admin Dashboard</h1>
+            <h1 className="text-sm-plus font-semibold text-foreground">Admin Dashboard</h1>
             {data?.config?.retrieval_mode && (
               <span className={cn(
-                "ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                "ml-2 rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider",
                 data.config.retrieval_mode === "optimized"
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
@@ -485,12 +485,12 @@ function AdminDashboardContent() {
           </div>
           <div className="flex items-center gap-2">
             {data?.timestamp && (
-              <span className="text-[10px] text-muted-foreground">Updated {timeAgo(data.timestamp)}</span>
+              <span className="text-2xs text-muted-foreground">Updated {timeAgo(data.timestamp)}</span>
             )}
             <button
               onClick={refresh}
               disabled={refreshing}
-              className="flex items-center gap-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="flex items-center gap-1 h-7 px-2 rounded text-xs-plus text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
               Refresh
@@ -569,7 +569,7 @@ function OverviewTab({ data }: { data: AdminData }) {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <Server className="h-3.5 w-3.5" /> System Configuration
           </h3>
-          <div className="space-y-2 text-[13px]">
+          <div className="space-y-2 text-sm-minus">
             <div className="flex justify-between">
               <span className="text-muted-foreground">LLM Model</span>
               <span className="font-mono text-foreground text-xs">{data.config?.model || "—"}</span>
@@ -611,7 +611,7 @@ function OverviewTab({ data }: { data: AdminData }) {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-sm-minus">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Name</th>
@@ -644,7 +644,7 @@ function OverviewTab({ data }: { data: AdminData }) {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-sm-minus">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Query</th>
@@ -662,7 +662,7 @@ function OverviewTab({ data }: { data: AdminData }) {
                     {String(q.query_text || "").slice(0, 80)}{String(q.query_text || "").length > 80 ? "..." : ""}
                   </td>
                   <td className="px-4 py-2">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium">{String(q.query_type || "—")}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-2xs font-medium">{String(q.query_type || "—")}</span>
                   </td>
                   <td className="px-4 py-2 text-right font-mono text-xs text-muted-foreground">{fmtMs(q.total_time_seconds as number)}</td>
                   <td className="px-4 py-2 text-right font-mono text-xs text-muted-foreground">{String(q.total_tokens ?? "—")}</td>
@@ -725,7 +725,7 @@ function BenchmarkColumn({ label, data }: { label: string; data: BenchmarkAgg | 
   return (
     <div>
       <p className="text-sm font-semibold text-foreground mb-2">{label} <span className="text-xs font-normal text-muted-foreground">({data.count} queries)</span></p>
-      <div className="space-y-1.5 text-[13px]">
+      <div className="space-y-1.5 text-sm-minus">
         <div className="flex justify-between"><span className="text-muted-foreground">Avg Time</span><span className="font-mono text-xs">{fmtMs(data.avg_time)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Avg Tokens</span><span className="font-mono text-xs">{data.avg_tokens}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Avg LLM Calls</span><span className="font-mono text-xs">{fmt(data.avg_llm_calls)}</span></div>
@@ -770,7 +770,7 @@ function QueriesTab({
   return (
     <>
       <div className="flex items-center justify-between">
-        <p className="text-[13px] text-muted-foreground">{data.total} total queries</p>
+        <p className="text-sm-minus text-muted-foreground">{data.total} total queries</p>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -778,14 +778,14 @@ function QueriesTab({
               value={search}
               onChange={e => onSearchChange(e.target.value)}
               placeholder="Filter queries..."
-              className="h-8 pl-7 pr-3 w-60 rounded-md border border-input bg-background text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 pl-7 pr-3 w-60 rounded-md border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
         </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-sm-minus">
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="w-8 px-2 py-2"></th>
@@ -818,14 +818,14 @@ function QueriesTab({
                     <td className="px-3 py-2 text-foreground truncate max-w-[300px]" title={String(q.query_text || "")}>
                       {String(q.query_text || "").slice(0, 60)}{String(q.query_text || "").length > 60 ? "..." : ""}
                     </td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground truncate max-w-[100px]">{String(q.doc_id || "—").slice(0, 12)}</td>
-                    <td className="px-3 py-2"><span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">{String(q.query_type || "—")}</span></td>
+                    <td className="px-3 py-2 font-mono text-2xs text-muted-foreground truncate max-w-[100px]">{String(q.doc_id || "—").slice(0, 12)}</td>
+                    <td className="px-3 py-2"><span className="rounded-full bg-muted px-1.5 py-0.5 text-2xs font-medium">{String(q.query_type || "—")}</span></td>
                     <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">{fmtMs(q.total_time_seconds as number)}</td>
                     <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">{String(q.total_tokens ?? "—")}</td>
                     <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">{String(q.llm_calls ?? "—")}</td>
                     <td className="px-3 py-2">
                       <span className={cn(
-                        "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                        "rounded-full px-1.5 py-0.5 text-2xs font-medium",
                         String(q.verification_status) === "verified" ? "bg-emerald-500/10 text-emerald-600" :
                         String(q.verification_status) === "unverified" ? "bg-amber-500/10 text-amber-600" :
                         "bg-zinc-500/10 text-zinc-500"
@@ -898,17 +898,17 @@ function QueryDetailPanel({ detail }: { detail: Record<string, unknown> }) {
     <div className="space-y-3">
       {/* Answer */}
       <div>
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Answer</p>
-        <p className="text-[13px] text-foreground whitespace-pre-wrap max-h-[200px] overflow-auto">{answerText}</p>
+        <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Answer</p>
+        <p className="text-sm-minus text-foreground whitespace-pre-wrap max-h-[200px] overflow-auto">{answerText}</p>
       </div>
 
       {/* Stage Timings */}
       {stageTimings && Object.keys(stageTimings).length > 0 ? (
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Stage Timings</p>
+          <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Stage Timings</p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(stageTimings).map(([stage, time]) => (
-              <span key={stage} className="rounded bg-muted px-2 py-0.5 text-[11px] font-mono">
+              <span key={stage} className="rounded bg-muted px-2 py-0.5 text-xs-plus font-mono">
                 {stage}: {fmtMs(time)}
               </span>
             ))}
@@ -919,10 +919,10 @@ function QueryDetailPanel({ detail }: { detail: Record<string, unknown> }) {
       {/* Citations */}
       {citationsList.length > 0 ? (
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Citations ({citationsList.length})</p>
+          <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Citations ({citationsList.length})</p>
           <div className="flex flex-wrap gap-1">
             {citationsList.map((c, i) => (
-              <span key={i} className="rounded bg-muted px-2 py-0.5 text-[11px]">
+              <span key={i} className="rounded bg-muted px-2 py-0.5 text-xs-plus">
                 [{String(c.citation_id)}] {String(c.title || "").slice(0, 40)}
               </span>
             ))}
@@ -931,7 +931,7 @@ function QueryDetailPanel({ detail }: { detail: Record<string, unknown> }) {
       ) : null}
 
       {/* Verification */}
-      <div className="flex items-center gap-4 text-[12px]">
+      <div className="flex items-center gap-4 text-xs">
         <span className="text-muted-foreground">Verification: <span className="font-medium text-foreground">{verificationStatus}</span></span>
         {verificationNotes ? <span className="text-muted-foreground italic">{verificationNotes.slice(0, 120)}</span> : null}
       </div>
@@ -939,8 +939,8 @@ function QueryDetailPanel({ detail }: { detail: Record<string, unknown> }) {
       {/* Routing Log */}
       {(detail.routing_log && typeof detail.routing_log === "object") ? (
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Routing</p>
-          <div className="text-[11px] font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[150px] overflow-auto">
+          <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Routing</p>
+          <div className="text-xs-plus font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[150px] overflow-auto">
             <pre className="whitespace-pre-wrap">{JSON.stringify(detail.routing_log, null, 2)}</pre>
           </div>
         </div>
@@ -948,7 +948,7 @@ function QueryDetailPanel({ detail }: { detail: Record<string, unknown> }) {
 
       {/* Feedback */}
       {feedbackObj ? (
-        <div className="flex items-center gap-2 text-[12px]">
+        <div className="flex items-center gap-2 text-xs">
           <Star className="h-3.5 w-3.5 text-yellow-500" />
           <span className="text-muted-foreground">
             Rating: <span className="font-medium text-foreground">{feedbackRating}</span>
@@ -1026,7 +1026,7 @@ function BenchmarksTab({ data, overview }: { data: Record<string, unknown> | nul
           </h3>
         </div>
         <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-xs">
             <thead className="sticky top-0 bg-card">
               <tr className="border-b border-border">
                 <th className="text-left px-3 py-1.5 text-xs font-medium text-muted-foreground">Mode</th>
@@ -1045,7 +1045,7 @@ function BenchmarksTab({ data, overview }: { data: Record<string, unknown> | nul
                 <tr key={i} className="border-b border-border/30 hover:bg-muted/20">
                   <td className="px-3 py-1.5">
                     <span className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      "rounded-full px-1.5 py-0.5 text-2xs font-semibold",
                       r.retrieval_mode === "optimized" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
                     )}>{String(r.retrieval_mode || "—")}</span>
                   </td>
@@ -1082,7 +1082,7 @@ function BenchmarkDetailCard({ label, data, color }: { label: string; data: Benc
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <p className={cn("text-sm font-semibold mb-3", color)}>{label} <span className="text-xs font-normal text-muted-foreground">({data.count} queries)</span></p>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm-minus">
         <div className="flex justify-between"><span className="text-muted-foreground">Avg Time</span><span className="font-mono text-xs font-medium">{fmtMs(data.avg_time)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Avg Tokens</span><span className="font-mono text-xs font-medium">{data.avg_tokens}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Avg LLM Calls</span><span className="font-mono text-xs font-medium">{fmt(data.avg_llm_calls)}</span></div>
@@ -1119,7 +1119,7 @@ function MemoryTab({ data, overview }: { data: Record<string, unknown> | null; o
             <Brain className="h-3.5 w-3.5" /> Memory System Status
           </h3>
           <span className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+            "rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider",
             initialized ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400"
           )}>
             {initialized ? "INITIALIZED" : "NOT INITIALIZED"}
@@ -1152,7 +1152,7 @@ function MemoryTab({ data, overview }: { data: Record<string, unknown> | null; o
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-sm-minus">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Collection</th>
@@ -1191,7 +1191,7 @@ function MemoryTab({ data, overview }: { data: Record<string, unknown> | null; o
                 {stats.error ? (
                   <p className="text-xs text-red-500">{String(stats.error)}</p>
                 ) : (
-                  <div className="text-[11px] font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[120px] overflow-auto">
+                  <div className="text-xs-plus font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[120px] overflow-auto">
                     <pre className="whitespace-pre-wrap">{JSON.stringify(stats, null, 2)}</pre>
                   </div>
                 )}
@@ -1227,7 +1227,7 @@ function SubsystemCard({ name, stats }: { name: string; stats: Record<string, un
       </p>
       <div className="space-y-1">
         {Object.entries(stats).map(([key, val]) => (
-          <div key={key} className="flex justify-between text-[11px]">
+          <div key={key} className="flex justify-between text-xs-plus">
             <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
             <span className="font-mono text-foreground">{typeof val === "number" ? fmt(val, 2) : String(val)}</span>
           </div>
@@ -1339,7 +1339,7 @@ function LLMBenchmarkTab({
             onClick={handleRun}
             disabled={running}
             className={cn(
-              "flex items-center gap-1.5 h-8 px-4 rounded-md text-[13px] font-medium transition-colors",
+              "flex items-center gap-1.5 h-8 px-4 rounded-md text-sm-minus font-medium transition-colors",
               running
                 ? "bg-muted text-muted-foreground cursor-wait"
                 : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -1358,10 +1358,10 @@ function LLMBenchmarkTab({
 
         {/* Model Selection */}
         <div className="mb-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Models (none = defaults)</p>
+          <p className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider mb-2">Models (none = defaults)</p>
           {Object.entries(providerGroups).map(([provider, mlist]) => (
             <div key={provider} className="mb-2">
-              <p className="text-[10px] text-muted-foreground uppercase mb-1">{provider}</p>
+              <p className="text-2xs text-muted-foreground uppercase mb-1">{provider}</p>
               <div className="flex flex-wrap gap-1.5">
                 {mlist.map(m => (
                   <button
@@ -1369,7 +1369,7 @@ function LLMBenchmarkTab({
                     type="button"
                     onClick={() => toggleModel(m.id)}
                     className={cn(
-                      "rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors",
+                      "rounded-full px-2.5 py-1 text-xs-plus font-medium border transition-colors",
                       selectedModels.includes(m.id)
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-card text-muted-foreground border-border hover:border-foreground/30"
@@ -1385,7 +1385,7 @@ function LLMBenchmarkTab({
 
         {/* Stage Selection */}
         <div className="mb-4">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pipeline Stages (none = all)</p>
+          <p className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pipeline Stages (none = all)</p>
           <div className="flex flex-wrap gap-1.5">
             {stages.map(s => (
               <button
@@ -1393,7 +1393,7 @@ function LLMBenchmarkTab({
                 type="button"
                 onClick={() => toggleStage(s.id)}
                 className={cn(
-                  "rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors",
+                  "rounded-full px-2.5 py-1 text-xs-plus font-medium border transition-colors",
                   selectedStages.includes(s.id)
                     ? "bg-blue-500 text-white border-blue-500"
                     : "bg-card text-muted-foreground border-border hover:border-foreground/30"
@@ -1407,7 +1407,7 @@ function LLMBenchmarkTab({
 
         {/* Question Selection */}
         <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Test Questions (none = all)</p>
+          <p className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider mb-2">Test Questions (none = all)</p>
           <div className="space-y-1">
             {questions.map(q => (
               <button
@@ -1415,16 +1415,16 @@ function LLMBenchmarkTab({
                 type="button"
                 onClick={() => toggleQuestion(q.id)}
                 className={cn(
-                  "w-full text-left rounded-md px-3 py-1.5 text-[12px] border transition-colors",
+                  "w-full text-left rounded-md px-3 py-1.5 text-xs border transition-colors",
                   selectedQuestions.includes(q.id)
                     ? "bg-emerald-500/10 border-emerald-500/30 text-foreground"
                     : "bg-card border-border text-muted-foreground hover:border-foreground/30"
                 )}
               >
-                <span className="font-mono text-[10px] mr-2 text-muted-foreground">{q.id}</span>
+                <span className="font-mono text-2xs mr-2 text-muted-foreground">{q.id}</span>
                 <span className="truncate">{q.query.slice(0, 80)}{q.query.length > 80 ? "…" : ""}</span>
                 <span className={cn(
-                  "ml-2 text-[10px] rounded-full px-1.5 py-0.5",
+                  "ml-2 text-2xs rounded-full px-1.5 py-0.5",
                   q.complexity === "complex" ? "bg-red-500/10 text-red-500" : q.complexity === "medium" ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-500"
                 )}>
                   {q.expected_type}
@@ -1446,9 +1446,9 @@ function LLMBenchmarkTab({
               const stageLabel = stages.find(s => s.id === stage)?.label || stage
               return (
                 <div key={stage} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{stageLabel}</p>
+                  <p className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">{stageLabel}</p>
                   <p className="text-sm font-semibold text-foreground">{best.model}</p>
-                  <div className="flex justify-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                  <div className="flex justify-center gap-3 mt-1 text-2xs text-muted-foreground">
                     <span>Q: {fmt(best.avg_quality)}</span>
                     <span>{fmtMs(best.avg_latency)}</span>
                   </div>
@@ -1468,7 +1468,7 @@ function LLMBenchmarkTab({
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-border">
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Model</th>
@@ -1497,8 +1497,8 @@ function LLMBenchmarkTab({
                             )}>
                               {agg.avg_quality !== null ? fmt(agg.avg_quality, 0) : "—"}
                             </span>
-                            <span className="text-[10px] text-muted-foreground">{fmtMs(agg.avg_latency)}</span>
-                            <span className="text-[9px] text-muted-foreground">{agg.success_count}/{agg.runs} ok</span>
+                            <span className="text-2xs text-muted-foreground">{fmtMs(agg.avg_latency)}</span>
+                            <span className="text-3xs text-muted-foreground">{agg.success_count}/{agg.runs} ok</span>
                             {isBest && <Trophy className="h-3 w-3 text-amber-500" />}
                           </div>
                         </td>
@@ -1521,7 +1521,7 @@ function LLMBenchmarkTab({
             </h3>
           </div>
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-border">
                   <th className="text-left px-3 py-1.5 text-xs font-medium text-muted-foreground">Stage</th>
@@ -1577,11 +1577,11 @@ function LLMBenchmarkTab({
                               <div className="mb-2 text-xs text-red-500 bg-red-500/10 rounded px-2 py-1">{rError}</div>
                             )}
                             {rOutput && (
-                              <div className="text-[11px] font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[300px] overflow-auto whitespace-pre-wrap">
+                              <div className="text-xs-plus font-mono text-muted-foreground bg-muted/50 rounded p-2 max-h-[300px] overflow-auto whitespace-pre-wrap">
                                 {rOutput}
                               </div>
                             )}
-                            <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
+                            <div className="flex gap-4 mt-2 text-2xs text-muted-foreground">
                               <span>Keys present: {String((r.expected_keys_present as string[])?.join(", ") || "—")}</span>
                               <span>Keys missing: {String((r.expected_keys_missing as string[])?.join(", ") || "none")}</span>
                             </div>
@@ -1672,10 +1672,10 @@ function MemoryHealthTab({
             <HeartPulse className="h-3.5 w-3.5" /> System Health
           </h3>
           <div className="flex items-center gap-3">
-            {timestamp && <span className="text-[10px] text-muted-foreground">Checked {timeAgo(timestamp)}</span>}
+            {timestamp && <span className="text-2xs text-muted-foreground">Checked {timeAgo(timestamp)}</span>}
             <button
               onClick={onRefresh}
-              className="flex items-center gap-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="flex items-center gap-1 h-7 px-2 rounded text-xs-plus text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <RefreshCw className="h-3 w-3" /> Re-check
             </button>
@@ -1684,7 +1684,7 @@ function MemoryHealthTab({
         <div className="flex items-center gap-4">
           <div className={cn("rounded-lg px-4 py-3 text-center", statusBg[overallStatus])}>
             <p className={cn("text-2xl font-bold uppercase", statusColor[overallStatus])}>{overallStatus}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{healthyCount}/{totalChecks} checks passed</p>
+            <p className="text-xs-plus text-muted-foreground mt-0.5">{healthyCount}/{totalChecks} checks passed</p>
           </div>
           <div className="flex-1">
             <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
@@ -1739,7 +1739,7 @@ function MemoryHealthTab({
                   ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   : <XCircle className="h-4 w-4 text-red-500" />}
               </div>
-              <div className="space-y-1 text-[11px]">
+              <div className="space-y-1 text-xs-plus">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status</span>
                   <span className={cn("font-medium", check.healthy ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
@@ -1753,12 +1753,12 @@ function MemoryHealthTab({
                   </div>
                 )}
                 {check.error && (
-                  <p className="text-[10px] text-red-500 mt-1 bg-red-500/10 rounded px-1.5 py-1 break-words">{check.error}</p>
+                  <p className="text-2xs text-red-500 mt-1 bg-red-500/10 rounded px-1.5 py-1 break-words">{check.error}</p>
                 )}
                 {check.details && Object.keys(check.details).length > 0 && (
                   <div className="mt-1 pt-1 border-t border-border/50">
                     {Object.entries(check.details).map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-[10px]">
+                      <div key={k} className="flex justify-between text-2xs">
                         <span className="text-muted-foreground">{k.replace(/_/g, " ")}</span>
                         <span className="font-mono text-foreground">{String(v)}</span>
                       </div>
@@ -1804,7 +1804,7 @@ function StorageTab({ data }: { data: AdminData }) {
             style={{ width: `${Math.min(storage.usage_percent, 100)}%` }}
           />
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">{storage.usage_percent}% used ({fmtBytes(storage.total_bytes)})</p>
+        <p className="text-xs-plus text-muted-foreground mt-1">{storage.usage_percent}% used ({fmtBytes(storage.total_bytes)})</p>
       </div>
 
       {/* Collection breakdown */}
@@ -1815,7 +1815,7 @@ function StorageTab({ data }: { data: AdminData }) {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-sm-minus">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Collection</th>
@@ -1846,7 +1846,7 @@ function StorageTab({ data }: { data: AdminData }) {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5" /> Query Cache
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[13px]">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm-minus">
             {Object.entries(data.cache).map(([key, val]) => (
               <div key={key}>
                 <p className="text-xs text-muted-foreground">{key.replace(/_/g, " ")}</p>
@@ -2001,11 +2001,11 @@ function TeamsTab() {
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Users className="h-4 w-4 text-blue-500" />
           Team Management
-          <span className="text-[10px] text-muted-foreground font-normal ml-1">({teams.length} teams)</span>
+          <span className="text-2xs text-muted-foreground font-normal ml-1">({teams.length} teams)</span>
         </h2>
         <button
           onClick={() => setShowCreate(!showCreate)}
-          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-1.5 h-7 px-3 rounded text-xs-plus font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-3 w-3" /> New Team
         </button>
@@ -2023,21 +2023,21 @@ function TeamsTab() {
                 value={newTeamName}
                 onChange={e => setNewTeamName(e.target.value)}
                 placeholder="Team name (required)"
-                className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">Summary (required)</label>
+              <label className="block text-xs-plus font-medium text-muted-foreground mb-1.5">Summary (required)</label>
               <textarea
                 value={newTeamSummary}
                 onChange={e => setNewTeamSummary(e.target.value)}
                 placeholder="Describe the purpose of this team…"
                 rows={2}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+              <label className="block text-xs-plus font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                 <Palette className="h-3 w-3" /> Color
               </label>
               <ColorPicker value={newTeamColor} onChange={setNewTeamColor} />
@@ -2046,12 +2046,12 @@ function TeamsTab() {
               <button
                 onClick={handleCreate}
                 disabled={creating || !newTeamName.trim() || !newTeamSummary.trim()}
-                className="flex items-center gap-1 h-8 px-4 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1 h-8 px-4 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                 Create Team
               </button>
-              <button onClick={() => setShowCreate(false)} className="text-[12px] text-muted-foreground hover:text-foreground">Cancel</button>
+              <button onClick={() => setShowCreate(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
             </div>
           </div>
         </div>
@@ -2078,24 +2078,24 @@ function TeamsTab() {
                       <input
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
-                        className="h-7 rounded border border-input bg-background px-2 text-[13px] font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-full max-w-xs"
+                        className="h-7 rounded border border-input bg-background px-2 text-sm-minus font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-full max-w-xs"
                       />
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-medium text-foreground truncate">{team.name}</span>
+                        <span className="text-sm-minus font-medium text-foreground truncate">{team.name}</span>
                         {team.is_system && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-purple-500">
+                          <span className="inline-flex items-center gap-0.5 text-2xs font-medium text-purple-500">
                             <Lock className="h-2.5 w-2.5" /> System
                           </span>
                         )}
                       </div>
                     )}
                     {!isEditing && team.summary && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{team.summary}</p>
+                      <p className="text-xs-plus text-muted-foreground mt-0.5 truncate">{team.summary}</p>
                     )}
                   </div>
                   {/* Color badge */}
-                  <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium flex-shrink-0", team.colors.bg, team.colors.text)}>
+                  <span className={cn("px-2 py-0.5 rounded text-2xs font-medium flex-shrink-0", team.colors.bg, team.colors.text)}>
                     {extractColorKey(team.colors.header)}
                   </span>
                   {/* Actions */}
@@ -2104,14 +2104,14 @@ function TeamsTab() {
                       <>
                         <button
                           onClick={() => startEdit(team)}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs-plus text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         >
                           <Pencil className="h-3 w-3" /> Edit
                         </button>
                         <button
                           onClick={() => handleDelete(team.name)}
                           disabled={deleting === team.name}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs-plus text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                         >
                           {deleting === team.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                         </button>
@@ -2122,13 +2122,13 @@ function TeamsTab() {
                         <button
                           onClick={() => handleSaveEdit(team.name)}
                           disabled={saving}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] font-medium text-emerald-500 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs-plus font-medium text-emerald-500 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
                         >
                           {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
                         </button>
                         <button
                           onClick={cancelEdit}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs-plus text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         >
                           <X className="h-3 w-3" /> Cancel
                         </button>
@@ -2140,16 +2140,16 @@ function TeamsTab() {
                 {isEditing && (
                   <div className="border-t border-border/50 px-4 py-3 bg-muted/10 space-y-3">
                     <div>
-                      <label className="block text-[11px] font-medium text-muted-foreground mb-1">Summary</label>
+                      <label className="block text-xs-plus font-medium text-muted-foreground mb-1">Summary</label>
                       <textarea
                         value={editSummary}
                         onChange={e => setEditSummary(e.target.value)}
                         rows={2}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <label className="block text-xs-plus font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                         <Palette className="h-3 w-3" /> Color
                       </label>
                       <ColorPicker value={editColor} onChange={setEditColor} />
@@ -2160,7 +2160,7 @@ function TeamsTab() {
             )
           })}
           {teams.length === 0 && (
-            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-[13px]">
+            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm-minus">
               No teams yet. Create one above to get started.
             </div>
           )}
@@ -2343,11 +2343,11 @@ function UsersTab() {
         <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Shield className="h-4 w-4 text-blue-500" />
           User Management
-          <span className="text-[10px] text-muted-foreground font-normal ml-1">({users.length} users)</span>
+          <span className="text-2xs text-muted-foreground font-normal ml-1">({users.length} users)</span>
         </h2>
         <button
           onClick={() => { setShowCreate(!showCreate); setCreateResult(null) }}
-          className="flex items-center gap-1.5 h-7 px-3 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-1.5 h-7 px-3 rounded text-xs-plus font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-3 w-3" /> New User
         </button>
@@ -2361,43 +2361,43 @@ function UsersTab() {
           </p>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Name (required)</label>
+              <label className="block text-xs-plus font-medium text-muted-foreground mb-1">Name (required)</label>
               <input
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="Full name"
-                className="w-full h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Role (required)</label>
+              <label className="block text-xs-plus font-medium text-muted-foreground mb-1">Role (required)</label>
               <select
                 value={newRole}
                 onChange={e => setNewRole(e.target.value)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Team (required for team roles)</label>
+              <label className="block text-xs-plus font-medium text-muted-foreground mb-1">Team (required for team roles)</label>
               <select
                 value={newTeam}
                 onChange={e => setNewTeam(e.target.value)}
                 disabled={["admin", "compliance_officer"].includes(newRole)}
-                className="w-full h-8 rounded-md border border-input bg-background px-2 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               >
                 <option value="">Select team…</option>
                 {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-muted-foreground mb-1">Start Date</label>
+              <label className="block text-xs-plus font-medium text-muted-foreground mb-1">Start Date</label>
               <input
                 type="date"
                 value={newStartDate}
                 onChange={e => setNewStartDate(e.target.value)}
-                className="w-full h-8 rounded-md border border-input bg-background px-3 text-[13px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm-minus text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
@@ -2405,18 +2405,18 @@ function UsersTab() {
             <button
               onClick={handleCreate}
               disabled={creating || !newName.trim() || (!["admin", "compliance_officer"].includes(newRole) && !newTeam)}
-              className="flex items-center gap-1 h-8 px-4 rounded-md text-[12px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1 h-8 px-4 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               Create User
             </button>
-            <button onClick={() => { setShowCreate(false); setCreateResult(null) }} className="text-[12px] text-muted-foreground hover:text-foreground">Cancel</button>
+            <button onClick={() => { setShowCreate(false); setCreateResult(null) }} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
           </div>
           {createResult && (
             <div className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
-              <p className="text-[12px] font-medium text-emerald-500 mb-1">User created successfully!</p>
-              <p className="text-[11px] text-muted-foreground">Email: <span className="font-mono text-foreground">{createResult.email}</span></p>
-              <p className="text-[11px] text-muted-foreground">Password: <span className="font-mono text-foreground">{createResult.password}</span></p>
+              <p className="text-xs font-medium text-emerald-500 mb-1">User created successfully!</p>
+              <p className="text-xs-plus text-muted-foreground">Email: <span className="font-mono text-foreground">{createResult.email}</span></p>
+              <p className="text-xs-plus text-muted-foreground">Password: <span className="font-mono text-foreground">{createResult.password}</span></p>
             </div>
           )}
         </div>
@@ -2425,15 +2425,15 @@ function UsersTab() {
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {/* Group by */}
-        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-1 text-xs-plus text-muted-foreground">
           <span>Group:</span>
           <button
             onClick={() => setGroupBy("team")}
-            className={cn("px-2 py-0.5 rounded text-[11px]", groupBy === "team" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+            className={cn("px-2 py-0.5 rounded text-xs-plus", groupBy === "team" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
           >Team</button>
           <button
             onClick={() => setGroupBy("role")}
-            className={cn("px-2 py-0.5 rounded text-[11px]", groupBy === "role" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+            className={cn("px-2 py-0.5 rounded text-xs-plus", groupBy === "role" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
           >Role</button>
         </div>
         <div className="w-px h-4 bg-border" />
@@ -2441,7 +2441,7 @@ function UsersTab() {
         <select
           value={filterTeam}
           onChange={e => setFilterTeam(e.target.value)}
-          className="h-7 rounded border border-input bg-background px-2 text-[11px] text-foreground"
+          className="h-7 rounded border border-input bg-background px-2 text-xs-plus text-foreground"
         >
           <option value="">All Teams</option>
           {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
@@ -2450,7 +2450,7 @@ function UsersTab() {
         <select
           value={filterRole}
           onChange={e => setFilterRole(e.target.value)}
-          className="h-7 rounded border border-input bg-background px-2 text-[11px] text-foreground"
+          className="h-7 rounded border border-input bg-background px-2 text-xs-plus text-foreground"
         >
           <option value="">All Roles</option>
           {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -2460,15 +2460,15 @@ function UsersTab() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name…"
-          className="h-7 rounded border border-input bg-background px-2 text-[11px] text-foreground w-48 focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-7 rounded border border-input bg-background px-2 text-xs-plus text-foreground w-48 focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {(filterTeam || filterRole || search) && (
           <button
             onClick={() => { setFilterTeam(""); setFilterRole(""); setSearch("") }}
-            className="text-[10px] text-muted-foreground hover:text-foreground"
+            className="text-2xs text-muted-foreground hover:text-foreground"
           >Clear</button>
         )}
-        <span className="text-[10px] text-muted-foreground ml-auto">{filtered.length} shown</span>
+        <span className="text-2xs text-muted-foreground ml-auto">{filtered.length} shown</span>
       </div>
 
       {/* User list */}
@@ -2481,21 +2481,21 @@ function UsersTab() {
           {grouped.map(([group, groupUsers]) => (
             <div key={group}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider">{group}</span>
-                <span className="text-[10px] text-muted-foreground">({groupUsers.length})</span>
+                <span className="text-xs-plus font-semibold text-foreground uppercase tracking-wider">{group}</span>
+                <span className="text-2xs text-muted-foreground">({groupUsers.length})</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               <div className="rounded-lg border border-border overflow-hidden">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-sm-minus">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Name</th>
-                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Email</th>
-                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Role</th>
-                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Team</th>
-                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
-                      <th className="text-left px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Password</th>
-                      <th className="text-right px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                      <th className="text-left px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                      <th className="text-left px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                      <th className="text-left px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Role</th>
+                      <th className="text-left px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Team</th>
+                      <th className="text-left px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
+                      <th className="text-left px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Password</th>
+                      <th className="text-right px-3 py-1.5 text-2xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2505,62 +2505,62 @@ function UsersTab() {
                         <tr key={u.email} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
                           <td className="px-3 py-2">
                             {isEditing ? (
-                              <input value={editName} onChange={e => setEditName(e.target.value)} className="h-6 w-full max-w-[160px] rounded border border-input bg-background px-2 text-[12px] text-foreground" />
+                              <input value={editName} onChange={e => setEditName(e.target.value)} className="h-6 w-full max-w-[160px] rounded border border-input bg-background px-2 text-xs text-foreground" />
                             ) : (
                               <span className="font-medium text-foreground">{u.name}</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-[12px] text-muted-foreground font-mono">{u.email}</td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{u.email}</td>
                           <td className="px-3 py-2">
                             {isEditing ? (
-                              <select value={editRole} onChange={e => setEditRole(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-[11px] text-foreground">
+                              <select value={editRole} onChange={e => setEditRole(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs-plus text-foreground">
                                 {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                               </select>
                             ) : (
-                              <span className={cn("inline-block px-1.5 py-0.5 rounded text-[10px] font-medium", ROLE_COLORS[u.role] || "bg-muted text-muted-foreground")}>
+                              <span className={cn("inline-block px-1.5 py-0.5 rounded text-2xs font-medium", ROLE_COLORS[u.role] || "bg-muted text-muted-foreground")}>
                                 {ROLE_LABELS[u.role] || u.role}
                               </span>
                             )}
                           </td>
                           <td className="px-3 py-2">
                             {isEditing ? (
-                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-[11px] text-foreground" disabled={["admin", "compliance_officer"].includes(editRole)}>
+                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs-plus text-foreground" disabled={["admin", "compliance_officer"].includes(editRole)}>
                                 <option value="">—</option>
                                 {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
                               </select>
                             ) : (
-                              <span className="text-[12px] text-muted-foreground">{u.team || "—"}</span>
+                              <span className="text-xs text-muted-foreground">{u.team || "—"}</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-[12px] text-muted-foreground">
+                          <td className="px-3 py-2 text-xs text-muted-foreground">
                             {u.start_date || "—"}
                           </td>
                           <td className="px-3 py-2">
                             {userPasswords[u.email] ? (
-                              <span className="font-mono text-[11px] text-foreground bg-muted/30 px-2 py-0.5 rounded">{userPasswords[u.email]}</span>
+                              <span className="font-mono text-xs-plus text-foreground bg-muted/30 px-2 py-0.5 rounded">{userPasswords[u.email]}</span>
                             ) : (
-                              <span className="text-[11px] text-muted-foreground/40 italic">Not available</span>
+                              <span className="text-xs-plus text-muted-foreground/40 italic">Not available</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">
                             {isEditing ? (
                               <div className="flex items-center justify-end gap-1">
-                                <button onClick={handleSaveEdit} disabled={saving} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] font-medium text-emerald-500 hover:bg-emerald-500/10 disabled:opacity-50">
+                                <button onClick={handleSaveEdit} disabled={saving} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-xs-plus font-medium text-emerald-500 hover:bg-emerald-500/10 disabled:opacity-50">
                                   {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
                                 </button>
-                                <button onClick={cancelEdit} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <button onClick={cancelEdit} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-xs-plus text-muted-foreground hover:text-foreground hover:bg-muted">
                                   <X className="h-3 w-3" />
                                 </button>
                               </div>
                             ) : (
                               <div className="flex items-center justify-end gap-1">
-                                <button onClick={() => startEdit(u)} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted">
+                                <button onClick={() => startEdit(u)} className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-xs-plus text-muted-foreground hover:text-foreground hover:bg-muted">
                                   <Pencil className="h-3 w-3" />
                                 </button>
                                 <button
                                   onClick={() => handleDelete(u.email)}
                                   disabled={deletingEmail === u.email}
-                                  className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-[11px] text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                                  className="inline-flex items-center gap-0.5 h-6 px-2 rounded text-xs-plus text-red-500 hover:bg-red-500/10 disabled:opacity-50"
                                 >
                                   {deletingEmail === u.email ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                                 </button>
@@ -2576,7 +2576,7 @@ function UsersTab() {
             </div>
           ))}
           {grouped.length === 0 && (
-            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-[13px]">
+            <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-sm-minus">
               No users found matching your filters.
             </div>
           )}

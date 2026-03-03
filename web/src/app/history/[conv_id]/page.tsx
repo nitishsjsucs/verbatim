@@ -7,6 +7,7 @@ import {
     Search, ChevronDown, ChevronRight, Library, MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { CitationCard, QueryBadge } from "@/components/shared/status-components"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import { fetchConversation, fetchDocuments, API_BASE_URL } from "@/lib/api"
@@ -30,7 +31,7 @@ function VerificationBadge({ status }: { status: string }) {
     }[status] || { icon: ShieldQuestion, color: "text-muted-foreground bg-muted", label: status || "Unknown" }
     const Icon = config.icon
     return (
-        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", config.color)}>
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium", config.color)}>
             <Icon className="h-3 w-3" />
             {config.label}
         </span>
@@ -77,7 +78,7 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
             <div className={cn("flex flex-col gap-1.5 max-w-[85%] min-w-0", isUser ? "items-end" : "items-start")}>
                 {/* Timestamp */}
                 {date && (
-                    <span className="text-[10px] text-muted-foreground/40 flex items-center gap-1">
+                    <span className="text-2xs text-muted-foreground/40 flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5" />
                         {`${String(date.getDate()).padStart(2, "0")} ${date.toLocaleDateString("en-US", { month: "short" })} ${date.getFullYear()}`} {date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
                     </span>
@@ -86,12 +87,10 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                 {/* Badges for assistant */}
                 {!isUser && msg.query_type && (
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
-                            {msg.query_type}
-                        </span>
+                        <QueryBadge label={msg.query_type} />
                         {msg.verification_status && <VerificationBadge status={msg.verification_status} />}
                         {msg.total_time_seconds !== undefined && msg.total_time_seconds > 0 && (
-                            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+                            <span className="text-2xs text-muted-foreground/50 flex items-center gap-1">
                                 <Clock className="h-2.5 w-2.5" />
                                 {msg.total_time_seconds.toFixed(1)}s
                             </span>
@@ -114,7 +113,7 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                     <div className="w-full space-y-2 mt-1">
                         <div className="flex items-center gap-2">
                             <div className="h-px bg-border w-4" />
-                            <span className="text-[10px] font-medium uppercase text-muted-foreground/60 tracking-wider">Sources</span>
+                            <span className="text-2xs font-medium uppercase text-muted-foreground/60 tracking-wider">Sources</span>
                             <div className="h-px bg-border flex-1" />
                         </div>
                         <div className="grid gap-1.5">
@@ -144,39 +143,25 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                                     }
                                 }
 
+                                const handleClick = onCitationClick ? () => {
+                                    let finalDocId = citeDocId
+                                    let finalDocName = citeDocName
+                                    if (!finalDocId && cite.citation_id) {
+                                        const cidFb = cite.citation_id.match(/^\[(.+?)\s*\|/)
+                                        if (cidFb) { finalDocName = finalDocName || cidFb[1].trim() }
+                                    }
+                                    onCitationClick?.(finalDocId, pageNum, finalDocName)
+                                } : undefined
+
                                 return (
-                                <div
-                                    key={cite.citation_id}
-                                    className={cn(
-                                        "bg-background/50 border border-border/40 rounded-lg p-2.5 transition-colors",
-                                        onCitationClick ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5" : ""
-                                    )}
-                                    onClick={() => {
-                                        // If still no doc_id, pass filename from citation_id as docName for parent resolution
-                                        let finalDocId = citeDocId
-                                        let finalDocName = citeDocName
-                                        if (!finalDocId && cite.citation_id) {
-                                            const cidFb = cite.citation_id.match(/^\[(.+?)\s*\|/)
-                                            if (cidFb) { finalDocName = finalDocName || cidFb[1].trim() }
-                                        }
-                                        onCitationClick?.(finalDocId, pageNum, finalDocName)
-                                    }}
-                                >
-                                    <div className="flex items-center justify-between gap-2 mb-1">
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <FileText className="h-3 w-3 text-blue-400 shrink-0" />
-                                            <span className="text-xs font-medium truncate">{cite.title}</span>
-                                        </div>
-                                        <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                                            {cite.page_range}
-                                        </span>
-                                    </div>
-                                    {cite.excerpt && (
-                                        <p className="text-xs text-muted-foreground/70 line-clamp-2 border-l-2 border-primary/10 pl-3">
-                                            {cite.excerpt}
-                                        </p>
-                                    )}
-                                </div>
+                                    <CitationCard
+                                        key={cite.citation_id}
+                                        title={cite.title}
+                                        subtitle={citeDocName}
+                                        pageRange={cite.page_range}
+                                        excerpt={cite.excerpt}
+                                        onClick={handleClick}
+                                    />
                                 )
                             })}
                         </div>
@@ -190,7 +175,7 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                             <CollapsibleSection
                                 title="Inferred Points"
                                 icon={<Brain className="h-3 w-3" />}
-                                badge={<span className="text-[10px] text-muted-foreground/50">{msg.inferred_points.length}</span>}
+                                badge={<span className="text-2xs text-muted-foreground/50">{msg.inferred_points.length}</span>}
                             >
                                 <div className="space-y-2">
                                     {msg.inferred_points.map((ip, i) => (
@@ -206,13 +191,13 @@ function MessageBubble({ msg, onCitationClick }: { msg: ConversationMessage; onC
                             <CollapsibleSection
                                 title="Retrieved Sections"
                                 icon={<Search className="h-3 w-3" />}
-                                badge={<span className="text-[10px] text-muted-foreground/50">{msg.retrieved_sections.length}</span>}
+                                badge={<span className="text-2xs text-muted-foreground/50">{msg.retrieved_sections.length}</span>}
                             >
                                 <div className="space-y-2">
                                     {msg.retrieved_sections.map((s, i) => (
                                         <div key={i} className="text-xs border border-border/20 rounded p-2">
                                             <p className="font-medium text-foreground/80">{s.title}</p>
-                                            <p className="text-muted-foreground/50 font-mono text-[10px]">{s.page_range}</p>
+                                            <p className="text-muted-foreground/50 font-mono text-2xs">{s.page_range}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -395,13 +380,13 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                             {conv?.title || conv?.doc_name || "Conversation"}
                         </h1>
                         {conv && (
-                            <span className="text-[10px] text-muted-foreground/40 shrink-0">
+                            <span className="text-2xs text-muted-foreground/40 shrink-0">
                                 {conv.message_count} messages
                             </span>
                         )}
                     </div>
                     {conv?.doc_name && (
-                        <span className="text-[11px] text-muted-foreground/50 shrink-0 hidden sm:block">
+                        <span className="text-xs-plus text-muted-foreground/50 shrink-0 hidden sm:block">
                             {conv.doc_name}
                         </span>
                     )}
@@ -413,7 +398,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
                         return (
                             <Link
                                 href={continueHref}
-                                className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:text-primary/80 px-2.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors font-medium shrink-0 ml-auto"
+                                className="inline-flex items-center gap-1.5 text-xs-plus text-primary hover:text-primary/80 px-2.5 py-1 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors font-medium shrink-0 ml-auto"
                             >
                                 <MessageSquare className="h-3 w-3" />
                                 Continue Conversation

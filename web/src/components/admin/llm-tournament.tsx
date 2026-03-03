@@ -329,14 +329,14 @@ export function LLMTournament({
       {/* Stage / Model filter chips */}
       <div className="flex flex-wrap gap-3 items-start">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] text-muted-foreground font-medium uppercase">Stages:</span>
+          <span className="text-2xs text-muted-foreground font-medium uppercase">Stages:</span>
           {STAGES.map(s => (
             <button
               key={s}
               onClick={() => toggleStage(s)}
               disabled={status === "running"}
               className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-medium border transition-colors",
+                "px-2 py-0.5 rounded text-2xs font-medium border transition-colors",
                 selStages.includes(s)
                   ? "bg-orange-500/20 border-orange-500/40 text-orange-400"
                   : selStages.length === 0
@@ -348,18 +348,18 @@ export function LLMTournament({
             </button>
           ))}
           {selStages.length > 0 && (
-            <button onClick={() => setSelStages([])} className="text-[9px] text-muted-foreground hover:text-foreground ml-1">clear</button>
+            <button onClick={() => setSelStages([])} className="text-3xs text-muted-foreground hover:text-foreground ml-1">clear</button>
           )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] text-muted-foreground font-medium uppercase">Models:</span>
+          <span className="text-2xs text-muted-foreground font-medium uppercase">Models:</span>
           {MODELS.map(m => (
             <button
               key={m}
               onClick={() => toggleModel(m)}
               disabled={status === "running"}
               className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-medium border transition-colors",
+                "px-2 py-0.5 rounded text-2xs font-medium border transition-colors",
                 selModels.includes(m)
                   ? "bg-blue-500/20 border-blue-500/40 text-blue-400"
                   : selModels.length === 0
@@ -371,7 +371,7 @@ export function LLMTournament({
             </button>
           ))}
           {selModels.length > 0 && (
-            <button onClick={() => setSelModels([])} className="text-[9px] text-muted-foreground hover:text-foreground ml-1">clear</button>
+            <button onClick={() => setSelModels([])} className="text-3xs text-muted-foreground hover:text-foreground ml-1">clear</button>
           )}
         </div>
       </div>
@@ -388,7 +388,7 @@ export function LLMTournament({
               style={{ width: `${total > 0 ? (progress / total) * 100 : 0}%` }}
             />
           </div>
-          <div className="flex justify-between text-[10px] text-muted-foreground">
+          <div className="flex justify-between text-2xs text-muted-foreground">
             <span>{progress}/{total} battles</span>
             <span>{completedBattles} done, {errorBattles} errors</span>
           </div>
@@ -400,7 +400,7 @@ export function LLMTournament({
         <div className="rounded-lg border border-border bg-card p-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Battle Grid</h4>
           <div className="overflow-x-auto">
-            <table className="w-full text-[10px]">
+            <table className="w-full text-2xs">
               <thead>
                 <tr>
                   <th className="text-left px-1 py-0.5 text-muted-foreground font-medium">Stage</th>
@@ -431,12 +431,12 @@ export function LLMTournament({
                               title={`Winner: ${winner || "?"}`}
                             >
                               <Crown className="h-3 w-3 text-amber-500" />
-                              <span className="text-[8px] text-muted-foreground ml-0.5">
+                              <span className="text-4xs text-muted-foreground ml-0.5">
                                 {MODEL_SHORT[winner || ""] || "?"}
                               </span>
                             </button>
                           ) : cs === "error" ? (
-                            <span className="text-red-500 text-[10px]" title={battle?.error || "Error"}>&#10060;</span>
+                            <span className="text-red-500 text-2xs" title={battle?.error || "Error"}>&#10060;</span>
                           ) : (
                             <span className="text-muted-foreground/30">&bull;</span>
                           )}
@@ -499,7 +499,7 @@ export function LLMTournament({
                                 <div className={cn("text-sm font-bold", isBest ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>
                                   {s.avgScore}
                                 </div>
-                                <div className="text-[9px] text-muted-foreground">
+                                <div className="text-3xs text-muted-foreground">
                                   {s.wins}/{s.battles} wins
                                 </div>
                               </td>
@@ -532,7 +532,7 @@ export function LLMTournament({
                       <span className="text-muted-foreground w-16">{STAGE_LABELS[stage]}:</span>
                       <span className="font-bold text-foreground">{optimalCombo[stage]}</span>
                       {bestPerStage[stage] && (
-                        <span className="text-[9px] text-muted-foreground">
+                        <span className="text-3xs text-muted-foreground">
                           (avg: {bestPerStage[stage].avgScore})
                         </span>
                       )}
@@ -545,7 +545,7 @@ export function LLMTournament({
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase">Per-Question Winners</h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[10px]">
+                  <table className="w-full text-2xs">
                     <thead>
                       <tr className="border-b border-border">
                         <th className="text-left px-1.5 py-1 text-muted-foreground">Question</th>
@@ -603,7 +603,7 @@ export function LLMTournament({
 
               {/* Cost summary */}
               {status === "done" && (
-                <div className="text-[10px] text-muted-foreground text-right">
+                <div className="text-2xs text-muted-foreground text-right">
                   Total judge cost: ${judgeCost.toFixed(4)} &bull;
                   Completed: {completedBattles}/{totalBattles} &bull;
                   Errors: {errorBattles} &bull;
@@ -660,7 +660,7 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
             <Trophy className="h-3 w-3 text-amber-500" />
             Judge Verdict
-            <span className="ml-auto text-[9px] font-mono text-muted-foreground">
+            <span className="ml-auto text-3xs font-mono text-muted-foreground">
               {battle.judge.judge_model} | {battle.judge.judge_latency}s | ${battle.judge.judge_cost?.toFixed(4)}
             </span>
           </div>
@@ -684,7 +684,7 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-foreground">{r.model}</span>
                       <span className={cn(
-                        "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                        "text-2xs font-bold px-1.5 py-0.5 rounded",
                         r.score >= 90 ? "bg-emerald-500/20 text-emerald-500" :
                         r.score >= 70 ? "bg-blue-500/20 text-blue-500" :
                         r.score >= 50 ? "bg-yellow-500/20 text-yellow-500" :
@@ -693,7 +693,7 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
                         {r.score}/100
                       </span>
                     </div>
-                    <p className="text-muted-foreground mt-0.5 text-[10px] leading-relaxed">{r.reasoning}</p>
+                    <p className="text-muted-foreground mt-0.5 text-2xs leading-relaxed">{r.reasoning}</p>
                   </div>
                 </div>
               ))}
@@ -701,7 +701,7 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
 
           {/* Analysis */}
           {battle.judge.analysis && (
-            <div className="text-[10px] text-muted-foreground bg-muted/30 rounded p-2 leading-relaxed">
+            <div className="text-2xs text-muted-foreground bg-muted/30 rounded p-2 leading-relaxed">
               <strong>Analysis:</strong> {battle.judge.analysis}
             </div>
           )}
@@ -718,7 +718,7 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
       {/* Model outputs toggle */}
       <button
         onClick={() => setShowOutputs(!showOutputs)}
-        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+        className="flex items-center gap-1 text-2xs text-muted-foreground hover:text-foreground"
       >
         {showOutputs ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         Model Outputs
@@ -728,7 +728,7 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {Object.entries(battle.results).map(([model, result]) => (
             <div key={model} className={cn(
-              "rounded border p-2 text-[10px]",
+              "rounded border p-2 text-2xs",
               result.success ? "border-border" : "border-red-500/30"
             )}>
               <div className="flex items-center justify-between mb-1">
@@ -746,11 +746,11 @@ function BattleDetail({ battle, onClose }: { battle: BattleResult; onClose: () =
                 </div>
               </div>
               {result.success ? (
-                <pre className="text-[9px] text-muted-foreground bg-muted/30 rounded p-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">
+                <pre className="text-3xs text-muted-foreground bg-muted/30 rounded p-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">
                   {result.output_text?.slice(0, 2000) || "(empty)"}
                 </pre>
               ) : (
-                <div className="text-red-400 text-[9px]">{result.error}</div>
+                <div className="text-red-400 text-3xs">{result.error}</div>
               )}
             </div>
           ))}
@@ -882,7 +882,7 @@ function HeadToHead({
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="rounded-lg bg-muted/30 p-3">
               <div className="text-lg font-bold text-foreground">{avgA}</div>
-              <div className="text-[10px] text-muted-foreground">{MODEL_SHORT[M_A]} avg score</div>
+              <div className="text-2xs text-muted-foreground">{MODEL_SHORT[M_A]} avg score</div>
             </div>
             <div className="rounded-lg bg-muted/30 p-3">
               <div className={cn(
@@ -891,11 +891,11 @@ function HeadToHead({
               )}>
                 {overallDelta > 0 ? "+" : ""}{overallDelta}
               </div>
-              <div className="text-[10px] text-muted-foreground">pro advantage</div>
+              <div className="text-2xs text-muted-foreground">pro advantage</div>
             </div>
             <div className="rounded-lg bg-muted/30 p-3">
               <div className="text-lg font-bold text-foreground">{avgB}</div>
-              <div className="text-[10px] text-muted-foreground">{MODEL_SHORT[M_B]} avg score</div>
+              <div className="text-2xs text-muted-foreground">{MODEL_SHORT[M_B]} avg score</div>
             </div>
           </div>
 
@@ -925,11 +925,11 @@ function HeadToHead({
                     <td className="px-2 py-2 font-medium text-foreground">{STAGE_LABELS[sc.stage]}</td>
                     <td className="text-center px-2 py-2">
                       <span className="font-bold">{sc.scoreA}</span>
-                      <span className="text-[9px] text-muted-foreground ml-1">({sc.winsA}w)</span>
+                      <span className="text-3xs text-muted-foreground ml-1">({sc.winsA}w)</span>
                     </td>
                     <td className="text-center px-2 py-2">
                       <span className="font-bold">{sc.scoreB}</span>
-                      <span className="text-[9px] text-muted-foreground ml-1">({sc.winsB}w)</span>
+                      <span className="text-3xs text-muted-foreground ml-1">({sc.winsB}w)</span>
                     </td>
                     <td className="text-center px-2 py-2">
                       <span className={cn(
@@ -956,9 +956,9 @@ function HeadToHead({
 
           {/* Per-question delta grid */}
           <div className="space-y-1">
-            <h5 className="text-[10px] font-semibold text-muted-foreground uppercase">Per-Question Score Delta ({MODEL_SHORT[M_B]} − {MODEL_SHORT[M_A]})</h5>
+            <h5 className="text-2xs font-semibold text-muted-foreground uppercase">Per-Question Score Delta ({MODEL_SHORT[M_B]} − {MODEL_SHORT[M_A]})</h5>
             <div className="overflow-x-auto">
-              <table className="w-full text-[10px]">
+              <table className="w-full text-2xs">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left px-1.5 py-1 text-muted-foreground">Stage</th>

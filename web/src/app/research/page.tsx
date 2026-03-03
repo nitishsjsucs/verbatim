@@ -154,14 +154,14 @@ function ResearchPageContent() {
                                 <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                        <span className="text-[12px] font-medium text-foreground truncate">
+                                        <span className="text-xs font-medium text-foreground truncate">
                                             {pdfDocName || pdfDocId}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => setRightPanel("corpus")}
-                                            className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
+                                            className="text-xs-plus text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-colors"
                                         >
                                             Corpus
                                         </button>

@@ -36,7 +36,7 @@ import {
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
-import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList } from "@/components/shared/status-components"
+import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { useActionables } from "@/lib/use-actionables"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -226,48 +226,27 @@ function TeamLeadContent() {
                         <Eye className="h-4 w-4 text-indigo-500" />
                         Team Oversight — {userTeam || "All Teams"}
                     </h1>
-                    <span className="text-[10px] text-muted-foreground/50 italic">Read-only oversight view</span>
+                    <span className="text-2xs text-muted-foreground/50 italic">Read-only oversight view</span>
                 </div>
 
                 {/* ── Stats row ── */}
                 <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
                     <div className="flex items-center gap-4">
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-foreground">{stats.total}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Total</p>
-                        </div>
-                        <div className="h-8 w-px bg-border/40" />
-                        <div className="text-center">
-                            <p className={cn("text-[15px] font-bold", stats.delayed > 0 ? "text-red-400" : "text-muted-foreground/40")}>{stats.delayed}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-indigo-400">{stats.justified}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Justified</p>
-                        </div>
-                        <div className="h-8 w-px bg-border/40" />
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-teal-400">{stats.inReview}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Review</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-emerald-400">{stats.completed}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-amber-400">{stats.inProgress}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-orange-400">{stats.reworking}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
-                        </div>
+                        <StatCell value={stats.total} label="Total" colorClass="text-foreground" />
+                        <StatDivider />
+                        <StatCell value={stats.delayed} label="Delayed" colorClass={stats.delayed > 0 ? "text-red-400" : "text-muted-foreground/40"} />
+                        <StatCell value={stats.justified} label="Justified" colorClass="text-indigo-400" />
+                        <StatDivider />
+                        <StatCell value={stats.inReview} label="In Review" colorClass="text-teal-400" />
+                        <StatCell value={stats.completed} label="Completed" colorClass="text-emerald-400" />
+                        <StatCell value={stats.inProgress} label="In Progress" colorClass="text-amber-400" />
+                        <StatCell value={stats.reworking} label="Reworking" colorClass="text-orange-400" />
                     </div>
 
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-1">Completion</p>
+                        <p className="text-3xs text-muted-foreground/50 uppercase tracking-wider mb-1">Completion</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -360,7 +339,7 @@ function TeamLeadContent() {
                     )}
 
                     <div className="flex items-center gap-1 ml-auto">
-                        <span className="text-[10px] text-muted-foreground/50">Sort:</span>
+                        <span className="text-2xs text-muted-foreground/50">Sort:</span>
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
@@ -391,45 +370,34 @@ function TeamLeadContent() {
                     )}
 
                     {!loading && filtered.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                                <Eye className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-sm font-medium mb-1">
-                                {tab === "delayed" ? "No delayed actionables" : "No published actionables"}
-                            </h3>
-                            <p className="text-xs text-muted-foreground/60 max-w-sm">
-                                {tab === "delayed"
-                                    ? "All tasks for your team are on schedule."
-                                    : "No published tasks for your team yet."
-                                }
-                            </p>
-                        </div>
+                        <EmptyState
+                            icon={<Eye className="h-8 w-8 text-muted-foreground" />}
+                            title={tab === "delayed" ? "No delayed actionables" : "No published actionables"}
+                            description={tab === "delayed"
+                                ? "All tasks for your team are on schedule."
+                                : "No published tasks for your team yet."
+                            }
+                            className="py-20"
+                        />
                     )}
 
                     {/* ── Delayed section (always first if items exist) ── */}
                     {!loading && tab === "overview" && delayedRows.length > 0 && (
                         <>
-                            <div className="px-3 py-2 bg-background border-b border-red-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setDelayedCollapsed(!delayedCollapsed)}>
-                                <span className="text-xs font-semibold text-red-500 flex items-center gap-2">
-                                    {delayedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                    <Clock className="h-3.5 w-3.5" />
-                                    Delayed ({delayedRows.length})
-                                </span>
-                            </div>
+                            <SectionDivider label="Delayed" count={delayedRows.length} icon={<Clock className="h-3.5 w-3.5" />} borderClass="border-b border-red-500/20" textClass="text-red-500" collapsed={delayedCollapsed} onToggle={() => setDelayedCollapsed(!delayedCollapsed)} />
 
                             {!delayedCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
                                     </div>
                                     {delayedRows.map(({ item, docId }) => (
                                         <OversightRow
@@ -454,26 +422,20 @@ function TeamLeadContent() {
                     {/* ── Active section ── */}
                     {!loading && activeRows.length > 0 && (
                         <>
-                            <div className="px-3 py-2 bg-background border-b border-indigo-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setActiveCollapsed(!activeCollapsed)}>
-                                <span className="text-xs font-semibold text-indigo-500 flex items-center gap-2">
-                                    {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                    <AlertTriangle className="h-3.5 w-3.5" />
-                                    Active ({activeRows.length})
-                                </span>
-                            </div>
+                            <SectionDivider label="Active" count={activeRows.length} icon={<AlertTriangle className="h-3.5 w-3.5" />} borderClass="border-b border-indigo-500/20" textClass="text-indigo-500" collapsed={activeCollapsed} onToggle={() => setActiveCollapsed(!activeCollapsed)} />
 
                             {!activeCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
                                     </div>
                                     {activeRows.map(({ item, docId }) => (
                                         <OversightRow
@@ -499,15 +461,15 @@ function TeamLeadContent() {
                     {!loading && tab === "delayed" && filtered.length > 0 && (
                         <>
                             <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Delay</div>
                             </div>
                             {filtered.map(({ item, docId }) => (
                                 <OversightRow
@@ -530,26 +492,20 @@ function TeamLeadContent() {
                     {/* ── Completed section ── */}
                     {!loading && tab === "overview" && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <div className="px-3 py-2 bg-background border-y border-emerald-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
-                                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
-                                    {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    Completed ({completedRows.length})
-                                </span>
-                            </div>
+                            <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-emerald-500/20" textClass="text-emerald-500" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Delay</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Delay</div>
                                     </div>
                                     {completedRows.map(({ item, docId }) => (
                                         <OversightRow
@@ -672,7 +628,7 @@ function OversightRow({
             >
                 {/* Team */}
                 <div className="py-1.5 px-1">
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
                         {item.workstream}
                     </span>
                 </div>
@@ -691,17 +647,17 @@ function OversightRow({
                         {safeStr(item.action)}
                     </span>
                     {isMultiTeam(item) && (
-                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
+                        <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-3xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
                             {MIXED_TEAM_CLASSIFICATION}
                         </span>
                     )}
                     {commentCount > 0 && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
+                        <span className="shrink-0 flex items-center gap-0.5 text-3xs text-primary/60">
                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
                         </span>
                     )}
                     {isDelayed && (
-                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-red-400">
+                        <span className="shrink-0 flex items-center gap-0.5 text-3xs text-red-400">
                             <Clock className="h-2.5 w-2.5" />
                         </span>
                     )}
@@ -709,7 +665,7 @@ function OversightRow({
 
                 {/* Status */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium", statusStyle.bg, statusStyle.text)}>
                         {statusStyle.label}
                     </span>
                 </div>
@@ -717,7 +673,7 @@ function OversightRow({
                 {/* Deadline */}
                 <div className="py-1.5 px-1 text-center">
                     <span className={cn(
-                        "text-[10px]",
+                        "text-2xs",
                         item.deadline && new Date(item.deadline).getTime() < Date.now()
                             ? "text-red-400 font-semibold"
                             : "text-muted-foreground/60"
@@ -728,7 +684,7 @@ function OversightRow({
 
                 {/* Time */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-[10px] text-muted-foreground/60">
+                    <span className="text-2xs text-muted-foreground/60">
                         {formatTime(item.deadline)}
                     </span>
                 </div>
@@ -740,7 +696,7 @@ function OversightRow({
 
                 {/* Published */}
                 <div className="py-1.5 px-1 text-center">
-                    <span className="text-[10px] text-muted-foreground/60">
+                    <span className="text-2xs text-muted-foreground/60">
                         {formatDate(item.published_at)}
                     </span>
                 </div>
@@ -750,29 +706,29 @@ function OversightRow({
                     {isAwaitingJustification && !hasJustification && (
                         <button
                             onClick={() => setShowJustifyInput(true)}
-                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
+                            className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
                             title="BLOCKED — Submit justification to release to Compliance"
                         >
                             ⚠ Justify Now
                         </button>
                     )}
                     {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status === "reviewed" && (
-                        <span className="text-[9px] text-indigo-400 italic font-medium" title={`Justified: ${item.justification}`}>Justified</span>
+                        <span className="text-3xs text-indigo-400 italic font-medium" title={`Justified: ${item.justification}`}>Justified</span>
                     )}
                     {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status !== "reviewed" && (
-                        <span className="text-[9px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
+                        <span className="text-3xs text-amber-400 italic font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
                     )}
                     {!isAwaitingJustification && isDelayed && !hasJustification && (
                         <button
                             onClick={() => setShowJustifyInput(true)}
-                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                            className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                             title="Submit justification"
                         >
                             Justify
                         </button>
                     )}
                     {!isDelayed && !isAwaitingJustification && (
-                        <span className="text-[9px] text-muted-foreground/30">—</span>
+                        <span className="text-3xs text-muted-foreground/30">—</span>
                     )}
                 </div>
             </div>
@@ -807,13 +763,13 @@ function OversightRow({
                             }
                         }}
                         disabled={!justifyText.trim()}
-                        className="text-[10px] px-2.5 py-1.5 rounded bg-indigo-500/15 text-indigo-500 hover:bg-indigo-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="text-2xs px-2.5 py-1.5 rounded bg-indigo-500/15 text-indigo-500 hover:bg-indigo-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         Submit Justification
                     </button>
                     <button
                         onClick={() => { setShowJustifyInput(false); setJustifyText("") }}
-                        className="text-[10px] px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-2xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
                     >
                         Cancel
                     </button>
@@ -826,16 +782,16 @@ function OversightRow({
                     {/* Banners */}
                     {item.assigned_to && (
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider">Assigned To</span>
-                            <span className="text-[11px] text-foreground/70">{item.assigned_to}</span>
+                            <span className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider">Assigned To</span>
+                            <span className="text-xs-plus text-foreground/70">{item.assigned_to}</span>
                         </div>
                     )}
                     {hasJustification && (
                         <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-md p-2.5">
-                            <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">Justification</span>
-                            <p className="text-[11px] text-foreground/70 mt-0.5">{item.justification}</p>
+                            <span className="text-2xs font-semibold text-indigo-400 uppercase tracking-wider">Justification</span>
+                            <p className="text-xs-plus text-foreground/70 mt-0.5">{item.justification}</p>
                             {item.justification_by && (
-                                <p className="text-[9px] text-muted-foreground/40 mt-1">— {item.justification_by} {item.justification_at ? `on ${formatDate(item.justification_at)}` : ""}</p>
+                                <p className="text-3xs text-muted-foreground/40 mt-1">— {item.justification_by} {item.justification_at ? `on ${formatDate(item.justification_at)}` : ""}</p>
                             )}
                         </div>
                     )}
@@ -843,11 +799,11 @@ function OversightRow({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                             <div>
-                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                             </div>
 
@@ -858,14 +814,14 @@ function OversightRow({
                                         <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                         <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
                                         {files.length > 0 && (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                            <span className="text-2xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
                                         )}
                                     </div>
                                     {!isReadOnly && (
                                         <>
                                             <button
                                                 onClick={handleUploadClick}
-                                                className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                                className="flex items-center gap-1.5 text-xs-plus px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
                                             >
                                                 <Upload className="h-3 w-3" /> Upload File
                                             </button>
@@ -877,11 +833,11 @@ function OversightRow({
                                 {files.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-4 bg-background rounded-lg border border-dashed border-border/40">
                                         <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
-                                        <p className="text-[10px] text-muted-foreground/40">No evidence files uploaded yet</p>
+                                        <p className="text-2xs text-muted-foreground/40">No evidence files uploaded yet</p>
                                         {!isReadOnly && (
                                             <button
                                                 onClick={handleUploadClick}
-                                                className="text-[10px] text-primary hover:underline mt-1"
+                                                className="text-2xs text-primary hover:underline mt-1"
                                             >
                                                 Click to upload
                                             </button>

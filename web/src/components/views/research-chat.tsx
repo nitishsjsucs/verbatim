@@ -5,7 +5,7 @@ import {
     Send, User, Bot, FileText, Loader2, Sparkles, BookOpen,
     ShieldCheck,
     Clock, Zap, Brain, Search, BarChart3, X, Library, Plus,
-    MessageSquare, Trash2, PanelLeftClose, PanelLeftOpen,
+    MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,8 @@ import {
 } from "@/lib/types"
 import { FeedbackPanel } from "./feedback-panel"
 import { Markdown } from "@/components/ui/markdown"
-import { CollapsibleSection, VerificationBadge, ConfidenceIndicator, StageTimingBar } from "@/components/shared/status-components"
+import { CollapsibleSection, VerificationBadge, ConfidenceIndicator, StageTimingBar, CitationCard, QueryBadge, EmptyState } from "@/components/shared/status-components"
+import { ConversationSidebar } from "@/components/shared/conversation-sidebar"
 
 // --- Types ---
 
@@ -53,99 +54,6 @@ interface ResearchChatProps {
     continueConvId?: string | null
 }
 
-// --- Conversation sidebar (research-specific) ---
-
-function ResearchConversationList({
-    conversations,
-    activeConvId,
-    onSelect,
-    onNew,
-    onDelete,
-    collapsed,
-    onToggle,
-}: {
-    conversations: ConversationMeta[]
-    activeConvId: string | null
-    onSelect: (convId: string) => void
-    onNew: () => void
-    onDelete: (convId: string) => void
-    collapsed: boolean
-    onToggle: () => void
-}) {
-    const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null)
-
-    if (collapsed) {
-        return (
-            <div className="w-10 border-r border-border flex flex-col items-center shrink-0">
-                <div className="h-11 flex items-center justify-center w-full border-b border-border">
-                    <button onClick={onToggle} className="p-1.5 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-muted/30 transition-colors" title="Show conversations">
-                        <PanelLeftOpen className="h-4 w-4" />
-                    </button>
-                </div>
-                <div className="flex flex-col items-center gap-2 py-2">
-                    <button onClick={onNew} className="p-1.5 text-muted-foreground/60 hover:text-primary rounded-md hover:bg-primary/10 transition-colors" title="New chat">
-                        <Plus className="h-4 w-4" />
-                    </button>
-                </div>
-            </div>
-        )
-    }
-
-    return (
-        <div className="w-56 border-r border-border flex flex-col shrink-0 bg-sidebar">
-            <div className="h-11 border-b border-border flex items-center px-3 justify-between shrink-0">
-                <span className="text-[13px] font-medium text-foreground">Research Chats</span>
-                <div className="flex items-center gap-1">
-                    <button onClick={onNew} className="p-1 text-muted-foreground/60 hover:text-primary rounded-md hover:bg-primary/10 transition-colors" title="New chat">
-                        <Plus className="h-3.5 w-3.5" />
-                    </button>
-                    <button onClick={onToggle} className="p-1 text-muted-foreground/60 hover:text-foreground rounded-md hover:bg-muted/30 transition-colors" title="Hide">
-                        <PanelLeftClose className="h-3.5 w-3.5" />
-                    </button>
-                </div>
-            </div>
-            <div className="flex-1 overflow-y-auto py-1">
-                {conversations.length === 0 && (
-                    <div className="px-3 py-8 text-center">
-                        <MessageSquare className="h-5 w-5 mx-auto text-muted-foreground/30 mb-2" />
-                        <p className="text-[10px] text-muted-foreground/40">No research chats yet</p>
-                    </div>
-                )}
-                {conversations.map((conv) => (
-                    <div
-                        key={conv.conv_id}
-                        className={cn(
-                            "group px-2 py-1.5 mx-1 rounded-md cursor-pointer transition-colors flex items-start gap-2",
-                            conv.conv_id === activeConvId
-                                ? "bg-primary/10 text-foreground"
-                                : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                        )}
-                        onClick={() => onSelect(conv.conv_id)}
-                    >
-                        <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-medium truncate">{conv.title || conv.last_message_preview || "New research"}</p>
-                            <p className="text-[9px] text-muted-foreground/50 mt-0.5">{conv.message_count} msgs</p>
-                        </div>
-                        {confirmDeleteId === conv.conv_id ? (
-                            <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <button onClick={() => { onDelete(conv.conv_id); setConfirmDeleteId(null) }} className="text-[9px] text-red-400 hover:text-red-300 px-1 py-0.5 rounded bg-red-400/10">Del</button>
-                                <button onClick={() => setConfirmDeleteId(null)} className="text-[9px] text-muted-foreground px-1 py-0.5">No</button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(conv.conv_id) }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground/30 hover:text-red-400 shrink-0"
-                            >
-                                <Trash2 className="h-3 w-3" />
-                            </button>
-                        )}
-                    </div>
-                ))}
-            </div>
-        </div>
-    )
-}
 
 // --- Main component ---
 
@@ -327,7 +235,10 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
     return (
         <div className={cn("flex h-full bg-background relative", className)}>
             {/* Conversation sidebar */}
-            <ResearchConversationList
+            <ConversationSidebar
+                title="Research Chats"
+                emptyText="No research chats yet"
+                fallbackName="New research"
                 conversations={conversations}
                 activeConvId={activeConvId}
                 onSelect={handleSelectConversation}
@@ -343,9 +254,9 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
             <div className="h-11 border-b border-border flex items-center px-4 shrink-0 bg-background justify-between">
                 <div className="flex items-center gap-2">
                     <Library className="h-3.5 w-3.5 text-primary" />
-                    <h2 className="text-[13px] font-medium text-foreground">Research</h2>
+                    <h2 className="text-sm-minus font-medium text-foreground">Research</h2>
                     {/* {activeConvId && (
-                        <span className="text-[11px] text-muted-foreground/50 truncate max-w-[200px]">
+                        <span className="text-xs-plus text-muted-foreground/50 truncate max-w-[200px]">
                             {conversations.find(c => c.conv_id === activeConvId)?.title?.slice(0, 40) || ""}
                         </span>
                     )} */}
@@ -355,12 +266,12 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                         variant="ghost"
                         size="sm"
                         onClick={handleNewChat}
-                        className="h-7 gap-1.5 text-[12px] text-muted-foreground hover:text-foreground px-2"
+                        className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2"
                     >
                         <Plus className="h-3.5 w-3.5" />
                         New
                     </Button>
-                    <div className="text-[11px] text-muted-foreground/40 flex items-center gap-1.5 pr-1">
+                    <div className="text-xs-plus text-muted-foreground/40 flex items-center gap-1.5 pr-1">
                         <div className="h-1.5 w-1.5 rounded-full bg-green-500/60" />
                         Active
                     </div>
@@ -378,16 +289,12 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                     )}
 
                     {!loadingHistory && messages.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-[50vh] text-center opacity-40">
-                            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
-                                <Library className="h-8 w-8 text-foreground" />
-                            </div>
-                            <h3 className="font-semibold mb-2">Cross-Document Research</h3>
-                            <p className="text-sm text-balance max-w-md">
-                                Ask questions that span multiple documents. I&apos;ll automatically select the relevant
-                                documents, retrieve from each, and synthesize a comprehensive answer with per-document citations.
-                            </p>
-                        </div>
+                        <EmptyState
+                            icon={<Library className="h-8 w-8 text-foreground" />}
+                            title="Cross-Document Research"
+                            description="Ask questions that span multiple documents. I'll automatically select the relevant documents, retrieve from each, and synthesize a comprehensive answer with per-document citations."
+                            className="h-[50vh] opacity-40"
+                        />
                     )}
 
                     {messages.map((msg) => (
@@ -405,18 +312,16 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                 {/* Header badges */}
                                 {msg.role === "assistant" && msg.queryType && (
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/10 text-purple-400">
-                                            Cross-Doc
-                                        </span>
+                                        <QueryBadge label="Cross-Doc" colorClass="bg-purple-500/10 text-purple-400" />
                                         {msg.verificationStatus && <VerificationBadge status={msg.verificationStatus} />}
                                         {msg.selectedDocuments && msg.selectedDocuments.length > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                                            <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/60">
                                                 <FileText className="h-3 w-3" />
                                                 {msg.selectedDocuments.length} docs
                                             </span>
                                         )}
                                         {msg.totalTimeSeconds !== undefined && msg.totalTimeSeconds > 0 && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60">
+                                            <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/60">
                                                 <Clock className="h-3 w-3" />
                                                 {msg.totalTimeSeconds.toFixed(1)}s
                                             </span>
@@ -426,7 +331,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
 
                                 {/* Answer text */}
                                 <div className={cn(
-                                    "px-4 py-3 rounded-lg text-[13px] leading-relaxed",
+                                    "px-4 py-3 rounded-lg text-sm-minus leading-relaxed",
                                     msg.role === "user"
                                         ? "bg-primary text-primary-foreground whitespace-pre-wrap"
                                         : "bg-card border border-border text-foreground"
@@ -439,75 +344,55 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                     <div className="mt-3 w-full space-y-3">
                                         <div className="flex items-center gap-2">
                                             <div className="h-px bg-border w-4" />
-                                            <span className="text-[10px] font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
+                                            <span className="text-2xs font-medium uppercase text-muted-foreground/70 tracking-wider">Sources</span>
                                             <div className="h-px bg-border flex-1" />
                                         </div>
                                         <div className="grid gap-2">
-                                            {msg.citations.map((cite) => (
-                                                <Card
-                                                    key={cite.citation_id}
-                                                    className="bg-background/50 border-border/40 hover:border-border/80 hover:shadow-sm transition-all cursor-pointer group/card overflow-hidden"
-                                                    onClick={() => {
-                                                        if (!onCitationClick) return
-                                                        const match = cite.page_range?.match(/p\.?\s*(\d+)/)
-                                                        const page = match ? parseInt(match[1], 10) : 1
+                                            {msg.citations.map((cite) => {
+                                                const handleClick = onCitationClick ? () => {
+                                                    const match = cite.page_range?.match(/p\.?\s*(\d+)/)
+                                                    const page = match ? parseInt(match[1], 10) : 1
 
-                                                        let docId = cite.doc_id
-                                                        let docName = cite.doc_name
+                                                    let docId = cite.doc_id
+                                                    let docName = cite.doc_name
 
-                                                        // Fallback 1: look up from retrieved sections by node_id
-                                                        if (!docId && msg.retrievedSections) {
-                                                            const sec = msg.retrievedSections.find(s => s.node_id === cite.node_id)
-                                                            if (sec?.doc_id) { docId = sec.doc_id; docName = docName || sec.doc_name || "" }
+                                                    // Fallback 1: look up from retrieved sections by node_id
+                                                    if (!docId && msg.retrievedSections) {
+                                                        const sec = msg.retrievedSections.find(s => s.node_id === cite.node_id)
+                                                        if (sec?.doc_id) { docId = sec.doc_id; docName = docName || sec.doc_name || "" }
+                                                    }
+
+                                                    // Fallback 2: parse filename from citation_id "[filename | section, p.N]"
+                                                    if (!docId && cite.citation_id && msg.retrievedSections) {
+                                                        const cidMatch = cite.citation_id.match(/^\[(.+?)\s*\|/)
+                                                        if (cidMatch) {
+                                                            const fname = cidMatch[1].trim()
+                                                            const sec = msg.retrievedSections.find(s =>
+                                                                s.doc_name === fname || (s.doc_name && fname.includes(s.doc_name)) || (s.doc_name && s.doc_name.includes(fname))
+                                                            )
+                                                            if (sec?.doc_id) { docId = sec.doc_id; docName = docName || sec.doc_name || fname }
                                                         }
+                                                    }
 
-                                                        // Fallback 2: parse filename from citation_id "[filename | section, p.N]"
-                                                        if (!docId && cite.citation_id && msg.retrievedSections) {
-                                                            const cidMatch = cite.citation_id.match(/^\[(.+?)\s*\|/)
-                                                            if (cidMatch) {
-                                                                const fname = cidMatch[1].trim()
-                                                                const sec = msg.retrievedSections.find(s =>
-                                                                    s.doc_name === fname || (s.doc_name && fname.includes(s.doc_name)) || (s.doc_name && s.doc_name.includes(fname))
-                                                                )
-                                                                if (sec?.doc_id) { docId = sec.doc_id; docName = docName || sec.doc_name || fname }
-                                                            }
-                                                        }
-
-                                                        if (docId) {
-                                                            onCitationClick(docId, page, docName)
-                                                        } else {
-                                                            // Last resort: pass filename from citation_id so parent can resolve
-                                                            const cidFallback = cite.citation_id?.match(/^\[(.+?)\s*\|/)
-                                                            const fname = cidFallback ? cidFallback[1].trim() : ""
-                                                            onCitationClick("", page, fname || docName)
-                                                        }
-                                                    }}
-                                                >
-                                                    <CardContent className="p-3">
-                                                        <div className="flex items-start justify-between gap-3 mb-1.5">
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <div className="h-5 w-5 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-                                                                    <FileText className="h-3 w-3 text-blue-500" />
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <span className="text-xs font-medium truncate text-foreground/90 block">{cite.title}</span>
-                                                                    {cite.doc_name && (
-                                                                        <span className="text-[10px] text-muted-foreground/60 truncate block">
-                                                                            {cite.doc_name}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">
-                                                                {cite.page_range}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground line-clamp-2 pl-7 border-l-2 border-primary/10 group-hover/card:border-primary/30 transition-colors">
-                                                            {cite.excerpt}
-                                                        </p>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
+                                                    if (docId) {
+                                                        onCitationClick(docId, page, docName)
+                                                    } else {
+                                                        const cidFallback = cite.citation_id?.match(/^\[(.+?)\s*\|/)
+                                                        const fname = cidFallback ? cidFallback[1].trim() : ""
+                                                        onCitationClick("", page, fname || docName)
+                                                    }
+                                                } : undefined
+                                                return (
+                                                    <CitationCard
+                                                        key={cite.citation_id}
+                                                        title={cite.title}
+                                                        subtitle={cite.doc_name}
+                                                        pageRange={cite.page_range}
+                                                        excerpt={cite.excerpt}
+                                                        onClick={handleClick}
+                                                    />
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -521,7 +406,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Selected Documents"
                                                 icon={<FileText className="h-3 w-3" />}
-                                                badge={<span className="text-[10px] text-muted-foreground/60">{msg.selectedDocuments.length}</span>}
+                                                badge={<span className="text-2xs text-muted-foreground/60">{msg.selectedDocuments.length}</span>}
                                             >
                                                 <div className="space-y-2">
                                                     {msg.selectedDocuments.map((doc, i) => {
@@ -533,17 +418,17 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                                     <span className="font-medium text-foreground/80 truncate">{d.doc_name as string || d.doc_id as string}</span>
                                                                     <div className="flex items-center gap-2 shrink-0">
                                                                         {conf !== null && (
-                                                                            <span className={cn("font-mono text-[10px]", conf >= 70 ? "text-green-400" : conf >= 40 ? "text-amber-400" : "text-red-400")}>
+                                                                            <span className={cn("font-mono text-2xs", conf >= 70 ? "text-green-400" : conf >= 40 ? "text-amber-400" : "text-red-400")}>
                                                                                 {conf}%
                                                                             </span>
                                                                         )}
                                                                         {typeof d.role === "string" && d.role && (
-                                                                            <span className="text-[10px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{d.role}</span>
+                                                                            <span className="text-2xs px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{d.role}</span>
                                                                         )}
                                                                     </div>
                                                                 </div>
                                                                 {typeof d.relevance_reason === "string" && d.relevance_reason && (
-                                                                    <p className="text-muted-foreground/70 text-[11px]">{d.relevance_reason}</p>
+                                                                    <p className="text-muted-foreground/70 text-xs-plus">{d.relevance_reason}</p>
                                                                 )}
                                                             </div>
                                                         )
@@ -557,7 +442,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Inferred Points"
                                                 icon={<Brain className="h-3 w-3" />}
-                                                badge={<span className="text-[10px] text-muted-foreground/60">{msg.inferredPoints.length}</span>}
+                                                badge={<span className="text-2xs text-muted-foreground/60">{msg.inferredPoints.length}</span>}
                                             >
                                                 <div className="space-y-3">
                                                     {msg.inferredPoints.map((ip, i) => (
@@ -572,7 +457,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                             {ip.supporting_definitions.length > 0 && (
                                                                 <div className="pl-4 space-y-0.5">
                                                                     {ip.supporting_definitions.map((def, j) => (
-                                                                        <p key={j} className="text-[10px] text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
+                                                                        <p key={j} className="text-2xs text-muted-foreground/50 border-l-2 border-primary/10 pl-2">{def}</p>
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -597,7 +482,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                             <CollapsibleSection
                                                 title="Retrieved Sections"
                                                 icon={<Search className="h-3 w-3" />}
-                                                badge={<span className="text-[10px] text-muted-foreground/60">{msg.retrievedSections.length}</span>}
+                                                badge={<span className="text-2xs text-muted-foreground/60">{msg.retrievedSections.length}</span>}
                                             >
                                                 <div className="space-y-2">
                                                     {msg.retrievedSections.map((section, i) => (
@@ -605,12 +490,12 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                             <div className="flex items-center justify-between gap-2 mb-1">
                                                                 <span className="font-medium text-foreground/80 truncate">{section.title}</span>
                                                                 <div className="flex items-center gap-2 shrink-0">
-                                                                    <span className="text-[10px] text-muted-foreground/50 font-mono">{section.page_range}</span>
-                                                                    <span className="text-[10px] px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
+                                                                    <span className="text-2xs text-muted-foreground/50 font-mono">{section.page_range}</span>
+                                                                    <span className="text-2xs px-1.5 py-0.5 bg-muted/50 rounded text-muted-foreground">{section.source}</span>
                                                                 </div>
                                                             </div>
                                                             {section.doc_name && (
-                                                                <p className="text-[10px] text-muted-foreground/50 mb-1">{section.doc_name}</p>
+                                                                <p className="text-2xs text-muted-foreground/50 mb-1">{section.doc_name}</p>
                                                             )}
                                                             <p className="text-muted-foreground/70 line-clamp-2">{section.text.slice(0, 300)}</p>
                                                         </div>
@@ -626,11 +511,11 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                 icon={<BarChart3 className="h-3 w-3" />}
                                                 badge={
                                                     msg.stageTimings?._benchmark ? (
-                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium">
+                                                        <span className="text-3xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-medium">
                                                             optimized
                                                         </span>
                                                     ) : msg.stageTimings?._cache_hit ? (
-                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 font-medium">
+                                                        <span className="text-3xs px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 font-medium">
                                                             cache hit
                                                         </span>
                                                     ) : null
@@ -645,7 +530,7 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                         const llmCalls = Number(bm.total_llm_calls ?? 0)
                                                         const totalTok = Number(bm.total_input_tokens ?? 0) + Number(bm.total_output_tokens ?? 0)
                                                         return (
-                                                            <div className="flex items-center gap-2 text-[10px] text-amber-400/80 bg-amber-500/5 rounded-md px-2 py-1.5 border border-amber-500/10">
+                                                            <div className="flex items-center gap-2 text-2xs text-amber-400/80 bg-amber-500/5 rounded-md px-2 py-1.5 border border-amber-500/10">
                                                                 <Zap className="h-3 w-3 shrink-0" />
                                                                 <span>
                                                                     {cacheHits > 0 && <>{cacheHits} cache hits &middot; </>}
@@ -657,25 +542,25 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                                                     })()}
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">Response Time</p>
+                                                            <p className="text-2xs text-muted-foreground">Response Time</p>
                                                             <p className="text-sm font-medium font-mono">{msg.totalTimeSeconds?.toFixed(1)}s</p>
                                                         </div>
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">Total Tokens</p>
+                                                            <p className="text-2xs text-muted-foreground">Total Tokens</p>
                                                             <p className="text-sm font-medium font-mono">{msg.totalTokens?.toLocaleString()}</p>
                                                         </div>
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">LLM Calls</p>
+                                                            <p className="text-2xs text-muted-foreground">LLM Calls</p>
                                                             <p className="text-sm font-medium font-mono">{msg.llmCalls}</p>
                                                         </div>
                                                         <div className="bg-muted/30 rounded-md p-2">
-                                                            <p className="text-[10px] text-muted-foreground">Docs Searched</p>
+                                                            <p className="text-2xs text-muted-foreground">Docs Searched</p>
                                                             <p className="text-sm font-medium font-mono">{msg.selectedDocuments?.length || 0}</p>
                                                         </div>
                                                     </div>
                                                     {msg.stageTimings && Object.keys(msg.stageTimings).length > 0 && (
                                                         <div className="space-y-1.5">
-                                                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
+                                                            <p className="text-2xs font-medium text-muted-foreground uppercase tracking-wider">Stage Timings</p>
                                                             {(() => {
                                                                 const entries = Object.entries(msg.stageTimings)
                                                                     .filter(([k, v]) => typeof v === "number" && !k.startsWith("_"))
@@ -726,11 +611,11 @@ export function ResearchChat({ className, onCitationClick, continueConvId }: Res
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask a question across all documents…"
-                            className="flex-1 border-0 bg-transparent p-0 h-auto text-[13px] focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/40"
+                            className="flex-1 border-0 bg-transparent p-0 h-auto text-sm-minus focus-visible:ring-0 shadow-none placeholder:text-muted-foreground/40"
                             disabled={loading}
                         />
                         <div className="flex items-center gap-2 border-l border-border pl-2 shrink-0">
-                            <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer select-none" title="Verify answer against sources">
+                            <label className="flex items-center gap-1 text-xs-plus text-muted-foreground cursor-pointer select-none" title="Verify answer against sources">
                                 <input
                                     type="checkbox"
                                     checked={verify}

@@ -91,7 +91,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         <Dialog open={open} onOpenChange={(v) => { if (!v && !uploading) { handleClose(); } else if (v) { setOpen(true) } }}>
             <DialogTrigger asChild>
                 {children || (
-                    <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-[12px]">
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-xs">
                         <Upload className="h-3.5 w-3.5" />
                         New Document
                     </Button>
@@ -131,7 +131,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div className="h-full bg-green-500/70 rounded-full transition-all duration-700 ease-out" style={{ width: "100%" }} />
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <div className="flex items-center justify-between text-2xs text-muted-foreground">
                                 <span>100% complete</span>
                                 <span>Ingestion finished</span>
                             </div>
@@ -140,16 +140,16 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                         {/* Stats grid — matches extraction style */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-[15px] font-semibold font-mono">{result.total_pages}</p>
-                                <p className="text-[10px] text-muted-foreground">Pages</p>
+                                <p className="text-sm-plus font-semibold font-mono">{result.total_pages}</p>
+                                <p className="text-2xs text-muted-foreground">Pages</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-[15px] font-semibold font-mono">{result.node_count}</p>
-                                <p className="text-[10px] text-muted-foreground">Nodes</p>
+                                <p className="text-sm-plus font-semibold font-mono">{result.node_count}</p>
+                                <p className="text-2xs text-muted-foreground">Nodes</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-[15px] font-semibold font-mono">{result.time_seconds.toFixed(1)}s</p>
-                                <p className="text-[10px] text-muted-foreground">Time</p>
+                                <p className="text-sm-plus font-semibold font-mono">{result.time_seconds.toFixed(1)}s</p>
+                                <p className="text-2xs text-muted-foreground">Time</p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -182,7 +182,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
                                 <div className="h-full bg-purple-500/70 rounded-full animate-pulse w-full" />
                             </div>
-                            <div className="text-[10px] text-muted-foreground text-center">
+                            <div className="text-2xs text-muted-foreground text-center">
                                 This may take upwards of 10 minutes depending on document size.
                             </div>
                         </div>
@@ -233,7 +233,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
 
                                     {/* Editable document name */}
                                     <div className="w-full mb-4">
-                                        <label className="text-[10px] font-medium text-muted-foreground/60 block mb-1">Document Name</label>
+                                        <label className="text-2xs font-medium text-muted-foreground/60 block mb-1">Document Name</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 value={customName}

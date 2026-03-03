@@ -35,7 +35,7 @@ import {
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
-import { RiskIcon } from "@/components/shared/status-components"
+import { RiskIcon, EmptyState } from "@/components/shared/status-components"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
@@ -78,7 +78,7 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
     if (!editing) {
         return (
             <div className="group/field">
-                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+                <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">{label}</p>
                 <button
                     onClick={() => setEditing(true)}
                     className="text-xs text-foreground/80 hover:text-foreground w-full text-left flex items-center gap-1 min-h-[20px]"
@@ -95,7 +95,7 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
     if (type === "select" && options) {
         return (
             <div>
-                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+                <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">{label}</p>
                 <select
                     ref={inputRef as React.RefObject<HTMLSelectElement>}
                     value={draft}
@@ -112,7 +112,7 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
     if (type === "textarea") {
         return (
             <div>
-                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+                <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">{label}</p>
                 <textarea
                     ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                     value={draft}
@@ -128,7 +128,7 @@ function EditableField({ label, value: rawValue, onSave, type = "text", options 
 
     return (
         <div>
-            <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">{label}</p>
+            <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">{label}</p>
             <input
                 ref={inputRef as React.RefObject<HTMLInputElement>}
                 value={draft}
@@ -379,7 +379,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     <RiskIcon modality={item.modality} />
 
                     {/* Team tag - uses saved classification (not draft) */}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
                         {getClassification(item)}
                     </span>
 
@@ -414,7 +414,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </button>
                     )}
                     <span className={cn(
-                        "text-[9px] px-1.5 py-0.5 rounded font-medium ml-1",
+                        "text-3xs px-1.5 py-0.5 rounded font-medium ml-1",
                         item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
                         item.approval_status === "rejected" ? "text-red-400 bg-red-400/10" :
                         "text-yellow-400 bg-yellow-400/10"
@@ -428,7 +428,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             {expanded && (
                 <div className="px-3 pb-3 space-y-3 border-t border-border/20 pt-2.5">
                     {saving && (
-                        <div className="flex items-center gap-1.5 text-[10px] text-primary">
+                        <div className="flex items-center gap-1.5 text-2xs text-primary">
                             <Loader2 className="h-3 w-3 animate-spin" /> Saving...
                         </div>
                     )}
@@ -438,21 +438,21 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             {/* Evidence + source side by side at top */}
                             <div className="flex items-start gap-3">
                                 <div className="flex-1">
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
                                     <p className="text-xs text-foreground/80 italic">{safeStr(item.evidence_quote) || "—"}</p>
                                 </div>
-                                <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1 shrink-0 pt-3">
+                                <button onClick={handleSourceClick} className="text-2xs text-primary hover:underline flex items-center gap-1 shrink-0 pt-3">
                                     <FileText className="h-3 w-3" />
                                     {item.source_location || "Source"}
                                 </button>
                             </div>
                             <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                 <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes) || "—"}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Team{(item.assigned_teams?.length ?? 0) > 1 ? "s" : ""}</p>
+                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Team{(item.assigned_teams?.length ?? 0) > 1 ? "s" : ""}</p>
                                     <div className="flex flex-wrap gap-1">
                                         {((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).map(t => (
                                             <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", getWorkstreamClass(t))}>{t}</span>
@@ -460,13 +460,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Risk Level</p>
+                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Risk Level</p>
                                     <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", RISK_STYLES[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_STYLES[normalizeRisk(item.modality)]?.text || "text-foreground")}>{normalizeRisk(item.modality)}</span>
                                 </div>
                             </div>
                             {item.deadline && (
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
+                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
                                     <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
                                 </div>
                             )}
@@ -476,7 +476,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             {/* Evidence + source link side by side at top */}
                             <div className="flex items-start gap-3">
                                 <div className="flex-1">
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
                                     <textarea
                                         value={draftEvidence}
                                         onChange={e => {
@@ -490,7 +490,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         style={{ minHeight: '48px' }}
                                     />
                                 </div>
-                                <button onClick={handleSourceClick} className="text-[10px] text-primary hover:underline flex items-center gap-1 shrink-0 pt-4">
+                                <button onClick={handleSourceClick} className="text-2xs text-primary hover:underline flex items-center gap-1 shrink-0 pt-4">
                                     <FileText className="h-3 w-3" />
                                     {item.source_location || "Source"}
                                 </button>
@@ -498,7 +498,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                             {/* Team multi-select */}
                             <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                <p className="text-2xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                     <Users className="h-3 w-3" />
                                     Assign Teams
                                 </p>
@@ -527,7 +527,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     })
                                                 }}
                                                 className={cn(
-                                                    "text-[10px] px-2 py-1 rounded-md border transition-colors font-medium",
+                                                    "text-2xs px-2 py-1 rounded-md border transition-colors font-medium",
                                                     isTeamSelected
                                                         ? `${teamColors.bg} ${teamColors.text} border-current`
                                                         : "border-border/40 text-muted-foreground/60 hover:border-border hover:text-foreground/80"
@@ -546,12 +546,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 return (
                                 <div className={cn("rounded-lg p-3 space-y-3 border-2", teamColors.text.replace('text-', 'border-'))}>
                                     <div className="flex items-center gap-2">
-                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(draftTeams[0]))}>
+                                        <span className={cn("px-2 py-0.5 rounded text-2xs font-semibold", getWorkstreamClass(draftTeams[0]))}>
                                             {draftTeams[0]}
                                         </span>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                        <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                         <textarea
                                             value={draftImpl}
                                             onChange={e => {
@@ -566,7 +566,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                        <p className="text-2xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                             <Calendar className="h-3 w-3" />
                                             Deadline
                                         </p>
@@ -586,12 +586,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             />
                                         </div>
                                         {deadlineDate && (
-                                            <p className="text-[9px] text-muted-foreground/50 mt-1">
+                                            <p className="text-3xs text-muted-foreground/50 mt-1">
                                                 {formatDateDMY(deadlineDate)}
                                             </p>
                                         )}
                                         {!deadlineDate && globalDeadline && (
-                                            <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                            <p className="text-3xs text-muted-foreground/40 mt-1">
                                                 No individual deadline — will use global deadline ({formatDateDMY(globalDeadline)}) on approve
                                             </p>
                                         )}
@@ -603,7 +603,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             {/* Multi-team: Per-team group boxes (Implementation + Deadline only, no evidence) */}
                             {draftIsMulti && (
                                 <div className="space-y-3">
-                                    <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1">
+                                    <p className="text-2xs font-medium text-muted-foreground/60 flex items-center gap-1">
                                         <Users className="h-3 w-3" />
                                         Per-Team Implementation
                                     </p>
@@ -614,12 +614,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         return (
                                             <div key={team} className={cn("rounded-lg p-3 space-y-2 border-2", teamColors.text.replace('text-', 'border-'))}>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", teamColors.bg, teamColors.text)}>
+                                                    <span className={cn("px-2 py-0.5 rounded text-2xs font-semibold", teamColors.bg, teamColors.text)}>
                                                         {team}
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                                     <textarea
                                                         value={draftTeamImpl[team] || ""}
                                                         onChange={e => {
@@ -634,7 +634,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     />
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                                    <p className="text-2xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
                                                         Deadline
                                                     </p>
@@ -654,12 +654,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                         />
                                                     </div>
                                                     {draft.date && (
-                                                        <p className="text-[9px] text-muted-foreground/50 mt-1">
+                                                        <p className="text-3xs text-muted-foreground/50 mt-1">
                                                             {formatDateDMY(draft.date)}
                                                         </p>
                                                     )}
                                                     {!draft.date && globalDeadline && (
-                                                        <p className="text-[9px] text-muted-foreground/40 mt-1">
+                                                        <p className="text-3xs text-muted-foreground/40 mt-1">
                                                             Will use global deadline ({formatDateDMY(globalDeadline)}) on approve
                                                         </p>
                                                     )}
@@ -672,7 +672,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                             {/* Risk Level */}
                             <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/60 mb-1">Risk Level</p>
+                                <p className="text-2xs font-medium text-muted-foreground/60 mb-1">Risk Level</p>
                                 <select
                                     value={draftRisk}
                                     onChange={e => setDraftRisk(e.target.value)}
@@ -706,7 +706,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     {/* Footer: source + actions */}
                     <div className="flex items-center justify-between pt-2 border-t border-border/10">
                         <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-muted-foreground/40">{docName}</span>
+                            <span className="text-2xs text-muted-foreground/40">{docName}</span>
                         </div>
                         {item.approval_status !== "approved" && (
                             <div className="flex items-center gap-2">
@@ -786,7 +786,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
 
             {/* Document selector with search */}
             <div>
-                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Document *</label>
+                <label className="text-2xs font-medium text-muted-foreground/60 block mb-0.5">Document *</label>
                 <div className="relative mb-1">
                     <Search className="absolute left-2 top-[7px] h-3 w-3 text-muted-foreground/50" />
                     <input
@@ -808,19 +808,19 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
             </div>
 
             <div>
-                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Actionable *</label>
+                <label className="text-2xs font-medium text-muted-foreground/60 block mb-0.5">Actionable *</label>
                 <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="Describe the actionable..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Risk Level</label>
+                    <label className="text-2xs font-medium text-muted-foreground/60 block mb-0.5">Risk Level</label>
                     <select value={form.modality} onChange={e => setForm(f => ({ ...f, modality: e.target.value as ActionableModality }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
                         {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Team</label>
+                    <label className="text-2xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
                     <select value={form.workstream} onChange={e => setForm(f => ({ ...f, workstream: e.target.value as ActionableWorkstream }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
                         {teamNames.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
@@ -828,18 +828,18 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
             </div>
 
             <div>
-                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Implementation Details</label>
+                <label className="text-2xs font-medium text-muted-foreground/60 block mb-0.5">Implementation Details</label>
                 <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={3} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
             </div>
 
             <div>
-                <label className="text-[10px] font-medium text-muted-foreground/60 block mb-0.5">Evidence</label>
+                <label className="text-2xs font-medium text-muted-foreground/60 block mb-0.5">Evidence</label>
                 <textarea value={form.evidence_quote} onChange={e => setForm(f => ({ ...f, evidence_quote: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
-                <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 text-[12px]">Cancel</Button>
-                <Button size="sm" onClick={handleSubmit} disabled={creating} className="h-7 text-[12px] gap-1.5">
+                <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 text-xs">Cancel</Button>
+                <Button size="sm" onClick={handleSubmit} disabled={creating} className="h-7 text-xs gap-1.5">
                     {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                     Create
                 </Button>
@@ -1180,7 +1180,7 @@ export default function ActionablesPage() {
                             <button
                                 onClick={() => setViewTab("all")}
                                 className={cn(
-                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
+                                    "px-2.5 py-1 rounded text-xs-plus font-medium transition-colors",
                                     viewTab === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
@@ -1189,7 +1189,7 @@ export default function ActionablesPage() {
                             <button
                                 onClick={() => setViewTab("by-doc")}
                                 className={cn(
-                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+                                    "px-2.5 py-1 rounded text-xs-plus font-medium transition-colors flex items-center gap-1",
                                     viewTab === "by-doc" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
@@ -1199,7 +1199,7 @@ export default function ActionablesPage() {
                             <button
                                 onClick={() => setViewTab("by-team")}
                                 className={cn(
-                                    "px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+                                    "px-2.5 py-1 rounded text-xs-plus font-medium transition-colors flex items-center gap-1",
                                     viewTab === "by-team" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
@@ -1209,7 +1209,7 @@ export default function ActionablesPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 text-[10px]">
+                        <div className="flex items-center gap-2 text-2xs">
                             <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
                             <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
                             <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} in tracker</span>
@@ -1217,7 +1217,7 @@ export default function ActionablesPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 gap-1.5 px-2.5 text-[12px]"
+                            className="h-7 gap-1.5 px-2.5 text-xs"
                             onClick={() => setShowCreateForm(true)}
                             disabled={allDocs.length === 0}
                         >
@@ -1265,7 +1265,7 @@ export default function ActionablesPage() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 gap-1 px-2 text-[11px] text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                                    className="h-7 gap-1 px-2 text-xs-plus text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
                                     onClick={() => handleApproveAll(filtered)}
                                 >
                                     <Check className="h-3 w-3" />
@@ -1278,8 +1278,8 @@ export default function ActionablesPage() {
                         <div className="shrink-0 border-b border-border/40 px-4 py-3">
                             <div className="flex items-center gap-2 mb-2">
                                 <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="text-[11px] font-semibold text-foreground">Set Global Deadline</span>
-                                <span className="text-[9px] text-muted-foreground/50">
+                                <span className="text-xs-plus font-semibold text-foreground">Set Global Deadline</span>
+                                <span className="text-3xs text-muted-foreground/50">
                                     Applies to items without individual deadlines
                                 </span>
                             </div>
@@ -1325,15 +1325,12 @@ export default function ActionablesPage() {
                             )}
 
                             {!loading && allDocs.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-20 text-center">
-                                    <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                                        <Shield className="h-8 w-8 text-muted-foreground" />
-                                    </div>
-                                    <h3 className="text-sm font-medium mb-1">No actionables yet</h3>
-                                    <p className="text-xs text-muted-foreground/60 max-w-sm">
-                                        Extract actionables from a document first, or add them manually.
-                                    </p>
-                                </div>
+                                <EmptyState
+                                    icon={<Shield className="h-8 w-8 text-muted-foreground" />}
+                                    title="No actionables yet"
+                                    description="Extract actionables from a document first, or add them manually."
+                                    className="py-20"
+                                />
                             )}
 
                             {showCreateForm && allDocs.length > 0 && (
@@ -1377,10 +1374,10 @@ export default function ActionablesPage() {
                                                 const isCollapsed = collapsedDocs.has(docId)
                                                 return (
                                                     <div key={docId} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleDoc(docId)}>
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-xs-plus font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleDoc(docId)}>
                                                             {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                                                             <FileText className="h-3 w-3" /> {docName}
-                                                            <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                                            <span className="ml-auto text-2xs text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -1414,10 +1411,10 @@ export default function ActionablesPage() {
                                                 const isCollapsed = collapsedTeams.has(team)
                                                 return (
                                                     <div key={team} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[11px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-xs-plus font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(team)}>
                                                             {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                                                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(team))}>{team}</span>
-                                                            <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                                            <span className={cn("px-2 py-0.5 rounded text-2xs font-semibold", getWorkstreamClass(team))}>{team}</span>
+                                                            <span className="ml-auto text-2xs text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -1455,7 +1452,7 @@ export default function ActionablesPage() {
                                                     ? <ChevronRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                     : <ChevronDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                 }
-                                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
+                                                <p className="text-2xs font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
                                                 <div className="h-px bg-emerald-400/20 flex-1" />
                                             </div>
                                             {!approvedCollapsed && (
@@ -1490,8 +1487,8 @@ export default function ActionablesPage() {
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(`approved-${docId}`)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                                                                     <FileText className="h-3.5 w-3.5 text-emerald-500/60 shrink-0" />
-                                                                    <span className="text-[11px] font-semibold text-foreground/70 truncate">{docName}</span>
-                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
+                                                                    <span className="text-xs-plus font-semibold text-foreground/70 truncate">{docName}</span>
+                                                                    <span className="text-2xs text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
@@ -1511,8 +1508,8 @@ export default function ActionablesPage() {
                                                             <div key={team} className="space-y-1.5">
                                                                 <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleTeam(`approved-${team}`)}>
                                                                     {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                                                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
-                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
+                                                                    <span className={cn("px-2 py-0.5 rounded text-2xs font-semibold opacity-70", getWorkstreamClass(team))}>{team}</span>
+                                                                    <span className="text-2xs text-muted-foreground/40 font-mono">{approvedEntries.length}</span>
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId, docName }) => (
@@ -1550,7 +1547,7 @@ export default function ActionablesPage() {
                             <div className="h-11 border-b border-border flex items-center px-4 justify-between shrink-0 bg-background">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-[12px] font-medium text-foreground truncate">
+                                    <span className="text-xs font-medium text-foreground truncate">
                                         {pdfDocName || pdfDocId}
                                     </span>
                                 </div>
@@ -1562,7 +1559,7 @@ export default function ActionablesPage() {
                                             const doc = allDocs.find(d => d.doc_id === e.target.value)
                                             setPdfDocName(doc?.doc_name || e.target.value)
                                         }}
-                                        className="bg-muted/30 text-[11px] rounded px-2 py-1 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[180px]"
+                                        className="bg-muted/30 text-xs-plus rounded px-2 py-1 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[180px]"
                                     >
                                         {allDocs.map(d => (
                                             <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>

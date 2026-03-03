@@ -30,7 +30,7 @@ import {
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
-import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList } from "@/components/shared/status-components"
+import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -376,62 +376,26 @@ export default function DashboardPage() {
                 {/* ── Stats row ── */}
                 <div className="shrink-0 border-b border-border/40 px-5 py-3 flex items-center gap-4 overflow-x-auto">
                     <div className="flex items-center gap-4">
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-foreground">{stats.total}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Total</p>
-                        </div>
-                        <div className="h-8 w-px bg-border/40" />
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-emerald-400">{stats.completed}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Completed</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-amber-400">{stats.inProgress}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">In Progress</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-teal-400">{stats.teamReview}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Team Review</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-blue-400">{stats.review}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Under Review</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-orange-400">{stats.reworking}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Reworking</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-amber-400">{stats.pendingAllTeams}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Pending Teams</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-slate-400">{stats.assigned}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Assigned</p>
-                        </div>
-                        <div className="h-8 w-px bg-border/40" />
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-emerald-500">{stats.yetToDeadline}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Yet to DL</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-amber-500">{stats.delayed30}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 30d</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-orange-500">{stats.delayed60}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 60d</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-[15px] font-bold text-red-500">{stats.delayed90}</p>
-                            <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Delayed 90d</p>
-                        </div>
+                        <StatCell value={stats.total} label="Total" colorClass="text-foreground" />
+                        <StatDivider />
+                        <StatCell value={stats.completed} label="Completed" colorClass="text-emerald-400" />
+                        <StatCell value={stats.inProgress} label="In Progress" colorClass="text-amber-400" />
+                        <StatCell value={stats.teamReview} label="Team Review" colorClass="text-teal-400" />
+                        <StatCell value={stats.review} label="Under Review" colorClass="text-blue-400" />
+                        <StatCell value={stats.reworking} label="Reworking" colorClass="text-orange-400" />
+                        <StatCell value={stats.pendingAllTeams} label="Pending Teams" colorClass="text-amber-400" />
+                        <StatCell value={stats.assigned} label="Assigned" colorClass="text-slate-400" />
+                        <StatDivider />
+                        <StatCell value={stats.yetToDeadline} label="Yet to DL" colorClass="text-emerald-500" />
+                        <StatCell value={stats.delayed30} label="Delayed 30d" colorClass="text-amber-500" />
+                        <StatCell value={stats.delayed60} label="Delayed 60d" colorClass="text-orange-500" />
+                        <StatCell value={stats.delayed90} label="Delayed 90d" colorClass="text-red-500" />
                     </div>
 
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
+                        <p className="text-3xs text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -495,7 +459,7 @@ export default function DashboardPage() {
                     )}
 
                     <div className="flex items-center gap-1 ml-auto">
-                        <span className="text-[10px] text-muted-foreground/50">Sort:</span>
+                        <span className="text-2xs text-muted-foreground/50">Sort:</span>
                         <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
@@ -526,26 +490,17 @@ export default function DashboardPage() {
                     )}
 
                     {!loading && allRows.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-                                <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-sm font-medium mb-1">No actionables to track yet</h3>
-                            <p className="text-xs text-muted-foreground/60 max-w-sm">
-                                Approve actionables from the Actionables page to see them here.
-                            </p>
-                        </div>
+                        <EmptyState
+                            icon={<LayoutDashboard className="h-8 w-8 text-muted-foreground" />}
+                            title="No actionables to track yet"
+                            description="Approve actionables from the Actionables page to see them here."
+                            className="py-20"
+                        />
                     )}
 
                     {/* ── Active section header ── */}
                     {!loading && activeRows.length > 0 && (
-                        <div className="px-3 py-2 bg-background border-b border-yellow-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setActiveCollapsed(!activeCollapsed)}>
-                            <span className="text-xs font-semibold text-yellow-500 flex items-center gap-2">
-                                {activeCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                <AlertTriangle className="h-3.5 w-3.5" />
-                                Active ({activeRows.length})
-                            </span>
-                        </div>
+                        <SectionDivider label="Active" count={activeRows.length} icon={<AlertTriangle className="h-3.5 w-3.5" />} borderClass="border-b border-yellow-500/20" textClass="text-yellow-500" collapsed={activeCollapsed} onToggle={() => setActiveCollapsed(!activeCollapsed)} />
                     )}
 
                     {!loading && !activeCollapsed && sortedGroupKeys.map(ws => {
@@ -566,24 +521,24 @@ export default function DashboardPage() {
                                         }
                                         <div className={cn("h-4 w-1 rounded-full shrink-0", wsColors.header)} />
                                         <span className="text-xs font-semibold text-foreground">{ws}</span>
-                                        <span className="text-[10px] text-muted-foreground/50 font-mono">{rows.length} items</span>
+                                        <span className="text-2xs text-muted-foreground/50 font-mono">{rows.length} items</span>
                                     </button>
-                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">{groupCompleted}/{rows.length} ({pct}%)</span>
+                                    <span className="text-2xs font-mono text-muted-foreground shrink-0">{groupCompleted}/{rows.length} ({pct}%)</span>
                                 </div>
 
                                 {/* ── Column headers ── */}
                                 {!isCollapsed && (
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Time</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
+                                        <div className="text-2xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
                                 )}
 
@@ -616,7 +571,7 @@ export default function DashboardPage() {
                                             >
                                                 {/* Team */}
                                                 <div className="py-1.5 px-1">
-                                                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(getClassification(item)))}>
+                                                    <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium", getWorkstreamClass(getClassification(item)))}>
                                                         {getClassification(item)}
                                                     </span>
                                                 </div>
@@ -631,19 +586,19 @@ export default function DashboardPage() {
                                                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                     {commentCount > 0 && (
-                                                        <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
+                                                        <span className="shrink-0 flex items-center gap-0.5 text-3xs text-primary/60">
                                                             <MessageSquare className="h-2.5 w-2.5" />{commentCount}
                                                         </span>
                                                     )}
                                                     {multi && (
-                                                        <span className="shrink-0 text-[9px] font-medium text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                                                        <span className="shrink-0 text-3xs font-medium text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
                                                             {teamCompletedCount} of {assignedTeams.length} completed
                                                         </span>
                                                     )}
                                                 </div>
                                                 {/* Status */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", statusStyle.bg, statusStyle.text)}>
+                                                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium", statusStyle.bg, statusStyle.text)}>
                                                         {statusStyle.label}
                                                     </span>
                                                 </div>
@@ -656,14 +611,14 @@ export default function DashboardPage() {
                                                             disabled={taskStatus === "completed"}
                                                         />
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground/60" title="Latest child deadline">
+                                                        <span className="text-2xs text-muted-foreground/60" title="Latest child deadline">
                                                             {parentDeadline ? formatDate(parentDeadline) : "—"}
                                                         </span>
                                                     )}
                                                 </div>
                                                 {/* Deadline time */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-[10px] text-muted-foreground/60">
+                                                    <span className="text-2xs text-muted-foreground/60">
                                                         {!multi ? formatTime(item.deadline) : (parentDeadline ? formatTime(parentDeadline) : "—")}
                                                     </span>
                                                 </div>
@@ -672,18 +627,18 @@ export default function DashboardPage() {
                                                     {!multi ? (
                                                         <EvidencePopover files={item.evidence_files || []} taskStatus={taskStatus} />
                                                     ) : (
-                                                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                                                        <span className="text-2xs text-muted-foreground/40">—</span>
                                                     )}
                                                 </div>
                                                 {/* Published date */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-[10px] text-muted-foreground/60">
+                                                    <span className="text-2xs text-muted-foreground/60">
                                                         {formatDate(item.published_at)}
                                                     </span>
                                                 </div>
                                                 {/* Completion date */}
                                                 <div className="py-1.5 px-1 text-center">
-                                                    <span className="text-[10px] text-muted-foreground/60">
+                                                    <span className="text-2xs text-muted-foreground/60">
                                                         {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
                                                     </span>
                                                 </div>
@@ -693,14 +648,14 @@ export default function DashboardPage() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
-                                                                className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                 title="Approve — mark as completed"
                                                             >
                                                                 <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                                                             </button>
                                                             <button
                                                                 onClick={() => { setRejectingItem({ docId, item }); setRejectReason("") }}
-                                                                className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                 title="Reject — send back for rework"
                                                             >
                                                                 <XCircle className="h-2.5 w-2.5" /> Reject
@@ -708,30 +663,30 @@ export default function DashboardPage() {
                                                         </>
                                                     )}
                                                     {taskStatus === "completed" && (
-                                                        <span className="text-[9px] text-emerald-400 italic">Approved</span>
+                                                        <span className="text-3xs text-emerald-400 italic">Approved</span>
                                                     )}
                                                     {taskStatus === "reworking" && (
-                                                        <span className="text-[9px] text-orange-400 italic">Reworking</span>
+                                                        <span className="text-3xs text-orange-400 italic">Reworking</span>
                                                     )}
                                                     {taskStatus === "team_review" && (
-                                                        <span className="text-[9px] text-teal-400 italic">Team Review</span>
+                                                        <span className="text-3xs text-teal-400 italic">Team Review</span>
                                                     )}
                                                     {taskStatus === "reviewer_rejected" && (
-                                                        <span className="text-[9px] text-rose-400 italic">Rejected by Reviewer</span>
+                                                        <span className="text-3xs text-rose-400 italic">Rejected by Reviewer</span>
                                                     )}
                                                     {taskStatus === "awaiting_justification" && (
-                                                        <span className="text-[9px] text-yellow-500 italic">Awaiting Lead</span>
+                                                        <span className="text-3xs text-yellow-500 italic">Awaiting Lead</span>
                                                     )}
                                                     {taskStatus === "pending_all_teams" && (
-                                                        <span className="text-[9px] text-amber-400 italic">Pending Teams</span>
+                                                        <span className="text-3xs text-amber-400 italic">Pending Teams</span>
                                                     )}
                                                     {!multi && (taskStatus === "assigned" || taskStatus === "in_progress") && (
-                                                        <span className="text-[9px] text-muted-foreground/30">—</span>
+                                                        <span className="text-3xs text-muted-foreground/30">—</span>
                                                     )}
                                                     {/* Unpublish button */}
                                                     <button
                                                         onClick={() => setUnpublishingItem({ docId, itemId: item.id })}
-                                                        className="inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
+                                                        className="inline-flex items-center gap-0.5 text-3xs px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
                                                         title="Unpublish — return to Actionables"
                                                     >
                                                         <Undo2 className="h-2.5 w-2.5" />
@@ -760,7 +715,7 @@ export default function DashboardPage() {
                                                         >
                                                             {/* Team tag */}
                                                             <div className="py-1.5 px-1">
-                                                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", teamColors.bg, teamColors.text)}>
+                                                                <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium", teamColors.bg, teamColors.text)}>
                                                                     {team}
                                                                 </span>
                                                             </div>
@@ -775,14 +730,14 @@ export default function DashboardPage() {
                                                                     : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                                 <span className="text-xs text-foreground/70 truncate italic">{safeStr(tw?.implementation_notes || item.implementation_notes)}</span>
                                                                 {teamCommentCount > 0 && (
-                                                                    <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60">
+                                                                    <span className="shrink-0 flex items-center gap-0.5 text-3xs text-primary/60">
                                                                         <MessageSquare className="h-2.5 w-2.5" />{teamCommentCount}
                                                                     </span>
                                                                 )}
                                                             </div>
                                                             {/* Status */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", twStyle.bg, twStyle.text)}>
+                                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium", twStyle.bg, twStyle.text)}>
                                                                     {twStyle.label}
                                                                 </span>
                                                             </div>
@@ -796,7 +751,7 @@ export default function DashboardPage() {
                                                             </div>
                                                             {/* Deadline time */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                <span className="text-2xs text-muted-foreground/60">
                                                                     {formatTime(tw?.deadline || item.deadline)}
                                                                 </span>
                                                             </div>
@@ -806,13 +761,13 @@ export default function DashboardPage() {
                                                             </div>
                                                             {/* Published date */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                <span className="text-2xs text-muted-foreground/60">
                                                                     {formatDate(item.published_at)}
                                                                 </span>
                                                             </div>
                                                             {/* Completion date */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className="text-[10px] text-muted-foreground/60">
+                                                                <span className="text-2xs text-muted-foreground/60">
                                                                     {twStatus === "completed" ? formatDate(tw?.completion_date) : "—"}
                                                                 </span>
                                                             </div>
@@ -822,23 +777,23 @@ export default function DashboardPage() {
                                                                     <>
                                                                         <button
                                                                             onClick={() => handleApproveTeam(docId, item, team)}
-                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                            className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                         >
                                                                             <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                                                                         </button>
                                                                         <button
                                                                             onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
-                                                                            className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                            className="inline-flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                         >
                                                                             <XCircle className="h-2.5 w-2.5" /> Reject
                                                                         </button>
                                                                     </>
                                                                 )}
-                                                                {twStatus === "completed" && <span className="text-[9px] text-emerald-400 italic">Approved</span>}
-                                                                {twStatus === "reworking" && <span className="text-[9px] text-orange-400 italic">Reworking</span>}
-                                                                {(twStatus === "assigned" || twStatus === "in_progress") && <span className="text-[9px] text-muted-foreground/30">—</span>}
-                                                                {twStatus === "team_review" && <span className="text-[9px] text-teal-400 italic">Team Review</span>}
-                                                                {twStatus === "awaiting_justification" && <span className="text-[9px] text-yellow-500 italic">Awaiting Lead</span>}
+                                                                {twStatus === "completed" && <span className="text-3xs text-emerald-400 italic">Approved</span>}
+                                                                {twStatus === "reworking" && <span className="text-3xs text-orange-400 italic">Reworking</span>}
+                                                                {(twStatus === "assigned" || twStatus === "in_progress") && <span className="text-3xs text-muted-foreground/30">—</span>}
+                                                                {twStatus === "team_review" && <span className="text-3xs text-teal-400 italic">Team Review</span>}
+                                                                {twStatus === "awaiting_justification" && <span className="text-3xs text-yellow-500 italic">Awaiting Lead</span>}
                                                             </div>
                                                         </div>
 
@@ -872,13 +827,13 @@ export default function DashboardPage() {
                                                                         }
                                                                     }}
                                                                     disabled={!rejectTeamReason.trim()}
-                                                                    className="text-[9px] px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                                    className="text-3xs px-2 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                                                 >
                                                                     Reject
                                                                 </button>
                                                                 <button
                                                                     onClick={() => { setRejectingTeamInfo(null); setRejectTeamReason("") }}
-                                                                    className="text-[9px] px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                                    className="text-3xs px-1.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
                                                                 >
                                                                     Cancel
                                                                 </button>
@@ -909,11 +864,11 @@ export default function DashboardPage() {
                                                                 <div className="grid grid-cols-2 gap-4">
                                                                     <div className="space-y-3">
                                                                         <div>
-                                                                            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                                                            <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                             <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(tw?.implementation_notes || item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                                                         </div>
                                                                         <div>
-                                                                            <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                                                            <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                                                             <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(tw?.evidence_quote || item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                                                                         </div>
 
@@ -923,7 +878,7 @@ export default function DashboardPage() {
                                                                                 <div className="flex items-center gap-2 mb-2">
                                                                                     <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                                                                     <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
-                                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{tw.evidence_files.length}</span>
+                                                                                    <span className="text-2xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{tw.evidence_files.length}</span>
                                                                                 </div>
                                                                                 <EvidenceFileList
                                                                                     files={tw.evidence_files}
@@ -988,13 +943,13 @@ export default function DashboardPage() {
                                                             }
                                                         }}
                                                         disabled={!rejectReason.trim()}
-                                                        className="text-[10px] px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                        className="text-2xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                                     >
                                                         Confirm Reject
                                                     </button>
                                                     <button
                                                         onClick={() => { setRejectingItem(null); setRejectReason("") }}
-                                                        className="text-[10px] px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                        className="text-2xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
                                                     >
                                                         Cancel
                                                     </button>
@@ -1009,13 +964,13 @@ export default function DashboardPage() {
                                                     <div className="flex items-center gap-1.5 ml-auto shrink-0">
                                                         <button
                                                             onClick={() => handleUnpublish(docId, item)}
-                                                            className="text-[10px] px-2.5 py-1.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 font-medium transition-colors"
+                                                            className="text-2xs px-2.5 py-1.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 font-medium transition-colors"
                                                         >
                                                             Confirm Unpublish
                                                         </button>
                                                         <button
                                                             onClick={() => setUnpublishingItem(null)}
-                                                            className="text-[10px] px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                            className="text-2xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
                                                         >
                                                             Cancel
                                                         </button>
@@ -1034,12 +989,12 @@ export default function DashboardPage() {
                                                         <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
                                                             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                                                             <div className="flex-1">
-                                                                <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Justification — Pending Your Review</p>
+                                                                <p className="text-2xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Justification — Pending Your Review</p>
                                                                 <p className="text-xs text-foreground/80 mb-1">{item.justification}</p>
-                                                                <p className="text-[9px] text-muted-foreground/50 mb-2">Submitted by {item.justification_by}{item.justification_at ? ` on ${formatDate(item.justification_at)}` : ""}</p>
+                                                                <p className="text-3xs text-muted-foreground/50 mb-2">Submitted by {item.justification_by}{item.justification_at ? ` on ${formatDate(item.justification_at)}` : ""}</p>
                                                                 <button
                                                                     onClick={() => handleUpdate(docId, item.id, { justification_status: "reviewed" })}
-                                                                    className="inline-flex items-center gap-1 text-[9px] px-2 py-1 rounded bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-colors font-medium"
+                                                                    className="inline-flex items-center gap-1 text-3xs px-2 py-1 rounded bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-colors font-medium"
                                                                 >
                                                                     <CheckCircle2 className="h-2.5 w-2.5" /> Acknowledge Justification
                                                                 </button>
@@ -1050,9 +1005,9 @@ export default function DashboardPage() {
                                                         <div className="flex items-start gap-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-4 py-3">
                                                             <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
                                                             <div>
-                                                                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Justification — Reviewed</p>
+                                                                <p className="text-2xs font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Justification — Reviewed</p>
                                                                 <p className="text-xs text-foreground/80">{item.justification}</p>
-                                                                <p className="text-[9px] text-muted-foreground/50 mt-1">By {item.justification_by}</p>
+                                                                <p className="text-3xs text-muted-foreground/50 mt-1">By {item.justification_by}</p>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1060,7 +1015,7 @@ export default function DashboardPage() {
                                                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
                                                             <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
                                                             <div>
-                                                                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                                                <p className="text-2xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
                                                                 <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
                                                             </div>
                                                         </div>
@@ -1087,11 +1042,11 @@ export default function DashboardPage() {
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-3">
                                                             <div>
-                                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                                             </div>
                                                             <div>
-                                                                <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
+                                                                <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                                                             </div>
 
@@ -1101,7 +1056,7 @@ export default function DashboardPage() {
                                                                     <div className="flex items-center gap-2 mb-2">
                                                                         <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                                                         <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
-                                                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{item.evidence_files.length}</span>
+                                                                        <span className="text-2xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{item.evidence_files.length}</span>
                                                                     </div>
                                                                     <EvidenceFileList
                                                                         files={item.evidence_files}
@@ -1133,13 +1088,7 @@ export default function DashboardPage() {
                     {/* ── Completed Section ── */}
                     {!loading && completedRows.length > 0 && (
                         <div className="mt-4">
-                            <div className="px-3 py-2 bg-background border-y border-emerald-500/20 cursor-pointer sticky top-0 z-20" onClick={() => setCompletedCollapsed(!completedCollapsed)}>
-                                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-2">
-                                    {completedCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    Completed ({completedRows.length})
-                                </span>
-                            </div>
+                            <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-emerald-500/20" textClass="text-emerald-500" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && completedTeamKeys.map(ws => {
                                 const rows = completedByTeam[ws] || []
@@ -1155,23 +1104,23 @@ export default function DashboardPage() {
                                                     ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/50" />
                                                     : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/50" />}
                                                 <div className={cn("h-3 w-0.5 rounded-full shrink-0", wsColors.header)} />
-                                                <span className="text-[11px] font-medium text-muted-foreground">{ws}</span>
-                                                <span className="text-[9px] text-muted-foreground/40 font-mono">{rows.length}</span>
+                                                <span className="text-xs-plus font-medium text-muted-foreground">{ws}</span>
+                                                <span className="text-3xs text-muted-foreground/40 font-mono">{rows.length}</span>
                                             </button>
                                         </div>
 
                                         {!isCollapsed && (
                                             <div className="grid gap-0 border-b border-border/10 bg-muted/5 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Time</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Evidence</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Completed</div>
+                                                <div className="text-2xs font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
                                             </div>
                                         )}
 
@@ -1188,7 +1137,7 @@ export default function DashboardPage() {
                                                         onClick={() => toggleRow(rowKey)}
                                                     >
                                                         <div className="py-1.5 px-1">
-                                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-medium", getWorkstreamClass(getClassification(item)))}>
+                                                            <span className={cn("px-1.5 py-0.5 rounded text-3xs font-medium", getWorkstreamClass(getClassification(item)))}>
                                                                 {getClassification(item)}
                                                             </span>
                                                         </div>
@@ -1196,28 +1145,28 @@ export default function DashboardPage() {
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate line-through decoration-emerald-500/40">{safeStr(item.action)}</span>
-                                                            {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-[9px] text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
+                                                            {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-3xs text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
-                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
+                                                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
                                                                 {TASK_STATUS_STYLES.completed.label}
                                                             </span>
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-2xs text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-2xs text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
                                                         <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
                                                             <EvidencePopover files={item.evidence_files || []} taskStatus="completed" />
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[9px] text-emerald-400 italic">Approved</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-2xs text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-2xs text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-3xs text-emerald-400 italic">Approved</span></div>
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div className="space-y-3">
                                                                     <div>
-                                                                        <p className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
+                                                                        <p className="text-2xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                         <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                                                     </div>
                                                                 </div>
@@ -1296,7 +1245,7 @@ function DeadlineCell({ value, onSave, disabled = false }: { value: string; onSa
 
     if (disabled) {
         return (
-            <span className={cn("text-[10px]", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
+            <span className={cn("text-2xs", isOverdue ? "text-red-400" : "text-muted-foreground/60")}>
                 {display}
             </span>
         )
@@ -1310,7 +1259,7 @@ function DeadlineCell({ value, onSave, disabled = false }: { value: string; onSa
             >
                 <span
                     className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded border border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-1 group/dl",
+                        "text-2xs px-1.5 py-0.5 rounded border border-dashed hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center gap-1 group/dl",
                         isOverdue ? "text-red-400 border-red-400/30" : "text-muted-foreground/70 border-muted-foreground/20"
                     )}
                 >
@@ -1330,7 +1279,7 @@ function DeadlineCell({ value, onSave, disabled = false }: { value: string; onSa
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 font-medium transition-colors"
+                    className="flex items-center gap-0.5 text-3xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 font-medium transition-colors"
                     title="Save deadline"
                 >
                     {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5" />}

@@ -283,9 +283,9 @@ export function DocumentList() {
         <Table>
             <TableHeader>
                 <TableRow className="border-b border-border hover:bg-transparent">
-                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4" style={{ width: '50%'}}>Name</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[130px] text-right">Date Ingested</TableHead>
+                    <TableHead className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider h-9 pl-4" style={{ width: '50%'}}>Name</TableHead>
+                    <TableHead className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[72px] text-right">Pages</TableHead>
+                    <TableHead className="text-xs-plus font-semibold text-muted-foreground uppercase tracking-wider h-9 w-[130px] text-right">Date Ingested</TableHead>
                     <TableHead className="h-9 w-[480px]"></TableHead>
                 </TableRow>
             </TableHeader>
@@ -305,11 +305,11 @@ export function DocumentList() {
                                 className="flex items-center gap-2 group/link"
                             >
                                 <FileText className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 group-hover/link:text-primary transition-colors" />
-                                <span className="text-[13px] font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
+                                <span className="text-sm-minus font-medium text-foreground group-hover/link:text-primary transition-colors">{doc.name}</span>
                             </Link>
                         </TableCell>
-                        <TableCell className="text-right text-[12px] font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
-                        <TableCell className="text-right text-[12px] text-muted-foreground py-2.5">
+                        <TableCell className="text-right text-xs font-mono text-muted-foreground py-2.5">{doc.pages}</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground py-2.5">
                             {doc.ingested_at ? (
                                 <span className="text-muted-foreground/70">
                                     {(() => { const _d = new Date(doc.ingested_at); return `${String(_d.getDate()).padStart(2, "0")} ${_d.toLocaleDateString("en-US", { month: "short" })} ${_d.getFullYear()}` })()}
@@ -323,7 +323,7 @@ export function DocumentList() {
                                 <div>
                                     <Link
                                         href={`/documents/${doc.id}?tab=chat`}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-[11px] font-medium"
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs-plus font-medium"
                                         title="Chat with document"
                                     >
                                         <MessageSquare className="h-3 w-3" />
@@ -334,7 +334,7 @@ export function DocumentList() {
                                     {doc.description ? (
                                         <button
                                             onClick={() => setExpandedDoc(doc)}
-                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-[11px] font-medium"
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-violet-500/10 text-violet-500 hover:bg-violet-500/20 transition-colors text-xs-plus font-medium"
                                             title="Read full summary"
                                         >
                                             <BookOpen className="h-3 w-3" />
@@ -345,7 +345,7 @@ export function DocumentList() {
                                 <div>
                                     <button
                                         onClick={() => { setRenamingDocId(doc.id); setRenameValue(doc.name) }}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-[11px] font-medium"
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors text-xs-plus font-medium"
                                         title="Rename document"
                                     >
                                         <Pencil className="h-3 w-3" />
@@ -355,7 +355,7 @@ export function DocumentList() {
                                 <div>
                                     {doc.has_actionables ? (
                                         <span
-                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-emerald-500/10 text-emerald-500 text-[11px] font-medium cursor-default"
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-emerald-500/10 text-emerald-500 text-xs-plus font-medium cursor-default"
                                             title="Actionables already extracted"
                                         >
                                             <CheckCircle2 className="h-3 w-3" />
@@ -365,7 +365,7 @@ export function DocumentList() {
                                         <button
                                             onClick={() => setExtractConfirmDocId(doc.id)}
                                             disabled={extractingDocId === doc.id}
-                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                                            className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors text-xs-plus font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                                             title="Extract actionables from document"
                                         >
                                             {extractingDocId === doc.id
@@ -378,7 +378,7 @@ export function DocumentList() {
                                 <div>
                                     <button
                                         onClick={() => setDeletingDocId(doc.id)}
-                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-[11px] font-medium"
+                                        className="inline-flex items-center justify-center gap-1 h-7 w-full rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors text-xs-plus font-medium"
                                         title="Delete document"
                                     >
                                         <Trash2 className="h-3 w-3" />
@@ -475,7 +475,7 @@ export function DocumentList() {
                                     style={{ width: `${overallPct}%` }}
                                 />
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <div className="flex items-center justify-between text-2xs text-muted-foreground">
                                 <span>{overallPct}% complete</span>
                                 {extStage === "extracting" && extTotalBatches > 0 && (
                                     <span>Batch {extCurrentBatch}/{extTotalBatches}</span>
@@ -486,25 +486,25 @@ export function DocumentList() {
                         {/* Stats grid */}
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-[15px] font-semibold font-mono">
+                                <p className="text-sm-plus font-semibold font-mono">
                                     {extCandidates > 0 ? extCandidates : "..."}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">Sections scanned</p>
+                                <p className="text-2xs text-muted-foreground">Sections scanned</p>
                                 {extTotalNodes > 0 && (
-                                    <p className="text-[9px] text-muted-foreground/50">of {extTotalNodes} total</p>
+                                    <p className="text-3xs text-muted-foreground/50">of {extTotalNodes} total</p>
                                 )}
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-[15px] font-semibold font-mono text-amber-500">
+                                <p className="text-sm-plus font-semibold font-mono text-amber-500">
                                     {extCumulative}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">Found so far</p>
+                                <p className="text-2xs text-muted-foreground">Found so far</p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-3 text-center">
-                                <p className="text-[15px] font-semibold font-mono">
+                                <p className="text-sm-plus font-semibold font-mono">
                                     {extStage === "done" ? `${extValidated}/${extFlagged}` : "..."}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">
+                                <p className="text-2xs text-muted-foreground">
                                     {extStage === "done" ? "Valid / Flagged" : "Validation"}
                                 </p>
                             </div>
@@ -517,7 +517,7 @@ export function DocumentList() {
                             </div>
                         )}
 
-                        <p className="text-[10px] text-muted-foreground/50 text-center">
+                        <p className="text-2xs text-muted-foreground/50 text-center">
                             This may take several minutes depending on document size.
                         </p>
                     </div>
@@ -612,9 +612,9 @@ export function DocumentList() {
                                 </h2>
                             </div>
                             <div className="flex items-center gap-3 mt-1.5 pl-6">
-                                <span className="text-[10px] font-mono text-muted-foreground/50">{expandedDoc.id}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.pages} pages</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.nodes} nodes</span>
+                                <span className="text-2xs font-mono text-muted-foreground/50">{expandedDoc.id}</span>
+                                <span className="text-2xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.pages} pages</span>
+                                <span className="text-2xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{expandedDoc.nodes} nodes</span>
                             </div>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setExpandedDoc(null)}>

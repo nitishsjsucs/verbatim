@@ -93,7 +93,7 @@ export default function SignInPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
-                        <label className="text-[11px] font-medium text-muted-foreground block mb-1">Email</label>
+                        <label className="text-xs-plus font-medium text-muted-foreground block mb-1">Email</label>
                         <input
                             type="email"
                             value={email}
@@ -105,7 +105,7 @@ export default function SignInPage() {
                     </div>
 
                     <div>
-                        <label className="text-[11px] font-medium text-muted-foreground block mb-1">Password</label>
+                        <label className="text-xs-plus font-medium text-muted-foreground block mb-1">Password</label>
                         <input
                             type="password"
                             value={password}
@@ -134,7 +134,7 @@ export default function SignInPage() {
                     </button>
                 </form>
 
-                <p className="text-center text-[10px] text-muted-foreground/40 mt-6">
+                <p className="text-center text-2xs text-muted-foreground/40 mt-6">
                     Contact your administrator if you need an account.
                 </p>
             </div>

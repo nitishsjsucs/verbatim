@@ -6,6 +6,7 @@ import {
     Loader2, AlertTriangle, Clock, FileText, Library, History,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { EmptyState } from "@/components/shared/status-components"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
@@ -43,7 +44,7 @@ function StorageBar({ stats }: { stats: StorageStats | null }) {
                     style={{ width: `${Math.min(pct, 100)}%` }}
                 />
             </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
+            <div className="flex items-center justify-between text-2xs text-muted-foreground/60">
                 <span>{pct.toFixed(1)}% used</span>
                 <div className="flex gap-3">
                     {Object.entries(stats.collections).map(([name, col]) => (
@@ -91,11 +92,11 @@ function ConversationCard({
             {/* Body */}
             <Link href={href} className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-[13px] font-medium text-foreground truncate">
+                    <h3 className="text-sm-minus font-medium text-foreground truncate">
                         {conv.title || conv.doc_name || conv.doc_id}
                     </h3>
                     <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+                        "text-2xs px-1.5 py-0.5 rounded font-medium shrink-0",
                         isResearch
                             ? "bg-muted text-foreground"
                             : "bg-muted text-muted-foreground"
@@ -105,7 +106,7 @@ function ConversationCard({
                 </div>
 
                 {conv.last_message_preview && (
-                    <p className="text-[12px] text-muted-foreground truncate mb-1.5">
+                    <p className="text-xs text-muted-foreground truncate mb-1.5">
                         {conv.last_message_preview
                             .replace(/#{1,6}\s+/g, '')
                             .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -118,7 +119,7 @@ function ConversationCard({
                     </p>
                 )}
 
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground/50">
+                <div className="flex items-center gap-3 text-xs-plus text-muted-foreground/50">
                     <span className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
                         {conv.message_count}
@@ -137,7 +138,7 @@ function ConversationCard({
                 <Link
                     href={continueHref}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-[11px] text-primary hover:text-primary/80 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
+                    className="text-xs-plus text-primary hover:text-primary/80 px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 transition-colors font-medium"
                     title="Continue this conversation"
                 >
                     Continue →
@@ -146,13 +147,13 @@ function ConversationCard({
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => { onDelete(conv.conv_id); setConfirmDelete(false) }}
-                            className="text-[11px] text-destructive hover:text-destructive px-2 py-1 rounded bg-destructive/10"
+                            className="text-xs-plus text-destructive hover:text-destructive px-2 py-1 rounded bg-destructive/10"
                         >
                             Delete
                         </button>
                         <button
                             onClick={() => setConfirmDelete(false)}
-                            className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1"
+                            className="text-xs-plus text-muted-foreground hover:text-foreground px-2 py-1"
                         >
                             Cancel
                         </button>
@@ -248,7 +249,7 @@ export default function HistoryPage() {
                             <History className="h-4 w-4 text-primary" />
                             Chat History
                         </h1>
-                        <span className="text-[11px] text-muted-foreground/50 font-medium">
+                        <span className="text-xs-plus text-muted-foreground/50 font-medium">
                             {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
                         </span>
                     </div>
@@ -328,16 +329,12 @@ export default function HistoryPage() {
 
                         {/* Empty state */}
                         {!loading && conversations.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
-                                <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mb-6">
-                                    <MessageSquare className="h-8 w-8 text-foreground" />
-                                </div>
-                                <h3 className="font-semibold mb-2">No conversations yet</h3>
-                                <p className="text-sm text-balance max-w-md">
-                                    Start chatting with a document or use the Research page. Your conversations
-                                    will appear here automatically.
-                                </p>
-                            </div>
+                            <EmptyState
+                                icon={<MessageSquare className="h-8 w-8 text-foreground" />}
+                                title="No conversations yet"
+                                description="Start chatting with a document or use the Research page. Your conversations will appear here automatically."
+                                className="py-20 opacity-40"
+                            />
                         )}
 
                         {/* Conversation list */}

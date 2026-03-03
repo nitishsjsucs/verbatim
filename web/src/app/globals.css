@@ -5,6 +5,20 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* ── Micro-typography tokens ─────────────────────────────────────── */
+  --font-size-4xs: 8px;
+  --font-size-4xs--line-height: 1.25;
+  --font-size-3xs: 9px;
+  --font-size-3xs--line-height: 1.35;
+  --font-size-2xs: 10px;
+  --font-size-2xs--line-height: 1.4;
+  --font-size-xs-plus: 11px;
+  --font-size-xs-plus--line-height: 1.45;
+  --font-size-sm-minus: 13px;
+  --font-size-sm-minus--line-height: 1.5;
+  --font-size-sm-plus: 15px;
+  --font-size-sm-plus--line-height: 1.45;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);

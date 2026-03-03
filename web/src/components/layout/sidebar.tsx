@@ -203,7 +203,7 @@ export function Sidebar({ className }: SidebarProps) {
               
               <NavItem
                 href="/chat"
-                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-4xs font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
                 iconClassName="text-blue-500"
                 label="Chat"
                 active={pathname === "/chat"}
@@ -244,7 +244,7 @@ export function Sidebar({ className }: SidebarProps) {
               />
               <NavItem
                 href="/chat"
-                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-4xs font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
                 iconClassName="text-blue-500"
                 label="Chat"
                 active={pathname === "/chat"}
@@ -276,7 +276,7 @@ export function Sidebar({ className }: SidebarProps) {
               />
               <NavItem
                 href="/chat"
-                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-4xs font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
                 iconClassName="text-blue-500"
                 label="Chat"
                 active={pathname === "/chat"}
@@ -308,7 +308,7 @@ export function Sidebar({ className }: SidebarProps) {
               />
               <NavItem
                 href="/chat"
-                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[8px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-4xs font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
                 iconClassName="text-blue-500"
                 label="Chat"
                 active={pathname === "/chat"}
@@ -323,8 +323,8 @@ export function Sidebar({ className }: SidebarProps) {
       <div className={cn("px-2 py-1 mt-auto", collapsed && "px-1")}>
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5">
-            <p className="text-[11px] font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-[9px] text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
+            <p className="text-xs-plus font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
+            <p className="text-3xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
@@ -335,7 +335,7 @@ export function Sidebar({ className }: SidebarProps) {
             title={collapsed ? "Settings" : undefined}
           >
             <Settings className="h-4 w-4 text-sidebar-foreground/50" />
-            {!collapsed && <span className="text-[13px] text-sidebar-foreground/60">Settings</span>}
+            {!collapsed && <span className="text-sm-minus text-sidebar-foreground/60">Settings</span>}
           </button>
           <ThemeToggle />
         </div>
@@ -350,7 +350,7 @@ export function Sidebar({ className }: SidebarProps) {
             title={collapsed ? "Sign Out" : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0 text-red-500" />
-            {!collapsed && <span className="ml-2 truncate text-[13px] text-red-500">Sign Out</span>}
+            {!collapsed && <span className="ml-2 truncate text-sm-minus text-red-500">Sign Out</span>}
           </button>
         )}
       </div>
@@ -390,7 +390,7 @@ const NavItem = React.forwardRef<HTMLButtonElement, NavItemProps>(
         {!collapsed && (
           <span
             className={cn(
-              "ml-2 truncate text-[13px] transition-colors",
+              "ml-2 truncate text-sm-minus transition-colors",
               active
                 ? "text-sidebar-foreground"
                 : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"

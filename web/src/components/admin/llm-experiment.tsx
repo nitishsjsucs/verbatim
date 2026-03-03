@@ -353,7 +353,7 @@ export function LLMExperiment({
             {status === "running" && (
               <button
                 onClick={stopExperiment}
-                className="flex items-center gap-1.5 h-7 px-3 rounded-md text-[12px] font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+                className="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
               >
                 <XCircle className="h-3 w-3" /> Stop
               </button>
@@ -362,7 +362,7 @@ export function LLMExperiment({
               onClick={runExperiment}
               disabled={status === "running"}
               className={cn(
-                "flex items-center gap-1.5 h-8 px-4 rounded-md text-[13px] font-medium transition-colors",
+                "flex items-center gap-1.5 h-8 px-4 rounded-md text-sm-minus font-medium transition-colors",
                 status === "running"
                   ? "bg-muted text-muted-foreground cursor-wait"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -375,7 +375,7 @@ export function LLMExperiment({
         </div>
 
         {/* Info line */}
-        <p className="text-[11px] text-muted-foreground mb-3">
+        <p className="text-xs-plus text-muted-foreground mb-3">
           Tests {models.length} models × {questions.length} questions × {STAGES.length} stages = <strong>{models.length * questions.length * STAGES.length}</strong> LLM calls.
           Each HTTP request runs 1 model × 1 question (6 stages). Total: <strong>{total}</strong> requests.
         </p>
@@ -383,10 +383,10 @@ export function LLMExperiment({
         {/* Model chips */}
         <div className="flex flex-wrap gap-1.5 mb-3">
           {benchmarkModels.map(m => (
-            <div key={m.id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border border-border bg-card">
+            <div key={m.id} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs-plus font-medium border border-border bg-card">
               <div className={cn("w-2 h-2 rounded-full", MODEL_COLORS[m.id] || "bg-gray-400")} />
               {m.label}
-              <span className="text-[9px] text-muted-foreground">
+              <span className="text-3xs text-muted-foreground">
                 ${pricing[m.id]?.input ?? "?"}/{pricing[m.id]?.output ?? "?"}
               </span>
             </div>
@@ -402,7 +402,7 @@ export function LLMExperiment({
         {/* Progress bar */}
         {(status === "running" || status === "done") && (
           <div>
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+            <div className="flex items-center justify-between text-xs-plus text-muted-foreground mb-1">
               <span>{progress}/{totalCalls} requests complete</span>
               <span>{Math.floor(elapsed / 1000)}s elapsed</span>
             </div>
@@ -428,12 +428,12 @@ export function LLMExperiment({
             </h3>
           </div>
           <div className="overflow-x-auto p-3">
-            <table className="w-full text-[11px]">
+            <table className="w-full text-xs-plus">
               <thead>
                 <tr>
-                  <th className="text-left px-2 py-1 text-[10px] font-medium text-muted-foreground">Model</th>
+                  <th className="text-left px-2 py-1 text-2xs font-medium text-muted-foreground">Model</th>
                   {questions.map(q => (
-                    <th key={q.id} className="text-center px-1 py-1 text-[9px] font-medium text-muted-foreground" title={q.query}>
+                    <th key={q.id} className="text-center px-1 py-1 text-3xs font-medium text-muted-foreground" title={q.query}>
                       {q.id.replace(/^(kyc|alm|combined)\d+_/, "").slice(0, 8)}
                     </th>
                   ))}
@@ -442,7 +442,7 @@ export function LLMExperiment({
               <tbody>
                 {models.map(model => (
                   <tr key={model}>
-                    <td className="px-2 py-1 font-mono text-[11px] text-foreground whitespace-nowrap">{model}</td>
+                    <td className="px-2 py-1 font-mono text-xs-plus text-foreground whitespace-nowrap">{model}</td>
                     {questions.map(q => {
                       const cs = cellStatus[`${model}|${q.id}`] || "pending"
                       return (
@@ -471,7 +471,7 @@ export function LLMExperiment({
             </h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
+            <table className="w-full text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-border">
                   <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Stage</th>
@@ -499,7 +499,7 @@ export function LLMExperiment({
                     <tr key={stage} className="border-b border-border/30 hover:bg-muted/20">
                       <td className="px-3 py-2 text-foreground font-medium">
                         {STAGE_LABELS[stage] || stage}
-                        <span className="ml-1 text-[9px] text-muted-foreground">
+                        <span className="ml-1 text-3xs text-muted-foreground">
                           (baseline: {BASELINE_MAP[stage]})
                         </span>
                       </td>
@@ -519,11 +519,11 @@ export function LLMExperiment({
                               )}>
                                 {a.quality !== null ? fmt(a.quality, 0) : "—"}
                               </span>
-                              <span className="text-[10px] text-muted-foreground">{fmtMs(a.latency)}</span>
-                              <span className="text-[9px] text-muted-foreground">{fmtCost(a.cost)}</span>
+                              <span className="text-2xs text-muted-foreground">{fmtMs(a.latency)}</span>
+                              <span className="text-3xs text-muted-foreground">{fmtCost(a.cost)}</span>
                               <div className="flex items-center gap-0.5">
                                 {isBest && <Trophy className="h-3 w-3 text-amber-500" />}
-                                {isBaseline && <span className="text-[8px] bg-blue-500/10 text-blue-500 rounded px-1">BASE</span>}
+                                {isBaseline && <span className="text-4xs bg-blue-500/10 text-blue-500 rounded px-1">BASE</span>}
                               </div>
                             </div>
                           </td>
@@ -549,20 +549,20 @@ export function LLMExperiment({
             <div className="grid grid-cols-3 gap-4 mb-3">
               <div className="text-center">
                 <p className="text-lg font-bold text-foreground">{fmt(baseline.avgQuality)}</p>
-                <p className="text-[10px] text-muted-foreground">Avg Quality</p>
+                <p className="text-2xs text-muted-foreground">Avg Quality</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-foreground">{fmtCost(baseline.totalCost)}</p>
-                <p className="text-[10px] text-muted-foreground">Cost/Question</p>
+                <p className="text-2xs text-muted-foreground">Cost/Question</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-foreground">{fmtMs(baseline.totalLatency)}</p>
-                <p className="text-[10px] text-muted-foreground">Latency/Question</p>
+                <p className="text-2xs text-muted-foreground">Latency/Question</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {STAGES.map(s => (
-                <span key={s} className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full px-2 py-0.5">
+                <span key={s} className="text-2xs bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full px-2 py-0.5">
                   {STAGE_LABELS[s]}: <strong>{BASELINE_MAP[s]}</strong>
                 </span>
               ))}
@@ -587,25 +587,25 @@ export function LLMExperiment({
                   <div className="flex items-center gap-1.5 mb-3">
                     {icon}
                     <h4 className="text-xs font-semibold text-foreground uppercase">{label}</h4>
-                    <span className="ml-auto text-[10px] font-mono text-muted-foreground">score: {combo.score}</span>
+                    <span className="ml-auto text-2xs font-mono text-muted-foreground">score: {combo.score}</span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     <div className="text-center">
                       <p className="text-sm font-bold text-foreground">{fmt(combo.avgQuality)}</p>
-                      <p className={cn("text-[10px] font-semibold", qDiff >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      <p className={cn("text-2xs font-semibold", qDiff >= 0 ? "text-emerald-500" : "text-red-500")}>
                         {qDiff >= 0 ? "+" : ""}{fmt(qDiff)}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-foreground">{fmtCost(combo.totalCost)}</p>
-                      <p className={cn("text-[10px] font-semibold", costSave >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      <p className={cn("text-2xs font-semibold", costSave >= 0 ? "text-emerald-500" : "text-red-500")}>
                         {costSave >= 0 ? "-" : "+"}{Math.abs(costSave).toFixed(0)}%
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-foreground">{fmtMs(combo.totalLatency)}</p>
-                      <p className={cn("text-[10px] font-semibold", latSave >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      <p className={cn("text-2xs font-semibold", latSave >= 0 ? "text-emerald-500" : "text-red-500")}>
                         {latSave >= 0 ? "-" : "+"}{Math.abs(latSave).toFixed(0)}%
                       </p>
                     </div>
@@ -617,7 +617,7 @@ export function LLMExperiment({
                       const changed = model !== BASELINE_MAP[s]
                       return (
                         <span key={s} className={cn(
-                          "text-[9px] rounded-full px-2 py-0.5 border",
+                          "text-3xs rounded-full px-2 py-0.5 border",
                           changed ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold" : "bg-muted border-border text-muted-foreground"
                         )}>
                           {STAGE_LABELS[s]}: {model}
@@ -643,16 +643,16 @@ export function LLMExperiment({
             </button>
             {showCombos && (
               <div className="overflow-x-auto border-t border-border">
-                <table className="w-full text-[11px]">
+                <table className="w-full text-xs-plus">
                   <thead className="bg-muted/30">
                     <tr className="border-b border-border">
-                      <th className="text-center px-2 py-1.5 text-[10px] font-medium text-muted-foreground">#</th>
-                      <th className="text-center px-2 py-1.5 text-[10px] font-medium text-muted-foreground">Score</th>
-                      <th className="text-center px-2 py-1.5 text-[10px] font-medium text-muted-foreground">Quality</th>
-                      <th className="text-center px-2 py-1.5 text-[10px] font-medium text-muted-foreground">Cost/Q</th>
-                      <th className="text-center px-2 py-1.5 text-[10px] font-medium text-muted-foreground">Latency</th>
+                      <th className="text-center px-2 py-1.5 text-2xs font-medium text-muted-foreground">#</th>
+                      <th className="text-center px-2 py-1.5 text-2xs font-medium text-muted-foreground">Score</th>
+                      <th className="text-center px-2 py-1.5 text-2xs font-medium text-muted-foreground">Quality</th>
+                      <th className="text-center px-2 py-1.5 text-2xs font-medium text-muted-foreground">Cost/Q</th>
+                      <th className="text-center px-2 py-1.5 text-2xs font-medium text-muted-foreground">Latency</th>
                       {STAGES.map(s => (
-                        <th key={s} className="text-center px-2 py-1.5 text-[10px] font-medium text-muted-foreground">{STAGE_LABELS[s]}</th>
+                        <th key={s} className="text-center px-2 py-1.5 text-2xs font-medium text-muted-foreground">{STAGE_LABELS[s]}</th>
                       ))}
                     </tr>
                   </thead>
@@ -696,16 +696,16 @@ export function LLMExperiment({
           </button>
           {showDetails && (
             <div className="overflow-x-auto max-h-[400px] overflow-y-auto border-t border-border">
-              <table className="w-full text-[11px]">
+              <table className="w-full text-xs-plus">
                 <thead className="sticky top-0 bg-card">
                   <tr className="border-b border-border">
-                    <th className="text-left px-2 py-1 text-[10px] font-medium text-muted-foreground">Stage</th>
-                    <th className="text-left px-2 py-1 text-[10px] font-medium text-muted-foreground">Model</th>
-                    <th className="text-left px-2 py-1 text-[10px] font-medium text-muted-foreground">Question</th>
-                    <th className="text-right px-2 py-1 text-[10px] font-medium text-muted-foreground">Quality</th>
-                    <th className="text-right px-2 py-1 text-[10px] font-medium text-muted-foreground">Latency</th>
-                    <th className="text-right px-2 py-1 text-[10px] font-medium text-muted-foreground">Cost</th>
-                    <th className="text-center px-2 py-1 text-[10px] font-medium text-muted-foreground">OK</th>
+                    <th className="text-left px-2 py-1 text-2xs font-medium text-muted-foreground">Stage</th>
+                    <th className="text-left px-2 py-1 text-2xs font-medium text-muted-foreground">Model</th>
+                    <th className="text-left px-2 py-1 text-2xs font-medium text-muted-foreground">Question</th>
+                    <th className="text-right px-2 py-1 text-2xs font-medium text-muted-foreground">Quality</th>
+                    <th className="text-right px-2 py-1 text-2xs font-medium text-muted-foreground">Latency</th>
+                    <th className="text-right px-2 py-1 text-2xs font-medium text-muted-foreground">Cost</th>
+                    <th className="text-center px-2 py-1 text-2xs font-medium text-muted-foreground">OK</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -199,7 +199,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 Optimized (New)
                             </button>
                         </div>
-                        <p className="text-[10px] text-muted-foreground/60">
+                        <p className="text-2xs text-muted-foreground/60">
                             {retrievalMode === "optimized"
                                 ? "Using optimized pipeline: embedding pre-filter, caching, tuned thresholds"
                                 : "Using legacy pipeline: full tree index sent to LLM every query"}
@@ -207,7 +207,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
                         {retrievalMode === "optimized" && (
                             <div className="space-y-1.5 pt-1">
-                                <p className="text-[10px] font-medium text-muted-foreground/80 uppercase tracking-wider">Sub-Features</p>
+                                <p className="text-2xs font-medium text-muted-foreground/80 uppercase tracking-wider">Sub-Features</p>
                                 {FEATURE_LABELS.map(({ key, label, description }) => (
                                     <label
                                         key={key}
@@ -277,7 +277,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                             className="w-full bg-muted/30 text-sm rounded-md px-3 py-2 border border-border focus:border-primary focus:outline-none text-foreground"
                             placeholder="Confirm new password"
                         />
-                        <p className="text-[10px] text-muted-foreground/50">Min 8 characters, 1 uppercase, 1 number</p>
+                        <p className="text-2xs text-muted-foreground/50">Min 8 characters, 1 uppercase, 1 number</p>
                         <Button
                             size="sm"
                             onClick={handleChangePassword}

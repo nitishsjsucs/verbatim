@@ -219,7 +219,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
                         />
                     </div>
                     <div className="flex-1" />
-                    <div className="text-[11px] text-muted-foreground/40 font-medium truncate" title={doc.doc_name}>
+                    <div className="text-xs-plus text-muted-foreground/40 font-medium truncate" title={doc.doc_name}>
                         {doc.doc_name} &middot; {doc.total_pages}p
                     </div>
                 </div>
@@ -328,7 +328,7 @@ function TabButton({ active, onClick, icon, label }: {
         <button
             onClick={onClick}
             className={cn(
-                "relative flex items-center gap-1.5 px-3 h-full text-[13px] font-medium transition-colors border-b-2",
+                "relative flex items-center gap-1.5 px-3 h-full text-sm-minus font-medium transition-colors border-b-2",
                 active
                     ? "text-foreground border-primary"
                     : "text-muted-foreground border-transparent hover:text-foreground hover:border-border"

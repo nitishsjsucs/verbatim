@@ -34,7 +34,7 @@ import { ROLE_BADGE } from "@/lib/status-config"
 function roleTag(role: string) {
     const t = ROLE_BADGE[role] || { label: role, className: "bg-muted text-muted-foreground" }
     return (
-        <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider", t.className)}>
+        <span className={cn("px-1.5 py-0.5 rounded text-3xs font-semibold uppercase tracking-wider", t.className)}>
             {t.label}
         </span>
     )
@@ -211,7 +211,7 @@ function ChatContent() {
                                 {/* Compliance Internal */}
                                 {complianceInternalChannels.length > 0 && (
                                     <div className="mb-3">
-                                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Internal</p>
+                                        <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Internal</p>
                                         {complianceInternalChannels.map(ch => (
                                             <ChannelButton
                                                 key={ch.channel}
@@ -226,7 +226,7 @@ function ChatContent() {
                                 {/* Team conversations */}
                                 {teamComplianceChannels.length > 0 && (
                                     <div>
-                                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Team Conversations</p>
+                                        <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">Team Conversations</p>
                                         {teamComplianceChannels.map(ch => (
                                             <ChannelButton
                                                 key={ch.channel}
@@ -277,7 +277,7 @@ function ChatContent() {
                                 <span className="text-sm font-semibold text-foreground truncate">
                                     {activeChannelData.label}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground/40 ml-1">
+                                <span className="text-2xs text-muted-foreground/40 ml-1">
                                     {activeChannelData.type === "compliance_internal"
                                         ? "Compliance officers only"
                                         : activeChannelData.type === "team_internal"
@@ -302,7 +302,7 @@ function ChatContent() {
                             <div className="flex flex-col items-center justify-center py-16 text-center">
                                 <MessageSquare className="h-8 w-8 text-muted-foreground/20 mb-3" />
                                 <p className="text-sm text-muted-foreground/50">No messages yet</p>
-                                <p className="text-[11px] text-muted-foreground/30 mt-1">Start the conversation</p>
+                                <p className="text-xs-plus text-muted-foreground/30 mt-1">Start the conversation</p>
                             </div>
                         )}
 
@@ -319,7 +319,7 @@ function ChatContent() {
                                 <div key={msg.id} className={cn("flex gap-2.5", isMe && "flex-row-reverse")}>
                                     {/* Avatar */}
                                     <div className={cn(
-                                        "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                                        "h-7 w-7 rounded-full flex items-center justify-center text-2xs font-bold shrink-0",
                                         isMe ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
                                     )}>
                                         {(msg.author || "?")[0].toUpperCase()}
@@ -328,13 +328,13 @@ function ChatContent() {
                                     {/* Bubble */}
                                     <div className={cn("max-w-[65%] min-w-[120px]", isMe ? "items-end" : "items-start")}>
                                         <div className="flex items-center gap-1.5 mb-0.5" style={{ flexDirection: isMe ? "row-reverse" : "row" }}>
-                                            <span className="text-[11px] font-semibold text-foreground/80 truncate max-w-[140px]">
+                                            <span className="text-xs-plus font-semibold text-foreground/80 truncate max-w-[140px]">
                                                 {isMe ? "You" : msg.author}
                                             </span>
                                             {roleTag(msg.role)}
                                         </div>
                                         <div className={cn(
-                                            "rounded-lg px-3 py-2 text-[12px] leading-relaxed",
+                                            "rounded-lg px-3 py-2 text-xs leading-relaxed",
                                             isMe
                                                 ? "bg-primary/10 text-foreground border border-primary/20"
                                                 : "bg-muted/30 text-foreground border border-border/30"
@@ -342,7 +342,7 @@ function ChatContent() {
                                             {msg.text}
                                         </div>
                                         <p className={cn(
-                                            "text-[9px] text-muted-foreground/30 mt-0.5",
+                                            "text-3xs text-muted-foreground/30 mt-0.5",
                                             isMe ? "text-right" : "text-left"
                                         )}>
                                             {formatMsgTime(msg.timestamp)}
@@ -435,7 +435,7 @@ function ChannelButton({ channel, active, onClick, canRename, onRename }: {
                         if (e.key === 'Enter') handleRename()
                         if (e.key === 'Escape') handleCancel()
                     }}
-                    className="flex-1 bg-transparent border-none outline-none text-[12px] font-medium text-foreground"
+                    className="flex-1 bg-transparent border-none outline-none text-xs font-medium text-foreground"
                     onClick={(e) => e.stopPropagation()}
                 />
                 <button
@@ -468,7 +468,7 @@ function ChannelButton({ channel, active, onClick, canRename, onRename }: {
         >
             <ChannelIcon type={channel.type} />
             <span className={cn(
-                "text-[12px] font-medium truncate flex-1",
+                "text-xs font-medium truncate flex-1",
                 active ? "text-foreground" : "text-foreground/70 group-hover:text-foreground"
             )}>
                 {channel.label}
@@ -486,7 +486,7 @@ function ChannelButton({ channel, active, onClick, canRename, onRename }: {
                 </button>
             )}
             {channel.unread > 0 && (
-                <span className="bg-primary text-primary-foreground text-[9px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
+                <span className="bg-primary text-primary-foreground text-3xs font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
                     {channel.unread}
                 </span>
             )}
