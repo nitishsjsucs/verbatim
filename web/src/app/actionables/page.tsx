@@ -366,7 +366,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             className={cn(
                 "border rounded-lg overflow-hidden transition-all",
                 isSelected ? "border-primary/30 ring-1 ring-primary/10" : "border-border/30",
-                item.approval_status === "approved" && "border-emerald-500/20",
                 item.approval_status === "rejected" && "border-red-500/20 opacity-60",
             )}
         >
