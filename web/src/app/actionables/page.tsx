@@ -412,14 +412,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <Undo2 className="h-3.5 w-3.5" />
                         </button>
                     )}
-                    <span className={cn(
-                        "text-xs px-1.5 py-0.5 rounded font-medium ml-1",
-                        item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
-                        item.approval_status === "rejected" ? "text-red-400 bg-red-400/10" :
-                        "text-yellow-400 bg-yellow-400/10"
-                    )}>
-                        {item.approval_status === "approved" ? "Approved" : item.approval_status === "rejected" ? "Rejected" : "Pending"}
-                    </span>
+                    {(item.approval_status === "approved" || item.approval_status === "rejected") && (
+                        <span className={cn(
+                            "text-xs px-1.5 py-0.5 rounded font-medium ml-1",
+                            item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
+                            "text-red-400 bg-red-400/10"
+                        )}>
+                            {item.approval_status === "approved" ? "Approved" : "Rejected"}
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -611,7 +612,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
 
                                         return (
-                                            <div key={team} className={cn("rounded-lg p-3 space-y-2 border-2", teamColors.text.replace('text-', 'border-'))}>
+                                            <div key={team} className={cn("rounded-lg p-3 space-y-2 border", teamColors.text.replace('text-', 'border-'), teamColors.bg.replace('bg-', 'bg-') + '/5')}>
                                                 <div className="flex items-center gap-2">
                                                     <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", teamColors.bg, teamColors.text)}>
                                                         {team}
@@ -632,8 +633,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                         style={{ minHeight: '48px' }}
                                                     />
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                                <div className={cn("rounded-lg p-2.5 border", teamColors.text.replace('text-', 'border-'), teamColors.bg.replace('bg-', 'bg-') + '/10')}>
+                                                    <p className="text-xs font-medium text-muted-foreground/60 mb-2 flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
                                                         Deadline
                                                     </p>
@@ -643,22 +644,22 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             value={draft.date}
                                                             min={new Date().toISOString().split("T")[0]}
                                                             onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, date: e.target.value } }))}
-                                                            className="flex-1 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                            className="flex-1 bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                         <input
                                                             type="time"
                                                             value={draft.time}
                                                             onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, time: e.target.value } }))}
-                                                            className="w-20 bg-muted/40 text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                                            className="w-20 bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                                                         />
                                                     </div>
                                                     {draft.date && (
-                                                        <p className="text-xs text-muted-foreground/50 mt-1">
+                                                        <p className="text-xs text-muted-foreground/50 mt-1.5">
                                                             {formatDateDMY(draft.date)}
                                                         </p>
                                                     )}
                                                     {!draft.date && globalDeadline && (
-                                                        <p className="text-xs text-muted-foreground/40 mt-1">
+                                                        <p className="text-xs text-muted-foreground/40 mt-1.5">
                                                             Will use global deadline ({formatDateDMY(globalDeadline)}) on approve
                                                         </p>
                                                     )}
@@ -1209,7 +1210,6 @@ export default function ActionablesPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">{stats.total} total</span>
                             <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
                             <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} in tracker</span>
                         </div>
