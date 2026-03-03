@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
-import { fetchConversation, fetchDocuments } from "@/lib/api"
+import { fetchConversation, fetchDocuments, API_BASE_URL } from "@/lib/api"
 import { Conversation, ConversationMessage } from "@/lib/types"
 import Link from "next/link"
 import { Markdown } from "@/components/ui/markdown"
@@ -259,7 +259,6 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
 
     const isResearch = conv?.type === "research"
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
 
     // For document conversations, use the conversation's doc_id.
     // For research conversations, dynamically load based on citation doc_id.
@@ -347,7 +346,7 @@ export default function ConversationDetailPage({ params }: { params: Promise<{ c
     }, [isResearch, conv, pdfDocId, docNameMap])
 
     const pdfUrl = pdfDocId
-        ? `${API_BASE}/documents/${pdfDocId}/raw`
+        ? `${API_BASE_URL}/documents/${pdfDocId}/raw`
         : null
 
     const handleCitationClick = React.useCallback((docId: string | undefined, pageNumber: number, docName?: string) => {

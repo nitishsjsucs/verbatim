@@ -6,7 +6,7 @@ import { ResearchChat } from "@/components/views/research-chat"
 import { CorpusPanel } from "@/components/views/corpus-panel"
 import dynamic from "next/dynamic"
 import { Loader2, X, FileText } from "lucide-react"
-import { fetchDocuments } from "@/lib/api"
+import { fetchDocuments, API_BASE_URL } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { RoleRedirect } from "@/components/auth/role-redirect"
@@ -176,7 +176,7 @@ function ResearchPageContent() {
                                 {/* PDF Viewer */}
                                 <div className="flex-1 min-h-0 overflow-hidden">
                                     <PdfViewer
-                                        fileUrl={`${process.env.NEXT_PUBLIC_API_URL || '/api/backend'}/documents/${pdfDocId}/raw`}
+                                        fileUrl={`${API_BASE_URL}/documents/${pdfDocId}/raw`}
                                         jumpToPage={pdfJumpPage}
                                         jumpKey={pdfJumpKey}
                                     />

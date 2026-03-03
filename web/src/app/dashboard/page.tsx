@@ -3,13 +3,7 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import {
-    fetchAllActionables,
-    updateActionable,
-} from "@/lib/api"
-import {
     ActionableItem,
-    ActionablesResult,
-    ActionableWorkstream,
     TaskStatus,
     ActionableComment,
     isMultiTeam,
@@ -35,7 +29,8 @@ import {
     TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
-import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
+import { useActionables } from "@/lib/use-actionables"
+import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList } from "@/components/shared/status-components"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,8 +45,11 @@ interface FlatRow {
 export default function DashboardPage() {
     const { teamNames } = useTeams()
     const { data: session } = useSession()
-    const [allDocs, setAllDocs] = React.useState<{ doc_id: string; doc_name: string; actionables: ActionableItem[] }[]>([])
-    const [loading, setLoading] = React.useState(true)
+    const userName = session?.user?.name || "Compliance Officer"
+    const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
+        commentRole: "compliance_officer",
+        commentAuthor: userName,
+    })
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
     const [riskFilter, setRiskFilter] = React.useState<string>("all")
@@ -70,53 +68,6 @@ export default function DashboardPage() {
             return next
         })
     }, [])
-
-    const userName = session?.user?.name || "Compliance Officer"
-
-    const loadAll = React.useCallback(async () => {
-        try {
-            setLoading(true)
-            const results = await fetchAllActionables()
-            const docs = results
-                .filter((r: ActionablesResult) => r.actionables && r.actionables.length > 0)
-                .map((r: ActionablesResult) => ({
-                    doc_id: r.doc_id,
-                    doc_name: r.doc_name || r.doc_id,
-                    actionables: r.actionables,
-                }))
-            setAllDocs(docs)
-        } catch {
-            toast.error("Failed to load actionables")
-        } finally {
-            setLoading(false)
-        }
-    }, [])
-
-    React.useEffect(() => { loadAll() }, [loadAll])
-
-    const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>, forTeam?: string) => {
-        try {
-            const updated = await updateActionable(docId, itemId, updates, forTeam)
-            setAllDocs(prev => prev.map(d => {
-                if (d.doc_id !== docId) return d
-                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
-            }))
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Update failed")
-        }
-    }, [])
-
-    const handleAddComment = React.useCallback(async (docId: string, item: ActionableItem, text: string) => {
-        const newComment: ActionableComment = {
-            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            author: userName,
-            role: "compliance_officer",
-            text,
-            timestamp: new Date().toISOString(),
-        }
-        const existing = item.comments || []
-        await handleUpdate(docId, item.id, { comments: [...existing, newComment] })
-    }, [userName, handleUpdate])
 
     const [rejectingItem, setRejectingItem] = React.useState<{ docId: string; item: ActionableItem } | null>(null)
     const [rejectReason, setRejectReason] = React.useState("")
@@ -974,48 +925,11 @@ export default function DashboardPage() {
                                                                                     <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
                                                                                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{tw.evidence_files.length}</span>
                                                                                 </div>
-                                                                                <div className="space-y-1.5">
-                                                                                    {tw.evidence_files.map((file, idx) => {
-                                                                                        const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-                                                                                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
-                                                                                        return (
-                                                                                            <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
-                                                                                                <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                                                                                                    <FileText className="h-3.5 w-3.5 text-primary/70" />
-                                                                                                </div>
-                                                                                                <div className="flex-1 min-w-0">
-                                                                                                    <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                                                                                    <p className="text-[9px] text-muted-foreground/40">
-                                                                                                        Uploaded {formatDate(file.uploaded_at)}
-                                                                                                    </p>
-                                                                                                </div>
-                                                                                                <div className="flex items-center gap-1 shrink-0">
-                                                                                                    {fileUrl && (
-                                                                                                        <>
-                                                                                                            <a
-                                                                                                                href={fileUrl}
-                                                                                                                target="_blank"
-                                                                                                                rel="noopener noreferrer"
-                                                                                                                className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                                                                title="Open in new tab"
-                                                                                                            >
-                                                                                                                <ExternalLink className="h-3 w-3" />
-                                                                                                            </a>
-                                                                                                            <a
-                                                                                                                href={fileUrl}
-                                                                                                                download={file.name}
-                                                                                                                className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                                                                title="Download"
-                                                                                                            >
-                                                                                                                <Download className="h-3 w-3" />
-                                                                                                            </a>
-                                                                                                        </>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        )
-                                                                                    })}
-                                                                                </div>
+                                                                                <EvidenceFileList
+                                                                                    files={tw.evidence_files}
+                                                                                    formatDate={formatDate}
+                                                                                    readOnly
+                                                                                />
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -1189,48 +1103,11 @@ export default function DashboardPage() {
                                                                         <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
                                                                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{item.evidence_files.length}</span>
                                                                     </div>
-                                                                    <div className="space-y-1.5">
-                                                                        {item.evidence_files.map((file, idx) => {
-                                                                            const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-                                                                            const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
-                                                                            return (
-                                                                                <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
-                                                                                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                                                                                        <FileText className="h-3.5 w-3.5 text-primary/70" />
-                                                                                    </div>
-                                                                                    <div className="flex-1 min-w-0">
-                                                                                        <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                                                                        <p className="text-[9px] text-muted-foreground/40">
-                                                                                            Uploaded {formatDate(file.uploaded_at)}
-                                                                                        </p>
-                                                                                    </div>
-                                                                                    <div className="flex items-center gap-1 shrink-0">
-                                                                                        {fileUrl && (
-                                                                                            <>
-                                                                                                <a
-                                                                                                    href={fileUrl}
-                                                                                                    target="_blank"
-                                                                                                    rel="noopener noreferrer"
-                                                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                                                    title="Open in new tab"
-                                                                                                >
-                                                                                                    <ExternalLink className="h-3 w-3" />
-                                                                                                </a>
-                                                                                                <a
-                                                                                                    href={fileUrl}
-                                                                                                    download={file.name}
-                                                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                                                    title="Download"
-                                                                                                >
-                                                                                                    <Download className="h-3 w-3" />
-                                                                                                </a>
-                                                                                            </>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                            )
-                                                                        })}
-                                                                    </div>
+                                                                    <EvidenceFileList
+                                                                        files={item.evidence_files}
+                                                                        formatDate={formatDate}
+                                                                        readOnly
+                                                                    />
                                                                 </div>
                                                             )}
                                                         </div>

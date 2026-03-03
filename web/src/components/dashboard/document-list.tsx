@@ -15,10 +15,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { fetchDocuments, extractActionablesStreaming, ExtractionProgressEvent } from "@/lib/api"
+import { fetchDocuments, extractActionablesStreaming, ExtractionProgressEvent, API_BASE_URL } from "@/lib/api"
 import { DocumentMeta } from "@/lib/types"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
 
 export function DocumentList() {
     const [documents, setDocuments] = useState<DocumentMeta[]>([])

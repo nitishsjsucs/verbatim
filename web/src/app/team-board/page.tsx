@@ -28,7 +28,7 @@ import {
     RISK_STYLES, RISK_OPTIONS, TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
     WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
-import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
+import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList } from "@/components/shared/status-components"
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
@@ -311,57 +311,12 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="space-y-1.5">
-                                        {files.map((file, idx) => {
-                                            const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-                                            const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
-                                            return (
-                                                <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
-                                                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                                                        <FileText className="h-3.5 w-3.5 text-primary/70" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                                        <p className="text-[9px] text-muted-foreground/40">
-                                                            Uploaded {formatDate(file.uploaded_at)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        {fileUrl && (
-                                                            <>
-                                                                <a
-                                                                    href={fileUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                    title="Open in new tab"
-                                                                >
-                                                                    <ExternalLink className="h-3 w-3" />
-                                                                </a>
-                                                                <a
-                                                                    href={fileUrl}
-                                                                    download={file.name}
-                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                    title="Download"
-                                                                >
-                                                                    <Download className="h-3 w-3" />
-                                                                </a>
-                                                            </>
-                                                        )}
-                                                        {!isReadOnly && (
-                                                            <button
-                                                                onClick={() => handleDeleteFile(idx)}
-                                                                className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
-                                                                title="Remove file"
-                                                            >
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
+                                    <EvidenceFileList
+                                        files={files}
+                                        formatDate={formatDate}
+                                        onDelete={!isReadOnly ? handleDeleteFile : undefined}
+                                        readOnly={isReadOnly}
+                                    />
                                 )}
                             </div>
                         </div>

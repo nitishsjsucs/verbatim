@@ -20,7 +20,13 @@ import {
     Team,
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
+
+/** Resolve an evidence file URL — handles relative paths by prepending API base. */
+export function getEvidenceFileUrl(fileUrl: string | undefined): string {
+    if (!fileUrl) return "";
+    return fileUrl.startsWith("/") ? `${API_BASE_URL}${fileUrl}` : fileUrl;
+}
 
 function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
     return fetch(`${API_BASE_URL}${path}`, {

@@ -135,14 +135,6 @@ export function getWorkstreamClass(name: string): string {
     return ws ? `${ws.bg} ${ws.text}` : "bg-muted text-muted-foreground"
 }
 
-/**
- * @deprecated Use `useTeams().teamNames` instead.
- * Kept temporarily for backward compatibility during migration.
- * Returns the keys of WORKSTREAM_COLORS excluding system teams.
- */
-export function getWorkstreamOptions(): string[] {
-    return Object.keys(WORKSTREAM_COLORS).filter(k => k !== "Mixed Team")
-}
 
 // ─── Task Status Styles (Tailwind — semi-transparent pills) ──────────────────
 

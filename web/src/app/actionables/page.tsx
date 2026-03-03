@@ -8,6 +8,7 @@ import {
     updateActionable,
     createManualActionable,
     deleteActionable as deleteActionableApi,
+    API_BASE_URL,
 } from "@/lib/api"
 import {
     ActionableItem,
@@ -41,7 +42,6 @@ const PdfViewer = dynamic(
     { ssr: false }
 )
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
 
 // --- Types ---
 
@@ -1089,7 +1089,7 @@ export default function ActionablesPage() {
         return { total, approved, rejected, pending, published }
     }, [allItems, allDocs])
 
-    const pdfUrl = pdfDocId ? `${API_BASE}/documents/${pdfDocId}/raw` : null
+    const pdfUrl = pdfDocId ? `${API_BASE_URL}/documents/${pdfDocId}/raw` : null
 
     // Handlers for bulk actions — approve & publish directly to tracker
     const handleApproveAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {

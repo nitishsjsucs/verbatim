@@ -8,11 +8,12 @@
 import * as React from "react"
 import {
     ChevronDown, ChevronRight, FileText, Paperclip,
-    ExternalLink, Download, X,
+    ExternalLink, Download, X, Trash2,
     ShieldCheck, ShieldAlert, ShieldQuestion,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RISK_STYLES, normalizeRisk } from "@/lib/status-config"
+import { getEvidenceFileUrl } from "@/lib/api"
 
 // ─── RiskIcon ────────────────────────────────────────────────────────────────
 
@@ -68,8 +69,6 @@ export function EvidencePopover({ files, canDownload = true }: { files: Evidence
         return <span className="text-[10px] text-muted-foreground/30 italic">empty</span>
     }
 
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-
     return (
         <div className="relative" ref={popoverRef}>
             <button
@@ -88,7 +87,7 @@ export function EvidencePopover({ files, canDownload = true }: { files: Evidence
                         </button>
                     </div>
                     {files.map((file, idx) => {
-                        const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
+                        const fileUrl = getEvidenceFileUrl(file.url)
                         return (
                             <div key={idx} className="flex items-center gap-2.5 bg-muted/20 rounded-md px-3 py-2.5 border border-border/20">
                                 <div className="h-7 w-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
@@ -145,6 +144,80 @@ export function CollapsibleSection({ title, icon, children, defaultOpen = false,
                 {badge && <span className="ml-auto">{badge}</span>}
             </button>
             {open && <div className="px-3 pb-3 pt-1">{children}</div>}
+        </div>
+    )
+}
+
+// ─── EvidenceFileList ─────────────────────────────────────────────────────────
+
+interface EvidenceFile {
+    name: string
+    url: string
+    uploaded_at: string
+    stored_name?: string
+}
+
+/**
+ * Shared evidence-file list used by dashboard, team-board, team-review, team-lead.
+ * Renders each file with open/download actions and an optional delete button.
+ */
+export function EvidenceFileList({ files, formatDate: fmtDate, onDelete, readOnly = false }: {
+    files: EvidenceFile[]
+    formatDate: (iso: string | undefined) => string
+    onDelete?: (idx: number) => void
+    readOnly?: boolean
+}) {
+    if (files.length === 0) return null
+    return (
+        <div className="space-y-1.5">
+            {files.map((file, idx) => {
+                const fileUrl = getEvidenceFileUrl(file.url)
+                return (
+                    <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
+                        <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                            <FileText className="h-3.5 w-3.5 text-primary/70" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
+                            <p className="text-[9px] text-muted-foreground/40">
+                                Uploaded {fmtDate(file.uploaded_at)}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                            {fileUrl && (
+                                <>
+                                    <a
+                                        href={fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                        title="Open in new tab"
+                                    >
+                                        <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                    <a
+                                        href={fileUrl}
+                                        download={file.name}
+                                        className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
+                                        title="Download"
+                                    >
+                                        <Download className="h-3 w-3" />
+                                    </a>
+                                </>
+                            )}
+                            {!readOnly && onDelete && (
+                                <button
+                                    onClick={() => onDelete(idx)}
+                                    className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
+                                    title="Remove file"
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )
+            })}
         </div>
     )
 }

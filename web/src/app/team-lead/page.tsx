@@ -3,17 +3,13 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import {
-    fetchAllActionables,
     fetchDelayedActionables,
     submitJustification,
-    updateActionable,
     uploadEvidence,
     deleteEvidence,
 } from "@/lib/api"
 import {
     ActionableItem,
-    ActionablesResult,
-    ActionableWorkstream,
     ActionableComment,
     TaskStatus,
     getTeamView,
@@ -40,7 +36,8 @@ import {
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
-import { RiskIcon, ProgressBar, EvidencePopover } from "@/components/shared/status-components"
+import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList } from "@/components/shared/status-components"
+import { useActionables } from "@/lib/use-actionables"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,8 +68,12 @@ function TeamLeadContent() {
         }
     }, [role, router])
 
-    const [allDocs, setAllDocs] = React.useState<{ doc_id: string; doc_name: string; actionables: ActionableItem[] }[]>([])
-    const [loading, setLoading] = React.useState(true)
+    const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate } = useActionables({
+        forTeam: userTeam || undefined,
+        commentRole: "team_lead",
+        commentAuthor: userName,
+        autoLoad: false,
+    })
     const [searchQuery, setSearchQuery] = React.useState("")
     const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
@@ -85,25 +86,6 @@ function TeamLeadContent() {
     const [delayedCollapsed, setDelayedCollapsed] = React.useState(false)
     // Tab: "overview" shows all items, "delayed" shows only delayed items
     const [tab, setTab] = React.useState<"overview" | "delayed">("delayed")
-
-    const loadAll = React.useCallback(async () => {
-        try {
-            setLoading(true)
-            const results = await fetchAllActionables()
-            const docs = results
-                .filter((r: ActionablesResult) => r.actionables && r.actionables.length > 0)
-                .map((r: ActionablesResult) => ({
-                    doc_id: r.doc_id,
-                    doc_name: r.doc_name || r.doc_id,
-                    actionables: r.actionables,
-                }))
-            setAllDocs(docs)
-        } catch {
-            toast.error("Failed to load actionables")
-        } finally {
-            setLoading(false)
-        }
-    }, [])
 
     React.useEffect(() => { if (isTeamLead) loadAll() }, [loadAll, isTeamLead])
 
@@ -124,28 +106,8 @@ function TeamLeadContent() {
         } else {
             existing = rawItem?.comments || []
         }
-        try {
-            const updated = await updateActionable(docId, itemId, { comments: [...existing, newComment] }, userTeam || undefined)
-            setAllDocs(prev => prev.map(d => {
-                if (d.doc_id !== docId) return d
-                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
-            }))
-        } catch {
-            toast.error("Failed to add comment")
-        }
-    }, [userName, allDocs, userTeam])
-
-    const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
-        try {
-            const updated = await updateActionable(docId, itemId, updates, userTeam || undefined)
-            setAllDocs(prev => prev.map(d => {
-                if (d.doc_id !== docId) return d
-                return { ...d, actionables: d.actionables.map(a => a.id === itemId ? { ...a, ...updated } : a) }
-            }))
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Update failed")
-        }
-    }, [userTeam])
+        await handleUpdate(docId, itemId, { comments: [...existing, newComment] })
+    }, [userName, allDocs, userTeam, handleUpdate])
 
     const handleUpload = React.useCallback(async (docId: string, itemId: string, file: File) => {
         try {
@@ -926,57 +888,12 @@ function OversightRow({
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="space-y-1.5">
-                                        {files.map((file, idx) => {
-                                            const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/backend"
-                                            const fileUrl = file.url?.startsWith("/") ? `${apiBase}${file.url}` : file.url
-                                            return (
-                                                <div key={idx} className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 border border-border/30 group/file hover:border-border/60 transition-colors">
-                                                    <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                                                        <FileText className="h-3.5 w-3.5 text-primary/70" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-medium text-foreground/90 truncate">{file.name}</p>
-                                                        <p className="text-[9px] text-muted-foreground/40">
-                                                            Uploaded {formatDate(file.uploaded_at)}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        {fileUrl && (
-                                                            <>
-                                                                <a
-                                                                    href={fileUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                    title="Open in new tab"
-                                                                >
-                                                                    <ExternalLink className="h-3 w-3" />
-                                                                </a>
-                                                                <a
-                                                                    href={fileUrl}
-                                                                    download={file.name}
-                                                                    className="p-1 rounded-md hover:bg-primary/10 text-muted-foreground/50 hover:text-primary transition-colors"
-                                                                    title="Download"
-                                                                >
-                                                                    <Download className="h-3 w-3" />
-                                                                </a>
-                                                            </>
-                                                        )}
-                                                        {!isReadOnly && (
-                                                            <button
-                                                                onClick={() => handleDeleteFile(idx)}
-                                                                className="p-1 rounded-md hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-500 transition-colors"
-                                                                title="Remove file"
-                                                            >
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
+                                    <EvidenceFileList
+                                        files={files}
+                                        formatDate={formatDate}
+                                        onDelete={!isReadOnly ? handleDeleteFile : undefined}
+                                        readOnly={isReadOnly}
+                                    />
                                 )}
                             </div>
                         </div>

@@ -6,7 +6,7 @@ import { ChatInterface } from "@/components/views/chat-interface"
 import { TreeExplorer } from "@/components/views/tree-explorer"
 import { NodeDetailPanel } from "@/components/views/node-detail-panel"
 import dynamic from "next/dynamic"
-import { fetchDocument } from "@/lib/api"
+import { fetchDocument, API_BASE_URL } from "@/lib/api"
 import { DocumentDetail, TreeNode } from "@/lib/types"
 import { Loader2, AlertCircle, FileText, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -173,7 +173,7 @@ function DocumentPageContent({ params }: { params: Promise<{ id: string }> }) {
         }
     }, [])
 
-    const pdfUrl = `${process.env.NEXT_PUBLIC_API_URL || '/api/backend'}/documents/${id}/raw`
+    const pdfUrl = `${API_BASE_URL}/documents/${id}/raw`
 
     if (loading) {
         return (
