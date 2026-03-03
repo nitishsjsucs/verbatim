@@ -911,3 +911,29 @@ export async function fetchMemoryHealth(): Promise<Record<string, unknown>> {
     if (!res.ok) throw new Error('Failed to fetch memory health');
     return res.json();
 }
+
+export async function fetchMemoryDiagnostics(docId?: string): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (docId) params.set('doc_id', docId);
+    const res = await apiFetch(`/admin/memory/diagnostics?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch memory diagnostics');
+    return res.json();
+}
+
+export async function fetchMemoryTrends(docId?: string, lastN = 50): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (docId) params.set('doc_id', docId);
+    params.set('last_n', String(lastN));
+    const res = await apiFetch(`/admin/memory/diagnostics/trends?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch memory trends');
+    return res.json();
+}
+
+export async function fetchMemoryRecentContributions(docId?: string, limit = 20): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams();
+    if (docId) params.set('doc_id', docId);
+    params.set('limit', String(limit));
+    const res = await apiFetch(`/admin/memory/diagnostics/recent?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch recent contributions');
+    return res.json();
+}

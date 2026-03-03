@@ -21,6 +21,7 @@ import {
   runLLMBenchmark,
   fetchLLMBenchmarkLatest,
   fetchMemoryHealth,
+  fetchMemoryDiagnostics,
 } from "@/lib/api"
 import type { AppUser } from "@/lib/api"
 import { useTeams, invalidateTeamsCache } from "@/lib/use-teams"
@@ -66,6 +67,10 @@ import {
   Trophy,
   Timer,
   Gauge,
+  Microscope,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
@@ -74,7 +79,7 @@ import { LLMTournament } from "@/components/admin/llm-tournament"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health"
+type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health" | "diagnostics"
 
 interface AdminData {
   documents?: { total: number; list: Array<{ doc_id: string; doc_name: string; total_pages: number; node_count: number }> }
@@ -370,6 +375,10 @@ function AdminDashboardContent() {
   // Memory Health tab state
   const [healthData, setHealthData] = React.useState<Record<string, unknown> | null>(null)
 
+  // Memory Diagnostics tab state
+  const [diagData, setDiagData] = React.useState<Record<string, unknown> | null>(null)
+  const [diagLoading, setDiagLoading] = React.useState(false)
+
   const loadOverview = React.useCallback(async () => {
     try {
       const result = await fetchAdminOverview()
@@ -420,7 +429,14 @@ function AdminDashboardContent() {
         .then((d: Record<string, unknown>) => setHealthData(d))
         .catch(() => {})
     }
-  }, [tab, queryData, benchData, memoryData, llmBenchConfig, healthData])
+    if (tab === "diagnostics" && !diagData && !diagLoading) {
+      setDiagLoading(true)
+      fetchMemoryDiagnostics()
+        .then((d: Record<string, unknown>) => setDiagData(d))
+        .catch(() => {})
+        .finally(() => setDiagLoading(false))
+    }
+  }, [tab, queryData, benchData, memoryData, llmBenchConfig, healthData, diagData, diagLoading])
 
   const loadQueryPage = (page: number) => {
     setQueryPage(page)
@@ -506,6 +522,7 @@ function AdminDashboardContent() {
           <TabBtn active={tab === "llm-benchmark"} icon={<FlaskConical className="h-3.5 w-3.5" />} label="LLM Benchmark" onClick={() => setTab("llm-benchmark")} />
           <TabBtn active={tab === "memory"} icon={<Brain className="h-3.5 w-3.5" />} label="Memory System" onClick={() => setTab("memory")} />
           <TabBtn active={tab === "health"} icon={<HeartPulse className="h-3.5 w-3.5" />} label="Health" onClick={() => setTab("health")} />
+          <TabBtn active={tab === "diagnostics"} icon={<Microscope className="h-3.5 w-3.5" />} label="Diagnostics" onClick={() => setTab("diagnostics")} />
           <TabBtn active={tab === "storage"} icon={<HardDrive className="h-3.5 w-3.5" />} label="Storage" onClick={() => setTab("storage")} />
           <TabBtn active={tab === "teams"} icon={<Users className="h-3.5 w-3.5" />} label="Teams" onClick={() => setTab("teams")} />
           <TabBtn active={tab === "users"} icon={<Shield className="h-3.5 w-3.5" />} label="Users" onClick={() => setTab("users")} />
@@ -537,6 +554,7 @@ function AdminDashboardContent() {
         )}
         {tab === "memory" && <MemoryTab data={memoryData} overview={data} />}
         {tab === "health" && <MemoryHealthTab data={healthData} onRefresh={() => { setHealthData(null); fetchMemoryHealth().then((d: Record<string, unknown>) => setHealthData(d)).catch(() => {}) }} />}
+        {tab === "diagnostics" && <MemoryDiagnosticsTab data={diagData} onRefresh={() => { setDiagData(null); setDiagLoading(true); fetchMemoryDiagnostics().then((d: Record<string, unknown>) => setDiagData(d)).catch(() => {}).finally(() => setDiagLoading(false)) }} />}
         {tab === "storage" && data && <StorageTab data={data} />}
         {tab === "teams" && <TeamsTab />}
         {tab === "users" && <UsersTab />}
@@ -1770,6 +1788,443 @@ function MemoryHealthTab({
           )
         })}
       </div>
+    </>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MEMORY DIAGNOSTICS TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function MemoryDiagnosticsTab({
+  data,
+  onRefresh,
+}: {
+  data: Record<string, unknown> | null
+  onRefresh: () => void
+}) {
+  if (!data) return <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+
+  const health = (data.health || {}) as Record<string, unknown>
+  const trends = (data.trends || {}) as Record<string, unknown>
+  const recentContribs = (data.recent_contributions || []) as Array<Record<string, unknown>>
+
+  const overall = (trends.overall || {}) as Record<string, unknown>
+  const perLoop = (trends.per_loop || {}) as Record<string, Record<string, number>>
+  const precisionSeries = (trends.precision_series || []) as Array<{ query_index: number; precision: number; citations: number; memory_contributed: boolean; timestamp: string }>
+  const improvementScore = (trends.improvement_score || {}) as Record<string, unknown>
+  const components = (improvementScore.components || {}) as Record<string, number>
+  const totalQueries = (overall.total_queries_analyzed as number) || 0
+
+  const gradeColors: Record<string, string> = {
+    A: "text-emerald-500",
+    B: "text-blue-500",
+    C: "text-amber-500",
+    D: "text-orange-500",
+    F: "text-red-500",
+  }
+  const gradeBg: Record<string, string> = {
+    A: "bg-emerald-500/10 border-emerald-500/30",
+    B: "bg-blue-500/10 border-blue-500/30",
+    C: "bg-amber-500/10 border-amber-500/30",
+    D: "bg-orange-500/10 border-orange-500/30",
+    F: "bg-red-500/10 border-red-500/30",
+  }
+  const grade = String(improvementScore.grade || "—")
+  const composite = Number(improvementScore.composite || 0)
+
+  const precisionTrend = (overall.precision_trend || {}) as Record<string, unknown>
+  const isImproving = precisionTrend.improving === true
+  const improvementDelta = Number(precisionTrend.improvement || 0)
+
+  const loopNames = ["raptor", "user_memory", "query_intel", "retrieval_fb", "r2r_fallback"]
+  const loopLabels: Record<string, string> = {
+    raptor: "RAPTOR Heat Map",
+    user_memory: "User Memory",
+    query_intel: "Query Intelligence",
+    retrieval_fb: "Retrieval Feedback",
+    r2r_fallback: "R2R Fallback",
+  }
+  const loopColors: Record<string, string> = {
+    raptor: "text-purple-500",
+    user_memory: "text-blue-500",
+    query_intel: "text-teal-500",
+    retrieval_fb: "text-amber-500",
+    r2r_fallback: "text-pink-500",
+  }
+  const loopBarColors: Record<string, string> = {
+    raptor: "bg-purple-500",
+    user_memory: "bg-blue-500",
+    query_intel: "bg-teal-500",
+    retrieval_fb: "bg-amber-500",
+    r2r_fallback: "bg-pink-500",
+  }
+
+  // Compute max precision for the mini chart
+  const maxPrecision = Math.max(0.1, ...precisionSeries.map(p => p.precision))
+
+  return (
+    <>
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-semibold text-foreground flex items-center gap-2">
+          <Microscope className="h-4 w-4 text-indigo-500" />
+          Memory Diagnostics — Feedback Loop Effectiveness
+        </h2>
+        <button
+          onClick={onRefresh}
+          className="flex items-center gap-1 h-7 px-2 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <RefreshCw className="h-3 w-3" /> Refresh
+        </button>
+      </div>
+
+      {totalQueries === 0 ? (
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <Brain className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-xs font-semibold text-foreground mb-1">No diagnostic data yet</p>
+          <p className="text-xs text-muted-foreground">Run some queries in optimized mode to see how each feedback loop contributes.</p>
+        </div>
+      ) : (
+        <>
+          {/* Row 1: Improvement Score + Overall Metrics */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Improvement Score Card */}
+            <div className={cn("rounded-lg border p-5 flex flex-col items-center justify-center", gradeBg[grade] || "bg-muted border-border")}>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Improvement Score</p>
+              <p className={cn("text-4xl font-bold", gradeColors[grade] || "text-foreground")}>{grade}</p>
+              <p className="text-lg font-semibold text-foreground mt-0.5">{composite.toFixed(1)}<span className="text-xs text-muted-foreground">/100</span></p>
+              <div className="w-full mt-3 space-y-1.5">
+                {[
+                  { label: "Precision", value: components.precision || 0, color: "bg-emerald-500" },
+                  { label: "Contribution", value: components.contribution_rate || 0, color: "bg-blue-500" },
+                  { label: "Reliability", value: components.loop_reliability || 0, color: "bg-amber-500" },
+                  { label: "Trend", value: components.improvement_trend || 0, color: "bg-purple-500" },
+                ].map(c => (
+                  <div key={c.label} className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground w-20 text-right">{c.label}</span>
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className={cn("h-full rounded-full", c.color)} style={{ width: `${Math.min(c.value, 100)}%` }} />
+                    </div>
+                    <span className="font-mono text-foreground w-8 text-right">{c.value.toFixed(0)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Key Metrics Cards */}
+            <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-3">
+              <StatCard
+                icon={<Search className="h-4 w-4" />}
+                iconClass="text-blue-500"
+                label="Queries Analyzed"
+                value={totalQueries}
+              />
+              <StatCard
+                icon={<Gauge className="h-4 w-4" />}
+                iconClass="text-emerald-500"
+                label="Avg Precision"
+                value={`${((overall.avg_retrieval_precision as number) || 0).toFixed(1)}%`}
+                sub={isImproving ? `+${(improvementDelta * 100).toFixed(1)}% improving` : improvementDelta < -0.01 ? `${(improvementDelta * 100).toFixed(1)}% declining` : "stable"}
+              />
+              <StatCard
+                icon={<Star className="h-4 w-4" />}
+                iconClass="text-yellow-500"
+                label="Memory Contribution Rate"
+                value={`${(((overall.memory_contribution_rate as number) || 0) * 100).toFixed(1)}%`}
+                sub="queries where memory helped"
+              />
+              <StatCard
+                icon={<Hash className="h-4 w-4" />}
+                iconClass="text-teal-500"
+                label="Avg Citations / Query"
+                value={fmt(overall.avg_citations_per_query as number)}
+              />
+              <StatCard
+                icon={<Brain className="h-4 w-4" />}
+                iconClass="text-purple-500"
+                label="Memory-Assisted Citations"
+                value={fmt(overall.avg_memory_assisted_citations as number, 2)}
+                sub="avg per query"
+              />
+              <div className="rounded-lg border border-border bg-card p-4 flex items-center gap-3">
+                {isImproving ? (
+                  <ArrowUpRight className="h-6 w-6 text-emerald-500 flex-shrink-0" />
+                ) : improvementDelta < -0.01 ? (
+                  <ArrowDownRight className="h-6 w-6 text-red-500 flex-shrink-0" />
+                ) : (
+                  <Minus className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                )}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Precision Trend</p>
+                  <p className={cn("text-xs font-semibold", isImproving ? "text-emerald-600 dark:text-emerald-400" : improvementDelta < -0.01 ? "text-red-600 dark:text-red-400" : "text-muted-foreground")}>
+                    {isImproving ? "Improving" : improvementDelta < -0.01 ? "Declining" : "Stable"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    1st half: {((precisionTrend.first_half_avg as number) || 0).toFixed(3)} → 2nd: {((precisionTrend.second_half_avg as number) || 0).toFixed(3)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Per-Loop Performance */}
+          <div className="rounded-lg border border-border bg-card">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5" /> Per-Loop Performance
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Loop</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Fire Rate</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Error Rate</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Learn Rate</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Avg Returned</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Avg Used</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Utilization</th>
+                    <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Avg Latency</th>
+                    <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground w-32">Utilization Bar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loopNames.map(name => {
+                    const loop = perLoop[name] || {}
+                    const fireRate = loop.fire_rate || 0
+                    const errorRate = loop.error_rate || 0
+                    const learnRate = loop.learn_rate || 0
+                    const utilization = loop.utilization_rate || 0
+                    return (
+                      <tr key={name} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className={cn("px-4 py-2.5 font-semibold", loopColors[name])}>
+                          {loopLabels[name]}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono">
+                          <span className={cn(fireRate > 0.8 ? "text-emerald-600 dark:text-emerald-400" : fireRate > 0.3 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+                            {(fireRate * 100).toFixed(0)}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono">
+                          <span className={cn(errorRate > 0.1 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400")}>
+                            {(errorRate * 100).toFixed(0)}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono">
+                          {(learnRate * 100).toFixed(0)}%
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono text-muted-foreground">
+                          {(loop.avg_items_returned || 0).toFixed(1)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono text-muted-foreground">
+                          {(loop.avg_items_used || 0).toFixed(1)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono">
+                          <span className={cn(utilization > 0.3 ? "text-emerald-600 dark:text-emerald-400" : utilization > 0.1 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+                            {(utilization * 100).toFixed(0)}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono text-muted-foreground">
+                          {(loop.avg_latency_ms || 0).toFixed(0)}ms
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div className={cn("h-full rounded-full", loopBarColors[name])} style={{ width: `${Math.min(utilization * 100, 100)}%` }} />
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Row 3: Precision Trend Chart (ASCII-style bar chart) */}
+          {precisionSeries.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5" /> Precision Over Time (last {precisionSeries.length} queries)
+              </h3>
+              <div className="flex items-end gap-[2px] h-24">
+                {precisionSeries.map((pt, i) => {
+                  const pct = maxPrecision > 0 ? (pt.precision / maxPrecision) * 100 : 0
+                  return (
+                    <div
+                      key={i}
+                      className="group relative flex-1 min-w-[3px] max-w-[12px]"
+                    >
+                      <div
+                        className={cn(
+                          "w-full rounded-t-sm transition-colors",
+                          pt.memory_contributed
+                            ? "bg-emerald-500 hover:bg-emerald-400"
+                            : "bg-zinc-400 dark:bg-zinc-600 hover:bg-zinc-300 dark:hover:bg-zinc-500"
+                        )}
+                        style={{ height: `${Math.max(pct, 2)}%` }}
+                      />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10">
+                        <div className="rounded bg-popover border border-border shadow-md px-2 py-1 text-xs whitespace-nowrap">
+                          <p className="font-semibold">Q{pt.query_index + 1}</p>
+                          <p>Precision: {(pt.precision * 100).toFixed(1)}%</p>
+                          <p>Citations: {pt.citations}</p>
+                          <p>{pt.memory_contributed ? "✓ Memory helped" : "— No memory contribution"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-emerald-500 inline-block" /> Memory contributed</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-zinc-400 dark:bg-zinc-600 inline-block" /> No memory contribution</span>
+              </div>
+            </div>
+          )}
+
+          {/* Row 4: Recent Contributions Table */}
+          <div className="rounded-lg border border-border bg-card">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" /> Recent Query Contributions ({recentContribs.length})
+              </h3>
+            </div>
+            {recentContribs.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">No recent contributions recorded yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Query Preview</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Type</th>
+                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Precision</th>
+                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Citations</th>
+                      <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">Memory Helped</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Contribution</th>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">When</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentContribs.map((c, i) => {
+                      const contributed = c.memory_contributed === true
+                      const summary = String(c.contribution_summary || "—")
+                      const queryPreview = String(c.query_text_preview || "")
+                      return (
+                        <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="px-4 py-2 text-foreground truncate max-w-[250px]" title={queryPreview}>
+                            {queryPreview.slice(0, 70)}{queryPreview.length > 70 ? "..." : ""}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{String(c.query_type || "—")}</span>
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono">
+                            {(((c.retrieval_precision as number) || 0) * 100).toFixed(1)}%
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                            {c.total_citations as number || 0}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {contributed
+                              ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 mx-auto" />
+                              : <XCircle className="h-3.5 w-3.5 text-zinc-400 mx-auto" />}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]" title={summary}>
+                            {summary}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                            {c.timestamp ? timeAgo(String(c.timestamp)) : "—"}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Row 5: Loop Detail Breakdown (expandable cards) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {loopNames.map(name => {
+              const loop = perLoop[name] || {}
+              return (
+                <div key={name} className="rounded-lg border border-border bg-card p-3">
+                  <p className={cn("text-xs font-semibold mb-2", loopColors[name])}>
+                    {loopLabels[name]}
+                  </p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Fires</span>
+                      <span className="font-mono text-foreground">{loop.total_fires || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Errors</span>
+                      <span className={cn("font-mono", (loop.total_errors || 0) > 0 ? "text-red-500" : "text-foreground")}>{loop.total_errors || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fire Rate</span>
+                      <span className="font-mono text-foreground">{((loop.fire_rate || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Learn Rate</span>
+                      <span className="font-mono text-foreground">{((loop.learn_rate || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Utilization</span>
+                      <span className="font-mono text-foreground">{((loop.utilization_rate || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="mt-1.5">
+                      <MiniBar value={(loop.utilization_rate || 0) * 100} max={100} color={loopBarColors[name]} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Row 6: Infrastructure Health Summary */}
+          {health && Object.keys(health).length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Server className="h-3.5 w-3.5" /> Infrastructure Health
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className={cn(
+                    "font-semibold",
+                    String(health.overall_status) === "all_healthy" ? "text-emerald-600 dark:text-emerald-400"
+                      : String(health.overall_status) === "partial" ? "text-amber-600 dark:text-amber-400"
+                      : "text-red-600 dark:text-red-400"
+                  )}>
+                    {String(health.overall_status || "unknown").replace(/_/g, " ")}
+                  </span>
+                </div>
+                {Boolean(health.feature_flags) && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Mode</span>
+                    <span className={cn(
+                      "font-semibold",
+                      (health.feature_flags as Record<string, unknown>).is_optimized ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                    )}>
+                      {String((health.feature_flags as Record<string, unknown>).retrieval_mode || "—")}
+                    </span>
+                  </div>
+                )}
+                {health.check_duration_ms !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Check Time</span>
+                    <span className="font-mono text-foreground">{Number(health.check_duration_ms).toFixed(0)}ms</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </>
   )
 }
