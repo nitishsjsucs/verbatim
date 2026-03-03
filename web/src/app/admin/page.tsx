@@ -1913,12 +1913,13 @@ function extractColorKey(headerClass: string): string {
 }
 
 function TeamsTab() {
-  const { teams, loading, refresh } = useTeams()
+  const { teams, teamTree, teamNames, loading, refresh } = useTeams()
   // Create form state
   const [showCreate, setShowCreate] = React.useState(false)
   const [newTeamName, setNewTeamName] = React.useState("")
   const [newTeamColor, setNewTeamColor] = React.useState("cyan")
   const [newTeamSummary, setNewTeamSummary] = React.useState("")
+  const [newParentName, setNewParentName] = React.useState<string>("")
   const [creating, setCreating] = React.useState(false)
   const [deleting, setDeleting] = React.useState<string | null>(null)
   // Edit state
@@ -1927,6 +1928,16 @@ function TeamsTab() {
   const [editColor, setEditColor] = React.useState("")
   const [editSummary, setEditSummary] = React.useState("")
   const [saving, setSaving] = React.useState(false)
+  // Expand/collapse state for tree
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set())
+
+  const toggleCollapse = (name: string) => {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name); else next.add(name)
+      return next
+    })
+  }
 
   const handleCreate = async () => {
     const name = newTeamName.trim()
@@ -1934,10 +1945,11 @@ function TeamsTab() {
     if (!name || !summary) return
     setCreating(true)
     try {
-      await createTeam(name, newTeamColor, summary)
+      await createTeam(name, newTeamColor, summary, newParentName || null)
       setNewTeamName("")
       setNewTeamColor("cyan")
       setNewTeamSummary("")
+      setNewParentName("")
       setShowCreate(false)
       invalidateTeamsCache()
       refresh()
@@ -1948,8 +1960,17 @@ function TeamsTab() {
     }
   }
 
+  const handleCreateSubTeam = (parentName: string) => {
+    setNewParentName(parentName)
+    setShowCreate(true)
+  }
+
   const handleDelete = async (teamName: string) => {
-    if (!confirm(`Delete team "${teamName}"? This cannot be undone.`)) return
+    const desc = teams.filter(t => (t.path || []).includes(teamName)).map(t => t.name)
+    const msg = desc.length > 0
+      ? `Delete team "${teamName}" and its ${desc.length} sub-team(s)?\n\nSub-teams: ${desc.join(", ")}\n\nThis cannot be undone.`
+      : `Delete team "${teamName}"? This cannot be undone.`
+    if (!confirm(msg)) return
     setDeleting(teamName)
     try {
       await deleteTeam(teamName)
@@ -1994,6 +2015,148 @@ function TeamsTab() {
     }
   }
 
+  // Recursive tree row renderer
+  const renderTeamNode = (team: Team, depth: number = 0): React.ReactNode => {
+    const isEditing = editing === team.name
+    const hasChildren = (team.children?.length || 0) > 0
+    const isCollapsed = collapsed.has(team.name)
+    const indent = depth * 24
+
+    return (
+      <React.Fragment key={team.name}>
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5" style={{ paddingLeft: `${16 + indent}px` }}>
+            {/* Expand/collapse toggle */}
+            {hasChildren ? (
+              <button onClick={() => toggleCollapse(team.name)} className="p-0.5 rounded hover:bg-muted transition-colors flex-shrink-0">
+                {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+              </button>
+            ) : (
+              <span className="w-4 flex-shrink-0" />
+            )}
+            {/* Color dot */}
+            <span className={cn("w-3 h-3 rounded-full flex-shrink-0", team.colors.header)} />
+            {/* Name + type */}
+            <div className="flex-1 min-w-0">
+              {isEditing ? (
+                <input
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  className="h-7 rounded border border-input bg-background px-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-full max-w-xs"
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-foreground truncate">{team.name}</span>
+                  {team.is_system && (
+                    <span className="inline-flex items-center gap-0.5 text-xs font-medium text-purple-500">
+                      <Lock className="h-2.5 w-2.5" /> System
+                    </span>
+                  )}
+                  {!team.is_leaf && !team.is_system && (
+                    <span className="text-[10px] text-muted-foreground/50 font-medium px-1.5 py-0 rounded bg-muted/30">Parent</span>
+                  )}
+                  {team.is_leaf && !team.is_system && (
+                    <span className="text-[10px] text-emerald-500/60 font-medium px-1.5 py-0 rounded bg-emerald-500/5">Leaf</span>
+                  )}
+                </div>
+              )}
+              {!isEditing && team.summary && (
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{team.summary}</p>
+              )}
+            </div>
+            {/* Depth badge */}
+            {(team.depth || 0) > 0 && (
+              <span className="text-[10px] text-muted-foreground/40 flex-shrink-0">L{team.depth}</span>
+            )}
+            {/* Color badge */}
+            <span className={cn("px-2 py-0.5 rounded text-xs font-medium flex-shrink-0", team.colors.bg, team.colors.text)}>
+              {extractColorKey(team.colors.header)}
+            </span>
+            {/* Actions */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {!team.is_system && !isEditing && (
+                <>
+                  <button
+                    onClick={() => handleCreateSubTeam(team.name)}
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-blue-500 hover:bg-blue-500/10 transition-colors"
+                    title="Add sub-team"
+                  >
+                    <Plus className="h-3 w-3" /> Sub
+                  </button>
+                  <button
+                    onClick={() => startEdit(team)}
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(team.name)}
+                    disabled={deleting === team.name}
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                  >
+                    {deleting === team.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  </button>
+                </>
+              )}
+              {isEditing && (
+                <>
+                  <button
+                    onClick={() => handleSaveEdit(team.name)}
+                    disabled={saving}
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs font-medium text-emerald-500 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <X className="h-3 w-3" /> Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          {/* Edit panel */}
+          {isEditing && (
+            <div className="border-t border-border/50 px-4 py-3 bg-muted/10 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">Summary</label>
+                <textarea
+                  value={editSummary}
+                  onChange={e => setEditSummary(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <Palette className="h-3 w-3" /> Color
+                </label>
+                <ColorPicker value={editColor} onChange={setEditColor} />
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Render children recursively */}
+        {hasChildren && !isCollapsed && team.children!.map(child => renderTeamNode(child, depth + 1))}
+      </React.Fragment>
+    )
+  }
+
+  // Build options for parent dropdown (indented)
+  const parentOptions = React.useMemo(() => {
+    const opts: { value: string; label: string }[] = [{ value: "", label: "— Root level (no parent) —" }]
+    function walk(nodes: Team[], depth: number) {
+      for (const n of nodes) {
+        opts.push({ value: n.name, label: `${"│  ".repeat(depth)}├─ ${n.name}` })
+        if (n.children?.length) walk(n.children, depth + 1)
+      }
+    }
+    walk(teamTree, 0)
+    return opts
+  }, [teamTree])
+
   return (
     <>
       {/* Header */}
@@ -2001,10 +2164,10 @@ function TeamsTab() {
         <h2 className="text-xs font-semibold text-foreground flex items-center gap-2">
           <Users className="h-4 w-4 text-blue-500" />
           Team Management
-          <span className="text-xs text-muted-foreground font-normal ml-1">({teams.length} teams)</span>
+          <span className="text-xs text-muted-foreground font-normal ml-1">({teams.filter(t => !t.is_system).length} teams)</span>
         </h2>
         <button
-          onClick={() => setShowCreate(!showCreate)}
+          onClick={() => { setNewParentName(""); setShowCreate(!showCreate) }}
           className="flex items-center gap-1.5 h-7 px-3 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-3 w-3" /> New Team
@@ -2015,7 +2178,7 @@ function TeamsTab() {
       {showCreate && (
         <div className="rounded-lg border border-border bg-card p-4 mb-4">
           <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
-            <Plus className="h-3.5 w-3.5" /> Create New Team
+            <Plus className="h-3.5 w-3.5" /> Create New {newParentName ? `Sub-Team under "${newParentName}"` : "Team"}
           </p>
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -2025,6 +2188,16 @@ function TeamsTab() {
                 placeholder="Team name (required)"
                 className="flex-1 h-8 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Parent Team</label>
+              <select
+                value={newParentName}
+                onChange={e => setNewParentName(e.target.value)}
+                className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+              >
+                {parentOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">Summary (required)</label>
@@ -2057,108 +2230,17 @@ function TeamsTab() {
         </div>
       )}
 
-      {/* Teams list */}
+      {/* Teams tree */}
       {loading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="space-y-2">
-          {teams.map((team: Team) => {
-            const isEditing = editing === team.name
-            return (
-              <div key={team.name} className="rounded-lg border border-border bg-card overflow-hidden">
-                {/* Team header row */}
-                <div className="flex items-center gap-3 px-4 py-3">
-                  {/* Color dot */}
-                  <span className={cn("w-3 h-3 rounded-full flex-shrink-0", team.colors.header)} />
-                  {/* Name + type */}
-                  <div className="flex-1 min-w-0">
-                    {isEditing ? (
-                      <input
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        className="h-7 rounded border border-input bg-background px-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-full max-w-xs"
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-foreground truncate">{team.name}</span>
-                        {team.is_system && (
-                          <span className="inline-flex items-center gap-0.5 text-xs font-medium text-purple-500">
-                            <Lock className="h-2.5 w-2.5" /> System
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {!isEditing && team.summary && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{team.summary}</p>
-                    )}
-                  </div>
-                  {/* Color badge */}
-                  <span className={cn("px-2 py-0.5 rounded text-xs font-medium flex-shrink-0", team.colors.bg, team.colors.text)}>
-                    {extractColorKey(team.colors.header)}
-                  </span>
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {!team.is_system && !isEditing && (
-                      <>
-                        <button
-                          onClick={() => startEdit(team)}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Pencil className="h-3 w-3" /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(team.name)}
-                          disabled={deleting === team.name}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                        >
-                          {deleting === team.name ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                        </button>
-                      </>
-                    )}
-                    {isEditing && (
-                      <>
-                        <button
-                          onClick={() => handleSaveEdit(team.name)}
-                          disabled={saving}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs font-medium text-emerald-500 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-                        >
-                          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="inline-flex items-center gap-1 h-6 px-2 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        >
-                          <X className="h-3 w-3" /> Cancel
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                {/* Edit panel */}
-                {isEditing && (
-                  <div className="border-t border-border/50 px-4 py-3 bg-muted/10 space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1">Summary</label>
-                      <textarea
-                        value={editSummary}
-                        onChange={e => setEditSummary(e.target.value)}
-                        rows={2}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <Palette className="h-3 w-3" /> Color
-                      </label>
-                      <ColorPicker value={editColor} onChange={setEditColor} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+        <div className="space-y-1">
+          {/* System teams first */}
+          {teams.filter(t => t.is_system).map(t => renderTeamNode(t, 0))}
+          {/* Hierarchical tree */}
+          {teamTree.map(node => renderTeamNode(node, 0))}
           {teams.length === 0 && (
             <div className="rounded-lg border border-border bg-card px-4 py-8 text-center text-muted-foreground text-xs">
               No teams yet. Create one above to get started.
@@ -2201,7 +2283,19 @@ const ROLE_COLORS: Record<string, string> = {
 type UserGroupBy = "team" | "role"
 
 function UsersTab() {
-  const { teamNames } = useTeams()
+  const { teamNames, teamTree, teams } = useTeams()
+  // Build indented team options for dropdowns
+  const teamOptions = React.useMemo(() => {
+    const opts: { value: string; label: string; depth: number }[] = []
+    function walk(nodes: Team[], depth: number) {
+      for (const n of nodes) {
+        opts.push({ value: n.name, label: `${"  ".repeat(depth)}${depth > 0 ? "└ " : ""}${n.name}`, depth })
+        if (n.children?.length) walk(n.children, depth + 1)
+      }
+    }
+    walk(teamTree, 0)
+    return opts
+  }, [teamTree])
   const [users, setUsers] = React.useState<AppUser[]>([])
   const [loading, setLoading] = React.useState(true)
   // Filters / views
@@ -2388,7 +2482,7 @@ function UsersTab() {
                 className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               >
                 <option value="">Select team…</option>
-                {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
+                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
@@ -2444,7 +2538,7 @@ function UsersTab() {
           className="h-7 rounded border border-input bg-background px-2 text-xs text-foreground"
         >
           <option value="">All Teams</option>
-          {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
+          {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         {/* Filter role */}
         <select
@@ -2526,7 +2620,7 @@ function UsersTab() {
                             {isEditing ? (
                               <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground" disabled={["admin", "compliance_officer"].includes(editRole)}>
                                 <option value="">—</option>
-                                {teamNames.map(t => <option key={t} value={t}>{t}</option>)}
+                                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                               </select>
                             ) : (
                               <span className="text-xs text-muted-foreground">{u.team || "—"}</span>

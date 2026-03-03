@@ -28,6 +28,7 @@ import {
     RISK_STYLES, RISK_OPTIONS, TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
     WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
+import { useTeams } from "@/lib/use-teams"
 import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
@@ -360,6 +361,13 @@ function TeamBoardContent() {
     const userTeam = getUserTeam(session)
     const isComplianceOfficer = role === "compliance_officer" || role === "admin"
     const userName = session?.user?.name || "Team Member"
+    const { getVisibleTeams } = useTeams()
+
+    // Get all teams visible to this user (their team + all descendants)
+    const visibleTeams = React.useMemo(
+        () => userTeam ? getVisibleTeams(userTeam) : [],
+        [userTeam, getVisibleTeams]
+    )
 
     // Redirect compliance officers away from team board
     React.useEffect(() => {
@@ -383,10 +391,15 @@ function TeamBoardContent() {
             setLoading(true)
             const results = await fetchAllActionables()
             const items: { item: ActionableItem; docId: string; docName: string }[] = []
+            const visSet = new Set(visibleTeams)
             for (const r of results) {
                 if (!r.actionables) continue
                 for (const a of r.actionables) {
-                    if (a.published_at && (a.workstream === userTeam || (a.assigned_teams && a.assigned_teams.includes(userTeam!)))) {
+                    if (!a.published_at) continue
+                    // Include if workstream or any assigned_team is in visible teams
+                    const matchesTeam = visSet.has(a.workstream) ||
+                        (a.assigned_teams && a.assigned_teams.some(t => visSet.has(t)))
+                    if (matchesTeam) {
                         items.push({ item: a, docId: r.doc_id, docName: r.doc_name || r.doc_id })
                     }
                 }
@@ -397,7 +410,7 @@ function TeamBoardContent() {
         } finally {
             setLoading(false)
         }
-    }, [userTeam])
+    }, [visibleTeams])
 
     React.useEffect(() => { if (!isComplianceOfficer) loadData() }, [loadData, isComplianceOfficer])
 

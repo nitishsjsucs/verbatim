@@ -166,7 +166,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     globalDeadline: string
     globalDeadlineTime: string
 }) {
-    const { teamNames } = useTeams()
+    const { teamNames, leafTeamNames } = useTeams()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
@@ -503,7 +503,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     Assign Teams
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {teamNames.map(team => {
+                                    {leafTeamNames.map(team => {
                                         const isTeamSelected = draftTeams.includes(team)
                                         const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
                                         return (
@@ -735,7 +735,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     onCreated: () => void
     onCancel: () => void
 }) {
-    const { teamNames } = useTeams()
+    const { teamNames, leafTeamNames } = useTeams()
     const [creating, setCreating] = React.useState(false)
     const [selectedDocId, setSelectedDocId] = React.useState(docId)
     const [docSearchQuery, setDocSearchQuery] = React.useState("")
@@ -822,7 +822,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 <div>
                     <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
                     <select value={form.workstream} onChange={e => setForm(f => ({ ...f, workstream: e.target.value as ActionableWorkstream }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
-                        {teamNames.map(o => <option key={o} value={o}>{o}</option>)}
+                        {leafTeamNames.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 </div>
             </div>

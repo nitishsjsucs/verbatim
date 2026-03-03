@@ -460,6 +460,70 @@ export interface Team {
     summary: string;
     created_at: string;
     order: number;
+    // Hierarchy fields
+    parent_name: string | null;
+    depth: number;
+    path: string[];       // Ancestor names from root to immediate parent
+    is_leaf: boolean;     // True if team has no children
+    children?: Team[];    // Populated only in tree responses
+}
+
+// ─── Team hierarchy helpers ───
+
+/** Flatten a tree of teams into a flat array (depth-first). */
+export function flattenTeamTree(tree: Team[]): Team[] {
+    const result: Team[] = [];
+    function walk(nodes: Team[]) {
+        for (const node of nodes) {
+            result.push(node);
+            if (node.children?.length) walk(node.children);
+        }
+    }
+    walk(tree);
+    return result;
+}
+
+/** Build a nested tree from a flat list of teams. */
+export function buildTeamTree(teams: Team[]): Team[] {
+    const byName: Record<string, Team & { children: Team[] }> = {};
+    for (const t of teams) {
+        byName[t.name] = { ...t, children: [] };
+    }
+    const roots: Team[] = [];
+    for (const t of teams) {
+        const node = byName[t.name];
+        if (t.parent_name && byName[t.parent_name]) {
+            byName[t.parent_name].children.push(node);
+        } else {
+            roots.push(node);
+        }
+    }
+    return roots;
+}
+
+/** Get all descendant team names from a flat list. */
+export function getDescendantNames(teams: Team[], teamName: string): string[] {
+    const result: string[] = [];
+    function collect(parentName: string) {
+        for (const t of teams) {
+            if (t.parent_name === parentName) {
+                result.push(t.name);
+                collect(t.name);
+            }
+        }
+    }
+    collect(teamName);
+    return result;
+}
+
+/** Get team names visible to a user assigned to a given team (self + all descendants). */
+export function getVisibleTeamNames(teams: Team[], userTeam: string): string[] {
+    return [userTeam, ...getDescendantNames(teams, userTeam)];
+}
+
+/** Get the full breadcrumb path for a team: root > ... > parent > self */
+export function getTeamBreadcrumb(team: Team): string {
+    return [...(team.path || []), team.name].join(" › ");
 }
 
 // ─── Multi-team helpers ───

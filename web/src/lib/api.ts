@@ -721,17 +721,31 @@ export async function fetchTeams(): Promise<Team[]> {
     return data.teams || [];
 }
 
-export async function createTeam(name: string, color?: string, summary?: string): Promise<Team> {
+export async function createTeam(name: string, color?: string, summary?: string, parent_name?: string | null): Promise<Team> {
     const res = await apiFetch('/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, color: color || undefined, summary: summary || "" }),
+        body: JSON.stringify({ name, color: color || undefined, summary: summary || "", parent_name: parent_name || null }),
     });
     if (!res.ok) {
         const err = await res.json();
         throw new Error(err.detail || 'Failed to create team');
     }
     return res.json();
+}
+
+export async function fetchTeamTree(): Promise<Team[]> {
+    const res = await apiFetch('/teams/tree');
+    if (!res.ok) throw new Error('Failed to fetch team tree');
+    const data = await res.json();
+    return data.tree || [];
+}
+
+export async function fetchTeamDescendants(teamName: string): Promise<string[]> {
+    const res = await apiFetch(`/teams/${encodeURIComponent(teamName)}/descendants`);
+    if (!res.ok) throw new Error('Failed to fetch team descendants');
+    const data = await res.json();
+    return data.descendants || [];
 }
 
 // LLM Benchmark API

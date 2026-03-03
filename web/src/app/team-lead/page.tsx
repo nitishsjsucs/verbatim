@@ -37,6 +37,7 @@ import {
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
+import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -55,6 +56,13 @@ function TeamLeadContent() {
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
     const userName = session?.user?.name || "Team Lead"
+    const { getVisibleTeams } = useTeams()
+
+    // Get all teams visible to this user (their team + all descendants)
+    const visibleTeams = React.useMemo(
+        () => userTeam ? new Set(getVisibleTeams(userTeam)) : new Set<string>(),
+        [userTeam, getVisibleTeams]
+    )
 
     // Redirect non-team-leads away
     const isTeamLead = role === "team_lead"
@@ -130,21 +138,21 @@ function TeamLeadContent() {
         }
     }, [allDocs, handleUpdate])
 
-    // Build flat rows — only published items for the lead's team
+    // Build flat rows — only published items for the lead's team (+ descendant teams)
     const allRows: FlatRow[] = React.useMemo(() => {
         const rows: FlatRow[] = []
         for (const doc of allDocs) {
             for (const item of doc.actionables) {
                 if (item.published_at) {
-                    // If lead has a team assigned, filter by it (incl. multi-team); otherwise show all
-                    if (!userTeam || item.workstream === userTeam || (item.assigned_teams && item.assigned_teams.includes(userTeam))) {
+                    // If lead has a team assigned, filter by it + descendants; otherwise show all
+                    if (!userTeam || visibleTeams.has(item.workstream) || (item.assigned_teams && item.assigned_teams.some(t => visibleTeams.has(t)))) {
                         rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
                     }
                 }
             }
         }
         return rows
-    }, [allDocs, userTeam])
+    }, [allDocs, userTeam, visibleTeams])
 
     // Project multi-team items to show team-specific status/evidence/comments
     const viewRows = React.useMemo(() => {

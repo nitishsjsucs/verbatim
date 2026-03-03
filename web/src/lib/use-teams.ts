@@ -3,7 +3,7 @@
 import * as React from "react"
 import { fetchTeams } from "./api"
 import type { Team } from "./types"
-import { MIXED_TEAM_CLASSIFICATION } from "./types"
+import { MIXED_TEAM_CLASSIFICATION, buildTeamTree, getDescendantNames, getVisibleTeamNames } from "./types"
 import { syncTeamColors } from "./status-config"
 
 /**
@@ -45,10 +45,16 @@ export function invalidateTeamsCache() {
  *
  * Provides:
  *  - `teams`: Full Team[] array (ordered, system teams first)
+ *  - `teamTree`: Team[] nested tree (root nodes with children)
  *  - `teamNames`: string[] of team names (excludes system Mixed Team)
+ *  - `leafTeamNames`: string[] of leaf team names only (for actionable assignment)
+ *  - `rootTeams`: Team[] of root-level non-system teams
  *  - `allTeamNames`: string[] including Mixed Team
  *  - `teamColors`: Record<string, Team["colors"]> lookup by name
  *  - `getTeamClass`: (name: string) => string — Tailwind class string for badges
+ *  - `getTeamByName`: (name: string) => Team | undefined
+ *  - `getDescendants`: (name: string) => string[] — all descendant team names
+ *  - `getVisibleTeams`: (userTeam: string) => string[] — team + descendants
  *  - `loading`: boolean
  *  - `refresh`: () => void — force re-fetch
  */
@@ -82,9 +88,30 @@ export function useTeams() {
         [teams],
     )
 
+    const leafTeamNames = React.useMemo(
+        () => teams.filter(t => !t.is_system && t.is_leaf).map(t => t.name),
+        [teams],
+    )
+
+    const rootTeams = React.useMemo(
+        () => teams.filter(t => !t.is_system && !t.parent_name),
+        [teams],
+    )
+
+    const teamTree = React.useMemo(
+        () => buildTeamTree(teams.filter(t => !t.is_system)),
+        [teams],
+    )
+
     const teamColors = React.useMemo(() => {
         const map: Record<string, Team["colors"]> = {}
         for (const t of teams) map[t.name] = t.colors
+        return map
+    }, [teams])
+
+    const teamByName = React.useMemo(() => {
+        const map: Record<string, Team> = {}
+        for (const t of teams) map[t.name] = t
         return map
     }, [teams])
 
@@ -92,7 +119,6 @@ export function useTeams() {
         (name: string): string => {
             const c = teamColors[name]
             if (c) return `${c.bg} ${c.text}`
-            // Unknown team — use fallback
             return `${FALLBACK_COLORS.bg} ${FALLBACK_COLORS.text}`
         },
         [teamColors],
@@ -105,13 +131,34 @@ export function useTeams() {
         [teamColors],
     )
 
+    const getTeamByName = React.useCallback(
+        (name: string): Team | undefined => teamByName[name],
+        [teamByName],
+    )
+
+    const getDescendants = React.useCallback(
+        (name: string): string[] => getDescendantNames(teams, name),
+        [teams],
+    )
+
+    const getVisibleTeams = React.useCallback(
+        (userTeam: string): string[] => getVisibleTeamNames(teams, userTeam),
+        [teams],
+    )
+
     return {
         teams,
+        teamTree,
         teamNames,
+        leafTeamNames,
+        rootTeams,
         allTeamNames,
         teamColors,
         getTeamClass,
         getTeamColors,
+        getTeamByName,
+        getDescendants,
+        getVisibleTeams,
         loading,
         refresh,
         MIXED_TEAM: MIXED_TEAM_CLASSIFICATION,

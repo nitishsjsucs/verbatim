@@ -2527,18 +2527,33 @@ class GlobalChatPostRequest(BaseModel):
 
 
 def _chat_channel_allowed(channel: str, role: str, team: str) -> bool:
-    """Strict role-based permission check for a chat channel."""
+    """Strict role-based permission check for a chat channel (hierarchy-aware)."""
     if channel == "compliance_internal":
         return role in ("compliance_officer", "admin")
+
+    # Get the team referenced in the channel
+    ch_team = ""
     if channel.startswith("team_internal:"):
         ch_team = channel.split(":", 1)[1]
-        return role in ("team_member", "team_reviewer", "team_lead") and team == ch_team
-    if channel.startswith("team_compliance:"):
+    elif channel.startswith("team_compliance:"):
         ch_team = channel.split(":", 1)[1]
-        if role in ("compliance_officer", "admin"):
-            return True
-        return role in ("team_member", "team_reviewer", "team_lead") and team == ch_team
-    return False
+    else:
+        return False
+
+    if role in ("compliance_officer", "admin"):
+        return channel.startswith("team_compliance:")
+
+    if role not in ("team_member", "team_reviewer", "team_lead"):
+        return False
+
+    # Allow access if ch_team is the user's team or a descendant of it
+    if ch_team == team:
+        return True
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+    descendants = [d["name"] for d in col.find({"path": team}, {"name": 1})]
+    return ch_team in descendants
 
 
 @app.get("/chat/channels")
@@ -2568,18 +2583,33 @@ def list_chat_channels(role: str = Query(...), team: str = Query("")):
                 "type": "team_compliance",
             })
     else:
-        # Team roles see exactly 2 channels
+        # Team roles see their own channels + descendant team channels
         if team:
+            # Own team channels
             channels.append({
                 "channel": f"team_internal:{team}",
-                "label": "Team Internal Chat",
+                "label": f"{team} Internal",
                 "type": "team_internal",
             })
             channels.append({
                 "channel": f"team_compliance:{team}",
-                "label": "Team ↔ Compliance",
+                "label": f"{team} ↔ Compliance",
                 "type": "team_compliance",
             })
+            # Descendant team channels (hierarchy-aware)
+            col = db["teams"]
+            desc_names = [d["name"] for d in col.find({"path": team}, {"name": 1})]
+            for dt in desc_names:
+                channels.append({
+                    "channel": f"team_internal:{dt}",
+                    "label": f"{dt} Internal",
+                    "type": "team_internal",
+                })
+                channels.append({
+                    "channel": f"team_compliance:{dt}",
+                    "label": f"{dt} ↔ Compliance",
+                    "type": "team_compliance",
+                })
 
     # Compute unread counts
     read_cursors = db["chat_read_cursors"].find_one(
@@ -2688,6 +2718,12 @@ def get_chat_unread_total(role: str = Query(...), team: str = Query("")):
         if team:
             visible_channels.append(f"team_internal:{team}")
             visible_channels.append(f"team_compliance:{team}")
+            # Include descendant team channels (hierarchy-aware)
+            col = db["teams"]
+            desc_names = [d["name"] for d in col.find({"path": team}, {"name": 1})]
+            for dt in desc_names:
+                visible_channels.append(f"team_internal:{dt}")
+                visible_channels.append(f"team_compliance:{dt}")
 
     read_cursors = db["chat_read_cursors"].find_one({"role": role, "team": team}) or {}
     cursors = read_cursors.get("cursors", {})
@@ -2787,6 +2823,7 @@ def _ensure_system_team():
         col.update_one({"name": "Mixed Team Projects"}, {"$set": {"name": SYSTEM_TEAM}})
         logger.info("Renamed system team: Mixed Team Projects → %s", SYSTEM_TEAM)
     existing = col.find_one({"name": SYSTEM_TEAM})
+    hierarchy_fields = {"parent_name": None, "depth": 0, "path": []}
     if not existing:
         col.insert_one({
             "name": SYSTEM_TEAM,
@@ -2795,14 +2832,62 @@ def _ensure_system_team():
             "summary": "System-generated classification for actionables assigned to multiple teams.",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "order": -1,  # Always first
+            **hierarchy_fields,
         })
         logger.info("Seeded system team: %s", SYSTEM_TEAM)
     else:
-        # Force purple color and ensure summary exists
-        col.update_one({"name": SYSTEM_TEAM}, {"$set": {
+        # Force purple color, ensure summary and hierarchy fields exist
+        patch = {
             "colors": MIXED_TEAM_COLORS,
             "summary": existing.get("summary") or "System-generated classification for actionables assigned to multiple teams.",
-        }})
+        }
+        for hk, hv in hierarchy_fields.items():
+            if hk not in existing:
+                patch[hk] = hv
+        col.update_one({"name": SYSTEM_TEAM}, {"$set": patch})
+
+    # ── Migrate legacy teams: add hierarchy fields if missing ──
+    for team in col.find({"parent_name": {"$exists": False}}):
+        col.update_one({"_id": team["_id"]}, {"$set": {"parent_name": None, "depth": 0, "path": []}})
+
+
+def _get_descendants(col, team_name: str) -> list:
+    """Return list of all descendant team names (recursive children)."""
+    descendants = []
+    children = list(col.find({"parent_name": team_name}, {"name": 1}))
+    for child in children:
+        descendants.append(child["name"])
+        descendants.extend(_get_descendants(col, child["name"]))
+    return descendants
+
+
+def _get_ancestors(col, team_name: str) -> list:
+    """Return list of ancestor team names from immediate parent up to root."""
+    ancestors = []
+    current = col.find_one({"name": team_name})
+    while current and current.get("parent_name"):
+        ancestors.append(current["parent_name"])
+        current = col.find_one({"name": current["parent_name"]})
+    return ancestors
+
+
+def _is_leaf_team(col, team_name: str) -> bool:
+    """Return True if team has no children."""
+    return col.count_documents({"parent_name": team_name}) == 0
+
+
+def _build_team_tree(teams_list: list) -> list:
+    """Build nested tree from flat team list. Returns root-level nodes with children."""
+    by_name = {t["name"]: {**t, "children": []} for t in teams_list}
+    roots = []
+    for t in teams_list:
+        node = by_name[t["name"]]
+        parent = t.get("parent_name")
+        if parent and parent in by_name:
+            by_name[parent]["children"].append(node)
+        else:
+            roots.append(node)
+    return roots
 
 
 # Ensure system team on startup
@@ -2813,23 +2898,57 @@ async def ensure_teams():
 
 @app.get("/teams")
 def list_teams():
-    """Return all teams ordered by 'order' field. System teams first."""
+    """Return all teams ordered by 'order' field. System teams first.
+    Each team includes: parent_name, depth, path, is_leaf."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
     teams = list(col.find({}, {"_id": 0}).sort("order", 1))
+    # Annotate each team with is_leaf
+    child_parents = set(t.get("parent_name") for t in teams if t.get("parent_name"))
+    for t in teams:
+        t["is_leaf"] = t["name"] not in child_parents
     return {"teams": teams}
+
+
+@app.get("/teams/tree")
+def list_teams_tree():
+    """Return teams as a nested tree structure."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+    teams = list(col.find({}, {"_id": 0}).sort("order", 1))
+    child_parents = set(t.get("parent_name") for t in teams if t.get("parent_name"))
+    for t in teams:
+        t["is_leaf"] = t["name"] not in child_parents
+    tree = _build_team_tree(teams)
+    return {"tree": tree}
+
+
+@app.get("/teams/{team_name}/descendants")
+def get_team_descendants(team_name: str):
+    """Return all descendant team names for a given team."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["teams"]
+    existing = col.find_one({"name": team_name})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found")
+    descendants = _get_descendants(col, team_name)
+    return {"team": team_name, "descendants": descendants}
 
 
 class CreateTeamRequest(BaseModel):
     name: str
     color: Optional[str] = None  # Tailwind color key e.g. "cyan", "blue", "pink"
     summary: str = ""
+    parent_name: Optional[str] = None  # None = root-level team
 
 
 @app.post("/teams")
 def create_team(body: CreateTeamRequest):
-    """Admin creates a new team. Cannot create system teams or duplicates."""
+    """Admin creates a new team. Cannot create system teams or duplicates.
+    Supports hierarchy via parent_name."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
@@ -2844,9 +2963,26 @@ def create_team(body: CreateTeamRequest):
     if existing:
         raise HTTPException(status_code=409, detail=f"Team '{name}' already exists")
 
-    # Use user-selected color or auto-assign from palette
+    # Resolve parent hierarchy
+    parent_name = body.parent_name.strip() if body.parent_name else None
+    depth = 0
+    path = []
+    if parent_name:
+        parent_doc = col.find_one({"name": parent_name})
+        if not parent_doc:
+            raise HTTPException(status_code=400, detail=f"Parent team '{parent_name}' not found")
+        depth = (parent_doc.get("depth") or 0) + 1
+        path = (parent_doc.get("path") or []) + [parent_name]
+
+    # Use user-selected color or inherit from parent or auto-assign from palette
     if body.color:
         colors = _color_key_to_classes(body.color)
+    elif parent_name:
+        parent_doc = col.find_one({"name": parent_name})
+        colors = parent_doc.get("colors") if parent_doc else None
+        if not colors:
+            count = col.count_documents({"is_system": {"$ne": True}})
+            colors = _TEAM_COLOR_PALETTE[count % len(_TEAM_COLOR_PALETTE)]
     else:
         count = col.count_documents({"is_system": {"$ne": True}})
         color_index = count % len(_TEAM_COLOR_PALETTE)
@@ -2860,15 +2996,20 @@ def create_team(body: CreateTeamRequest):
         "summary": body.summary.strip(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "order": count + 1,
+        "parent_name": parent_name,
+        "depth": depth,
+        "path": path,
     }
     col.insert_one(team_doc)
     team_doc.pop("_id", None)
+    # Annotate is_leaf
+    team_doc["is_leaf"] = True  # Newly created team has no children
     return team_doc
 
 
 @app.delete("/teams/{team_name}")
 def delete_team(team_name: str):
-    """Admin deletes a team. Cannot delete system teams."""
+    """Admin deletes a team and all its descendants. Cannot delete system teams."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
@@ -2879,27 +3020,32 @@ def delete_team(team_name: str):
     if existing.get("is_system"):
         raise HTTPException(status_code=403, detail="Cannot delete system team")
 
-    # ── Cascade: clean up actionables referencing this team ──
-    reassigned_count = _cascade_team_delete(db, team_name)
+    # Collect all teams to delete (this team + all descendants)
+    teams_to_delete = [team_name] + _get_descendants(col, team_name)
 
-    col.delete_one({"name": team_name})
+    reassigned_count = 0
+    for tname in teams_to_delete:
+        # ── Cascade: clean up actionables referencing this team ──
+        reassigned_count += _cascade_team_delete(db, tname)
 
-    # Clean up user records — reassign users on this team to empty string
-    auth_db_name = "govinda_auth"
-    try:
-        auth_db = db.client[auth_db_name]
-        auth_db["user"].update_many({"team": team_name}, {"$set": {"team": ""}})
-    except Exception:
-        pass
+        col.delete_one({"name": tname})
 
-    # Clean up chat collections
-    for chat_col_name in ["team_chats", "global_chats"]:
+        # Clean up user records — reassign users on this team to empty string
+        auth_db_name = "govinda_auth"
         try:
-            db[chat_col_name].delete_many({"team": team_name})
+            auth_db = db.client[auth_db_name]
+            auth_db["user"].update_many({"team": tname}, {"$set": {"team": ""}})
         except Exception:
             pass
 
-    return {"deleted": team_name, "actionables_reassigned": reassigned_count}
+        # Clean up chat collections
+        for chat_col_name in ["team_chats", "global_chats"]:
+            try:
+                db[chat_col_name].delete_many({"team": tname})
+            except Exception:
+                pass
+
+    return {"deleted": teams_to_delete, "actionables_reassigned": reassigned_count}
 
 
 def _cascade_team_delete(db, team_name: str) -> int:
@@ -2966,11 +3112,12 @@ class UpdateTeamRequest(BaseModel):
     color: Optional[str] = None  # Tailwind color key shorthand
     order: Optional[int] = None
     summary: Optional[str] = None
+    parent_name: Optional[str] = "__UNSET__"  # Sentinel: distinguish "not provided" from "set to null (root)"
 
 
 @app.put("/teams/{team_name}")
 def update_team(team_name: str, body: UpdateTeamRequest):
-    """Admin updates a team. Cannot modify system teams."""
+    """Admin updates a team. Cannot modify system teams. Supports re-parenting."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
@@ -2993,16 +3140,66 @@ def update_team(team_name: str, body: UpdateTeamRequest):
     if body.summary is not None:
         updates["summary"] = body.summary.strip()
 
+    # Handle re-parenting
+    if body.parent_name != "__UNSET__":
+        new_parent = body.parent_name.strip() if body.parent_name else None
+        if new_parent:
+            if new_parent == team_name:
+                raise HTTPException(status_code=400, detail="Team cannot be its own parent")
+            descendants = _get_descendants(col, team_name)
+            if new_parent in descendants:
+                raise HTTPException(status_code=400, detail="Cannot set a descendant as parent (circular)")
+            parent_doc = col.find_one({"name": new_parent})
+            if not parent_doc:
+                raise HTTPException(status_code=400, detail=f"Parent team '{new_parent}' not found")
+            updates["parent_name"] = new_parent
+            updates["depth"] = (parent_doc.get("depth") or 0) + 1
+            updates["path"] = (parent_doc.get("path") or []) + [new_parent]
+        else:
+            updates["parent_name"] = None
+            updates["depth"] = 0
+            updates["path"] = []
+
     if updates:
         col.update_one({"name": team_name}, {"$set": updates})
+
+    # If depth/path changed, update all descendants recursively
+    if "depth" in updates or "path" in updates:
+        final_name = updates.get("name", team_name)
+        _recompute_descendant_paths(col, final_name)
 
     # ── Cascade name change to actionables, users, and chats ──
     new_name = updates.get("name")
     if new_name and new_name != team_name:
         _cascade_team_rename(db, team_name, new_name)
+        # Also update parent_name references in children
+        col.update_many({"parent_name": team_name}, {"$set": {"parent_name": new_name}})
+        # Update path arrays in descendants
+        col.update_many(
+            {"path": team_name},
+            [{"$set": {"path": {"$map": {"input": "$path", "as": "p", "in": {"$cond": [{"$eq": ["$$p", team_name]}, new_name, "$$p"]}}}}}]
+        )
 
-    updated = col.find_one({"name": updates.get("name", team_name)}, {"_id": 0})
+    final_name = updates.get("name", team_name)
+    updated = col.find_one({"name": final_name}, {"_id": 0})
+    if updated:
+        updated["is_leaf"] = _is_leaf_team(col, final_name)
     return updated
+
+
+def _recompute_descendant_paths(col, parent_name: str):
+    """After re-parenting, recompute depth and path for all descendants."""
+    parent = col.find_one({"name": parent_name})
+    if not parent:
+        return
+    parent_depth = parent.get("depth", 0)
+    parent_path = parent.get("path", [])
+    children = list(col.find({"parent_name": parent_name}))
+    for child in children:
+        new_depth = parent_depth + 1
+        new_path = parent_path + [parent_name]
+        col.update_one({"name": child["name"]}, {"$set": {"depth": new_depth, "path": new_path}})
+        _recompute_descendant_paths(col, child["name"])
 
 
 def _cascade_team_rename(db, old_name: str, new_name: str):
@@ -3051,39 +3248,89 @@ def _cascade_team_rename(db, old_name: str, new_name: str):
 
 @app.post("/teams/seed-defaults")
 def seed_default_teams():
-    """Seed the default teams into the database. Idempotent — skips existing teams."""
+    """Seed hierarchical default teams. Idempotent — skips existing teams.
+    Creates parent departments with sub-teams for a realistic hierarchy."""
     from utils.mongo import get_db
     db = get_db()
     col = db["teams"]
 
-    default_teams = [
-        ("Policy", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}, "Policy and regulatory framework implementation"),
-        ("Technology", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Technology and systems compliance"),
-        ("Operations", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}, "Operational process compliance"),
-        ("Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}, "Training and awareness programs"),
-        ("Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}, "Regulatory reporting and disclosures"),
-        ("Customer Communication", {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"}, "Customer-facing compliance communications"),
-        ("Governance", {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"}, "Corporate governance and oversight"),
-        ("Legal", {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"}, "Legal review and advisory"),
+    # (name, colors, summary, parent_name)
+    # Parent teams (depth 0)
+    hierarchy = [
+        # ── Root departments ──
+        ("Policy", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}, "Policy and regulatory framework", None),
+        ("Technology", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Technology and systems compliance", None),
+        ("Operations", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}, "Operational process compliance", None),
+        ("Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}, "Training and awareness programs", None),
+        ("Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}, "Regulatory reporting and disclosures", None),
+        ("Customer Communication", {"bg": "bg-sky-500/10", "text": "text-sky-400", "header": "bg-sky-500"}, "Customer-facing compliance", None),
+        ("Governance", {"bg": "bg-violet-500/10", "text": "text-violet-400", "header": "bg-violet-500"}, "Corporate governance and oversight", None),
+        ("Legal", {"bg": "bg-fuchsia-500/10", "text": "text-fuchsia-400", "header": "bg-fuchsia-500"}, "Legal review and advisory", None),
+        # ── Sub-teams (depth 1) ──
+        ("Policy Drafting", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}, "Drafting and reviewing policy documents", "Policy"),
+        ("Policy Review", {"bg": "bg-purple-500/10", "text": "text-purple-400", "header": "bg-purple-500"}, "Policy review and approval workflows", "Policy"),
+        ("Infrastructure", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "IT infrastructure and security", "Technology"),
+        ("App Development", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Application development compliance", "Technology"),
+        ("Data & Analytics", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Data governance and analytics", "Technology"),
+        ("Process Compliance", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}, "Operational process audits", "Operations"),
+        ("Risk Management", {"bg": "bg-blue-500/10", "text": "text-blue-400", "header": "bg-blue-500"}, "Operational risk assessment", "Operations"),
+        ("Internal Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}, "Internal staff training programs", "Training"),
+        ("External Training", {"bg": "bg-pink-500/10", "text": "text-pink-400", "header": "bg-pink-500"}, "External partner training", "Training"),
+        ("Regulatory Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}, "Statutory and regulatory reports", "Reporting"),
+        ("Internal Reporting", {"bg": "bg-indigo-500/10", "text": "text-indigo-400", "header": "bg-indigo-500"}, "Internal compliance reports", "Reporting"),
+        # ── Sub-sub-teams (depth 2) ──
+        ("Frontend Team", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Frontend application compliance", "App Development"),
+        ("Backend Team", {"bg": "bg-cyan-500/10", "text": "text-cyan-400", "header": "bg-cyan-500"}, "Backend systems compliance", "App Development"),
     ]
 
     _ensure_system_team()
 
     seeded = []
-    for idx, (name, colors, summary) in enumerate(default_teams):
+    order_counter = 1
+    for name, colors, summary, parent_name in hierarchy:
         if not col.find_one({"name": name}):
+            # Compute hierarchy fields
+            depth = 0
+            path = []
+            if parent_name:
+                parent_doc = col.find_one({"name": parent_name})
+                if parent_doc:
+                    depth = (parent_doc.get("depth") or 0) + 1
+                    path = (parent_doc.get("path") or []) + [parent_name]
             col.insert_one({
                 "name": name,
                 "is_system": False,
                 "colors": colors,
                 "summary": summary,
                 "created_at": datetime.now(timezone.utc).isoformat(),
-                "order": idx + 1,
+                "order": order_counter,
+                "parent_name": parent_name,
+                "depth": depth,
+                "path": path,
             })
             seeded.append(name)
         else:
-            # Patch older teams that may be missing the summary field
-            col.update_one({"name": name, "summary": {"$exists": False}}, {"$set": {"summary": summary}})
+            # Patch older teams: add hierarchy fields if missing
+            patch = {}
+            existing = col.find_one({"name": name})
+            if "summary" not in existing:
+                patch["summary"] = summary
+            if "parent_name" not in existing:
+                patch["parent_name"] = parent_name
+                if parent_name:
+                    parent_doc = col.find_one({"name": parent_name})
+                    if parent_doc:
+                        patch["depth"] = (parent_doc.get("depth") or 0) + 1
+                        patch["path"] = (parent_doc.get("path") or []) + [parent_name]
+                    else:
+                        patch["depth"] = 0
+                        patch["path"] = []
+                else:
+                    patch["depth"] = 0
+                    patch["path"] = []
+            if patch:
+                col.update_one({"name": name}, {"$set": patch})
+        order_counter += 1
 
     return {"seeded": seeded, "total_teams": col.count_documents({})}
 # LLM Benchmark Endpoints

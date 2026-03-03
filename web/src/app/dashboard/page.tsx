@@ -43,7 +43,7 @@ interface FlatRow {
 // ─── Main Tracker Page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-    const { teamNames } = useTeams()
+    const { teamNames, leafTeamNames } = useTeams()
     const { data: session } = useSession()
     const userName = session?.user?.name || "Compliance Officer"
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
