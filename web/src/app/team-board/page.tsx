@@ -214,7 +214,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         <button
                             onClick={() => onStatusTransition(docId, item)}
                             className={cn(
-                                "inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded transition-colors font-medium",
+                                "inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded transition-colors font-medium",
                                 taskStatus === "assigned"
                                     ? "bg-slate-500/15 text-slate-400 hover:bg-slate-500/25"
                                     : "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
@@ -231,7 +231,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             {canRevert && (
                                 <button
                                     onClick={() => onRevert(docId, item)}
-                                    className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 transition-colors font-medium"
+                                    className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 transition-colors font-medium"
                                     title="Revert to In Progress (available for 10 min after submission)"
                                 >
                                     <Undo2 className="h-2.5 w-2.5" /> Revert
@@ -240,10 +240,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         </div>
                     )}
                     {isUnderReview && (
-                        <span className="text-xs text-blue-400 italic">CO Review</span>
+                        <span className="text-[10px] text-blue-400">CO Review</span>
                     )}
                     {isCompleted && (
-                        <span className="text-xs text-emerald-400 italic">Done</span>
+                        <span className="text-[10px] text-emerald-400">Done</span>
                     )}
                 </div>
             </div>
@@ -615,7 +615,7 @@ function TeamBoardContent() {
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-xs text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
+                        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>

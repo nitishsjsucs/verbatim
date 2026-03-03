@@ -30,14 +30,14 @@ export function RiskIcon({ modality }: { modality: string }) {
 // ─── ProgressBar ─────────────────────────────────────────────────────────────
 
 export function ProgressBar({ completed, total }: { completed: number; total: number }) {
-    if (total === 0) return <span className="text-xs text-muted-foreground/40">—</span>
+    if (total === 0) return <span className="text-[10px] text-muted-foreground/40">—</span>
     const pct = (completed / total) * 100
     return (
         <div className="flex items-center gap-2 w-full">
             <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden">
                 <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-xs font-mono text-muted-foreground shrink-0">
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
                 {completed}/{total}
             </span>
         </div>

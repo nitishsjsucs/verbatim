@@ -267,7 +267,7 @@ function TeamReviewContent() {
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-xs text-muted-foreground/50 uppercase tracking-wider mb-1">Review Progress</p>
+                        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-1">Review Progress</p>
                         <ProgressBar completed={stats.review + stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -642,13 +642,13 @@ function ReviewRow({
                         </>
                     )}
                     {taskStatus === "review" && (
-                        <span className="text-[10px] text-blue-400 italic">CO Review</span>
+                        <span className="text-[10px] text-blue-400">CO Review</span>
                     )}
                     {taskStatus === "completed" && (
-                        <span className="text-[10px] text-emerald-400 italic">Approved</span>
+                        <span className="text-[10px] text-emerald-400">Approved</span>
                     )}
                     {taskStatus === "reworking" && (
-                        <span className="text-[10px] text-orange-400 italic">Reworking</span>
+                        <span className="text-[10px] text-orange-400">Reworking</span>
                     )}
                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                         <span className="text-[10px] text-muted-foreground/30">—</span>

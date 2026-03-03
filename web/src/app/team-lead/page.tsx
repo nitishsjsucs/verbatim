@@ -246,7 +246,7 @@ function TeamLeadContent() {
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-xs text-muted-foreground/50 uppercase tracking-wider mb-1">Completion</p>
+                        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-1">Completion</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -713,10 +713,10 @@ function OversightRow({
                         </button>
                     )}
                     {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status === "reviewed" && (
-                        <span className="text-[10px] text-indigo-400 italic font-medium" title={`Justified: ${item.justification}`}>Justified</span>
+                        <span className="text-[10px] text-indigo-400 font-medium" title={`Justified: ${item.justification}`}>Justified</span>
                     )}
                     {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status !== "reviewed" && (
-                        <span className="text-[10px] text-amber-400 italic font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
+                        <span className="text-[10px] text-amber-400 font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
                     )}
                     {!isAwaitingJustification && isDelayed && !hasJustification && (
                         <button

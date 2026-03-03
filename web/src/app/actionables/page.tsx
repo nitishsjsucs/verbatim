@@ -378,7 +378,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     <RiskIcon modality={item.modality} />
 
                     {/* Team tag - uses saved classification (not draft) */}
-                    <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
                         {getClassification(item)}
                     </span>
 
@@ -455,7 +455,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Team{(item.assigned_teams?.length ?? 0) > 1 ? "s" : ""}</p>
                                     <div className="flex flex-wrap gap-1">
                                         {((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).map(t => (
-                                            <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", getWorkstreamClass(t))}>{t}</span>
+                                            <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(t))}>{t}</span>
                                         ))}
                                     </div>
                                 </div>
@@ -1234,7 +1234,7 @@ export default function ActionablesPage() {
                             <select
                                 value={docFilter}
                                 onChange={e => setDocFilter(e.target.value)}
-                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[140px]"
+                                className="bg-muted/30 text-[10px] rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[140px]"
                             >
                                 <option value="all">All documents</option>
                                 {allDocs.map(d => (

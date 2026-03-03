@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
-    safeStr, normalizeRisk, formatDate, formatTime, formatDateTime, deadlineCategory,
+    safeStr, normalizeRisk, formatDate, formatDateShort, formatTime, formatDateTime, deadlineCategory,
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
@@ -395,7 +395,7 @@ export default function DashboardPage() {
                     <div className="flex-1" />
 
                     <div className="w-48">
-                        <p className="text-xs text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
+                        <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
                         <ProgressBar completed={stats.completed} total={stats.total} />
                     </div>
                 </div>
@@ -523,7 +523,12 @@ export default function DashboardPage() {
                                         <span className="text-xs font-semibold text-foreground">{ws}</span>
                                         <span className="text-xs text-muted-foreground/50 font-mono">{rows.length} items</span>
                                     </button>
-                                    <span className="text-xs font-mono text-muted-foreground shrink-0">{groupCompleted}/{rows.length} ({pct}%)</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <div className="w-16 h-1 rounded-full bg-muted/50 overflow-hidden">
+                                            <div className="bg-emerald-500 h-full transition-all" style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <span className="text-[10px] font-mono text-muted-foreground">{groupCompleted}/{rows.length} ({pct}%)</span>
+                                    </div>
                                 </div>
 
                                 {/* ── Column headers ── */}
@@ -591,7 +596,8 @@ export default function DashboardPage() {
                                                         </span>
                                                     )}
                                                     {multi && (
-                                                        <span className="shrink-0 text-xs font-medium text-purple-400/70 bg-purple-500/10 px-1 py-0.5 rounded">
+                                                        <span className="shrink-0 flex items-center gap-1 text-[10px] font-medium text-purple-400/70 bg-purple-500/10 px-1 py-0.5 rounded">
+                                                            <span className="inline-block w-8 h-1 rounded-full bg-purple-500/20 overflow-hidden"><span className="block h-full bg-purple-400/70 rounded-full" style={{ width: `${assignedTeams.length ? (teamCompletedCount / assignedTeams.length) * 100 : 0}%` }} /></span>
                                                             {teamCompletedCount}/{assignedTeams.length}
                                                         </span>
                                                     )}
@@ -612,13 +618,13 @@ export default function DashboardPage() {
                                                         />
                                                     ) : (
                                                         <span className={cn(
-                                                            "text-xs px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
+                                                            "text-[10px] px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
                                                             parentDeadline && new Date(parentDeadline).getTime() < Date.now()
                                                                 ? "text-red-400 border-red-400/30"
                                                                 : "text-muted-foreground/70 border-muted-foreground/20"
                                                         )} title="Latest child deadline">
                                                             <Calendar className="h-2.5 w-2.5" />
-                                                            {parentDeadline ? formatDate(parentDeadline) : "—"}
+                                                            {parentDeadline ? formatDateShort(parentDeadline) : "—"}
                                                         </span>
                                                     )}
                                                 </div>
@@ -661,7 +667,7 @@ export default function DashboardPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() => { setRejectingItem({ docId, item }); setRejectReason("") }}
-                                                                className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                 title="Reject — send back for rework"
                                                             >
                                                                 <XCircle className="h-2.5 w-2.5" /> Reject
@@ -669,25 +675,25 @@ export default function DashboardPage() {
                                                         </>
                                                     )}
                                                     {taskStatus === "completed" && (
-                                                        <span className="text-xs text-emerald-400 italic">Approved</span>
+                                                        <span className="text-[10px] text-emerald-400">Approved</span>
                                                     )}
                                                     {taskStatus === "reworking" && (
-                                                        <span className="text-xs text-orange-400 italic">Reworking</span>
+                                                        <span className="text-[10px] text-orange-400">Reworking</span>
                                                     )}
                                                     {taskStatus === "team_review" && (
-                                                        <span className="text-xs text-teal-400 italic">Team Review</span>
+                                                        <span className="text-[10px] text-teal-400">Team Review</span>
                                                     )}
                                                     {taskStatus === "reviewer_rejected" && (
-                                                        <span className="text-xs text-rose-400 italic">Rejected by Reviewer</span>
+                                                        <span className="text-[10px] text-rose-400">Rejected by Reviewer</span>
                                                     )}
                                                     {taskStatus === "awaiting_justification" && (
-                                                        <span className="text-xs text-yellow-500 italic">Awaiting Lead</span>
+                                                        <span className="text-[10px] text-yellow-500">Awaiting Lead</span>
                                                     )}
                                                     {taskStatus === "pending_all_teams" && (
-                                                        <span className="text-xs text-amber-400 italic">Pending Teams</span>
+                                                        <span className="text-[10px] text-amber-400">Pending Teams</span>
                                                     )}
                                                     {!multi && (taskStatus === "assigned" || taskStatus === "in_progress") && (
-                                                        <span className="text-xs text-muted-foreground/30">—</span>
+                                                        <span className="text-[10px] text-muted-foreground/30">—</span>
                                                     )}
                                                     {/* Unpublish button */}
                                                     <button
@@ -721,7 +727,7 @@ export default function DashboardPage() {
                                                         >
                                                             {/* Team tag */}
                                                             <div className="py-1.5 px-1">
-                                                                <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", teamColors.bg, teamColors.text)}>
+                                                                <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", teamColors.bg, teamColors.text)}>
                                                                     {team}
                                                                 </span>
                                                             </div>
@@ -734,7 +740,7 @@ export default function DashboardPage() {
                                                                 {isTeamExpanded
                                                                     ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                                                                     : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
-                                                                <span className="text-xs text-foreground/70 truncate italic">{safeStr(tw?.implementation_notes || item.implementation_notes)}</span>
+                                                                <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                                 {teamCommentCount > 0 && (
                                                                     <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60">
                                                                         <MessageSquare className="h-2.5 w-2.5" />{teamCommentCount}
@@ -743,7 +749,7 @@ export default function DashboardPage() {
                                                             </div>
                                                             {/* Status */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium", twStyle.bg, twStyle.text)}>
+                                                                <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", twStyle.bg, twStyle.text)}>
                                                                     {twStyle.label}
                                                                 </span>
                                                             </div>
@@ -757,7 +763,7 @@ export default function DashboardPage() {
                                                             </div>
                                                             {/* Deadline time */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className="text-xs text-muted-foreground/60">
+                                                                <span className="text-[10px] text-muted-foreground/60">
                                                                     {formatTime(tw?.deadline || item.deadline)}
                                                                 </span>
                                                             </div>
@@ -767,13 +773,13 @@ export default function DashboardPage() {
                                                             </div>
                                                             {/* Published date */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className="text-xs text-muted-foreground/60">
+                                                                <span className="text-[10px] text-muted-foreground/60">
                                                                     {formatDate(item.published_at)}
                                                                 </span>
                                                             </div>
                                                             {/* Completion date */}
                                                             <div className="py-1.5 px-1 text-center">
-                                                                <span className="text-xs text-muted-foreground/60">
+                                                                <span className="text-[10px] text-muted-foreground/60">
                                                                     {twStatus === "completed" ? formatDate(tw?.completion_date) : "—"}
                                                                 </span>
                                                             </div>
@@ -783,23 +789,23 @@ export default function DashboardPage() {
                                                                     <>
                                                                         <button
                                                                             onClick={() => handleApproveTeam(docId, item, team)}
-                                                                            className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                         >
                                                                             <CheckCircle2 className="h-2.5 w-2.5" /> Approve
                                                                         </button>
                                                                         <button
                                                                             onClick={() => { setRejectingTeamInfo({ docId, itemId: item.id, team }); setRejectTeamReason("") }}
-                                                                            className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
                                                                         >
                                                                             <XCircle className="h-2.5 w-2.5" /> Reject
                                                                         </button>
                                                                     </>
                                                                 )}
-                                                                {twStatus === "completed" && <span className="text-xs text-emerald-400 italic">Approved</span>}
-                                                                {twStatus === "reworking" && <span className="text-xs text-orange-400 italic">Reworking</span>}
-                                                                {(twStatus === "assigned" || twStatus === "in_progress") && <span className="text-xs text-muted-foreground/30">—</span>}
-                                                                {twStatus === "team_review" && <span className="text-xs text-teal-400 italic">Team Review</span>}
-                                                                {twStatus === "awaiting_justification" && <span className="text-xs text-yellow-500 italic">Awaiting Lead</span>}
+                                                                {twStatus === "completed" && <span className="text-[10px] text-emerald-400">Approved</span>}
+                                                                {twStatus === "reworking" && <span className="text-[10px] text-orange-400">Reworking</span>}
+                                                                {(twStatus === "assigned" || twStatus === "in_progress") && <span className="text-[10px] text-muted-foreground/30">—</span>}
+                                                                {twStatus === "team_review" && <span className="text-[10px] text-teal-400">Team Review</span>}
+                                                                {twStatus === "awaiting_justification" && <span className="text-[10px] text-yellow-500">Awaiting Lead</span>}
                                                             </div>
                                                         </div>
 
@@ -846,9 +852,45 @@ export default function DashboardPage() {
                                                             </div>
                                                         )}
 
-                                                        {/* Per-team expanded: 2-column layout */}
+                                                        {/* Per-team expanded: 2-column layout — styled like single-team */}
                                                         {isTeamExpanded && (
-                                                            <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
+                                                            <div className={cn("border-t border-border/10 px-6 py-4 space-y-3", teamColors.bg)}>
+                                                                {/* Banners: justification + rejection */}
+                                                                {tw?.justification && tw?.justification_status === "pending_review" && (
+                                                                    <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
+                                                                        <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                                                        <div className="flex-1">
+                                                                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Justification — Pending Your Review</p>
+                                                                            <p className="text-xs text-foreground/80 mb-1">{tw.justification}</p>
+                                                                            <p className="text-xs text-muted-foreground/50 mb-2">Submitted by {tw.justification_by}{tw.justification_at ? ` on ${formatDate(tw.justification_at)}` : ""}</p>
+                                                                            <button
+                                                                                onClick={() => handleUpdate(docId, item.id, { justification_status: "reviewed" }, team)}
+                                                                                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-colors font-medium"
+                                                                            >
+                                                                                <CheckCircle2 className="h-2.5 w-2.5" /> Acknowledge Justification
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {tw?.justification && tw?.justification_status === "reviewed" && (
+                                                                    <div className="flex items-start gap-2.5 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-4 py-3">
+                                                                        <CheckCircle2 className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
+                                                                        <div>
+                                                                            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-0.5">Justification — Reviewed</p>
+                                                                            <p className="text-xs text-foreground/80">{tw.justification}</p>
+                                                                            <p className="text-xs text-muted-foreground/50 mt-1">By {tw.justification_by}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {twStatus === "reworking" && tw?.rejection_reason && (
+                                                                    <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                                                                        <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                                                                        <div>
+                                                                            <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                                                            <p className="text-xs text-foreground/80">{tw.rejection_reason}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                                 {/* Approve/Reject buttons for items under review */}
                                                                 {twStatus === "review" && (
                                                                     <div className="flex items-center gap-3 mb-3">
@@ -1165,7 +1207,7 @@ export default function DashboardPage() {
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400 italic">Approved</span></div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400">Approved</span></div>
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
