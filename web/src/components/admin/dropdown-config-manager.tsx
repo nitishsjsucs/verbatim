@@ -32,11 +32,19 @@ export function DropdownConfigManager() {
     const loadConfigs = React.useCallback(async () => {
         try {
             setLoading(true)
+            console.log(`[DropdownConfig] Fetching from: ${API_BASE}/dropdown-configs`)
             const res = await fetch(`${API_BASE}/dropdown-configs`)
-            if (!res.ok) throw new Error("Failed to load configs")
+            console.log(`[DropdownConfig] Response status: ${res.status}`)
+            if (!res.ok) {
+                const text = await res.text()
+                console.error(`[DropdownConfig] Error response:`, text.substring(0, 200))
+                throw new Error(`Failed to load configs (${res.status})`)
+            }
             const data = await res.json()
+            console.log(`[DropdownConfig] Loaded ${data.configs?.length || 0} configs`)
             setConfigs(data.configs || [])
         } catch (err) {
+            console.error(`[DropdownConfig] Load error:`, err)
             toast.error(err instanceof Error ? err.message : "Failed to load configs")
         } finally {
             setLoading(false)
