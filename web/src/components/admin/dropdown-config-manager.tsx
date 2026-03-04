@@ -5,8 +5,9 @@ import { Plus, Trash2, Pencil, Check, X, Save, Loader2, Settings } from "lucide-
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { DropdownCategory, DropdownOption } from "@/lib/use-dropdown-config"
+import { API_BASE_URL } from "@/lib/api"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
+const API_BASE = API_BASE_URL
 
 export function DropdownConfigManager() {
     const [configs, setConfigs] = React.useState<DropdownCategory[]>([])
