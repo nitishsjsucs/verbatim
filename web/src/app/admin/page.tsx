@@ -68,6 +68,7 @@ import {
   Timer,
   Gauge,
   Microscope,
+  Settings,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
