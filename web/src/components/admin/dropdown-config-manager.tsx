@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { DropdownCategory, DropdownOption } from "@/lib/use-dropdown-config"
 
-const API_BASE = "http://localhost:8001"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
 
 export function DropdownConfigManager() {
     const [configs, setConfigs] = React.useState<DropdownCategory[]>([])
@@ -318,7 +318,7 @@ export function DropdownConfigManager() {
                             {cat.options.map((opt, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex items-center justify-between bg-background rounded-md px-3 py-2 border border-border/20"
+                                    className="flex items-center justify-between bg-background rounded-md px-4 py-3 border border-border/30 hover:border-border/50 transition-colors"
                                 >
                                     {editingOption?.categoryKey === cat.key && editingOption.index === idx ? (
                                         <div className="flex items-center gap-2 flex-1">
@@ -326,7 +326,7 @@ export function DropdownConfigManager() {
                                                 value={editLabel}
                                                 onChange={e => setEditLabel(e.target.value)}
                                                 placeholder="Label"
-                                                className="bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-border focus:outline-none flex-1"
+                                                className="bg-muted/30 text-sm rounded px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none flex-1 text-foreground"
                                                 autoFocus
                                             />
                                             <input
@@ -334,13 +334,13 @@ export function DropdownConfigManager() {
                                                 onChange={e => setEditValue(e.target.value)}
                                                 placeholder="Value"
                                                 type="number"
-                                                className="bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-border focus:outline-none w-20"
+                                                className="bg-muted/30 text-sm rounded px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none w-24 text-foreground"
                                             />
                                             <button
                                                 onClick={() => handleUpdateOption(cat.key, idx)}
-                                                className="p-1 rounded hover:bg-emerald-500/20 text-emerald-400"
+                                                className="p-1.5 rounded hover:bg-emerald-500/20 text-emerald-400"
                                             >
-                                                <Check className="h-3 w-3" />
+                                                <Check className="h-4 w-4" />
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -348,35 +348,37 @@ export function DropdownConfigManager() {
                                                     setEditLabel("")
                                                     setEditValue("")
                                                 }}
-                                                className="p-1 rounded hover:bg-muted/50 text-muted-foreground"
+                                                className="p-1.5 rounded hover:bg-muted/50 text-muted-foreground"
                                             >
-                                                <X className="h-3 w-3" />
+                                                <X className="h-4 w-4" />
                                             </button>
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xs text-foreground/90">{opt.label}</span>
-                                                <span className="text-xs text-muted-foreground/50 font-mono">
-                                                    value: {opt.value}
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <span className="text-sm font-medium text-foreground min-w-[100px]">{opt.label}</span>
+                                                <span className="text-sm text-muted-foreground font-mono bg-muted/20 px-2 py-1 rounded">
+                                                    {opt.value}
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-1">
+                                            <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => {
                                                         setEditingOption({ categoryKey: cat.key, index: idx })
                                                         setEditLabel(opt.label)
                                                         setEditValue(opt.value.toString())
                                                     }}
-                                                    className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                                                    className="p-1.5 rounded hover:bg-blue-500/20 text-blue-400 transition-colors"
+                                                    title="Edit option"
                                                 >
-                                                    <Pencil className="h-3 w-3" />
+                                                    <Pencil className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteOption(cat.key, idx)}
-                                                    className="p-1 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+                                                    className="p-1.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+                                                    title="Delete option"
                                                 >
-                                                    <Trash2 className="h-3 w-3" />
+                                                    <Trash2 className="h-4 w-4" />
                                                 </button>
                                             </div>
                                         </>
