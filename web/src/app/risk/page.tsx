@@ -4,7 +4,7 @@ import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import { ShieldAlert, TrendingUp, BarChart3, Shield, AlertTriangle } from "lucide-react"
-import { fetchActionables, fetchRiskMatrix, type RiskMatrixEntry } from "@/lib/api"
+import { fetchAllActionables, fetchRiskMatrix, type RiskMatrixEntry } from "@/lib/api"
 import type { ActionableItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -25,14 +25,14 @@ export default function RiskPage() {
     async function load() {
       try {
         const [actionablesData, matrixData] = await Promise.all([
-          fetchActionables(),
+          fetchAllActionables(),
           fetchRiskMatrix(),
         ])
         // Flatten all actionables from all documents
         const allItems: ActionableItem[] = []
         if (Array.isArray(actionablesData)) {
-          for (const doc of actionablesData) {
-            if (doc.actionables) allItems.push(...doc.actionables)
+          for (const result of actionablesData) {
+            if (result.actionables) allItems.push(...result.actionables)
           }
         }
         setItems(allItems)
