@@ -294,6 +294,11 @@ export interface TeamWorkflow {
     deadline?: string;  // Per-team deadline for mixed group projects
 }
 
+export interface RiskSubDropdown {
+    label: string;
+    score: number;
+}
+
 export interface ActionableItem {
     id: string;
     modality: ActionableModality;
@@ -337,13 +342,35 @@ export interface ActionableItem {
     regulator?: string;               // Regulator name
     // Unique actionable display ID
     actionable_id?: string;           // e.g. "ACT-20260304-001"
-    // Risk assessment dropdowns
-    impact?: string;                  // 1-3 scale
+    // Risk assessment dropdowns (legacy flat fields — kept for backward compat)
+    impact?: string;
     tranche3?: string;                // Yes / No
-    control?: string;                 // 1-3 scale
-    likelihood?: string;              // 1-3 scale
-    residual_risk?: string;           // 1-3 scale
-    inherent_risk?: string;           // 1-3 scale
+    control?: string;
+    likelihood?: string;
+    residual_risk?: string;
+    inherent_risk?: string;
+    // Structured risk scoring (new framework)
+    // Likelihood: 3 independent dropdowns → overall = MAX of 3 scores
+    likelihood_business_volume?: RiskSubDropdown;
+    likelihood_products_processes?: RiskSubDropdown;
+    likelihood_compliance_violations?: RiskSubDropdown;
+    likelihood_score?: number;         // MAX(bv, pp, cv)
+    // Impact: single dropdown → overall = score²
+    impact_dropdown?: RiskSubDropdown;
+    impact_score?: number;             // (selected score)²
+    // Control: 2 dropdowns → overall = average
+    control_monitoring?: RiskSubDropdown;
+    control_effectiveness?: RiskSubDropdown;
+    control_score?: number;            // (mon + eff) / 2
+    // Derived scores
+    inherent_risk_score?: number;      // likelihood × impact
+    inherent_risk_label?: string;
+    residual_risk_score?: number;      // inherent × control
+    residual_risk_label?: string;
+    // Legacy impact sub-fields (backward compat with existing data)
+    impact_sub1?: RiskSubDropdown;
+    impact_sub2?: RiskSubDropdown;
+    impact_sub3?: RiskSubDropdown;
     theme?: string;                   // Configurable theme category
     // Tagged Incorrectly bypass flow
     bypass_tag?: boolean;             // True if tagged as incorrectly assigned

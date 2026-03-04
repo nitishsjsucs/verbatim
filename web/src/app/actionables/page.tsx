@@ -17,6 +17,7 @@ import {
     ActionableWorkstream,
     TeamWorkflow,
     Team,
+    RiskSubDropdown,
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
     isMultiTeam,
@@ -176,13 +177,39 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
     const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
-    const [draftImpact, setDraftImpact] = React.useState(safeStr(item.impact))
     const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3))
-    const [draftControl, setDraftControl] = React.useState(safeStr(item.control))
-    const [draftLikelihood, setDraftLikelihood] = React.useState(safeStr(item.likelihood))
-    const [draftResidualRisk, setDraftResidualRisk] = React.useState(safeStr(item.residual_risk))
-    const [draftInherentRisk, setDraftInherentRisk] = React.useState(safeStr(item.inherent_risk))
     const [draftTheme, setDraftTheme] = React.useState(safeStr(item.theme))
+    // Structured risk sub-dropdowns — each stores {label, score} or empty {}
+    const emptyRSD = {} as RiskSubDropdown
+    const [draftLikeBV, setDraftLikeBV] = React.useState<RiskSubDropdown>(item.likelihood_business_volume || emptyRSD)
+    const [draftLikePP, setDraftLikePP] = React.useState<RiskSubDropdown>(item.likelihood_products_processes || emptyRSD)
+    const [draftLikeCV, setDraftLikeCV] = React.useState<RiskSubDropdown>(item.likelihood_compliance_violations || emptyRSD)
+    const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(item.impact_dropdown || emptyRSD)
+    const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
+    const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
+    // Helper: select a sub-dropdown from config options
+    const pickSubDropdown = (configKey: string, selectedLabel: string): RiskSubDropdown => {
+        const opt = getOptions(configKey).find(o => o.label === selectedLabel)
+        return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
+    }
+    // Computed scores (reactive, new formulas)
+    const safeScore = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
+    // OVERALL LIKELIHOOD = MAX of 3 sub-dropdown scores
+    const likelihoodScore = Math.max(safeScore(draftLikeBV), safeScore(draftLikePP), safeScore(draftLikeCV))
+    // OVERALL IMPACT = (selected impact score)²
+    const rawImpact = safeScore(draftImpactDD)
+    const impactScore = rawImpact ** 2
+    // INHERENT RISK = likelihood × impact
+    const inherentRiskScore = likelihoodScore * impactScore
+    // OVERALL CONTROL = average of 2 sub-dropdown scores
+    const monScore = safeScore(draftCtrlMon)
+    const effScore = safeScore(draftCtrlEff)
+    const controlScore = (monScore || effScore) ? (monScore + effScore) / 2 : 0
+    // RESIDUAL RISK = inherent × control
+    const residualRiskScore = inherentRiskScore * controlScore
+    const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
+    const inherentRiskLabel = classifyRisk(inherentRiskScore)
+    const residualRiskLabel = classifyRisk(residualRiskScore)
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -233,13 +260,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
         setDraftRisk(normalizeRisk(item.modality))
-        setDraftImpact(safeStr(item.impact))
         setDraftTranche3(safeStr(item.tranche3))
-        setDraftControl(safeStr(item.control))
-        setDraftLikelihood(safeStr(item.likelihood))
-        setDraftResidualRisk(safeStr(item.residual_risk))
-        setDraftInherentRisk(safeStr(item.inherent_risk))
         setDraftTheme(safeStr(item.theme))
+        // Structured risk sub-dropdowns
+        setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
+        setDraftLikePP(item.likelihood_products_processes || emptyRSD)
+        setDraftLikeCV(item.likelihood_compliance_violations || emptyRSD)
+        setDraftImpactDD(item.impact_dropdown || emptyRSD)
+        setDraftCtrlMon(item.control_monitoring || emptyRSD)
+        setDraftCtrlEff(item.control_effectiveness || emptyRSD)
         setDeadlineDate(item.deadline ? item.deadline.split("T")[0] || "" : "")
         setDeadlineTime(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
         const teams = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
@@ -261,18 +290,24 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     }, [item])
 
     // Determine if any draft differs from saved
+    const subDiffers = (a: RiskSubDropdown | undefined, b: RiskSubDropdown | undefined) => {
+        const la = a?.label || "", lb = b?.label || ""
+        return la !== lb
+    }
     const isDirty = React.useMemo(() => {
         if (draftAction !== safeStr(item.action)) return true
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
         if (draftRisk !== normalizeRisk(item.modality)) return true
-        if (draftImpact !== safeStr(item.impact)) return true
         if (draftTranche3 !== safeStr(item.tranche3)) return true
-        if (draftControl !== safeStr(item.control)) return true
-        if (draftLikelihood !== safeStr(item.likelihood)) return true
-        if (draftResidualRisk !== safeStr(item.residual_risk)) return true
-        if (draftInherentRisk !== safeStr(item.inherent_risk)) return true
         if (draftTheme !== safeStr(item.theme)) return true
+        // Structured risk sub-dropdowns
+        if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
+        if (subDiffers(draftLikePP, item.likelihood_products_processes)) return true
+        if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) return true
+        if (subDiffers(draftImpactDD, item.impact_dropdown)) return true
+        if (subDiffers(draftCtrlMon, item.control_monitoring)) return true
+        if (subDiffers(draftCtrlEff, item.control_effectiveness)) return true
         const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
         if (currentDl !== (item.deadline || "")) return true
         // Check teams
@@ -290,7 +325,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             }
         }
         return false
-    }, [draftAction, draftImpl, draftEvidence, draftRisk, draftImpact, draftTranche3, draftControl, draftLikelihood, draftResidualRisk, draftInherentRisk, draftTheme, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
+    }, [draftAction, draftImpl, draftEvidence, draftRisk, draftTranche3, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
     // --- Unified Save: sends all draft changes at once ---
     const handleSaveAll = async () => {
@@ -303,14 +338,23 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
             if (draftRisk !== normalizeRisk(item.modality)) updates.modality = draftRisk
-            // Risk assessment fields
-            if (draftImpact !== safeStr(item.impact)) updates.impact = draftImpact
+            // Risk assessment — structured sub-dropdowns
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
-            if (draftControl !== safeStr(item.control)) updates.control = draftControl
-            if (draftLikelihood !== safeStr(item.likelihood)) updates.likelihood = draftLikelihood
-            if (draftResidualRisk !== safeStr(item.residual_risk)) updates.residual_risk = draftResidualRisk
-            if (draftInherentRisk !== safeStr(item.inherent_risk)) updates.inherent_risk = draftInherentRisk
             if (draftTheme !== safeStr(item.theme)) updates.theme = draftTheme
+            if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
+            if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
+            if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+            if (subDiffers(draftImpactDD, item.impact_dropdown)) updates.impact_dropdown = draftImpactDD
+            if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
+            if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
+            // Send computed scores so backend recomputes and persists
+            updates.likelihood_score = likelihoodScore
+            updates.impact_score = impactScore
+            updates.control_score = controlScore
+            updates.inherent_risk_score = inherentRiskScore
+            updates.inherent_risk_label = inherentRiskLabel
+            updates.residual_risk_score = residualRiskScore
+            updates.residual_risk_label = residualRiskLabel
             // Deadline
             const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
             if (dl !== (item.deadline || "")) updates.deadline = dl
@@ -744,72 +788,139 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 </div>
                             )}
 
-                            {/* Risk Level */}
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground/60 mb-1">Risk Level</p>
-                                <select
-                                    value={draftRisk}
-                                    onChange={e => setDraftRisk(e.target.value)}
-                                    className={cn(
-                                        "w-full text-xs rounded-md px-2.5 py-1.5 border border-dashed border-border hover:border-primary/50 focus:border-primary focus:outline-none cursor-pointer transition-colors font-medium",
-                                        RISK_STYLES[draftRisk]?.bg || "bg-muted/40",
-                                        RISK_STYLES[draftRisk]?.text || "text-foreground"
-                                    )}
-                                >
-                                    {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                </select>
-                            </div>
+                            {/* Risk Assessment Framework */}
+                            <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
 
-                            {/* Risk Assessment Dropdowns */}
-                            <div className="grid grid-cols-4 gap-2">
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("impact")}</p>
-                                    <select value={draftImpact} onChange={e => setDraftImpact(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("impact").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
+                                {/* Row 1: Theme + Tranche3 + Modality */}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme") || "Theme"}</p>
+                                        <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                            <option value="">—</option>
+                                            {getOptions("theme").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
+                                        <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                            <option value="">—</option>
+                                            {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Modality</p>
+                                        <select
+                                            value={draftRisk}
+                                            onChange={e => setDraftRisk(e.target.value)}
+                                            className={cn(
+                                                "w-full text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none cursor-pointer font-medium",
+                                                RISK_STYLES[draftRisk]?.bg || "bg-muted/30",
+                                                RISK_STYLES[draftRisk]?.text || "text-foreground"
+                                            )}
+                                        >
+                                            {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {/* Row 2: LIKELIHOOD (3 sub-dropdowns) → score = MAX */}
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("likelihood")}</p>
-                                    <select value={draftLikelihood} onChange={e => setDraftLikelihood(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("likelihood").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood</p>
+                                        <span className="text-[10px] font-mono text-blue-400/60">Score: {likelihoodScore} (MAX)</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volume"}</p>
+                                            <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <option value="">—</option>
+                                                {getOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
+                                            <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <option value="">—</option>
+                                                {getOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
+                                            <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <option value="">—</option>
+                                                {getOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("control")}</p>
-                                    <select value={draftControl} onChange={e => setDraftControl(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("control").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
+
+                                {/* Row 3: IMPACT (single dropdown) → score = value² */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <p className="text-[10px] font-semibold text-amber-400/80 uppercase tracking-wider">Impact</p>
+                                            <span className="text-[10px] font-mono text-amber-400/60">Score: {impactScore} ({rawImpact}&sup2;)</span>
+                                        </div>
+                                        <select value={draftImpactDD?.label || ""} onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                            <option value="">—</option>
+                                            {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-0.5">
+                                            <p className="text-[10px] font-semibold text-red-400/80 uppercase tracking-wider">Inherent Risk</p>
+                                            <span className="text-[10px] font-mono text-red-400/60">{inherentRiskScore} = {likelihoodScore} &times; {impactScore}</span>
+                                        </div>
+                                        <div className={cn("text-xs rounded px-2 py-1 border font-medium text-center",
+                                            inherentRiskLabel === "High" ? "border-red-500/30 bg-red-500/10 text-red-400" :
+                                            inherentRiskLabel === "Medium" ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
+                                            inherentRiskLabel === "Low" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
+                                            "border-border/30 bg-muted/20 text-muted-foreground/50"
+                                        )}>
+                                            {inherentRiskLabel || "—"}
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* Row 4: CONTROL (2 sub-dropdowns) → score = average */}
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme")}</p>
-                                    <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("theme").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control</p>
+                                        <span className="text-[10px] font-mono text-teal-400/60">Score: {controlScore.toFixed(1)} (avg)</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
+                                            <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <option value="">—</option>
+                                                {getOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
+                                            <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <option value="">—</option>
+                                                {getOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("inherent_risk")}</p>
-                                    <select value={draftInherentRisk} onChange={e => setDraftInherentRisk(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("inherent_risk").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("residual_risk")}</p>
-                                    <select value={draftResidualRisk} onChange={e => setDraftResidualRisk(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("residual_risk").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3")}</p>
-                                    <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
+
+                                {/* Row 5: RESIDUAL RISK (auto-computed) */}
+                                <div className="flex items-center justify-between pt-2 border-t border-border/20">
+                                    <div>
+                                        <p className="text-[10px] font-semibold text-purple-400/80 uppercase tracking-wider">Residual Risk</p>
+                                        <span className="text-[10px] font-mono text-purple-400/60">{residualRiskScore.toFixed(1)} = {inherentRiskScore} &times; {controlScore.toFixed(1)}</span>
+                                    </div>
+                                    <div className={cn("text-xs rounded px-3 py-1 border font-semibold",
+                                        residualRiskLabel === "High" ? "border-red-500/30 bg-red-500/10 text-red-400" :
+                                        residualRiskLabel === "Medium" ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
+                                        residualRiskLabel === "Low" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
+                                        "border-border/30 bg-muted/20 text-muted-foreground/50"
+                                    )}>
+                                        {residualRiskLabel || "—"}
+                                    </div>
                                 </div>
                             </div>
 

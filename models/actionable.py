@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional  # noqa: F401 — kept for potential future use
 
 
 class Modality(str, Enum):
@@ -97,13 +97,36 @@ class ActionableItem:
     regulator: str = ""  # Regulator name (e.g. "RBI", "SEBI")
     # ── Unique actionable display ID ──
     actionable_id: str = ""  # Human-readable unique ID, e.g. "ACT-20260304-001"
-    # ── Risk assessment dropdowns ──
-    impact: str = ""  # 1-3 scale
+    # ── Risk assessment dropdowns (legacy flat fields — kept for backward compat) ──
+    impact: str = ""  # Legacy: flat string
     tranche3: str = ""  # Yes / No
-    control: str = ""  # 1-3 scale
-    likelihood: str = ""  # 1-3 scale
-    residual_risk: str = ""  # 1-3 scale
-    inherent_risk: str = ""  # 1-3 scale
+    control: str = ""  # Legacy: flat string
+    likelihood: str = ""  # Legacy: flat string
+    residual_risk: str = ""  # Legacy: flat string
+    inherent_risk: str = ""  # Legacy: flat string
+    # ── Structured risk scoring (new) ──
+    # Each is a dict: {"label": str, "score": int/float} or None/empty-dict
+    # Likelihood: 3 independent sub-dropdowns → overall = MAX of 3 scores
+    likelihood_business_volume: dict = field(default_factory=dict)   # {label, score}
+    likelihood_products_processes: dict = field(default_factory=dict) # {label, score}
+    likelihood_compliance_violations: dict = field(default_factory=dict) # {label, score}
+    likelihood_score: float = 0  # MAX of 3 likelihood sub-scores
+    # Impact: single dropdown → overall = score²
+    impact_dropdown: dict = field(default_factory=dict)  # {label, score}
+    impact_score: float = 0  # (selected impact score)²
+    # Control: 2 sub-dropdowns → overall = average of 2 scores
+    control_monitoring: dict = field(default_factory=dict)    # {label, score}
+    control_effectiveness: dict = field(default_factory=dict) # {label, score}
+    control_score: float = 0  # (monitoring + effectiveness) / 2
+    # Derived risk scores
+    inherent_risk_score: float = 0  # likelihood_score × impact_score
+    inherent_risk_label: str = ""  # Display label
+    residual_risk_score: float = 0  # inherent_risk_score × control_score
+    residual_risk_label: str = ""  # Display label
+    # Legacy impact sub-fields (kept for backward compat with existing data)
+    impact_sub1: dict = field(default_factory=dict)  # Deprecated → use impact_dropdown
+    impact_sub2: dict = field(default_factory=dict)  # Deprecated
+    impact_sub3: dict = field(default_factory=dict)  # Deprecated
     # ── Theme dropdown ──
     theme: str = ""  # Configurable theme category
     # ── Tagged Incorrectly bypass flow ──
@@ -254,6 +277,24 @@ class ActionableItem:
             "likelihood": self.likelihood,
             "residual_risk": self.residual_risk,
             "inherent_risk": self.inherent_risk,
+            # Structured risk scoring
+            "likelihood_business_volume": self.likelihood_business_volume,
+            "likelihood_products_processes": self.likelihood_products_processes,
+            "likelihood_compliance_violations": self.likelihood_compliance_violations,
+            "likelihood_score": self.likelihood_score,
+            "impact_dropdown": self.impact_dropdown,
+            "impact_score": self.impact_score,
+            "control_monitoring": self.control_monitoring,
+            "control_effectiveness": self.control_effectiveness,
+            "control_score": self.control_score,
+            "inherent_risk_score": self.inherent_risk_score,
+            "inherent_risk_label": self.inherent_risk_label,
+            "residual_risk_score": self.residual_risk_score,
+            "residual_risk_label": self.residual_risk_label,
+            # Legacy impact sub-fields (backward compat)
+            "impact_sub1": self.impact_sub1,
+            "impact_sub2": self.impact_sub2,
+            "impact_sub3": self.impact_sub3,
             "theme": self.theme,
             "bypass_tag": self.bypass_tag,
             "bypass_tagged_at": self.bypass_tagged_at,
@@ -328,6 +369,25 @@ class ActionableItem:
             likelihood=data.get("likelihood", ""),
             residual_risk=data.get("residual_risk", ""),
             inherent_risk=data.get("inherent_risk", ""),
+            # Structured risk scoring
+            likelihood_business_volume=data.get("likelihood_business_volume", {}),
+            likelihood_products_processes=data.get("likelihood_products_processes", {}),
+            likelihood_compliance_violations=data.get("likelihood_compliance_violations", {}),
+            likelihood_score=data.get("likelihood_score", 0),
+            # impact_dropdown: prefer new key, fall back to legacy impact_sub1
+            impact_dropdown=data.get("impact_dropdown") or data.get("impact_sub1", {}),
+            impact_score=data.get("impact_score", 0),
+            control_monitoring=data.get("control_monitoring", {}),
+            control_effectiveness=data.get("control_effectiveness", {}),
+            control_score=data.get("control_score", 0),
+            inherent_risk_score=data.get("inherent_risk_score", 0),
+            inherent_risk_label=data.get("inherent_risk_label", ""),
+            residual_risk_score=data.get("residual_risk_score", 0),
+            residual_risk_label=data.get("residual_risk_label", ""),
+            # Legacy impact sub-fields (backward compat)
+            impact_sub1=data.get("impact_sub1", {}),
+            impact_sub2=data.get("impact_sub2", {}),
+            impact_sub3=data.get("impact_sub3", {}),
             theme=data.get("theme", ""),
             bypass_tag=data.get("bypass_tag", False),
             bypass_tagged_at=data.get("bypass_tagged_at", ""),

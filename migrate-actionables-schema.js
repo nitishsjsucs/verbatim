@@ -67,6 +67,21 @@ const TOP_LEVEL_DEFAULTS = {
     team_reviewer_rejected_at:  "",
     completion_date:            "",
     reviewer_comments:          "",
+    // New structured risk scoring fields
+    likelihood_business_volume:     {},
+    likelihood_products_processes:  {},
+    likelihood_compliance_violations: {},
+    likelihood_score:               0,
+    impact_dropdown:                {},
+    impact_score:                   0,
+    control_monitoring:             {},
+    control_effectiveness:          {},
+    control_score:                  0,
+    inherent_risk_score:            0,
+    inherent_risk_label:            "",
+    residual_risk_score:            0,
+    residual_risk_label:            "",
+    theme:                          "",
 };
 
 function patchTeamWorkflows(teamWorkflows) {
@@ -155,6 +170,13 @@ async function migrate() {
                 // 4. Normalize workstream — ensure it's a string, not an object
                 if (patched.workstream && typeof patched.workstream === 'object' && patched.workstream.value) {
                     patched.workstream = patched.workstream.value;
+                    itemChanged = true;
+                    fieldsAdded++;
+                }
+
+                // 5. Copy legacy impact_sub1 → impact_dropdown if impact_dropdown is empty
+                if ((!patched.impact_dropdown || !patched.impact_dropdown.label) && patched.impact_sub1 && patched.impact_sub1.label) {
+                    patched.impact_dropdown = { ...patched.impact_sub1 };
                     itemChanged = true;
                     fieldsAdded++;
                 }

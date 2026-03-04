@@ -1461,8 +1461,19 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "regulation_issue_date", "circular_effective_date", "regulator",
         # Unique actionable display ID
         "actionable_id",
-        # Risk assessment dropdowns
+        # Risk assessment dropdowns (legacy flat fields kept for compat)
         "impact", "tranche3", "control", "likelihood", "residual_risk", "inherent_risk",
+        # Structured risk scoring
+        "likelihood_business_volume", "likelihood_products_processes", "likelihood_compliance_violations",
+        "likelihood_score",
+        "impact_dropdown",
+        "impact_score",
+        "control_monitoring", "control_effectiveness",
+        "control_score",
+        "inherent_risk_score", "inherent_risk_label",
+        "residual_risk_score", "residual_risk_label",
+        # Legacy impact sub-fields (backward compat)
+        "impact_sub1", "impact_sub2", "impact_sub3",
         # Theme dropdown
         "theme",
         # Tagged Incorrectly bypass flow
@@ -1494,6 +1505,9 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
     if "assigned_teams" in body:
         target.init_team_workflows()
 
+    # ── Recompute risk scores whenever sub-dropdowns change ──
+    _recompute_risk_scores(target)
+
     # Recompute aggregate status for multi-team items
     if target.is_multi_team:
         target.compute_aggregate_status()
@@ -1501,6 +1515,96 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
     result.compute_stats()
     store.save(result)
     return target.to_dict()
+
+
+def _safe_score(d: dict | None) -> float:
+    """Extract numeric score from a sub-dropdown dict, defaulting to 0."""
+    if not d or not isinstance(d, dict):
+        return 0
+    v = d.get("score", 0)
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _recompute_risk_scores(target) -> None:
+    """Recompute all derived risk scores from sub-dropdown selections.
+
+    OVERALL LIKELIHOOD SCORE = MAX(businessVolume, productProcess, complianceViolation)
+    OVERALL IMPACT SCORE     = (selectedImpactScore)²
+    INHERENT RISK SCORE      = overallLikelihoodScore × overallImpactScore
+    OVERALL CONTROL SCORE    = (monitoringMechanism + controlEffectiveness) / 2
+    OVERALL RESIDUAL SCORE   = inherentRiskScore × overallControlScore
+
+    The residual_risk_label is resolved via the admin-configurable
+    residual_risk_matrix collection. If no matrix match, falls back to
+    a simple threshold classification.
+    """
+    # Likelihood = MAX of 3 independent sub-dropdown scores
+    bv = _safe_score(target.likelihood_business_volume)
+    pp = _safe_score(target.likelihood_products_processes)
+    cv = _safe_score(target.likelihood_compliance_violations)
+    ls = max(bv, pp, cv)
+    target.likelihood_score = ls
+
+    # Impact = (single dropdown score)²
+    raw_impact = _safe_score(target.impact_dropdown)
+    ims = raw_impact ** 2
+    target.impact_score = ims
+
+    # Inherent risk = likelihood × impact
+    ir = ls * ims
+    target.inherent_risk_score = ir
+    target.inherent_risk_label = _classify_inherent_risk(ir)
+
+    # Control = average of 2 sub-dropdown scores
+    mon = _safe_score(target.control_monitoring)
+    eff = _safe_score(target.control_effectiveness)
+    cs = (mon + eff) / 2 if (mon or eff) else 0
+    target.control_score = cs
+
+    # Residual risk = inherent × control
+    rr = ir * cs
+    target.residual_risk_score = rr
+    target.residual_risk_label = _resolve_residual_risk_label(rr)
+
+
+def _classify_inherent_risk(score: int) -> str:
+    """Simple threshold-based inherent risk label."""
+    if score <= 0:
+        return ""
+    if score <= 3:
+        return "Low"
+    if score <= 6:
+        return "Medium"
+    return "High"
+
+
+def _resolve_residual_risk_label(residual_score: float) -> str:
+    """Look up residual risk label from the admin-configurable interpretation matrix.
+    Falls back to simple threshold if no matrix entry matches."""
+    try:
+        from utils.mongo import get_db
+        db = get_db()
+        matrix = db["residual_risk_matrix"]
+        # Find the range entry that contains this score
+        entry = matrix.find_one({
+            "min_score": {"$lte": residual_score},
+            "max_score": {"$gte": residual_score},
+        })
+        if entry and entry.get("label"):
+            return entry["label"]
+    except Exception:
+        pass
+    # Fallback: simple threshold
+    if residual_score <= 0:
+        return ""
+    if residual_score <= 3:
+        return "Low"
+    if residual_score <= 9:
+        return "Medium"
+    return "High"
 
 
 # ---------------------------------------------------------------------------
@@ -3876,6 +3980,7 @@ DROPDOWN_COLLECTION = "dropdown_configs"
 
 # Default seed data — provides sensible defaults on first boot (idempotent)
 DEFAULT_DROPDOWN_CONFIGS = [
+    # ── Theme (no scoring) ──
     {
         "_id": "theme",
         "label": "Theme",
@@ -3885,8 +3990,46 @@ DEFAULT_DROPDOWN_CONFIGS = [
             {"label": "3", "value": 3},
         ],
     },
+    # ── Tranche 3 ──
     {
-        "_id": "impact",
+        "_id": "tranche3",
+        "label": "Tranche 3",
+        "options": [
+            {"label": "No",  "value": 0},
+            {"label": "Yes", "value": 1},
+        ],
+    },
+    # ── Likelihood sub-dropdowns (3) ──
+    {
+        "_id": "likelihood_business_volume",
+        "label": "Increase in Business Volume",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "likelihood_products_processes",
+        "label": "Changes in Products & Processes",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "likelihood_compliance_violations",
+        "label": "Compliance Violations (12 months)",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    # ── Impact (single dropdown — score is squared for overall impact) ──
+    {
+        "_id": "impact_dropdown",
         "label": "Impact",
         "options": [
             {"label": "Low",    "value": 1},
@@ -3894,24 +4037,26 @@ DEFAULT_DROPDOWN_CONFIGS = [
             {"label": "High",   "value": 3},
         ],
     },
+    # ── Control sub-dropdowns (2) ──
     {
-        "_id": "likelihood",
-        "label": "Likelihood",
-        "options": [
-            {"label": "Low",    "value": 1},
-            {"label": "Medium", "value": 2},
-            {"label": "High",   "value": 3},
-        ],
-    },
-    {
-        "_id": "control",
-        "label": "Control",
+        "_id": "control_monitoring",
+        "label": "Monitoring Mechanism",
         "options": [
             {"label": "Weak",     "value": 1},
             {"label": "Moderate", "value": 2},
             {"label": "Strong",   "value": 3},
         ],
     },
+    {
+        "_id": "control_effectiveness",
+        "label": "Control Effectiveness",
+        "options": [
+            {"label": "Weak",     "value": 1},
+            {"label": "Moderate", "value": 2},
+            {"label": "Strong",   "value": 3},
+        ],
+    },
+    # ── Inherent Risk (informational — label derived from score) ──
     {
         "_id": "inherent_risk",
         "label": "Inherent Risk",
@@ -3921,6 +4066,7 @@ DEFAULT_DROPDOWN_CONFIGS = [
             {"label": "High",   "value": 3},
         ],
     },
+    # ── Residual Risk (informational — label derived from matrix/score) ──
     {
         "_id": "residual_risk",
         "label": "Residual Risk",
@@ -3930,12 +4076,32 @@ DEFAULT_DROPDOWN_CONFIGS = [
             {"label": "High",   "value": 3},
         ],
     },
+    # ── Legacy flat keys (kept so old dropdown-configs API calls still work) ──
     {
-        "_id": "tranche3",
-        "label": "Tranche 3",
+        "_id": "impact",
+        "label": "Impact (Legacy)",
         "options": [
-            {"label": "No",  "value": 0},
-            {"label": "Yes", "value": 1},
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "likelihood",
+        "label": "Likelihood (Legacy)",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "control",
+        "label": "Control (Legacy)",
+        "options": [
+            {"label": "Weak",     "value": 1},
+            {"label": "Moderate", "value": 2},
+            {"label": "Strong",   "value": 3},
         ],
     },
 ]
@@ -4032,7 +4198,12 @@ def update_dropdown_config(category_key: str, body: dict = Body(...)):
 @app.delete("/dropdown-configs/{category_key}")
 def delete_dropdown_config(category_key: str):
     """Admin: delete a dropdown category. Protected keys cannot be deleted."""
-    PROTECTED = {"impact", "likelihood", "control", "inherent_risk", "residual_risk", "tranche3", "theme"}
+    PROTECTED = {
+        "impact", "likelihood", "control", "inherent_risk", "residual_risk", "tranche3", "theme",
+        "likelihood_business_volume", "likelihood_products_processes", "likelihood_compliance_violations",
+        "impact_dropdown",
+        "control_monitoring", "control_effectiveness",
+    }
     if category_key in PROTECTED:
         raise HTTPException(status_code=403, detail=f"Category '{category_key}' is protected and cannot be deleted")
     from utils.mongo import get_db
@@ -4105,6 +4276,194 @@ def delete_dropdown_option(category_key: str, option_index: int):
     doc = col.find_one({"_id": category_key})
     doc["key"] = doc.pop("_id")
     return doc
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Residual Risk Interpretation Matrix — admin-configurable mapping
+# Collection: residual_risk_matrix
+# Two entry types supported:
+#   Range-based: { label, min_score, max_score }
+#   Exact-match: { label, likelihood_score, impact_score, control_score }
+# ─────────────────────────────────────────────────────────────────────────────
+
+RISK_MATRIX_COLLECTION = "residual_risk_matrix"
+
+DEFAULT_RISK_MATRIX = [
+    {"label": "Low",    "min_score": 0,  "max_score": 9},
+    {"label": "Medium", "min_score": 10, "max_score": 27},
+    {"label": "High",   "min_score": 28, "max_score": 999},
+]
+
+
+def _seed_risk_matrix():
+    """Idempotently seed default residual risk matrix entries."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db[RISK_MATRIX_COLLECTION]
+    if col.count_documents({}) == 0:
+        col.insert_many(DEFAULT_RISK_MATRIX)
+
+
+try:
+    _seed_risk_matrix()
+except Exception:
+    pass
+
+
+@app.get("/risk-matrix")
+def list_risk_matrix():
+    """Return all residual risk interpretation matrix entries."""
+    from utils.mongo import get_db
+    db = get_db()
+    docs = list(db[RISK_MATRIX_COLLECTION].find({}))
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return {"entries": docs}
+
+
+@app.post("/risk-matrix")
+def create_risk_matrix_entry(body: dict = Body(...)):
+    """Admin: add a new matrix entry.
+    Body: { label: str, min_score?: int, max_score?: int,
+            likelihood_score?: int, impact_score?: int, control_score?: int }"""
+    from utils.mongo import get_db
+    label = body.get("label", "").strip()
+    if not label:
+        raise HTTPException(status_code=400, detail="'label' is required")
+    entry = {"label": label}
+    for k in ("min_score", "max_score", "likelihood_score", "impact_score", "control_score"):
+        if k in body:
+            entry[k] = int(body[k])
+    db = get_db()
+    result = db[RISK_MATRIX_COLLECTION].insert_one(entry)
+    entry["id"] = str(result.inserted_id)
+    entry.pop("_id", None)
+    return entry
+
+
+@app.put("/risk-matrix/{entry_id}")
+def update_risk_matrix_entry(entry_id: str, body: dict = Body(...)):
+    """Admin: update a matrix entry by ID."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    col = db[RISK_MATRIX_COLLECTION]
+    try:
+        oid = ObjectId(entry_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid entry ID")
+    existing = col.find_one({"_id": oid})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Matrix entry not found")
+    updates = {}
+    if "label" in body:
+        updates["label"] = body["label"]
+    for k in ("min_score", "max_score", "likelihood_score", "impact_score", "control_score"):
+        if k in body:
+            updates[k] = int(body[k])
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    col.update_one({"_id": oid}, {"$set": updates})
+    doc = col.find_one({"_id": oid})
+    doc["id"] = str(doc.pop("_id"))
+    return doc
+
+
+@app.delete("/risk-matrix/{entry_id}")
+def delete_risk_matrix_entry(entry_id: str):
+    """Admin: remove a matrix entry by ID."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    try:
+        oid = ObjectId(entry_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid entry ID")
+    result = db[RISK_MATRIX_COLLECTION].delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Matrix entry not found")
+    return {"deleted": entry_id}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migration: populate new risk fields for legacy actionables
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/admin/migrate-risk-fields")
+def migrate_risk_fields():
+    """Admin: backfill new structured risk fields for all existing actionables.
+
+    For each actionable that lacks `impact_dropdown`, assigns safe defaults:
+    - All sub-dropdowns get {"label": "Low", "score": 1}
+    - Computed fields are recalculated using new formulas
+    - Legacy flat fields are left untouched
+    Only augments system-generated / computed fields — never touches
+    fields fetched from original documents.
+    """
+    store = get_actionable_store()
+    from utils.mongo import get_db
+    db = get_db()
+    col = db["actionables_store"]
+    migrated = 0
+    total = 0
+
+    for doc in col.find({}):
+        doc_id = doc.get("doc_id", "")
+        result = store.load(doc_id)
+        if not result:
+            continue
+        changed = False
+        for a in result.actionables:
+            total += 1
+            # Only migrate items that don't yet have impact_dropdown populated
+            needs_migration = (
+                not a.impact_dropdown
+                or not isinstance(a.impact_dropdown, dict)
+                or not a.impact_dropdown.get("label")
+            )
+            if not needs_migration:
+                # Still recompute scores to ensure consistency
+                _recompute_risk_scores(a)
+                changed = True
+                continue
+
+            # Assign safe defaults for sub-dropdowns if empty
+            default_low = {"label": "Low", "score": 1}
+            default_weak = {"label": "Weak", "score": 1}
+
+            if not a.likelihood_business_volume or not isinstance(a.likelihood_business_volume, dict) or not a.likelihood_business_volume.get("label"):
+                a.likelihood_business_volume = dict(default_low)
+            if not a.likelihood_products_processes or not isinstance(a.likelihood_products_processes, dict) or not a.likelihood_products_processes.get("label"):
+                a.likelihood_products_processes = dict(default_low)
+            if not a.likelihood_compliance_violations or not isinstance(a.likelihood_compliance_violations, dict) or not a.likelihood_compliance_violations.get("label"):
+                a.likelihood_compliance_violations = dict(default_low)
+
+            # Migrate impact: use impact_sub1 if available, else default
+            if a.impact_sub1 and isinstance(a.impact_sub1, dict) and a.impact_sub1.get("label"):
+                a.impact_dropdown = dict(a.impact_sub1)
+            else:
+                a.impact_dropdown = dict(default_low)
+
+            if not a.control_monitoring or not isinstance(a.control_monitoring, dict) or not a.control_monitoring.get("label"):
+                a.control_monitoring = dict(default_weak)
+            if not a.control_effectiveness or not isinstance(a.control_effectiveness, dict) or not a.control_effectiveness.get("label"):
+                a.control_effectiveness = dict(default_weak)
+
+            # Recompute all derived scores
+            _recompute_risk_scores(a)
+            changed = True
+            migrated += 1
+
+        if changed:
+            result.compute_stats()
+            store.save(result)
+
+    return {
+        "status": "ok",
+        "total_actionables": total,
+        "migrated": migrated,
+        "message": f"Migrated {migrated} actionables with safe defaults. {total - migrated} already had impact_dropdown populated.",
+    }
 
 
 if __name__ == "__main__":

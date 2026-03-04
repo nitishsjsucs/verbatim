@@ -1024,3 +1024,52 @@ export async function fetchMemoryRecentContributions(docId?: string, limit = 20)
     if (!res.ok) throw new Error('Failed to fetch recent contributions');
     return res.json();
 }
+
+// ─── Residual Risk Interpretation Matrix ──────────────────────────────────────
+
+export interface RiskMatrixEntry {
+    id: string;
+    label: string;
+    min_score: number;
+    max_score: number;
+}
+
+export async function fetchRiskMatrix(): Promise<RiskMatrixEntry[]> {
+    const res = await apiFetch('/risk-matrix');
+    if (!res.ok) throw new Error('Failed to fetch risk matrix');
+    const data = await res.json();
+    return data.entries ?? [];
+}
+
+export async function createRiskMatrixEntry(entry: Omit<RiskMatrixEntry, 'id'>): Promise<RiskMatrixEntry> {
+    const res = await apiFetch('/risk-matrix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+    });
+    if (!res.ok) throw new Error('Failed to create risk matrix entry');
+    return res.json();
+}
+
+export async function updateRiskMatrixEntry(id: string, updates: Partial<RiskMatrixEntry>): Promise<RiskMatrixEntry> {
+    const res = await apiFetch(`/risk-matrix/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error('Failed to update risk matrix entry');
+    return res.json();
+}
+
+export async function deleteRiskMatrixEntry(id: string): Promise<void> {
+    const res = await apiFetch(`/risk-matrix/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete risk matrix entry');
+}
+
+// ─── Admin: Risk Fields Migration ─────────────────────────────────────────────
+
+export async function migrateRiskFields(): Promise<{ status: string; total_actionables: number; migrated: number; message: string }> {
+    const res = await apiFetch('/admin/migrate-risk-fields', { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to migrate risk fields');
+    return res.json();
+}

@@ -380,39 +380,29 @@ function ChiefContent() {
                                     </div>
                                 )}
 
-                                {/* Risk Assessment fields */}
-                                {(item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3 || item.theme) && (
+                                {/* Risk Assessment fields (new structured + legacy fallback) */}
+                                {(item.likelihood_score || item.impact_score || item.inherent_risk_label || item.residual_risk_label || item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3 || item.theme) && (
                                     <div className="grid grid-cols-3 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
-                                        {item.impact && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                                <p className="text-xs text-foreground/80">{item.impact}</p>
-                                            </div>
-                                        )}
-                                        {item.likelihood && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Likelihood</p>
-                                                <p className="text-xs text-foreground/80">{item.likelihood}</p>
-                                            </div>
-                                        )}
-                                        {item.control && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Control</p>
-                                                <p className="text-xs text-foreground/80">{item.control}</p>
-                                            </div>
-                                        )}
-                                        {item.inherent_risk && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Inherent Risk</p>
-                                                <p className="text-xs text-foreground/80">{item.inherent_risk}</p>
-                                            </div>
-                                        )}
-                                        {item.residual_risk && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Residual Risk</p>
-                                                <p className="text-xs text-foreground/80">{item.residual_risk}</p>
-                                            </div>
-                                        )}
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Likelihood</p>
+                                            <p className="text-xs text-foreground/80">{item.likelihood_score != null ? item.likelihood_score : (item.likelihood || "—")}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
+                                            <p className="text-xs text-foreground/80">{item.impact_score != null ? item.impact_score : (item.impact || "—")}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Control</p>
+                                            <p className="text-xs text-foreground/80">{item.control_score != null ? item.control_score.toFixed(1) : (item.control || "—")}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Inherent Risk</p>
+                                            <p className="text-xs text-foreground/80">{item.inherent_risk_label || item.inherent_risk || "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Residual Risk</p>
+                                            <p className="text-xs text-foreground/80">{item.residual_risk_label || item.residual_risk || "—"}</p>
+                                        </div>
                                         {item.tranche3 && (
                                             <div>
                                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
