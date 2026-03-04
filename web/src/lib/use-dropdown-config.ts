@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { API_BASE_URL } from "@/lib/api"
 
 export interface DropdownOption {
     label: string
@@ -30,7 +31,7 @@ export function useDropdownConfig() {
         try {
             setLoading(true)
             setError(null)
-            const res = await fetch("http://localhost:8001/dropdown-configs")
+            const res = await fetch(`${API_BASE_URL}/dropdown-configs`)
             if (!res.ok) throw new Error(`Failed to load dropdown configs: ${res.statusText}`)
             const data: DropdownConfigsResponse = await res.json()
             const map = new Map<string, DropdownCategory>()
