@@ -22,6 +22,8 @@ import {
     MIXED_TEAM_CLASSIFICATION,
     isMultiTeam,
 } from "@/lib/types"
+import { useSession } from "@/lib/auth-client"
+import { getUserRole } from "@/components/auth/auth-guard"
 import {
     Shield,
     Check, X, Loader2, Plus, FileText, Search,
@@ -158,7 +160,7 @@ function formatDateDMY(isoDate: string): string {
     return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, globalDeadline, globalDeadlineTime }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, globalDeadline, globalDeadlineTime, callerRole }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -171,7 +173,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     onCheck: () => void
     globalDeadline: string
     globalDeadlineTime: string
+    callerRole: string
 }) {
+    const isComplianceOfficer = callerRole === "compliance_officer"
     const { teamNames, leafTeamNames } = useTeams()
     const { getOptions, getLabel } = useDropdownConfig()
     const [expanded, setExpanded] = React.useState(false)
@@ -298,7 +302,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (draftAction !== safeStr(item.action)) return true
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
-        if (draftRisk !== normalizeRisk(item.modality)) return true
         if (draftTranche3 !== safeStr(item.tranche3)) return true
         if (draftTheme !== safeStr(item.theme)) return true
         // Structured risk sub-dropdowns
@@ -325,7 +328,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             }
         }
         return false
-    }, [draftAction, draftImpl, draftEvidence, draftRisk, draftTranche3, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
+    }, [draftAction, draftImpl, draftEvidence, draftTranche3, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
     // --- Unified Save: sends all draft changes at once ---
     const handleSaveAll = async () => {
@@ -337,7 +340,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             // Implementation & Evidence (shared/top-level)
             if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
-            if (draftRisk !== normalizeRisk(item.modality)) updates.modality = draftRisk
             // Risk assessment — structured sub-dropdowns
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
             if (draftTheme !== safeStr(item.theme)) updates.theme = draftTheme
@@ -415,7 +417,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         }
         if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
         if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
-        if (draftRisk !== normalizeRisk(item.modality)) updates.modality = draftRisk
         const teamsChanged = draftTeams.length !== ((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).length
         if (teamsChanged) {
             updates.workstream = draftTeams[0]
@@ -790,137 +791,126 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
                             {/* Risk Assessment Framework */}
                             <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
-                                <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
+                                    {isComplianceOfficer && (
+                                        <span className="text-[10px] text-muted-foreground/40 italic">Read-only — filled by team members</span>
+                                    )}
+                                </div>
 
-                                {/* Row 1: Theme + Tranche3 + Modality */}
-                                <div className="grid grid-cols-3 gap-2">
+                                {/* Theme + Tranche3 (2 cols — Modality removed) */}
+                                <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme") || "Theme"}</p>
-                                        <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} disabled={isComplianceOfficer} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed">
                                             <option value="">—</option>
                                             {getOptions("theme").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
-                                        <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} disabled={isComplianceOfficer} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed">
                                             <option value="">—</option>
                                             {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Modality</p>
-                                        <select
-                                            value={draftRisk}
-                                            onChange={e => setDraftRisk(e.target.value)}
-                                            className={cn(
-                                                "w-full text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none cursor-pointer font-medium",
-                                                RISK_STYLES[draftRisk]?.bg || "bg-muted/30",
-                                                RISK_STYLES[draftRisk]?.text || "text-foreground"
-                                            )}
-                                        >
-                                            {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                        </select>
-                                    </div>
                                 </div>
 
-                                {/* Row 2: LIKELIHOOD (3 sub-dropdowns) → score = MAX */}
+                                {/* LIKELIHOOD — editable by members, read-only for CO */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood</p>
-                                        <span className="text-[10px] font-mono text-blue-400/60">Score: {likelihoodScore} (MAX)</span>
+                                        <span className="text-[10px] font-mono text-blue-400/60">Score: {likelihoodScore} (MAX of 3)</span>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volume"}</p>
-                                            <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                                <option value="">—</option>
-                                                {getOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
-                                            </select>
+                                    {isComplianceOfficer ? (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { key: "likelihood_business_volume", val: item.likelihood_business_volume, fallback: "Business Volume" },
+                                                { key: "likelihood_products_processes", val: item.likelihood_products_processes, fallback: "Products & Processes" },
+                                                { key: "likelihood_compliance_violations", val: item.likelihood_compliance_violations, fallback: "Compliance Violations" },
+                                            ].map(({ key, val, fallback }) => (
+                                                <div key={key}>
+                                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
+                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">{val?.label || "—"}</div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
-                                            <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                                <option value="">—</option>
-                                                {getOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
-                                            </select>
+                                    ) : (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volume"}</p>
+                                                <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                    <option value="">—</option>
+                                                    {getOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
+                                                <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                    <option value="">—</option>
+                                                    {getOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
+                                                <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                    <option value="">—</option>
+                                                    {getOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
-                                            <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                                <option value="">—</option>
-                                                {getOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                {/* Row 3: IMPACT (single dropdown) → score = value² */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <p className="text-[10px] font-semibold text-amber-400/80 uppercase tracking-wider">Impact</p>
-                                            <span className="text-[10px] font-mono text-amber-400/60">Score: {impactScore} ({rawImpact}&sup2;)</span>
-                                        </div>
-                                        <select value={draftImpactDD?.label || ""} onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                {/* IMPACT — single dropdown, score hidden from UI */}
+                                <div>
+                                    <p className="text-[10px] font-semibold text-amber-400/80 uppercase tracking-wider mb-1">Impact</p>
+                                    {isComplianceOfficer ? (
+                                        <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 w-1/2">{item.impact_dropdown?.label || "—"}</div>
+                                    ) : (
+                                        <select value={draftImpactDD?.label || ""} onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-1/2 bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                             <option value="">—</option>
-                                            {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
+                                            {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-0.5">
-                                            <p className="text-[10px] font-semibold text-red-400/80 uppercase tracking-wider">Inherent Risk</p>
-                                            <span className="text-[10px] font-mono text-red-400/60">{inherentRiskScore} = {likelihoodScore} &times; {impactScore}</span>
-                                        </div>
-                                        <div className={cn("text-xs rounded px-2 py-1 border font-medium text-center",
-                                            inherentRiskLabel === "High" ? "border-red-500/30 bg-red-500/10 text-red-400" :
-                                            inherentRiskLabel === "Medium" ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
-                                            inherentRiskLabel === "Low" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
-                                            "border-border/30 bg-muted/20 text-muted-foreground/50"
-                                        )}>
-                                            {inherentRiskLabel || "—"}
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                {/* Row 4: CONTROL (2 sub-dropdowns) → score = average */}
+                                {/* CONTROL — editable by members, read-only for CO */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control</p>
                                         <span className="text-[10px] font-mono text-teal-400/60">Score: {controlScore.toFixed(1)} (avg)</span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
-                                            <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                                <option value="">—</option>
-                                                {getOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
-                                            </select>
+                                    {isComplianceOfficer ? (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { key: "control_monitoring", val: item.control_monitoring, fallback: "Monitoring Mechanism" },
+                                                { key: "control_effectiveness", val: item.control_effectiveness, fallback: "Control Effectiveness" },
+                                            ].map(({ key, val, fallback }) => (
+                                                <div key={key}>
+                                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
+                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">{val?.label || "—"}</div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
-                                            <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                                <option value="">—</option>
-                                                {getOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label} ({opt.value})</option>)}
-                                            </select>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
+                                                <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                    <option value="">—</option>
+                                                    {getOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
+                                                <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                    <option value="">—</option>
+                                                    {getOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                </select>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* Row 5: RESIDUAL RISK (auto-computed) */}
-                                <div className="flex items-center justify-between pt-2 border-t border-border/20">
-                                    <div>
-                                        <p className="text-[10px] font-semibold text-purple-400/80 uppercase tracking-wider">Residual Risk</p>
-                                        <span className="text-[10px] font-mono text-purple-400/60">{residualRiskScore.toFixed(1)} = {inherentRiskScore} &times; {controlScore.toFixed(1)}</span>
-                                    </div>
-                                    <div className={cn("text-xs rounded px-3 py-1 border font-semibold",
-                                        residualRiskLabel === "High" ? "border-red-500/30 bg-red-500/10 text-red-400" :
-                                        residualRiskLabel === "Medium" ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
-                                        residualRiskLabel === "Low" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" :
-                                        "border-border/30 bg-muted/20 text-muted-foreground/50"
-                                    )}>
-                                        {residualRiskLabel || "—"}
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -1050,20 +1040,12 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="Describe the actionable..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Risk Level</label>
-                    <select value={form.modality} onChange={e => setForm(f => ({ ...f, modality: e.target.value as ActionableModality }))} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground">
-                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
-                    <HierarchicalTeamSelect
-                        value={form.workstream}
-                        onChange={(team) => setForm(f => ({ ...f, workstream: team as ActionableWorkstream }))}
-                    />
-                </div>
+            <div>
+                <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
+                <HierarchicalTeamSelect
+                    value={form.workstream}
+                    onChange={(team) => setForm(f => ({ ...f, workstream: team as ActionableWorkstream }))}
+                />
             </div>
 
             <div>
@@ -1177,6 +1159,8 @@ function ByTeamTreeNode({ node, byTeam, collapsedTeams, toggleTeam, renderCard, 
 // --- Main Page ---
 
 export default function ActionablesPage() {
+    const { data: session } = useSession()
+    const callerRole = getUserRole(session) || "compliance_officer"
     const { teamNames, teamTree, getTeamByName } = useTeams()
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -1319,7 +1303,7 @@ export default function ActionablesPage() {
 
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
-            const updated = await updateActionable(docId, itemId, updates)
+            const updated = await updateActionable(docId, itemId, updates, undefined, callerRole)
             // Merge: original item ← optimistic updates ← API response (authoritative)
             setAllDocs(prev => prev.map(d => {
                 if (d.doc_id !== docId) return d
@@ -1331,7 +1315,7 @@ export default function ActionablesPage() {
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }
-    }, [])
+    }, [callerRole])
 
     const handleDelete = React.useCallback(async (docId: string, itemId: string) => {
         try {
@@ -1717,6 +1701,7 @@ export default function ActionablesPage() {
                                                     onCheck={() => toggleChecked(`${docId}-${item.id}`)}
                                                     globalDeadline={globalDeadline}
                                                     globalDeadlineTime={globalDeadlineTime}
+                                                    callerRole={callerRole}
                                                 />
                                             ))}
 
@@ -1751,6 +1736,7 @@ export default function ActionablesPage() {
                                                                     onCheck={() => toggleChecked(`${docId}-${item.id}`)}
                                                                     globalDeadline={globalDeadline}
                                                                     globalDeadlineTime={globalDeadlineTime}
+                                                                    callerRole={callerRole}
                                                                 />
                                                             ))}
                                                         </div>
@@ -1772,7 +1758,7 @@ export default function ActionablesPage() {
                                                             {!collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) && (
                                                                 <div className="p-2 space-y-2">
                                                                     {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status !== "approved").map(({ item, docId, docName }) => (
-                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -1789,7 +1775,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status !== "approved"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
                                                             )}
                                                         />
                                                     ))}
@@ -1830,6 +1816,7 @@ export default function ActionablesPage() {
                                                             onCheck={() => {}}
                                                             globalDeadline={globalDeadline}
                                                             globalDeadlineTime={globalDeadlineTime}
+                                                            callerRole={callerRole}
                                                         />
                                                     ))}
 
@@ -1848,7 +1835,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
                                                                 ))}
                                                             </div>
                                                         )
@@ -1865,7 +1852,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status === "approved"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
                                                             )}
                                                         />
                                                     ))}

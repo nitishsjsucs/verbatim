@@ -298,9 +298,13 @@ export async function updateActionable(
     itemId: string,
     updates: Record<string, unknown>,
     forTeam?: string,
+    callerRole?: string,
 ): Promise<ActionableItem> {
-    const params = forTeam ? `?for_team=${encodeURIComponent(forTeam)}` : '';
-    const url = `/documents/${docId}/actionables/${itemId}${params}`;
+    const qs = new URLSearchParams();
+    if (forTeam) qs.set('for_team', forTeam);
+    if (callerRole) qs.set('caller_role', callerRole);
+    const qstr = qs.toString();
+    const url = `/documents/${docId}/actionables/${itemId}${qstr ? `?${qstr}` : ''}`;
     try {
         const res = await apiFetch(url, {
             method: 'PUT',

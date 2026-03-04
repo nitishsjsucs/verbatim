@@ -1413,13 +1413,28 @@ def list_all_actionables():
     return results
 
 
+# Risk fields that only team_member / team_reviewer / team_lead / admin can write.
+# compliance_officer is READ-ONLY for these.
+RISK_MEMBER_ONLY_FIELDS = {
+    "likelihood_business_volume", "likelihood_products_processes", "likelihood_compliance_violations",
+    "likelihood_score",
+    "impact_dropdown", "impact_score",
+    "control_monitoring", "control_effectiveness", "control_score",
+    "inherent_risk_score", "inherent_risk_label",
+    "residual_risk_score", "residual_risk_label",
+}
+
+
 @app.put("/documents/{doc_id}/actionables/{item_id}")
-def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_team: str = Query("")):
+def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_team: str = Query(""), caller_role: str = Query("")):
     """Update a single actionable item's fields (edit, approve, reject).
 
     If for_team is supplied and the item is multi-team (assigned_teams > 1),
     team-specific workflow fields are written into team_workflows[for_team]
     instead of the top-level fields, and the aggregate status is recomputed.
+
+    caller_role: role of the user making the request. compliance_officer is
+    blocked from writing risk assessment fields (Likelihood / Impact / Control).
     """
     store = get_actionable_store()
     result = store.load(doc_id)
@@ -1442,9 +1457,14 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
     # Check if this is a team-specific update on a multi-team item
     is_team_update = for_team and target.is_multi_team and for_team in target.assigned_teams
 
+    # Strip risk fields if caller is compliance_officer (read-only for CO)
+    if caller_role == "compliance_officer":
+        for blocked in RISK_MEMBER_ONLY_FIELDS:
+            body.pop(blocked, None)
+
     # Update allowed fields
     editable_fields = [
-        "modality", "actor", "action", "object", "trigger_or_condition",
+        "actor", "action", "object", "trigger_or_condition",
         "thresholds", "deadline_or_frequency", "effective_date",
         "reporting_or_notification_to", "evidence_quote", "source_location",
         "implementation_notes", "workstream", "needs_legal_review",
