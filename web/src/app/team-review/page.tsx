@@ -25,7 +25,7 @@ import {
     Loader2, Search, AlertTriangle,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc,
-    Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2,
+    Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2, Flag,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -84,7 +84,7 @@ function TeamReviewContent() {
     const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
-    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
+    const [activeCollapsed, setActiveCollapsed] = React.useState(true)
     const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
     // Tab: "pending" shows team_review items, "all" shows all published items for the reviewer's team
     const [tab, setTab] = React.useState<"pending" | "all">("pending")
@@ -122,6 +122,27 @@ function TeamReviewContent() {
         } else {
             toast.success("Task approved — sent to Compliance Officer for review")
         }
+    }, [userName, handleUpdate])
+
+    // Team Reviewer approve bypass: sends flagged item directly to CO review
+    const handleBypassApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
+        const bypassComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "team_reviewer",
+            text: "Bypass approved by Team Reviewer — forwarded to Compliance Officer for reassignment.",
+            timestamp: new Date().toISOString(),
+        }
+        const existing = item.comments || []
+        await handleUpdate(docId, item.id, {
+            task_status: "review",
+            bypass_approved_by: userName,
+            bypass_approved_at: new Date().toISOString(),
+            team_reviewer_approved_at: new Date().toISOString(),
+            team_reviewer_name: userName,
+            comments: [...existing, bypassComment],
+        })
+        toast.success("Bypass approved — sent to Compliance Officer for reassignment")
     }, [userName, handleUpdate])
 
     // Team Reviewer reject: team_review → in_progress (sends back to team member)
@@ -426,6 +447,7 @@ function TeamReviewContent() {
                                             userName={userName}
                                             onApprove={handleApprove}
                                             onReject={handleReject}
+                                            onBypassApprove={handleBypassApprove}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -464,6 +486,7 @@ function TeamReviewContent() {
                                             userName={userName}
                                             onApprove={handleApprove}
                                             onReject={handleReject}
+                                            onBypassApprove={handleBypassApprove}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -489,6 +512,7 @@ function ReviewRow({
     userName,
     onApprove,
     onReject,
+    onBypassApprove,
     onAddComment,
     onUpload,
     onUpdate,
@@ -500,6 +524,7 @@ function ReviewRow({
     userName: string
     onApprove: (docId: string, item: ActionableItem) => Promise<void>
     onReject: (docId: string, item: ActionableItem, reason: string) => Promise<void>
+    onBypassApprove: (docId: string, item: ActionableItem) => Promise<void>
     onAddComment: (docId: string, item: ActionableItem, text: string) => Promise<void>
     onUpload: (docId: string, itemId: string, file: File) => void
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>, teamOverride?: string) => Promise<void>
@@ -661,6 +686,21 @@ function ReviewRow({
                     {(taskStatus === "assigned" || taskStatus === "in_progress") && (
                         <span className="text-[10px] text-muted-foreground/30">—</span>
                     )}
+                    {/* Bypass tag indicator + approve bypass button */}
+                    {item.bypass_tag && isTeamReviewStatus && (
+                        <button
+                            onClick={() => onBypassApprove(docId, item)}
+                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors font-medium"
+                            title="Approve bypass — forward to CO for reassignment"
+                        >
+                            <Flag className="h-2.5 w-2.5" /> Approve Bypass
+                        </button>
+                    )}
+                    {item.bypass_tag && !isTeamReviewStatus && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium">
+                            <Flag className="h-2.5 w-2.5" /> Flagged
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -710,6 +750,27 @@ function ReviewRow({
             {/* Expanded: Comment thread */}
             {isExpanded && (
                 <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
+                    {/* Bypass tag banner */}
+                    {item.bypass_tag && (
+                        <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
+                            <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Tagged as Incorrectly Assigned</p>
+                                <p className="text-xs text-foreground/80">A team member has flagged this task as incorrectly assigned to their team.</p>
+                                {item.bypass_tagged_by && (
+                                    <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
+                                )}
+                                {isTeamReviewStatus && (
+                                    <button
+                                        onClick={() => onBypassApprove(docId, item)}
+                                        className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors font-medium"
+                                    >
+                                        <CheckCircle2 className="h-3 w-3" /> Approve Bypass — Forward to CO
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {/* Rejection reason banner (CO or team reviewer rejection) */}
                     {(taskStatus === "reworking" || taskStatus === "in_progress") && item.rejection_reason && (
                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">

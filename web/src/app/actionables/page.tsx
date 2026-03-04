@@ -156,7 +156,7 @@ function formatDateDMY(isoDate: string): string {
     return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, globalDeadline, globalDeadlineTime }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, globalDeadline, globalDeadlineTime }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -165,12 +165,21 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     onSourceClick: (docId: string, pageNumber: number) => void
     isSelected: boolean
     onSelect: () => void
+    isChecked: boolean
+    onCheck: () => void
     globalDeadline: string
     globalDeadlineTime: string
 }) {
     const { teamNames, leafTeamNames } = useTeams()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
+    const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
+    const [draftImpact, setDraftImpact] = React.useState(safeStr(item.impact))
+    const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3))
+    const [draftControl, setDraftControl] = React.useState(safeStr(item.control))
+    const [draftLikelihood, setDraftLikelihood] = React.useState(safeStr(item.likelihood))
+    const [draftResidualRisk, setDraftResidualRisk] = React.useState(safeStr(item.residual_risk))
+    const [draftInherentRisk, setDraftInherentRisk] = React.useState(safeStr(item.inherent_risk))
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -217,9 +226,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
     // Sync drafts when item changes externally
     React.useEffect(() => {
+        setDraftAction(safeStr(item.action))
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
         setDraftRisk(normalizeRisk(item.modality))
+        setDraftImpact(safeStr(item.impact))
+        setDraftTranche3(safeStr(item.tranche3))
+        setDraftControl(safeStr(item.control))
+        setDraftLikelihood(safeStr(item.likelihood))
+        setDraftResidualRisk(safeStr(item.residual_risk))
+        setDraftInherentRisk(safeStr(item.inherent_risk))
         setDeadlineDate(item.deadline ? item.deadline.split("T")[0] || "" : "")
         setDeadlineTime(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
         const teams = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
@@ -242,9 +258,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 
     // Determine if any draft differs from saved
     const isDirty = React.useMemo(() => {
+        if (draftAction !== safeStr(item.action)) return true
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
         if (draftRisk !== normalizeRisk(item.modality)) return true
+        if (draftImpact !== safeStr(item.impact)) return true
+        if (draftTranche3 !== safeStr(item.tranche3)) return true
+        if (draftControl !== safeStr(item.control)) return true
+        if (draftLikelihood !== safeStr(item.likelihood)) return true
+        if (draftResidualRisk !== safeStr(item.residual_risk)) return true
+        if (draftInherentRisk !== safeStr(item.inherent_risk)) return true
         const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
         if (currentDl !== (item.deadline || "")) return true
         // Check teams
@@ -262,17 +285,26 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             }
         }
         return false
-    }, [draftImpl, draftEvidence, draftRisk, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
+    }, [draftAction, draftImpl, draftEvidence, draftRisk, draftImpact, draftTranche3, draftControl, draftLikelihood, draftResidualRisk, draftInherentRisk, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
     // --- Unified Save: sends all draft changes at once ---
     const handleSaveAll = async () => {
         setSaving(true)
         try {
             const updates: Record<string, unknown> = {}
+            // Action text (editable heading)
+            if (draftAction !== safeStr(item.action)) updates.action = draftAction
             // Implementation & Evidence (shared/top-level)
             if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
             if (draftRisk !== normalizeRisk(item.modality)) updates.modality = draftRisk
+            // Risk assessment fields
+            if (draftImpact !== safeStr(item.impact)) updates.impact = draftImpact
+            if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
+            if (draftControl !== safeStr(item.control)) updates.control = draftControl
+            if (draftLikelihood !== safeStr(item.likelihood)) updates.likelihood = draftLikelihood
+            if (draftResidualRisk !== safeStr(item.residual_risk)) updates.residual_risk = draftResidualRisk
+            if (draftInherentRisk !== safeStr(item.inherent_risk)) updates.inherent_risk = draftInherentRisk
             // Deadline
             const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
             if (dl !== (item.deadline || "")) updates.deadline = dl
@@ -313,18 +345,18 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         }
     }
 
-    // Approve & Publish: resolves deadline, sets published_at + task_status, moves to tracker
-    const handleApprove = async (e: React.MouseEvent) => {
+    // Publish: resolves deadline, sets published_at + task_status, moves to tracker
+    const handlePublish = async (e: React.MouseEvent) => {
         e.stopPropagation()
         let dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : (item.deadline || "")
         if (!dl && globalDeadline) {
             dl = `${globalDeadline}T${globalDeadlineTime || "23:59"}`
         }
         if (!dl) {
-            toast.error("Set a deadline (or a global deadline) before approving")
+            toast.error("Set a deadline (or a global deadline) before publishing")
             return
         }
-        // Save any pending draft changes first, then approve
+        // Save any pending draft changes first, then publish
         const updates: Record<string, unknown> = {
             approval_status: "approved",
             published_at: new Date().toISOString(),
@@ -340,7 +372,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             updates.assigned_teams = draftTeams.length > 1 ? draftTeams : []
         }
         await onUpdate(docId, item.id, updates)
-        toast.success("Approved & sent to tracker")
+        toast.success("Published & sent to tracker")
     }
 
     const handleReject = async (e: React.MouseEvent) => {
@@ -371,13 +403,30 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 item.approval_status === "rejected" && "border-red-500/20 opacity-60",
             )}
         >
-            {/* Header row: Team → Risk → Text → Buttons */}
+            {/* Header row: Checkbox → Team → Risk → Text → Buttons */}
             <div className="flex items-center gap-1.5 px-3 py-2 hover:bg-muted/20 transition-colors">
+                {/* Multi-select checkbox for bulk publish */}
+                {item.approval_status === "pending" && (
+                    <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={onCheck}
+                        onClick={e => e.stopPropagation()}
+                        className="h-3.5 w-3.5 rounded border-border accent-primary shrink-0 cursor-pointer"
+                    />
+                )}
                 <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
                     {/* Risk icon — before team tag */}
                     <RiskIcon modality={item.modality} />
+
+                    {/* Actionable ID badge */}
+                    {item.actionable_id && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted/50 text-muted-foreground shrink-0">
+                            {item.actionable_id}
+                        </span>
+                    )}
 
                     {/* Team tag - uses saved classification (not draft) */}
                     <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
@@ -396,8 +445,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <div className="flex items-center gap-1 shrink-0">
                     {item.approval_status === "pending" && (
                         <>
-                            <button onClick={handleApprove} className="p-1 rounded hover:bg-emerald-400/10 text-muted-foreground/40 hover:text-emerald-400 transition-colors" title="Approve & send to tracker">
-                                <Check className="h-3.5 w-3.5" />
+                            <button onClick={handlePublish} className="p-1 rounded hover:bg-emerald-400/10 text-muted-foreground/40 hover:text-emerald-400 transition-colors" title="Publish & send to tracker">
+                                <Send className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={handleReject} className="p-1 rounded hover:bg-red-400/10 text-muted-foreground/40 hover:text-red-400 transition-colors" title="Reject">
                                 <X className="h-3.5 w-3.5" />
@@ -420,7 +469,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             item.approval_status === "approved" ? "text-emerald-400 bg-emerald-400/10" :
                             "text-red-400 bg-red-400/10"
                         )}>
-                            {item.approval_status === "approved" ? "Approved" : "Rejected"}
+                            {item.approval_status === "approved" ? "Published" : "Rejected"}
                         </span>
                     )}
                 </div>
@@ -475,6 +524,47 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                         </>
                     ) : (
                         <>
+                            {/* Editable actionable heading/title */}
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Actionable Text</p>
+                                <textarea
+                                    value={draftAction}
+                                    onChange={e => {
+                                        setDraftAction(e.target.value)
+                                        autoGrow(e.target)
+                                    }}
+                                    ref={el => autoGrow(el)}
+                                    rows={2}
+                                    className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
+                                    placeholder="Click to edit actionable text..."
+                                    style={{ minHeight: '36px' }}
+                                />
+                            </div>
+
+                            {/* Parent document metadata */}
+                            {(item.regulation_issue_date || item.circular_effective_date || item.regulator) && (
+                                <div className="grid grid-cols-3 gap-2 bg-muted/20 rounded-lg p-2.5 border border-border/20">
+                                    {item.regulator && (
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                            <p className="text-xs text-foreground/80">{item.regulator}</p>
+                                        </div>
+                                    )}
+                                    {item.regulation_issue_date && (
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulation Issue Date</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{formatDateDMY(item.regulation_issue_date)}</p>
+                                        </div>
+                                    )}
+                                    {item.circular_effective_date && (
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{formatDateDMY(item.circular_effective_date)}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Evidence + source link side by side at top */}
                             <div className="flex items-start gap-3">
                                 <div className="flex-1">
@@ -570,7 +660,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         )}
                                         {!deadlineDate && globalDeadline && (
                                             <p className="text-xs text-muted-foreground/40 mt-1">
-                                                No individual deadline — will use global deadline ({formatDateDMY(globalDeadline)}) on approve
+                                                No individual deadline — will use global deadline ({formatDateDMY(globalDeadline)}) on publish
                                             </p>
                                         )}
                                     </div>
@@ -638,7 +728,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     )}
                                                     {!draft.date && globalDeadline && (
                                                         <p className="text-xs text-muted-foreground/40 mt-1.5">
-                                                            Will use global deadline ({formatDateDMY(globalDeadline)}) on approve
+                                                            Will use global deadline ({formatDateDMY(globalDeadline)}) on publish
                                                         </p>
                                                     )}
                                                 </div>
@@ -662,6 +752,52 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                 >
                                     {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
+                            </div>
+
+                            {/* Risk Assessment Dropdowns */}
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact (1-3)</p>
+                                    <select value={draftImpact} onChange={e => setDraftImpact(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Likelihood (1-3)</p>
+                                    <select value={draftLikelihood} onChange={e => setDraftLikelihood(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Control (1-3)</p>
+                                    <select value={draftControl} onChange={e => setDraftControl(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Inherent Risk (1-3)</p>
+                                    <select value={draftInherentRisk} onChange={e => setDraftInherentRisk(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Residual Risk (1-3)</p>
+                                    <select value={draftResidualRisk} onChange={e => setDraftResidualRisk(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                    <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        <option value="Yes">Yes</option><option value="No">No</option>
+                                    </select>
+                                </div>
                             </div>
 
                             {/* Unified Save button */}
@@ -965,8 +1101,18 @@ export default function ActionablesPage() {
     const [pdfJumpPage, setPdfJumpPage] = React.useState<number | undefined>(undefined)
     const [pdfJumpKey, setPdfJumpKey] = React.useState(0)
 
-    // Selection
+    // Selection (PDF navigation)
     const [selectedItemKey, setSelectedItemKey] = React.useState<string | null>(null)
+
+    // Multi-select for bulk publish
+    const [checkedItems, setCheckedItems] = React.useState<Set<string>>(new Set())
+    const toggleChecked = React.useCallback((key: string) => {
+        setCheckedItems(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key); else next.add(key)
+            return next
+        })
+    }, [])
 
     // Create form
     const [showCreateForm, setShowCreateForm] = React.useState(false)
@@ -1157,10 +1303,10 @@ export default function ActionablesPage() {
 
     const pdfUrl = pdfDocId ? `${API_BASE_URL}/documents/${pdfDocId}/raw` : null
 
-    // Handlers for bulk actions — approve & publish directly to tracker
-    const handleApproveAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
+    // Handlers for bulk actions — publish directly to tracker
+    const handlePublishAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
         const pending = items.filter(e => e.item.approval_status === "pending")
-        if (pending.length === 0) { toast.info("No pending items to approve"); return }
+        if (pending.length === 0) { toast.info("No pending items to publish"); return }
         const globalDl = globalDeadline ? `${globalDeadline}T${globalDeadlineTime || "23:59"}` : ""
         // Check if any item lacks both individual and global deadline
         const noDeadline = pending.filter(({ item }) => !item.deadline && !globalDl)
@@ -1177,7 +1323,7 @@ export default function ActionablesPage() {
                 task_status: "assigned",
             })
         }))
-        toast.success(`Approved & sent ${pending.length} actionables to tracker`)
+        toast.success(`Published ${pending.length} actionables to tracker`)
     }, [handleUpdate, globalDeadline, globalDeadlineTime])
 
     const toggleTeam = (team: string) => {
@@ -1315,16 +1461,31 @@ export default function ActionablesPage() {
                                 <option value="all">All risk</option>
                                 {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                             </select>
-                            {/* Approve All button */}
+                            {/* Publish Selected / Publish All buttons */}
+                            {viewTab === "all" && checkedItems.size > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 gap-1 px-2 text-xs text-primary border-primary/30 hover:bg-primary/10"
+                                    onClick={() => {
+                                        const selected = filtered.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
+                                        handlePublishAll(selected)
+                                        setCheckedItems(new Set())
+                                    }}
+                                >
+                                    <Send className="h-3 w-3" />
+                                    Publish Selected ({checkedItems.size})
+                                </Button>
+                            )}
                             {viewTab === "all" && (
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     className="h-7 gap-1 px-2 text-xs text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-                                    onClick={() => handleApproveAll(filtered)}
+                                    onClick={() => handlePublishAll(filtered)}
                                 >
-                                    <Check className="h-3 w-3" />
-                                    Approve All
+                                    <Send className="h-3 w-3" />
+                                    Publish All
                                 </Button>
                             )}
                         </div>
@@ -1428,6 +1589,8 @@ export default function ActionablesPage() {
                                                         setSelectedItemKey(`${docId}-${item.id}`)
                                                         if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
                                                     }}
+                                                    isChecked={checkedItems.has(`${docId}-${item.id}`)}
+                                                    onCheck={() => toggleChecked(`${docId}-${item.id}`)}
                                                     globalDeadline={globalDeadline}
                                                     globalDeadlineTime={globalDeadlineTime}
                                                 />
@@ -1460,6 +1623,8 @@ export default function ActionablesPage() {
                                                                         setSelectedItemKey(`${docId}-${item.id}`)
                                                                         if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
                                                                     }}
+                                                                    isChecked={checkedItems.has(`${docId}-${item.id}`)}
+                                                                    onCheck={() => toggleChecked(`${docId}-${item.id}`)}
                                                                     globalDeadline={globalDeadline}
                                                                     globalDeadlineTime={globalDeadlineTime}
                                                                 />
@@ -1483,7 +1648,7 @@ export default function ActionablesPage() {
                                                             {!collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) && (
                                                                 <div className="p-2 space-y-2">
                                                                     {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status !== "approved").map(({ item, docId, docName }) => (
-                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -1500,7 +1665,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status !== "approved"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                             )}
                                                         />
                                                     ))}
@@ -1517,7 +1682,7 @@ export default function ActionablesPage() {
                                                     ? <ChevronRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                     : <ChevronDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                 }
-                                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Approved ({approvedItems.length})</p>
+                                                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Published ({approvedItems.length})</p>
                                                 <div className="h-px bg-emerald-400/20 flex-1" />
                                             </div>
                                             {!approvedCollapsed && (
@@ -1537,6 +1702,8 @@ export default function ActionablesPage() {
                                                                 setSelectedItemKey(`${docId}-${item.id}`)
                                                                 if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
                                                             }}
+                                                            isChecked={false}
+                                                            onCheck={() => {}}
                                                             globalDeadline={globalDeadline}
                                                             globalDeadlineTime={globalDeadlineTime}
                                                         />
@@ -1557,7 +1724,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                                 ))}
                                                             </div>
                                                         )
@@ -1574,7 +1741,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status === "approved"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} />
                                                             )}
                                                         />
                                                     ))}

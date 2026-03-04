@@ -9,7 +9,7 @@ import { ROLE_BADGE } from "@/lib/status-config"
 interface CommentThreadProps {
     comments: ActionableComment[]
     currentUser: string
-    currentRole: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead"
+    currentRole: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead" | "chief"
     onAddComment?: (text: string) => Promise<void>
     readOnly?: boolean
 }

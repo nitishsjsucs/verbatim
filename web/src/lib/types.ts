@@ -261,7 +261,7 @@ export type ActionableModality = "High Risk" | "Medium Risk" | "Low Risk";
  */
 export type ActionableWorkstream = string;
 
-export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification" | "pending_all_teams";
+export type TaskStatus = "assigned" | "in_progress" | "team_review" | "review" | "completed" | "reworking" | "reviewer_rejected" | "awaiting_justification" | "pending_all_teams" | "tagged_incorrectly" | "bypass_approved";
 
 // Per-team workflow state for multi-team actionables
 // Each team has its own implementation, evidence, status, and approval flow
@@ -331,6 +331,25 @@ export interface ActionableItem {
     // Multi-team assignment
     assigned_teams?: string[];             // Teams assigned to this actionable
     team_workflows?: Record<string, TeamWorkflow>;  // Per-team workflow state
+    // Document metadata (inherited from parent document)
+    regulation_issue_date?: string;   // ISO date — regulation issued date
+    circular_effective_date?: string;  // ISO date — circular effective date
+    regulator?: string;               // Regulator name
+    // Unique actionable display ID
+    actionable_id?: string;           // e.g. "ACT-20260304-001"
+    // Risk assessment dropdowns
+    impact?: string;                  // 1-3 scale
+    tranche3?: string;                // Yes / No
+    control?: string;                 // 1-3 scale
+    likelihood?: string;              // 1-3 scale
+    residual_risk?: string;           // 1-3 scale
+    inherent_risk?: string;           // 1-3 scale
+    // Tagged Incorrectly bypass flow
+    bypass_tag?: boolean;             // True if tagged as incorrectly assigned
+    bypass_tagged_at?: string;
+    bypass_tagged_by?: string;
+    bypass_approved_by?: string;
+    bypass_approved_at?: string;
     // Legacy fields kept for backward compat with existing data
     actor?: string;
     object?: string;
@@ -351,7 +370,7 @@ export interface ActionableItem {
 export interface ActionableComment {
     id: string;
     author: string;
-    role: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead";
+    role: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead" | "chief";
     text: string;
     timestamp: string;  // ISO datetime
 }
@@ -368,6 +387,9 @@ export interface ActionablesResult {
     status?: string;                    // "not_extracted" if not yet run
     doc_id: string;
     doc_name: string;
+    regulation_issue_date?: string;     // ISO date — document-level
+    circular_effective_date?: string;   // ISO date — document-level
+    regulator?: string;                 // Regulator — document-level
     actionables: ActionableItem[];
     total_extracted: number;
     total_validated: number;

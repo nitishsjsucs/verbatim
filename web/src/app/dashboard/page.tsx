@@ -19,7 +19,7 @@ import {
     Paperclip, Calendar, Save,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc, Users,
-    Undo2, FileText, ExternalLink, Download,
+    Undo2, FileText, ExternalLink, Download, Flag, RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -55,11 +55,13 @@ export default function DashboardPage() {
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
     const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
+    const [docFilter, setDocFilter] = React.useState<string>("all")
+    const [teamFilter, setTeamFilter] = React.useState<string>("all")
     const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
-    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
-    const [completedCollapsed, setCompletedCollapsed] = React.useState(false)
+    const [activeCollapsed, setActiveCollapsed] = React.useState(true)
+    const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
     const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set())
     const toggleRow = React.useCallback((key: string) => {
         setExpandedRows(prev => {
@@ -217,12 +219,33 @@ export default function DashboardPage() {
         return rows
     }, [allDocs])
 
+    // Unique doc names for filter dropdown
+    const docOptions = React.useMemo(() => {
+        const map = new Map<string, string>()
+        for (const r of allRows) {
+            if (!map.has(r.docId)) map.set(r.docId, r.docName)
+        }
+        return Array.from(map.entries())
+    }, [allRows])
+
+    // Unique team names for filter dropdown
+    const teamOptions = React.useMemo(() => {
+        const s = new Set<string>()
+        for (const r of allRows) {
+            const classification = getClassification(r.item)
+            s.add(classification)
+        }
+        return Array.from(s).sort()
+    }, [allRows])
+
     // Filter + Sort
     const filtered = React.useMemo(() => {
-        let result = allRows.filter(({ item }) => {
+        let result = allRows.filter(({ item, docId }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
             if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
+            if (docFilter !== "all" && docId !== docFilter) return false
+            if (teamFilter !== "all" && getClassification(item) !== teamFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 // Include classification in search so "Mixed Team" is searchable
@@ -252,7 +275,7 @@ export default function DashboardPage() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [allRows, statusFilter, riskFilter, deadlineFilter, searchQuery, sortBy, sortDir])
+    }, [allRows, statusFilter, riskFilter, deadlineFilter, docFilter, teamFilter, searchQuery, sortBy, sortDir])
 
     // Split into active (non-completed) and completed
     const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
@@ -491,12 +514,36 @@ export default function DashboardPage() {
                         <option value="d90">Delayed 90d</option>
                     </select>
 
-                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
+                    <select
+                        value={docFilter}
+                        onChange={e => setDocFilter(e.target.value)}
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[160px]"
+                    >
+                        <option value="all">All Documents</option>
+                        {docOptions.map(([id, name]) => (
+                            <option key={id} value={id}>{name}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={teamFilter}
+                        onChange={e => setTeamFilter(e.target.value)}
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[160px]"
+                    >
+                        <option value="all">All Teams</option>
+                        {teamOptions.map(t => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+
+                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || docFilter !== "all" || teamFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
                                 setStatusFilter("all")
                                 setRiskFilter("all")
                                 setDeadlineFilter("all")
+                                setDocFilter("all")
+                                setTeamFilter("all")
                                 setSearchQuery("")
                             }}
                             className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-border/40 focus:border-border"
@@ -540,7 +587,7 @@ export default function DashboardPage() {
                         <EmptyState
                             icon={<LayoutDashboard className="h-8 w-8 text-muted-foreground" />}
                             title="No actionables to track yet"
-                            description="Approve actionables from the Actionables page to see them here."
+                            description="Publish actionables from the Actionables page to see them here."
                             className="py-20"
                         />
                     )}
@@ -777,6 +824,31 @@ export default function DashboardPage() {
                                                     )}
                                                     {!multi && (taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                    )}
+                                                    {/* Bypass flag indicator */}
+                                                    {item.bypass_tag && (
+                                                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium" title={`Flagged by ${item.bypass_tagged_by || "team member"}`}>
+                                                            <Flag className="h-2.5 w-2.5" /> Bypass
+                                                        </span>
+                                                    )}
+                                                    {/* Reset Team — for bypassed items under CO review */}
+                                                    {item.bypass_tag && taskStatus === "review" && (
+                                                        <button
+                                                            onClick={() => handleUpdate(docId, item.id, {
+                                                                task_status: "assigned",
+                                                                bypass_tag: false,
+                                                                bypass_tagged_at: "",
+                                                                bypass_tagged_by: "",
+                                                                bypass_approved_by: "",
+                                                                bypass_approved_at: "",
+                                                                team_reviewer_approved_at: "",
+                                                                team_reviewer_name: "",
+                                                            }).then(() => toast.success("Team reset — actionable returned to Assigned for reassignment"))}
+                                                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors font-medium"
+                                                            title="Reset team assignment — return to Assigned status"
+                                                        >
+                                                            <RotateCcw className="h-2.5 w-2.5" /> Reset Team
+                                                        </button>
                                                     )}
                                                     {/* Unpublish button */}
                                                     <button
@@ -1151,6 +1223,39 @@ export default function DashboardPage() {
                                                             </div>
                                                         </div>
                                                     )}
+                                                    {/* Bypass tag banner */}
+                                                    {item.bypass_tag && (
+                                                        <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
+                                                            <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+                                                            <div className="flex-1">
+                                                                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Tagged as Incorrectly Assigned</p>
+                                                                <p className="text-xs text-foreground/80">This task was flagged by a team member and approved by the Team Reviewer for reassignment.</p>
+                                                                {item.bypass_tagged_by && (
+                                                                    <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
+                                                                )}
+                                                                {item.bypass_approved_by && (
+                                                                    <p className="text-xs text-muted-foreground/50">Bypass approved by {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
+                                                                )}
+                                                                {taskStatus === "review" && (
+                                                                    <button
+                                                                        onClick={() => handleUpdate(docId, item.id, {
+                                                                            task_status: "assigned",
+                                                                            bypass_tag: false,
+                                                                            bypass_tagged_at: "",
+                                                                            bypass_tagged_by: "",
+                                                                            bypass_approved_by: "",
+                                                                            bypass_approved_at: "",
+                                                                            team_reviewer_approved_at: "",
+                                                                            team_reviewer_name: "",
+                                                                        }).then(() => toast.success("Team reset — actionable returned to Assigned for reassignment"))}
+                                                                        className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors font-medium"
+                                                                    >
+                                                                        <RotateCcw className="h-3 w-3" /> Reset Team Assignment
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {/* Approve/Reject buttons for items under review */}
                                                     {taskStatus === "review" && (
                                                         <div className="flex items-center gap-3 mb-3">
@@ -1180,6 +1285,78 @@ export default function DashboardPage() {
                                                                 <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                                                             </div>
+
+                                                            {/* Actionable ID + Parent doc metadata */}
+                                                            {(item.actionable_id || item.regulation_issue_date || item.circular_effective_date || item.regulator) && (
+                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
+                                                                    {item.actionable_id && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{item.actionable_id}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.regulator && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                                                            <p className="text-xs text-foreground/80">{item.regulator}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.regulation_issue_date && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulation Issue Date</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{formatDate(item.regulation_issue_date)}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.circular_effective_date && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{formatDate(item.circular_effective_date)}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Risk Assessment fields */}
+                                                            {(item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3) && (
+                                                                <div className="grid grid-cols-3 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
+                                                                    {item.impact && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
+                                                                            <p className="text-xs text-foreground/80">{item.impact}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.likelihood && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Likelihood</p>
+                                                                            <p className="text-xs text-foreground/80">{item.likelihood}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.control && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Control</p>
+                                                                            <p className="text-xs text-foreground/80">{item.control}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.inherent_risk && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Inherent Risk</p>
+                                                                            <p className="text-xs text-foreground/80">{item.inherent_risk}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.residual_risk && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Residual Risk</p>
+                                                                            <p className="text-xs text-foreground/80">{item.residual_risk}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.tranche3 && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                                                            <p className="text-xs text-foreground/80">{item.tranche3}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
 
                                                             {/* Evidence Files */}
                                                             {(item.evidence_files && item.evidence_files.length > 0) && (

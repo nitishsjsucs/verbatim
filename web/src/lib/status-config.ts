@@ -148,6 +148,8 @@ export const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; 
     reviewer_rejected:      { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
     awaiting_justification: { bg: "bg-yellow-600/15",  text: "text-yellow-500",  label: "Awaiting Justification" },
     pending_all_teams:      { bg: "bg-violet-500/15",  text: "text-violet-400",  label: "Pending All Teams" },
+    tagged_incorrectly:     { bg: "bg-fuchsia-500/15", text: "text-fuchsia-400", label: "Tagged Incorrectly" },
+    bypass_approved:        { bg: "bg-sky-500/15",     text: "text-sky-400",     label: "Bypass Approved" },
 }
 
 // ─── Task Status Colors (hex — for SVG / charts) ────────────────────────────
@@ -162,6 +164,8 @@ export const STATUS_COLORS_HEX: Record<TaskStatus, string> = {
     reviewer_rejected: "#f43f5e",
     awaiting_justification: "#ca8a04",
     pending_all_teams: "#8b5cf6",
+    tagged_incorrectly: "#d946ef",
+    bypass_approved: "#0ea5e9",
 }
 
 // ─── Status Labels (derived from TASK_STATUS_STYLES) ─────────────────────────
@@ -175,6 +179,7 @@ export const STATUS_LABELS: Record<TaskStatus, string> = Object.fromEntries(
 export const ALL_TASK_STATUSES: TaskStatus[] = [
     "assigned", "in_progress", "team_review", "review", "completed",
     "reworking", "reviewer_rejected", "awaiting_justification", "pending_all_teams",
+    "tagged_incorrectly", "bypass_approved",
 ]
 
 // ─── Status Sort Order ───────────────────────────────────────────────────────
@@ -189,6 +194,8 @@ export const STATUS_SORT_ORDER: Record<string, number> = {
     in_progress: 6,
     assigned: 7,
     completed: 8,
+    tagged_incorrectly: 9,
+    bypass_approved: 10,
 }
 
 // ─── Role Badge Config ──────────────────────────────────────────────────────
@@ -198,5 +205,6 @@ export const ROLE_BADGE: Record<string, { label: string; className: string }> = 
     team_lead:          { label: "Lead",     className: "bg-indigo-500/15 text-indigo-400" },
     team_reviewer:      { label: "Reviewer", className: "bg-teal-500/15 text-teal-400" },
     team_member:        { label: "Member",   className: "bg-amber-500/15 text-amber-400" },
+    chief:              { label: "Chief",    className: "bg-purple-500/15 text-purple-400" },
     admin:              { label: "Admin",    className: "bg-red-500/15 text-red-400" },
 }

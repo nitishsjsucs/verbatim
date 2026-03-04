@@ -89,9 +89,9 @@ function TeamLeadContent() {
     const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
-    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
+    const [activeCollapsed, setActiveCollapsed] = React.useState(true)
     const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
-    const [delayedCollapsed, setDelayedCollapsed] = React.useState(false)
+    const [delayedCollapsed, setDelayedCollapsed] = React.useState(true)
     // Tab: "overview" shows all items, "delayed" shows only delayed items
     const [tab, setTab] = React.useState<"overview" | "delayed">("delayed")
 

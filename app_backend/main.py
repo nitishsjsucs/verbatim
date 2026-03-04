@@ -1079,6 +1079,193 @@ def save_memory(doc_id: str = ""):
 
 
 # ---------------------------------------------------------------------------
+# Regulator List
+# ---------------------------------------------------------------------------
+
+REGULATORS = [
+    "Reserve Bank of India (RBI)",
+    "Securities and Exchange Board of India (SEBI)",
+    "Insurance Regulatory and Development Authority of India (IRDAI)",
+    "Pension Fund Regulatory and Development Authority (PFRDA)",
+    "Competition Commission of India (CCI)",
+    "Insolvency and Bankruptcy Board of India (IBBI)",
+    "National Financial Reporting Authority (NFRA)",
+    "National Bank for Agriculture and Rural Development (NABARD)",
+    "Small Industries Development Bank of India (SIDBI)",
+    "Export-Import Bank of India (EXIM Bank)",
+    "International Financial Services Centres Authority (IFSCA)",
+    "Forward Markets Commission (FMC – merged with SEBI)",
+]
+
+
+@app.get("/regulators")
+def list_regulators():
+    """Return the list of available regulators."""
+    return {"regulators": REGULATORS}
+
+
+# ---------------------------------------------------------------------------
+# Document Metadata (regulation dates + regulator)
+# ---------------------------------------------------------------------------
+
+
+@app.put("/documents/{doc_id}/metadata")
+def update_document_metadata(doc_id: str, body: dict = Body(...)):
+    """Update document-level metadata: regulation_issue_date, circular_effective_date, regulator.
+    Also propagates these fields to all actionables in the document."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    allowed = ["regulation_issue_date", "circular_effective_date", "regulator"]
+    for field_name in allowed:
+        if field_name in body:
+            setattr(result, field_name, body[field_name])
+            # Propagate to all actionables in this document
+            for a in result.actionables:
+                setattr(a, field_name, body[field_name])
+
+    store.save(result)
+    return {
+        "doc_id": result.doc_id,
+        "regulation_issue_date": result.regulation_issue_date,
+        "circular_effective_date": result.circular_effective_date,
+        "regulator": result.regulator,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tagged Incorrectly — Bypass Flow
+# ---------------------------------------------------------------------------
+
+
+@app.post("/documents/{doc_id}/actionables/{item_id}/bypass-tag")
+def tag_incorrectly(doc_id: str, item_id: str, body: dict = Body(...)):
+    """Team member tags an actionable as incorrectly assigned.
+    Sets bypass_tag=True, changes task_status to 'tagged_incorrectly',
+    and routes to Checker (team_review)."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    target.bypass_tag = True
+    target.bypass_tagged_at = datetime.now(timezone.utc).isoformat()
+    target.bypass_tagged_by = body.get("tagged_by", "")
+    target.task_status = "tagged_incorrectly"
+
+    # Add audit trail entry
+    trail_entry = {
+        "event": "tagged_incorrectly",
+        "actor": body.get("tagged_by", ""),
+        "role": "team_member",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "details": "Team member tagged this actionable as incorrectly assigned",
+    }
+    if not isinstance(target.audit_trail, list):
+        target.audit_trail = []
+    target.audit_trail.append(trail_entry)
+
+    store.save(result)
+    return target.to_dict()
+
+
+@app.post("/documents/{doc_id}/actionables/{item_id}/bypass-approve")
+def approve_bypass(doc_id: str, item_id: str, body: dict = Body(...)):
+    """Checker approves the bypass tag, sending the actionable back to CO for reassignment."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    if not target.bypass_tag:
+        raise HTTPException(status_code=400, detail="Item was not tagged as incorrectly assigned")
+
+    target.bypass_approved_by = body.get("approved_by", "")
+    target.bypass_approved_at = datetime.now(timezone.utc).isoformat()
+    target.task_status = "bypass_approved"
+
+    trail_entry = {
+        "event": "bypass_approved",
+        "actor": body.get("approved_by", ""),
+        "role": "team_reviewer",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "details": "Checker approved the bypass tag — sent back to Compliance Officer for reassignment",
+    }
+    if not isinstance(target.audit_trail, list):
+        target.audit_trail = []
+    target.audit_trail.append(trail_entry)
+
+    store.save(result)
+    return target.to_dict()
+
+
+@app.post("/documents/{doc_id}/actionables/{item_id}/reset-team")
+def reset_team(doc_id: str, item_id: str, body: dict = Body(...)):
+    """Compliance Officer resets the team assignment for a bypassed actionable.
+    Clears bypass fields and allows reassignment."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    target = None
+    for a in result.actionables:
+        if a.id == item_id:
+            target = a
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
+
+    # Reset bypass fields
+    target.bypass_tag = False
+    target.bypass_tagged_at = ""
+    target.bypass_tagged_by = ""
+    target.bypass_approved_by = ""
+    target.bypass_approved_at = ""
+    # Reset task status back to assigned
+    target.task_status = "assigned"
+    # Update workstream if new_team provided
+    new_team = body.get("new_team", "")
+    if new_team:
+        target.workstream = new_team
+        # Reset assigned_teams if it was single-team
+        if not target.is_multi_team:
+            target.assigned_teams = [new_team]
+
+    trail_entry = {
+        "event": "team_reset",
+        "actor": body.get("reset_by", ""),
+        "role": "compliance_officer",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "details": f"Team reassigned to '{new_team}'" if new_team else "Team assignment reset",
+    }
+    if not isinstance(target.audit_trail, list):
+        target.audit_trail = []
+    target.audit_trail.append(trail_entry)
+
+    store.save(result)
+    return target.to_dict()
+
+
+# ---------------------------------------------------------------------------
 # Actionable Extraction Endpoints
 # ---------------------------------------------------------------------------
 
@@ -1270,6 +1457,15 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "justification", "justification_by", "justification_at",
         "justification_status", "audit_trail",
         "assigned_teams", "team_workflows",
+        # Document metadata (inherited from parent doc)
+        "regulation_issue_date", "circular_effective_date", "regulator",
+        # Unique actionable display ID
+        "actionable_id",
+        # Risk assessment dropdowns
+        "impact", "tranche3", "control", "likelihood", "residual_risk", "inherent_risk",
+        # Tagged Incorrectly bypass flow
+        "bypass_tag", "bypass_tagged_at", "bypass_tagged_by",
+        "bypass_approved_by", "bypass_approved_at",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -3666,6 +3862,247 @@ def admin_memory_diagnostics(doc_id: str = ""):
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dropdown Config — admin-managed option lists for actionable dropdowns
+# Collection: dropdown_configs
+# Schema: { _id: category_key, label: str, options: [{label: str, value: int}] }
+# ─────────────────────────────────────────────────────────────────────────────
+
+DROPDOWN_COLLECTION = "dropdown_configs"
+
+# Default seed data — provides sensible defaults on first boot (idempotent)
+DEFAULT_DROPDOWN_CONFIGS = [
+    {
+        "_id": "theme",
+        "label": "Theme",
+        "options": [
+            {"label": "1", "value": 1},
+            {"label": "2", "value": 2},
+            {"label": "3", "value": 3},
+        ],
+    },
+    {
+        "_id": "impact",
+        "label": "Impact",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "likelihood",
+        "label": "Likelihood",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "control",
+        "label": "Control",
+        "options": [
+            {"label": "Weak",     "value": 1},
+            {"label": "Moderate", "value": 2},
+            {"label": "Strong",   "value": 3},
+        ],
+    },
+    {
+        "_id": "inherent_risk",
+        "label": "Inherent Risk",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "residual_risk",
+        "label": "Residual Risk",
+        "options": [
+            {"label": "Low",    "value": 1},
+            {"label": "Medium", "value": 2},
+            {"label": "High",   "value": 3},
+        ],
+    },
+    {
+        "_id": "tranche3",
+        "label": "Tranche 3",
+        "options": [
+            {"label": "No",  "value": 0},
+            {"label": "Yes", "value": 1},
+        ],
+    },
+]
+
+
+def _seed_dropdown_configs():
+    """Idempotently seed default dropdown categories if they don't exist."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db[DROPDOWN_COLLECTION]
+    for cfg in DEFAULT_DROPDOWN_CONFIGS:
+        col.update_one({"_id": cfg["_id"]}, {"$setOnInsert": cfg}, upsert=True)
+
+
+# Seed on startup
+try:
+    _seed_dropdown_configs()
+except Exception:
+    pass
+
+
+@app.get("/dropdown-configs")
+def list_dropdown_configs():
+    """Return all dropdown categories and their options."""
+    from utils.mongo import get_db
+    db = get_db()
+    docs = list(db[DROPDOWN_COLLECTION].find({}, {"_id": 1, "label": 1, "options": 1}))
+    for d in docs:
+        d["key"] = d.pop("_id")
+    return {"configs": docs}
+
+
+@app.get("/dropdown-configs/{category_key}")
+def get_dropdown_config(category_key: str):
+    """Return a single dropdown category by key."""
+    from utils.mongo import get_db
+    db = get_db()
+    doc = db[DROPDOWN_COLLECTION].find_one({"_id": category_key})
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Dropdown category '{category_key}' not found")
+    doc["key"] = doc.pop("_id")
+    return doc
+
+
+@app.post("/dropdown-configs")
+def create_dropdown_config(body: dict = Body(...)):
+    """Admin: create a new dropdown category.
+    Body: { key: str, label: str, options: [{label: str, value: int}] }"""
+    from utils.mongo import get_db
+    key = body.get("key", "").strip()
+    label = body.get("label", "").strip()
+    options = body.get("options", [])
+    if not key:
+        raise HTTPException(status_code=400, detail="'key' is required")
+    if not label:
+        raise HTTPException(status_code=400, detail="'label' is required")
+    for opt in options:
+        if "label" not in opt or "value" not in opt:
+            raise HTTPException(status_code=400, detail="Each option must have 'label' and 'value'")
+    db = get_db()
+    col = db[DROPDOWN_COLLECTION]
+    if col.find_one({"_id": key}):
+        raise HTTPException(status_code=409, detail=f"Category '{key}' already exists")
+    col.insert_one({"_id": key, "label": label, "options": options})
+    return {"key": key, "label": label, "options": options}
+
+
+@app.put("/dropdown-configs/{category_key}")
+def update_dropdown_config(category_key: str, body: dict = Body(...)):
+    """Admin: update a dropdown category's label and/or options.
+    Body: { label?: str, options?: [{label: str, value: int}] }"""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db[DROPDOWN_COLLECTION]
+    existing = col.find_one({"_id": category_key})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Category '{category_key}' not found")
+    updates: dict = {}
+    if "label" in body:
+        updates["label"] = body["label"]
+    if "options" in body:
+        for opt in body["options"]:
+            if "label" not in opt or "value" not in opt:
+                raise HTTPException(status_code=400, detail="Each option must have 'label' and 'value'")
+        updates["options"] = body["options"]
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    col.update_one({"_id": category_key}, {"$set": updates})
+    doc = col.find_one({"_id": category_key})
+    doc["key"] = doc.pop("_id")
+    return doc
+
+
+@app.delete("/dropdown-configs/{category_key}")
+def delete_dropdown_config(category_key: str):
+    """Admin: delete a dropdown category. Protected keys cannot be deleted."""
+    PROTECTED = {"impact", "likelihood", "control", "inherent_risk", "residual_risk", "tranche3", "theme"}
+    if category_key in PROTECTED:
+        raise HTTPException(status_code=403, detail=f"Category '{category_key}' is protected and cannot be deleted")
+    from utils.mongo import get_db
+    db = get_db()
+    result = db[DROPDOWN_COLLECTION].delete_one({"_id": category_key})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Category '{category_key}' not found")
+    return {"deleted": category_key}
+
+
+@app.post("/dropdown-configs/{category_key}/options")
+def add_dropdown_option(category_key: str, body: dict = Body(...)):
+    """Admin: append a new option to an existing category.
+    Body: { label: str, value: int }"""
+    from utils.mongo import get_db
+    label = body.get("label", "").strip()
+    value = body.get("value")
+    if not label:
+        raise HTTPException(status_code=400, detail="'label' is required")
+    if value is None:
+        raise HTTPException(status_code=400, detail="'value' is required")
+    db = get_db()
+    col = db[DROPDOWN_COLLECTION]
+    existing = col.find_one({"_id": category_key})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Category '{category_key}' not found")
+    col.update_one({"_id": category_key}, {"$push": {"options": {"label": label, "value": value}}})
+    doc = col.find_one({"_id": category_key})
+    doc["key"] = doc.pop("_id")
+    return doc
+
+
+@app.put("/dropdown-configs/{category_key}/options/{option_index}")
+def update_dropdown_option(category_key: str, option_index: int, body: dict = Body(...)):
+    """Admin: update a specific option by index.
+    Body: { label?: str, value?: int }"""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db[DROPDOWN_COLLECTION]
+    existing = col.find_one({"_id": category_key})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Category '{category_key}' not found")
+    options = existing.get("options", [])
+    if option_index < 0 or option_index >= len(options):
+        raise HTTPException(status_code=404, detail=f"Option index {option_index} out of range")
+    if "label" in body:
+        options[option_index]["label"] = body["label"]
+    if "value" in body:
+        options[option_index]["value"] = body["value"]
+    col.update_one({"_id": category_key}, {"$set": {"options": options}})
+    doc = col.find_one({"_id": category_key})
+    doc["key"] = doc.pop("_id")
+    return doc
+
+
+@app.delete("/dropdown-configs/{category_key}/options/{option_index}")
+def delete_dropdown_option(category_key: str, option_index: int):
+    """Admin: remove a specific option by index."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db[DROPDOWN_COLLECTION]
+    existing = col.find_one({"_id": category_key})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Category '{category_key}' not found")
+    options = existing.get("options", [])
+    if option_index < 0 or option_index >= len(options):
+        raise HTTPException(status_code=404, detail=f"Option index {option_index} out of range")
+    options.pop(option_index)
+    col.update_one({"_id": category_key}, {"$set": {"options": options}})
+    doc = col.find_one({"_id": category_key})
+    doc["key"] = doc.pop("_id")
+    return doc
 
 
 if __name__ == "__main__":

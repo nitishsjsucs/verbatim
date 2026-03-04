@@ -45,6 +45,7 @@ export function Sidebar({ className }: SidebarProps) {
   const { data: session } = useSession()
   const role = getUserRole(session)
   const isOfficer = role === "compliance_officer" || role === "admin"
+  const isChief = role === "chief"
   const isTeamReviewer = role === "team_reviewer"
   const isTeamLead = role === "team_lead"
   const userTeam = getUserTeam(session)
@@ -222,6 +223,38 @@ export function Sidebar({ className }: SidebarProps) {
           </>
         )}
 
+        {/* ─── Chief: department-wide visibility ─── */}
+        {isChief && (
+          <>
+            <div>
+              <NavItem
+                href="/chief"
+                icon={<LayoutDashboard className="h-4 w-4" />}
+                iconClassName="text-purple-500"
+                label="Department"
+                active={pathname === "/chief"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/reports"
+                icon={<BarChart3 className="h-4 w-4" />}
+                iconClassName="text-purple-500"
+                label="Reports"
+                active={pathname === "/reports"}
+                collapsed={collapsed}
+              />
+              <NavItem
+                href="/chat"
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                iconClassName="text-blue-500"
+                label="Chat"
+                active={pathname === "/chat"}
+                collapsed={collapsed}
+              />
+            </div>
+          </>
+        )}
+
         {/* ─── Team Reviewer: review board + reports ─── */}
         {isTeamReviewer && (
           <>
@@ -287,7 +320,7 @@ export function Sidebar({ className }: SidebarProps) {
         )}
 
         {/* ─── Team Member: limited nav ─── */}
-        {!isOfficer && !isTeamReviewer && !isTeamLead && (
+        {!isOfficer && !isChief && !isTeamReviewer && !isTeamLead && (
           <>
             <div>
               <NavItem
@@ -324,7 +357,7 @@ export function Sidebar({ className }: SidebarProps) {
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5">
             <p className="text-xs font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
+            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "chief" ? "Chief" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>

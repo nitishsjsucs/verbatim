@@ -906,6 +906,93 @@ export async function deleteUser(email: string): Promise<void> {
 // Memory Health API
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Regulator & Document Metadata API
+// ---------------------------------------------------------------------------
+
+export async function fetchRegulators(): Promise<string[]> {
+    const res = await apiFetch('/regulators');
+    if (!res.ok) throw new Error('Failed to fetch regulators');
+    const data = await res.json();
+    return data.regulators || [];
+}
+
+export async function updateDocumentMetadata(
+    docId: string,
+    metadata: { regulation_issue_date?: string; circular_effective_date?: string; regulator?: string },
+): Promise<{ doc_id: string; regulation_issue_date: string; circular_effective_date: string; regulator: string }> {
+    const res = await apiFetch(`/documents/${docId}/metadata`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(metadata),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to update document metadata');
+    }
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Tagged Incorrectly — Bypass Flow API
+// ---------------------------------------------------------------------------
+
+export async function tagIncorrectly(
+    docId: string,
+    itemId: string,
+    taggedBy: string,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/bypass-tag`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagged_by: taggedBy }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to tag as incorrectly assigned');
+    }
+    return res.json();
+}
+
+export async function approveBypass(
+    docId: string,
+    itemId: string,
+    approvedBy: string,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/bypass-approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved_by: approvedBy }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to approve bypass');
+    }
+    return res.json();
+}
+
+export async function resetTeam(
+    docId: string,
+    itemId: string,
+    resetBy: string,
+    newTeam?: string,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/documents/${docId}/actionables/${itemId}/reset-team`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reset_by: resetBy, new_team: newTeam || '' }),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to reset team');
+    }
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Memory Health API
+// ---------------------------------------------------------------------------
+
 export async function fetchMemoryHealth(): Promise<Record<string, unknown>> {
     const res = await apiFetch('/admin/memory/health');
     if (!res.ok) throw new Error('Failed to fetch memory health');

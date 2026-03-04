@@ -275,7 +275,7 @@ function ReportsContent() {
         const pending = allActionables.filter(a => a.approval_status === "pending").length
 
         // By status
-        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0, tagged_incorrectly: 0, bypass_approved: 0 }
         for (const a of items) {
             const s = (a.task_status || "assigned") as TaskStatus
             byStatus[s] = (byStatus[s] || 0) + 1
@@ -336,10 +336,10 @@ function ReportsContent() {
         const highRiskOpen = openByRisk["High Risk"] || 0
 
         // Workload by team (detailed)
-        const workload: Record<string, { assigned: number; in_progress: number; team_review: number; review: number; completed: number; reworking: number; reviewer_rejected: number; awaiting_justification: number; pending_all_teams: number; total: number; avgDays: number; reworkCount: number }> = {}
+        const workload: Record<string, { assigned: number; in_progress: number; team_review: number; review: number; completed: number; reworking: number; reviewer_rejected: number; awaiting_justification: number; pending_all_teams: number; tagged_incorrectly: number; bypass_approved: number; total: number; avgDays: number; reworkCount: number }> = {}
         for (const a of items) {
             const team = safeStr(a.workstream) || "Other"
-            if (!workload[team]) workload[team] = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0, total: 0, avgDays: 0, reworkCount: 0 }
+            if (!workload[team]) workload[team] = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0, tagged_incorrectly: 0, bypass_approved: 0, total: 0, avgDays: 0, reworkCount: 0 }
             const s = (a.task_status || "assigned") as TaskStatus
             workload[team][s] = (workload[team][s] || 0) + 1
             workload[team].total++
@@ -422,7 +422,7 @@ function ReportsContent() {
         if (isOfficer || !userTeam) return null
         const teamItems = allItems.filter(a => safeStr(a.workstream) === userTeam)
         const total = teamItems.length
-        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0 }
+        const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0, tagged_incorrectly: 0, bypass_approved: 0 }
         for (const a of teamItems) { const s = (a.task_status || "assigned") as TaskStatus; byStatus[s]++ }
         const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
         for (const a of teamItems) { byRisk[normalizeRisk(a.modality)]++ }

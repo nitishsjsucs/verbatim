@@ -91,6 +91,25 @@ class ActionableItem:
     justification_at: str = ""  # ISO timestamp when justification was provided
     justification_status: str = ""  # "pending_review" or "reviewed"
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
+    # ── Document metadata (inherited from parent document) ──
+    regulation_issue_date: str = ""  # ISO date — when the regulation was issued
+    circular_effective_date: str = ""  # ISO date — when the circular becomes effective
+    regulator: str = ""  # Regulator name (e.g. "RBI", "SEBI")
+    # ── Unique actionable display ID ──
+    actionable_id: str = ""  # Human-readable unique ID, e.g. "ACT-20260304-001"
+    # ── Risk assessment dropdowns ──
+    impact: str = ""  # 1-3 scale
+    tranche3: str = ""  # Yes / No
+    control: str = ""  # 1-3 scale
+    likelihood: str = ""  # 1-3 scale
+    residual_risk: str = ""  # 1-3 scale
+    inherent_risk: str = ""  # 1-3 scale
+    # ── Tagged Incorrectly bypass flow ──
+    bypass_tag: bool = False  # True if team member tagged this as incorrectly assigned
+    bypass_tagged_at: str = ""  # ISO timestamp when bypass was tagged
+    bypass_tagged_by: str = ""  # Name of team member who tagged
+    bypass_approved_by: str = ""  # Name of checker who approved the bypass
+    bypass_approved_at: str = ""  # ISO timestamp when checker approved bypass
     # ── Multi-team assignment ──
     assigned_teams: list = field(default_factory=list)  # e.g. ["Policy", "Technology"] — empty = single-team via workstream
     team_workflows: dict = field(default_factory=dict)  # Per-team workflow state, keyed by team name
@@ -223,6 +242,21 @@ class ActionableItem:
             "justification_at": self.justification_at,
             "justification_status": self.justification_status,
             "audit_trail": self.audit_trail,
+            "regulation_issue_date": self.regulation_issue_date,
+            "circular_effective_date": self.circular_effective_date,
+            "regulator": self.regulator,
+            "actionable_id": self.actionable_id,
+            "impact": self.impact,
+            "tranche3": self.tranche3,
+            "control": self.control,
+            "likelihood": self.likelihood,
+            "residual_risk": self.residual_risk,
+            "inherent_risk": self.inherent_risk,
+            "bypass_tag": self.bypass_tag,
+            "bypass_tagged_at": self.bypass_tagged_at,
+            "bypass_tagged_by": self.bypass_tagged_by,
+            "bypass_approved_by": self.bypass_approved_by,
+            "bypass_approved_at": self.bypass_approved_at,
             "assigned_teams": self.assigned_teams,
             "team_workflows": self.team_workflows,
         }
@@ -281,6 +315,21 @@ class ActionableItem:
             justification_at=data.get("justification_at", ""),
             justification_status=data.get("justification_status", ""),
             audit_trail=data.get("audit_trail", []),
+            regulation_issue_date=data.get("regulation_issue_date", ""),
+            circular_effective_date=data.get("circular_effective_date", ""),
+            regulator=data.get("regulator", ""),
+            actionable_id=data.get("actionable_id", ""),
+            impact=data.get("impact", ""),
+            tranche3=data.get("tranche3", ""),
+            control=data.get("control", ""),
+            likelihood=data.get("likelihood", ""),
+            residual_risk=data.get("residual_risk", ""),
+            inherent_risk=data.get("inherent_risk", ""),
+            bypass_tag=data.get("bypass_tag", False),
+            bypass_tagged_at=data.get("bypass_tagged_at", ""),
+            bypass_tagged_by=data.get("bypass_tagged_by", ""),
+            bypass_approved_by=data.get("bypass_approved_by", ""),
+            bypass_approved_at=data.get("bypass_approved_at", ""),
             assigned_teams=data.get("assigned_teams", []),
             team_workflows=data.get("team_workflows", {}),
         )
@@ -292,6 +341,9 @@ class ActionablesResult:
 
     doc_id: str
     doc_name: str = ""
+    regulation_issue_date: str = ""  # ISO date — regulation issued date
+    circular_effective_date: str = ""  # ISO date — circular effective date
+    regulator: str = ""  # Regulator name
     actionables: list[ActionableItem] = field(default_factory=list)
     total_extracted: int = 0
     total_validated: int = 0
@@ -333,6 +385,9 @@ class ActionablesResult:
         return {
             "doc_id": self.doc_id,
             "doc_name": self.doc_name,
+            "regulation_issue_date": self.regulation_issue_date,
+            "circular_effective_date": self.circular_effective_date,
+            "regulator": self.regulator,
             "actionables": [a.to_dict() for a in self.actionables],
             "total_extracted": self.total_extracted,
             "total_validated": self.total_validated,
@@ -352,6 +407,9 @@ class ActionablesResult:
         result = cls(
             doc_id=data.get("doc_id", ""),
             doc_name=data.get("doc_name", ""),
+            regulation_issue_date=data.get("regulation_issue_date", ""),
+            circular_effective_date=data.get("circular_effective_date", ""),
+            regulator=data.get("regulator", ""),
             actionables=[
                 ActionableItem.from_dict(a) for a in data.get("actionables", [])
             ],

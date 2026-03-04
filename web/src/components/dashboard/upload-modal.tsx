@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Upload, X, Loader2, CheckCircle2, FileText, Pencil } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -15,7 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { ingestDocument } from "@/lib/api"
+import { ingestDocument, fetchRegulators, updateDocumentMetadata } from "@/lib/api"
 import { IngestResponse } from "@/lib/types"
 
 export function UploadModal({ children }: { children?: React.ReactNode }) {
@@ -26,7 +26,16 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
     const [result, setResult] = useState<IngestResponse | null>(null)
     const [customName, setCustomName] = useState("")
     const [editingName, setEditingName] = useState(false)
+    const [regulationIssueDate, setRegulationIssueDate] = useState("")
+    const [circularEffectiveDate, setCircularEffectiveDate] = useState("")
+    const [regulator, setRegulator] = useState("")
+    const [regulators, setRegulators] = useState<string[]>([])
     const router = useRouter()
+
+    // Fetch regulator list on mount
+    useEffect(() => {
+        fetchRegulators().then(setRegulators).catch(() => {})
+    }, [])
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0]
@@ -63,6 +72,16 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         try {
             const response = await ingestDocument(file, force)
             setResult(response)
+            // Save document metadata (regulation dates + regulator)
+            if (regulationIssueDate || circularEffectiveDate || regulator) {
+                try {
+                    await updateDocumentMetadata(response.doc_id, {
+                        regulation_issue_date: regulationIssueDate,
+                        circular_effective_date: circularEffectiveDate,
+                        regulator,
+                    })
+                } catch { /* metadata save is non-fatal */ }
+            }
             window.dispatchEvent(new Event("document-uploaded"))
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Upload failed")
@@ -78,6 +97,9 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         setForce(false)
         setCustomName("")
         setEditingName(false)
+        setRegulationIssueDate("")
+        setCircularEffectiveDate("")
+        setRegulator("")
     }
 
     const handleOpenDoc = () => {
@@ -232,7 +254,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                                     </div>
 
                                     {/* Editable document name */}
-                                    <div className="w-full mb-4">
+                                    <div className="w-full mb-3">
                                         <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Document Name</label>
                                         <div className="flex items-center gap-2">
                                             <input
@@ -243,6 +265,43 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                                             />
                                             <Pencil className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                                         </div>
+                                    </div>
+
+                                    {/* Regulation Issue Date */}
+                                    <div className="w-full mb-3">
+                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Regulation Issue Date</label>
+                                        <input
+                                            type="date"
+                                            value={regulationIssueDate}
+                                            onChange={e => setRegulationIssueDate(e.target.value)}
+                                            className="w-full bg-muted/30 text-xs rounded-md px-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                        />
+                                    </div>
+
+                                    {/* Circular Effective Date */}
+                                    <div className="w-full mb-3">
+                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Circular Effective Date</label>
+                                        <input
+                                            type="date"
+                                            value={circularEffectiveDate}
+                                            onChange={e => setCircularEffectiveDate(e.target.value)}
+                                            className="w-full bg-muted/30 text-xs rounded-md px-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                        />
+                                    </div>
+
+                                    {/* Regulator Dropdown */}
+                                    <div className="w-full mb-4">
+                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Regulator</label>
+                                        <select
+                                            value={regulator}
+                                            onChange={e => setRegulator(e.target.value)}
+                                            className="w-full bg-muted/30 text-xs rounded-md px-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                        >
+                                            <option value="">Select regulator...</option>
+                                            {regulators.map(r => (
+                                                <option key={r} value={r}>{r}</option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     <Button

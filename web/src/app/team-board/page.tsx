@@ -19,7 +19,7 @@ import {
     ArrowRight, RotateCcw, Trash2,
     MessageSquare, ExternalLink, Download, Upload, Undo2,
     SortAsc, SortDesc,
-    LayoutDashboard, AlertTriangle, XCircle, Users,
+    LayoutDashboard, AlertTriangle, XCircle, Users, Flag,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -33,13 +33,14 @@ import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivide
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
-const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRevert, userName }: {
+const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRevert, onTagIncorrect, userName }: {
     entry: { item: ActionableItem; docId: string; docName: string }
     gridCols: string
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
     onUpload: (docId: string, itemId: string, file: File) => void
     onStatusTransition: (docId: string, item: ActionableItem) => void
     onRevert: (docId: string, item: ActionableItem) => void
+    onTagIncorrect: (docId: string, item: ActionableItem) => void
     userName: string
 }) {
     const { item, docId, docName } = entry
@@ -246,12 +247,40 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                     {isCompleted && (
                         <span className="text-[10px] text-emerald-400">Done</span>
                     )}
+                    {/* Tagged Incorrectly button — only for active non-completed items */}
+                    {!isCompleted && !item.bypass_tag && (
+                        <button
+                            onClick={() => onTagIncorrect(docId, item)}
+                            className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-orange-500/10 hover:text-orange-500 transition-colors"
+                            title="Flag as incorrectly assigned to your team"
+                        >
+                            <Flag className="h-2.5 w-2.5" />
+                        </button>
+                    )}
+                    {item.bypass_tag && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium" title="Flagged as incorrectly assigned">
+                            <Flag className="h-2.5 w-2.5" /> Flagged
+                        </span>
+                    )}
                 </div>
             </div>
 
             {/* Expanded: 2-column layout */}
             {expanded && (
                 <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
+                    {/* Bypass tag banner */}
+                    {item.bypass_tag && (
+                        <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
+                            <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Tagged as Incorrectly Assigned</p>
+                                <p className="text-xs text-foreground/80">This task has been flagged as incorrectly assigned to your team. The Team Reviewer will review this flag.</p>
+                                {item.bypass_tagged_by && (
+                                    <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {/* Rejection reason banner */}
                     {taskStatus === "reworking" && item.rejection_reason && (
                         <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
@@ -473,6 +502,14 @@ function TeamBoardContent() {
         toast.success("Task reverted to In Progress")
     }, [handleUpdate])
 
+    const handleTagIncorrect = React.useCallback(async (docId: string, item: ActionableItem) => {
+        await handleUpdate(docId, item.id, {
+            bypass_tag: true,
+            bypass_tagged_at: new Date().toISOString(),
+            bypass_tagged_by: userName,
+        })
+        toast.success("Task flagged as incorrectly assigned — Team Reviewer will review")
+    }, [handleUpdate, userName])
 
     // Stats (team-scoped from viewItems which has team-projected statuses)
     const stats = React.useMemo(() => {
@@ -553,8 +590,8 @@ function TeamBoardContent() {
         })
     }
 
-    const [activeCollapsed, setActiveCollapsed] = React.useState(false)
-    const [completedCollapsed, setCompletedCollapsed] = React.useState(false)
+    const [activeCollapsed, setActiveCollapsed] = React.useState(true)
+    const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
 
     if (isComplianceOfficer) {
@@ -590,6 +627,7 @@ function TeamBoardContent() {
             onUpload={handleEvidenceUpload}
             onStatusTransition={handleStatusTransition}
             onRevert={handleRevert}
+            onTagIncorrect={handleTagIncorrect}
             userName={userName}
         />
     )
