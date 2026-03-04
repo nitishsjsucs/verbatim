@@ -104,6 +104,8 @@ class ActionableItem:
     likelihood: str = ""  # 1-3 scale
     residual_risk: str = ""  # 1-3 scale
     inherent_risk: str = ""  # 1-3 scale
+    # ── Theme dropdown ──
+    theme: str = ""  # Configurable theme category
     # ── Tagged Incorrectly bypass flow ──
     bypass_tag: bool = False  # True if team member tagged this as incorrectly assigned
     bypass_tagged_at: str = ""  # ISO timestamp when bypass was tagged
@@ -252,6 +254,7 @@ class ActionableItem:
             "likelihood": self.likelihood,
             "residual_risk": self.residual_risk,
             "inherent_risk": self.inherent_risk,
+            "theme": self.theme,
             "bypass_tag": self.bypass_tag,
             "bypass_tagged_at": self.bypass_tagged_at,
             "bypass_tagged_by": self.bypass_tagged_by,
@@ -325,6 +328,7 @@ class ActionableItem:
             likelihood=data.get("likelihood", ""),
             residual_risk=data.get("residual_risk", ""),
             inherent_risk=data.get("inherent_risk", ""),
+            theme=data.get("theme", ""),
             bypass_tag=data.get("bypass_tag", False),
             bypass_tagged_at=data.get("bypass_tagged_at", ""),
             bypass_tagged_by=data.get("bypass_tagged_by", ""),

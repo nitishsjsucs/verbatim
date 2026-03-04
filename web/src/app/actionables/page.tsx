@@ -36,6 +36,7 @@ import {
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
+import { useDropdownConfig } from "@/lib/use-dropdown-config"
 import { HierarchicalTeamMultiSelect, HierarchicalTeamSelect } from "@/components/shared/hierarchical-team-selector"
 import { RiskIcon, EmptyState } from "@/components/shared/status-components"
 
@@ -171,6 +172,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     globalDeadlineTime: string
 }) {
     const { teamNames, leafTeamNames } = useTeams()
+    const { getOptions, getLabel } = useDropdownConfig()
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
     const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
@@ -180,6 +182,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [draftLikelihood, setDraftLikelihood] = React.useState(safeStr(item.likelihood))
     const [draftResidualRisk, setDraftResidualRisk] = React.useState(safeStr(item.residual_risk))
     const [draftInherentRisk, setDraftInherentRisk] = React.useState(safeStr(item.inherent_risk))
+    const [draftTheme, setDraftTheme] = React.useState(safeStr(item.theme))
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -236,6 +239,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftLikelihood(safeStr(item.likelihood))
         setDraftResidualRisk(safeStr(item.residual_risk))
         setDraftInherentRisk(safeStr(item.inherent_risk))
+        setDraftTheme(safeStr(item.theme))
         setDeadlineDate(item.deadline ? item.deadline.split("T")[0] || "" : "")
         setDeadlineTime(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
         const teams = (item.assigned_teams?.length ?? 0) > 1 ? [...item.assigned_teams!] : [item.workstream]
@@ -268,6 +272,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (draftLikelihood !== safeStr(item.likelihood)) return true
         if (draftResidualRisk !== safeStr(item.residual_risk)) return true
         if (draftInherentRisk !== safeStr(item.inherent_risk)) return true
+        if (draftTheme !== safeStr(item.theme)) return true
         const currentDl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
         if (currentDl !== (item.deadline || "")) return true
         // Check teams
@@ -285,7 +290,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             }
         }
         return false
-    }, [draftAction, draftImpl, draftEvidence, draftRisk, draftImpact, draftTranche3, draftControl, draftLikelihood, draftResidualRisk, draftInherentRisk, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
+    }, [draftAction, draftImpl, draftEvidence, draftRisk, draftImpact, draftTranche3, draftControl, draftLikelihood, draftResidualRisk, draftInherentRisk, draftTheme, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
     // --- Unified Save: sends all draft changes at once ---
     const handleSaveAll = async () => {
@@ -305,6 +310,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftLikelihood !== safeStr(item.likelihood)) updates.likelihood = draftLikelihood
             if (draftResidualRisk !== safeStr(item.residual_risk)) updates.residual_risk = draftResidualRisk
             if (draftInherentRisk !== safeStr(item.inherent_risk)) updates.inherent_risk = draftInherentRisk
+            if (draftTheme !== safeStr(item.theme)) updates.theme = draftTheme
             // Deadline
             const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
             if (dl !== (item.deadline || "")) updates.deadline = dl
@@ -755,47 +761,54 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </div>
 
                             {/* Risk Assessment Dropdowns */}
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-4 gap-2">
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact (1-3)</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("impact")}</p>
                                     <select value={draftImpact} onChange={e => setDraftImpact(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="">—</option>
-                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                        {getOptions("impact").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Likelihood (1-3)</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("likelihood")}</p>
                                     <select value={draftLikelihood} onChange={e => setDraftLikelihood(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="">—</option>
-                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                        {getOptions("likelihood").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Control (1-3)</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("control")}</p>
                                     <select value={draftControl} onChange={e => setDraftControl(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="">—</option>
-                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                        {getOptions("control").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Inherent Risk (1-3)</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme")}</p>
+                                    <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">—</option>
+                                        {getOptions("theme").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("inherent_risk")}</p>
                                     <select value={draftInherentRisk} onChange={e => setDraftInherentRisk(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="">—</option>
-                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                        {getOptions("inherent_risk").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Residual Risk (1-3)</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("residual_risk")}</p>
                                     <select value={draftResidualRisk} onChange={e => setDraftResidualRisk(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="">—</option>
-                                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                        {getOptions("residual_risk").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3")}</p>
                                     <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="">—</option>
-                                        <option value="Yes">Yes</option><option value="No">No</option>
+                                        {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                     </select>
                                 </div>
                             </div>

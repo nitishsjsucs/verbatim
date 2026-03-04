@@ -381,7 +381,7 @@ function ChiefContent() {
                                 )}
 
                                 {/* Risk Assessment fields */}
-                                {(item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3) && (
+                                {(item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3 || item.theme) && (
                                     <div className="grid grid-cols-3 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
                                         {item.impact && (
                                             <div>
@@ -417,6 +417,12 @@ function ChiefContent() {
                                             <div>
                                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
                                                 <p className="text-xs text-foreground/80">{item.tranche3}</p>
+                                            </div>
+                                        )}
+                                        {item.theme && (
+                                            <div>
+                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                                <p className="text-xs text-foreground/80">{item.theme}</p>
                                             </div>
                                         )}
                                     </div>

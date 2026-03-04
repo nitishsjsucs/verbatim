@@ -1355,6 +1355,12 @@ export default function DashboardPage() {
                                                                             <p className="text-xs text-foreground/80">{item.tranche3}</p>
                                                                         </div>
                                                                     )}
+                                                                    {item.theme && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                                                            <p className="text-xs text-foreground/80">{item.theme}</p>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             )}
 

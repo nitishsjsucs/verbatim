@@ -344,6 +344,7 @@ export interface ActionableItem {
     likelihood?: string;              // 1-3 scale
     residual_risk?: string;           // 1-3 scale
     inherent_risk?: string;           // 1-3 scale
+    theme?: string;                   // Configurable theme category
     // Tagged Incorrectly bypass flow
     bypass_tag?: boolean;             // True if tagged as incorrectly assigned
     bypass_tagged_at?: string;

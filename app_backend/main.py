@@ -1463,6 +1463,8 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "actionable_id",
         # Risk assessment dropdowns
         "impact", "tranche3", "control", "likelihood", "residual_risk", "inherent_risk",
+        # Theme dropdown
+        "theme",
         # Tagged Incorrectly bypass flow
         "bypass_tag", "bypass_tagged_at", "bypass_tagged_by",
         "bypass_approved_by", "bypass_approved_at",

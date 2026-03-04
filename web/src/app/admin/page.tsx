@@ -76,10 +76,11 @@ import { cn } from "@/lib/utils"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import { LLMExperiment } from "@/components/admin/llm-experiment"
 import { LLMTournament } from "@/components/admin/llm-tournament"
+import { DropdownConfigManager } from "@/components/admin/dropdown-config-manager"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health" | "diagnostics"
+type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health" | "diagnostics" | "dropdown-config"
 
 interface AdminData {
   documents?: { total: number; list: Array<{ doc_id: string; doc_name: string; total_pages: number; node_count: number }> }
@@ -526,6 +527,7 @@ function AdminDashboardContent() {
           <TabBtn active={tab === "storage"} icon={<HardDrive className="h-3.5 w-3.5" />} label="Storage" onClick={() => setTab("storage")} />
           <TabBtn active={tab === "teams"} icon={<Users className="h-3.5 w-3.5" />} label="Teams" onClick={() => setTab("teams")} />
           <TabBtn active={tab === "users"} icon={<Shield className="h-3.5 w-3.5" />} label="Users" onClick={() => setTab("users")} />
+          <TabBtn active={tab === "dropdown-config"} icon={<Settings className="h-3.5 w-3.5" />} label="Dropdowns" onClick={() => setTab("dropdown-config")} />
         </div>
       </div>
 
@@ -558,6 +560,7 @@ function AdminDashboardContent() {
         {tab === "storage" && data && <StorageTab data={data} />}
         {tab === "teams" && <TeamsTab />}
         {tab === "users" && <UsersTab />}
+        {tab === "dropdown-config" && <DropdownConfigManager />}
       </div>
     </div>
   )
