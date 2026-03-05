@@ -44,25 +44,25 @@ GOVINDA V2 is built on the principle that **document structure is more valuable 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    FRONTEND (Next.js 16 + React 19)                         │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐     │
-│  │ Document  │ │ Chat      │ │ Research  │ │ Actionable│ │ Admin     │     │
-│  │ Library   │ │ Interface │ │ Chat      │ │ Tracker   │ │ Dashboard │     │
-│  └───────────┘ └───────────┘ └───────────┘ └───────────┘ └───────────┘     │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐                   │
-│  │ Team Board│ │ Team Lead │ │ Compliance│ │ Global    │                   │
-│  │           │ │ Dashboard │ │ Review    │ │ Chat      │                   │
-│  └───────────┘ └───────────┘ └───────────┘ └───────────┘                   │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐      │
+│  │ Document  │ │ Chat      │ │ Research  │ │ Actionable│ │ Admin     │      │
+│  │ Library   │ │ Interface │ │ Chat      │ │ Tracker   │ │ Dashboard │      │
+│  └───────────┘ └───────────┘ └───────────┘ └───────────┘ └───────────┘      │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐                    │
+│  │ Team Board│ │ Team Lead │ │ Compliance│ │ Global    │                    │
+│  │           │ │ Dashboard │ │ Review    │ │ Chat      │                    │
+│  └───────────┘ └───────────┘ └───────────┘ └───────────┘                    │
 └───────────────────────────────┬─────────────────────────────────────────────┘
                                 │ REST API (ngrok tunnel)
 ┌───────────────────────────────┴─────────────────────────────────────────────┐
-│                    BACKEND (FastAPI + Uvicorn, ~3700 LOC)                    │
+│                    BACKEND (FastAPI + Uvicorn, ~3700 LOC)                   │
 │  Document Mgmt │ Query Processing │ Conversations │ Actionables             │
 │  Teams & Users │ Chat System │ LLM Benchmarking │ Memory Diagnostics        │
 └───────────────────────────────┬─────────────────────────────────────────────┘
                                 │
 ┌───────────────────────────────┴─────────────────────────────────────────────┐
-│                    RAG PIPELINE (Multi-Agent, Dual-Mode)                     │
-│  QA Engine ─▶ Classify ─▶ Locate ─▶ Read ─▶ Reflect ─▶ Synthesize ─▶ Verify│
+│                    RAG PIPELINE (Multi-Agent, Dual-Mode)                    │
+│QA Engine ─▶ Classify ─▶ Locate ─▶ Read ─▶ Reflect ─▶ Synthesize ─▶ Verify 
 │  + Memory pre_query (5 loops) ─────────────── Memory post_query (5 loops)   │
 │  Agents: Router, Reflector, Synthesizer, Verifier, Planner, Cross-Ref       │
 └───────────────────────────────┬─────────────────────────────────────────────┘
