@@ -39,6 +39,15 @@ DEEPINFRA_MODEL_PREFIXES = (
     "Qwen/",
 )
 
+# Per the DeepInfra docs, reasoning_effort is "for reasoning models" only.
+# Non-reasoning models (GLM-5, GLM-4.7-Flash, DeepSeek-V3) produce gibberish
+# or empty content when reasoning_effort is sent to them.
+DEEPINFRA_REASONING_MODELS = {
+    "deepseek-ai/DeepSeek-R1",
+    "Qwen/QwQ-32B",
+    "Qwen/Qwen3-235B-A22B",
+}
+
 
 def is_deepinfra_model(model_id: str) -> bool:
     """Return True if *model_id* should be routed to DeepInfra."""
@@ -151,10 +160,10 @@ class LLMClient:
         """
         Call DeepInfra via the OpenAI Chat Completions API.
 
-        All DeepInfra models accept these params per their API schema:
+        Params sent per the DeepInfra API schema:
           - model, messages, max_tokens          (required/basic)
-          - temperature                          (default 1)
-          - reasoning_effort                     (enum: none/low/medium/high)
+          - temperature                          (default 1, all models)
+          - reasoning_effort                     (reasoning models only, per docs)
           - response_format                      (json_object, json_schema, text, regex)
 
         Returns:
@@ -176,8 +185,9 @@ class LLMClient:
             "max_tokens": max_tokens,
         }
 
-        # reasoning_effort — all DeepInfra models accept this per their API schema
-        if effort and effort != "none":
+        # reasoning_effort — per docs, only "for reasoning models".
+        # Non-reasoning models produce gibberish/empty when this is sent.
+        if effort and effort != "none" and model in DEEPINFRA_REASONING_MODELS:
             kwargs["reasoning_effort"] = effort
 
         # temperature — all DeepInfra models accept this (default: 1)
@@ -199,37 +209,49 @@ class LLMClient:
 
         inp, out = self._track_usage(response, chat_completions=True)
 
-        # Extract content
+        # Extract content — order matters:
+        #   1. Get raw content + reasoning_content
+        #   2. Strip <think> tags from content (DeepSeek-R1 puts CoT there)
+        #   3. If content empty after stripping, fall back to reasoning_content
         content = ""
         if response.choices:
             msg = response.choices[0].message
-            content = msg.content or ""
-            # Some reasoning models put chain-of-thought in reasoning_content
-            # and the final answer in content. If content is empty, fall back.
-            if not content.strip():
-                reasoning_content = getattr(msg, "reasoning_content", None) or ""
-                if reasoning_content.strip():
-                    logger.info(
-                        "DeepInfra %s: content empty, using reasoning_content (%d chars)",
-                        model, len(reasoning_content),
-                    )
-                    content = reasoning_content
+            raw_content = msg.content or ""
+            raw_reasoning = getattr(msg, "reasoning_content", None) or ""
+
+            logger.debug(
+                "DeepInfra %s: raw content=%d chars, raw reasoning_content=%d chars",
+                model, len(raw_content), len(raw_reasoning),
+            )
+
+            content = raw_content
+
+            # Step 1: Strip <think>...</think> chain-of-thought from content
+            if "<think>" in content:
+                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                if content.startswith("<think>"):
+                    content = re.sub(r"^<think>.*", "", content, flags=re.DOTALL).strip()
+
+            # Step 2: If content is empty after stripping, try reasoning_content
+            if not content.strip() and raw_reasoning.strip():
+                logger.info(
+                    "DeepInfra %s: content empty (raw=%d chars), using reasoning_content (%d chars)",
+                    model, len(raw_content), len(raw_reasoning),
+                )
+                content = raw_reasoning
+                # Strip <think> from reasoning_content too
+                if "<think>" in content:
+                    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                    if content.startswith("<think>"):
+                        content = re.sub(r"^<think>.*", "", content, flags=re.DOTALL).strip()
+
             if not content.strip():
                 logger.warning(
-                    "DeepInfra %s: empty response. finish_reason=%s, tokens=%d/%d",
-                    model,
-                    response.choices[0].finish_reason,
-                    inp, out,
+                    "DeepInfra %s: EMPTY response after all extraction. "
+                    "raw_content=%d, raw_reasoning=%d, finish_reason=%s, tokens=%d/%d",
+                    model, len(raw_content), len(raw_reasoning),
+                    response.choices[0].finish_reason, inp, out,
                 )
-
-        # Strip <think>...</think> chain-of-thought blocks (e.g. DeepSeek-R1)
-        # Handle both closed tags and unclosed tags (from truncated responses)
-        if "<think>" in content:
-            # First try closed tags
-            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-            # If still starts with <think> (unclosed), strip everything up to end of tag block
-            if content.startswith("<think>"):
-                content = re.sub(r"^<think>.*", "", content, flags=re.DOTALL).strip()
 
         # Detect truncation via finish_reason
         was_truncated = (
