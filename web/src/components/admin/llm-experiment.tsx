@@ -101,8 +101,6 @@ const MODEL_COLORS: Record<string, string> = {
   "deepseek-ai/DeepSeek-R1": "bg-teal-500",
   "Qwen/Qwen3-235B-A22B": "bg-orange-500",
   "Qwen/QwQ-32B": "bg-yellow-500",
-  "moonshotai/Kimi-K2": "bg-indigo-500",
-  "mistralai/Mistral-Medium-3": "bg-rose-500",
 }
 
 function getModelShortLabel(modelId: string): string {

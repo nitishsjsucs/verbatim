@@ -37,8 +37,6 @@ DEEPINFRA_MODEL_PREFIXES = (
     "zai-org/",
     "deepseek-ai/",
     "Qwen/",
-    "mistralai/",
-    "moonshotai/",
 )
 
 
@@ -225,8 +223,13 @@ class LLMClient:
                 )
 
         # Strip <think>...</think> chain-of-thought blocks (e.g. DeepSeek-R1)
+        # Handle both closed tags and unclosed tags (from truncated responses)
         if "<think>" in content:
+            # First try closed tags
             content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+            # If still starts with <think> (unclosed), strip everything up to end of tag block
+            if content.startswith("<think>"):
+                content = re.sub(r"^<think>.*", "", content, flags=re.DOTALL).strip()
 
         # Detect truncation via finish_reason
         was_truncated = (
@@ -610,6 +613,13 @@ class LLMClient:
     def _extract_json(text: str) -> dict | list:
         """Extract JSON from LLM response text with multiple fallbacks."""
         text = text.strip()
+
+        # Strip <think>...</think> blocks that some reasoning models prepend
+        if "<think>" in text:
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+            # Handle unclosed <think> (truncated response)
+            if text.startswith("<think>"):
+                text = re.sub(r"^<think>.*", "", text, flags=re.DOTALL).strip()
 
         # Strategy 1: Direct parse
         try:

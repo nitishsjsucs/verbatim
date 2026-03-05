@@ -120,8 +120,6 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
     "deepseek-ai/DeepSeek-R1":      {"input": 0.55, "output": 2.19,  "cached": 0.14},
     "Qwen/Qwen3-235B-A22B":         {"input": 0.022, "output": 0.216, "cached": 0.0},
     "Qwen/QwQ-32B":                 {"input": 0.05, "output": 0.50,  "cached": 0.0},
-    "moonshotai/Kimi-K2":            {"input": 0.60, "output": 3.00,  "cached": 0.0},
-    "mistralai/Mistral-Medium-3":   {"input": 0.40, "output": 2.00,  "cached": 0.0},
 }
 
 # Models to benchmark — focused set the user wants to compare
@@ -138,8 +136,6 @@ BENCHMARK_MODELS = [
     {"id": "deepseek-ai/DeepSeek-R1",      "label": "DeepSeek R1",        "tier": "mid",       "speed": "medium",    "reasoning": "highest", "provider": "deepinfra", "context": 128000},
     {"id": "Qwen/Qwen3-235B-A22B",         "label": "Qwen3 235B (Flash)", "tier": "budget",    "speed": "very_fast", "reasoning": "high",    "provider": "deepinfra", "context": 131072},
     {"id": "Qwen/QwQ-32B",                 "label": "QwQ 32B (Turbo)",    "tier": "budget",    "speed": "fast",      "reasoning": "high",    "provider": "deepinfra", "context": 131072},
-    {"id": "moonshotai/Kimi-K2",            "label": "Kimi K2.5",          "tier": "mid",       "speed": "medium",    "reasoning": "high",    "provider": "deepinfra", "context": 131072},
-    {"id": "mistralai/Mistral-Medium-3",   "label": "Mistral Medium 3",   "tier": "mid",       "speed": "fast",      "reasoning": "high",    "provider": "deepinfra", "context": 131072},
 ]
 
 # Full list for the dropdown (kept for admin UI)
@@ -156,8 +152,6 @@ AVAILABLE_MODELS = [
     {"id": "deepseek-ai/DeepSeek-R1",      "provider": "deepinfra", "label": "DeepSeek R1"},
     {"id": "Qwen/Qwen3-235B-A22B",         "provider": "deepinfra", "label": "Qwen3 235B (Flash)"},
     {"id": "Qwen/QwQ-32B",                 "provider": "deepinfra", "label": "QwQ 32B (Turbo)"},
-    {"id": "moonshotai/Kimi-K2",            "provider": "deepinfra", "label": "Kimi K2.5"},
-    {"id": "mistralai/Mistral-Medium-3",   "provider": "deepinfra", "label": "Mistral Medium 3"},
 ]
 
 
