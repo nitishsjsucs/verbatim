@@ -153,14 +153,20 @@ class LLMClient:
         """
         Call DeepInfra via the OpenAI Chat Completions API.
 
+        All DeepInfra models accept these params per their API schema:
+          - model, messages, max_tokens          (required/basic)
+          - temperature                          (default 1)
+          - reasoning_effort                     (enum: none/low/medium/high)
+          - response_format                      (json_object, json_schema, text, regex)
+
         Returns:
             (content, input_tokens, output_tokens, elapsed, effort, was_truncated)
         """
         client = self._get_deepinfra_client()
         settings = get_settings()
 
-        effort = reasoning_effort or "medium"
-        # DeepInfra supports: none, low, medium, high
+        # Clamp reasoning_effort to DeepInfra's accepted values: none/low/medium/high
+        effort = reasoning_effort or "none"
         if effort == "xhigh":
             effort = "high"
         if effort == "minimal":
@@ -172,25 +178,55 @@ class LLMClient:
             "max_tokens": max_tokens,
         }
 
-        # Reasoning effort — pass as top-level param (DeepInfra supports it)
+        # reasoning_effort — all DeepInfra models accept this per their API schema
         if effort and effort != "none":
             kwargs["reasoning_effort"] = effort
 
-        # Temperature
-        if effort == "none" or not effort:
-            temp = temperature if temperature is not None else settings.llm.temperature
-            kwargs["temperature"] = temp
+        # temperature — all DeepInfra models accept this (default: 1)
+        if temperature is not None:
+            kwargs["temperature"] = temperature
 
-        # JSON mode
+        # response_format — all DeepInfra models accept json_object
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
+
+        logger.debug(
+            "DeepInfra request: model=%s effort=%s temp=%s json=%s max_tokens=%d",
+            model, effort, temperature, json_mode, max_tokens,
+        )
 
         start = time.time()
         response = client.chat.completions.create(**kwargs)
         elapsed = time.time() - start
 
         inp, out = self._track_usage(response, chat_completions=True)
-        content = response.choices[0].message.content or "" if response.choices else ""
+
+        # Extract content
+        content = ""
+        if response.choices:
+            msg = response.choices[0].message
+            content = msg.content or ""
+            # Some reasoning models put chain-of-thought in reasoning_content
+            # and the final answer in content. If content is empty, fall back.
+            if not content.strip():
+                reasoning_content = getattr(msg, "reasoning_content", None) or ""
+                if reasoning_content.strip():
+                    logger.info(
+                        "DeepInfra %s: content empty, using reasoning_content (%d chars)",
+                        model, len(reasoning_content),
+                    )
+                    content = reasoning_content
+            if not content.strip():
+                logger.warning(
+                    "DeepInfra %s: empty response. finish_reason=%s, tokens=%d/%d",
+                    model,
+                    response.choices[0].finish_reason,
+                    inp, out,
+                )
+
+        # Strip <think>...</think> chain-of-thought blocks (e.g. DeepSeek-R1)
+        if "<think>" in content:
+            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
         # Detect truncation via finish_reason
         was_truncated = (
