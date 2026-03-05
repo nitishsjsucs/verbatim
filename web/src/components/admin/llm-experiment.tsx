@@ -89,10 +89,26 @@ const BASELINE_MAP: Record<string, string> = {
 }
 
 const MODEL_COLORS: Record<string, string> = {
+  // OpenAI
   "gpt-5.2": "bg-blue-500",
   "gpt-5.2-pro": "bg-purple-500",
   "gpt-5-mini": "bg-emerald-500",
   "gpt-5-nano": "bg-amber-500",
+  // DeepInfra
+  "zai-org/GLM-5": "bg-red-500",
+  "zai-org/GLM-4.7-Flash": "bg-pink-500",
+  "deepseek-ai/DeepSeek-V3": "bg-cyan-500",
+  "deepseek-ai/DeepSeek-R1": "bg-teal-500",
+  "Qwen/Qwen3-235B-A22B": "bg-orange-500",
+  "Qwen/QwQ-32B": "bg-yellow-500",
+  "moonshotai/Kimi-K2": "bg-indigo-500",
+  "mistralai/Mistral-Medium-3": "bg-rose-500",
+}
+
+function getModelShortLabel(modelId: string): string {
+  if (modelId.startsWith("gpt-")) return modelId.replace("gpt-", "")
+  if (modelId.includes("/")) return modelId.split("/").pop() || modelId
+  return modelId
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -669,7 +685,7 @@ export function LLMExperiment({
                             "text-center px-2 py-1.5 font-mono",
                             c.assignment[s] !== BASELINE_MAP[s] ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground"
                           )}>
-                            {c.assignment[s].replace("gpt-", "")}
+                            {getModelShortLabel(c.assignment[s])}
                           </td>
                         ))}
                       </tr>

@@ -106,28 +106,58 @@ STAGE_META: dict[str, dict[str, Any]] = {
 
 # ─── Available Models ─────────────────────────────────────────────────────────
 
-# Pricing: USD per 1M tokens  (source: OpenAI model page, Mar 2026)
+# Pricing: USD per 1M tokens  (source: OpenAI model page + DeepInfra pricing, Mar 2026)
 MODEL_PRICING: dict[str, dict[str, float]] = {
+    # ── OpenAI (Responses API) ───────────────────────────────────────
     "gpt-5.2":     {"input": 1.75,  "output": 14.00},
     "gpt-5.2-pro": {"input": 1.75,  "output": 14.00},   # same pricing tier
     "gpt-5-mini":  {"input": 0.25,  "output":  2.00},
     "gpt-5-nano":  {"input": 0.05,  "output":  0.40},
+    # ── DeepInfra (Chat Completions API) ─────────────────────────────
+    "zai-org/GLM-5":                {"input": 0.80, "output": 2.56,  "cached": 0.16},
+    "zai-org/GLM-4.7-Flash":         {"input": 0.06, "output": 0.40,  "cached": 0.01},
+    "deepseek-ai/DeepSeek-V3":      {"input": 0.28, "output": 0.42,  "cached": 0.028},
+    "deepseek-ai/DeepSeek-R1":      {"input": 0.55, "output": 2.19,  "cached": 0.14},
+    "Qwen/Qwen3-235B-A22B":         {"input": 0.022, "output": 0.216, "cached": 0.0},
+    "Qwen/QwQ-32B":                 {"input": 0.05, "output": 0.50,  "cached": 0.0},
+    "moonshotai/Kimi-K2":            {"input": 0.60, "output": 3.00,  "cached": 0.0},
+    "mistralai/Mistral-Medium-3":   {"input": 0.40, "output": 2.00,  "cached": 0.0},
 }
 
 # Models to benchmark — focused set the user wants to compare
 BENCHMARK_MODELS = [
-    {"id": "gpt-5.2",     "label": "GPT-5.2",     "tier": "flagship",  "speed": "medium",    "reasoning": "highest"},
-    {"id": "gpt-5.2-pro", "label": "GPT-5.2 Pro", "tier": "flagship",  "speed": "slow",      "reasoning": "highest"},
-    {"id": "gpt-5-mini",  "label": "GPT-5 Mini",  "tier": "mid",       "speed": "fast",      "reasoning": "high"},
-    {"id": "gpt-5-nano",  "label": "GPT-5 Nano",  "tier": "budget",    "speed": "very_fast", "reasoning": "average"},
+    # ── OpenAI ────────────────────────────────────────────────────────
+    {"id": "gpt-5.2",     "label": "GPT-5.2",     "tier": "flagship",  "speed": "medium",    "reasoning": "highest", "provider": "openai",    "context": 128000},
+    {"id": "gpt-5.2-pro", "label": "GPT-5.2 Pro", "tier": "flagship",  "speed": "slow",      "reasoning": "highest", "provider": "openai",    "context": 128000},
+    {"id": "gpt-5-mini",  "label": "GPT-5 Mini",  "tier": "mid",       "speed": "fast",      "reasoning": "high",    "provider": "openai",    "context": 128000},
+    {"id": "gpt-5-nano",  "label": "GPT-5 Nano",  "tier": "budget",    "speed": "very_fast", "reasoning": "average", "provider": "openai",    "context": 128000},
+    # ── DeepInfra ─────────────────────────────────────────────────────
+    {"id": "zai-org/GLM-5",                "label": "GLM-5",              "tier": "flagship",  "speed": "medium",    "reasoning": "highest", "provider": "deepinfra", "context": 202752},
+    {"id": "zai-org/GLM-4.7-Flash",         "label": "GLM-4.7 Flash",     "tier": "budget",    "speed": "very_fast", "reasoning": "high",    "provider": "deepinfra", "context": 202752},
+    {"id": "deepseek-ai/DeepSeek-V3",      "label": "DeepSeek V3.2",      "tier": "budget",    "speed": "fast",      "reasoning": "high",    "provider": "deepinfra", "context": 128000},
+    {"id": "deepseek-ai/DeepSeek-R1",      "label": "DeepSeek R1",        "tier": "mid",       "speed": "medium",    "reasoning": "highest", "provider": "deepinfra", "context": 128000},
+    {"id": "Qwen/Qwen3-235B-A22B",         "label": "Qwen3 235B (Flash)", "tier": "budget",    "speed": "very_fast", "reasoning": "high",    "provider": "deepinfra", "context": 131072},
+    {"id": "Qwen/QwQ-32B",                 "label": "QwQ 32B (Turbo)",    "tier": "budget",    "speed": "fast",      "reasoning": "high",    "provider": "deepinfra", "context": 131072},
+    {"id": "moonshotai/Kimi-K2",            "label": "Kimi K2.5",          "tier": "mid",       "speed": "medium",    "reasoning": "high",    "provider": "deepinfra", "context": 131072},
+    {"id": "mistralai/Mistral-Medium-3",   "label": "Mistral Medium 3",   "tier": "mid",       "speed": "fast",      "reasoning": "high",    "provider": "deepinfra", "context": 131072},
 ]
 
 # Full list for the dropdown (kept for admin UI)
 AVAILABLE_MODELS = [
+    # ── OpenAI ────────────────────────────────────────────────────────
     {"id": "gpt-5.2",     "provider": "openai", "label": "GPT-5.2"},
     {"id": "gpt-5.2-pro", "provider": "openai", "label": "GPT-5.2 Pro"},
     {"id": "gpt-5-mini",  "provider": "openai", "label": "GPT-5 Mini"},
     {"id": "gpt-5-nano",  "provider": "openai", "label": "GPT-5 Nano"},
+    # ── DeepInfra ─────────────────────────────────────────────────────
+    {"id": "zai-org/GLM-5",                "provider": "deepinfra", "label": "GLM-5"},
+    {"id": "zai-org/GLM-4.7-Flash",         "provider": "deepinfra", "label": "GLM-4.7 Flash"},
+    {"id": "deepseek-ai/DeepSeek-V3",      "provider": "deepinfra", "label": "DeepSeek V3.2"},
+    {"id": "deepseek-ai/DeepSeek-R1",      "provider": "deepinfra", "label": "DeepSeek R1"},
+    {"id": "Qwen/Qwen3-235B-A22B",         "provider": "deepinfra", "label": "Qwen3 235B (Flash)"},
+    {"id": "Qwen/QwQ-32B",                 "provider": "deepinfra", "label": "QwQ 32B (Turbo)"},
+    {"id": "moonshotai/Kimi-K2",            "provider": "deepinfra", "label": "Kimi K2.5"},
+    {"id": "mistralai/Mistral-Medium-3",   "provider": "deepinfra", "label": "Mistral Medium 3"},
 ]
 
 
@@ -476,11 +506,19 @@ class BenchmarkRunner:
         if meta["reasoning_effort"]:
             effort = meta["reasoning_effort"]
             # Model-specific reasoning_effort compatibility:
-            #   gpt-5.2:     none, low, medium, high
-            #   gpt-5.2-pro: medium, high, xhigh
-            #   gpt-5-mini:  minimal, low, medium, high
-            #   gpt-5-nano:  minimal, low, medium, high
-            if "pro" in model_id:
+            #   gpt-5.2:         none, low, medium, high
+            #   gpt-5.2-pro:     medium, high, xhigh
+            #   gpt-5-mini:      minimal, low, medium, high
+            #   gpt-5-nano:      minimal, low, medium, high
+            #   DeepInfra models: none, low, medium, high
+            from utils.llm_client import is_deepinfra_model
+            if is_deepinfra_model(model_id):
+                # DeepInfra supports none/low/medium/high — clamp unsupported values
+                if effort == "xhigh":
+                    effort = "high"
+                if effort == "minimal":
+                    effort = "low"
+            elif "pro" in model_id:
                 if effort in ("none", "low", "minimal"):
                     effort = "medium"
             elif "mini" in model_id or "nano" in model_id:

@@ -22,13 +22,20 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class LLMConfig(BaseSettings):
-    """LLM provider configuration — GPT-5.2 / GPT-5.2-pro only."""
+    """LLM provider configuration — OpenAI + DeepInfra multi-provider."""
 
     model_config = SettingsConfigDict(
         env_prefix="", env_file=str(PROJECT_ROOT / ".env"), extra="ignore"
     )
 
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+
+    # DeepInfra provider (OpenAI-compatible Chat Completions API)
+    deepinfra_api_key: str = Field(default="", alias="DEEPINFRA_API_KEY")
+    deepinfra_base_url: str = Field(
+        default="https://api.deepinfra.com/v1/openai",
+        alias="DEEPINFRA_BASE_URL",
+    )
 
     # Primary model for tree reasoning, locating, reading
     model: str = Field(default="gpt-5.2", alias="LLM_MODEL")

@@ -1,10 +1,12 @@
 """
-LLM Client for GOVINDA V2 — Responses API only.
+LLM Client for GOVINDA V2 — Multi-provider (OpenAI Responses + DeepInfra Chat Completions).
 
 Simplified client focused on:
 - Text generation with reasoning effort control
 - JSON mode with robust extraction
 - Token usage tracking
+- Provider-aware routing: OpenAI models use Responses API,
+  DeepInfra models use Chat Completions API.
 
 No tool/function calling needed — retrieval is LLM-as-reasoner over trees,
 not agent-with-tools.
@@ -26,9 +28,38 @@ from config.settings import get_settings
 logger = logging.getLogger(__name__)
 
 
+# ─── Provider Registry ────────────────────────────────────────────────────────
+# Models whose IDs contain a slash (e.g. "zai-org/GLM-5") or match known
+# DeepInfra prefixes are routed to the DeepInfra Chat Completions API.
+# Everything else goes to the native OpenAI Responses API.
+
+DEEPINFRA_MODEL_PREFIXES = (
+    "zai-org/",
+    "deepseek-ai/",
+    "Qwen/",
+    "mistralai/",
+    "moonshotai/",
+)
+
+
+def is_deepinfra_model(model_id: str) -> bool:
+    """Return True if *model_id* should be routed to DeepInfra."""
+    if any(model_id.startswith(p) for p in DEEPINFRA_MODEL_PREFIXES):
+        return True
+    # Generic heuristic: org/model format → DeepInfra
+    if "/" in model_id and not model_id.startswith("gpt-"):
+        return True
+    return False
+
+
 class LLMClient:
     """
-    OpenAI Responses API client for GPT-5.2 / GPT-5.2 Pro.
+    Multi-provider LLM client for GOVINDA V2.
+
+    - OpenAI models (gpt-5.2, gpt-5.2-pro, gpt-5-mini, gpt-5-nano):
+      Use the native OpenAI Responses API.
+    - DeepInfra models (GLM-5, DeepSeek-V3, Qwen, etc.):
+      Use the OpenAI-compatible Chat Completions API via DeepInfra.
 
     All LLM calls in GOVINDA V2 go through this client for
     centralized token tracking.
@@ -41,6 +72,11 @@ class LLMClient:
         self._model = settings.llm.model
         self._model_pro = settings.llm.model_pro
 
+        # DeepInfra client (lazy — only created when needed)
+        self._deepinfra_client: Optional[OpenAI] = None
+        self._deepinfra_api_key = settings.llm.deepinfra_api_key
+        self._deepinfra_base_url = settings.llm.deepinfra_base_url
+
         # Thread-safe usage tracking
         self._usage_lock = threading.Lock()
         self.total_input_tokens: int = 0
@@ -51,11 +87,31 @@ class LLMClient:
     # Usage tracking
     # ------------------------------------------------------------------
 
-    def _track_usage(self, response: Any) -> tuple[int, int]:
+    def _get_deepinfra_client(self) -> OpenAI:
+        """Lazy-init and return the DeepInfra OpenAI-compatible client."""
+        if self._deepinfra_client is None:
+            if not self._deepinfra_api_key:
+                raise ValueError(
+                    "DEEPINFRA_API_KEY is not set. Add it to your .env file."
+                )
+            self._deepinfra_client = OpenAI(
+                api_key=self._deepinfra_api_key,
+                base_url=self._deepinfra_base_url,
+                timeout=600.0,
+            )
+        return self._deepinfra_client
+
+    def _track_usage(self, response: Any, *, chat_completions: bool = False) -> tuple[int, int]:
         """Extract and accumulate token counts. Returns (input, output)."""
         usage = getattr(response, "usage", None)
-        inp = getattr(usage, "input_tokens", 0) if usage else 0
-        out = getattr(usage, "output_tokens", 0) if usage else 0
+        if chat_completions:
+            # Chat Completions API uses prompt_tokens / completion_tokens
+            inp = getattr(usage, "prompt_tokens", 0) if usage else 0
+            out = getattr(usage, "completion_tokens", 0) if usage else 0
+        else:
+            # Responses API uses input_tokens / output_tokens
+            inp = getattr(usage, "input_tokens", 0) if usage else 0
+            out = getattr(usage, "output_tokens", 0) if usage else 0
         with self._usage_lock:
             self.total_input_tokens += inp
             self.total_output_tokens += out
@@ -82,6 +138,70 @@ class LLMClient:
             }
 
     # ------------------------------------------------------------------
+    # DeepInfra Chat Completions path
+    # ------------------------------------------------------------------
+
+    def _chat_deepinfra(
+        self,
+        messages: list[dict[str, str]],
+        model: str,
+        temperature: Optional[float],
+        max_tokens: int,
+        json_mode: bool,
+        reasoning_effort: Optional[str],
+    ) -> tuple[str, int, int, float, str, bool]:
+        """
+        Call DeepInfra via the OpenAI Chat Completions API.
+
+        Returns:
+            (content, input_tokens, output_tokens, elapsed, effort, was_truncated)
+        """
+        client = self._get_deepinfra_client()
+        settings = get_settings()
+
+        effort = reasoning_effort or "medium"
+        # DeepInfra supports: none, low, medium, high
+        if effort == "xhigh":
+            effort = "high"
+        if effort == "minimal":
+            effort = "low"
+
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+        }
+
+        # Reasoning effort — pass as top-level param (DeepInfra supports it)
+        if effort and effort != "none":
+            kwargs["reasoning_effort"] = effort
+
+        # Temperature
+        if effort == "none" or not effort:
+            temp = temperature if temperature is not None else settings.llm.temperature
+            kwargs["temperature"] = temp
+
+        # JSON mode
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        start = time.time()
+        response = client.chat.completions.create(**kwargs)
+        elapsed = time.time() - start
+
+        inp, out = self._track_usage(response, chat_completions=True)
+        content = response.choices[0].message.content or "" if response.choices else ""
+
+        # Detect truncation via finish_reason
+        was_truncated = (
+            response.choices[0].finish_reason == "length"
+            if response.choices
+            else False
+        )
+
+        return content, inp, out, elapsed, effort, was_truncated
+
+    # ------------------------------------------------------------------
     # Core text generation
     # ------------------------------------------------------------------
 
@@ -95,7 +215,11 @@ class LLMClient:
         reasoning_effort: Optional[str] = None,
     ) -> str:
         """
-        Send a Responses API request and return the response text.
+        Send an LLM request and return the response text.
+
+        Automatically routes to the correct provider:
+        - OpenAI models → Responses API
+        - DeepInfra models → Chat Completions API
 
         Args:
             messages: List of {"role": ..., "content": ...} dicts.
@@ -115,6 +239,18 @@ class LLMClient:
         model = model or self._model
         max_tokens = max_tokens or settings.llm.max_tokens_default
 
+        # ── DeepInfra path ────────────────────────────────────────────
+        if is_deepinfra_model(model):
+            content, inp, out, elapsed, effort, _ = self._chat_deepinfra(
+                messages, model, temperature, max_tokens, json_mode, reasoning_effort,
+            )
+            logger.debug(
+                "LLM call [deepinfra]: model=%s tokens=%d/%d latency=%.2fs effort=%s",
+                model, inp, out, elapsed, effort,
+            )
+            return content
+
+        # ── OpenAI Responses API path ─────────────────────────────────
         kwargs: dict[str, Any] = {
             "model": model,
             "input": messages,
@@ -153,7 +289,7 @@ class LLMClient:
         content = response.output_text or ""
 
         logger.debug(
-            "LLM call: model=%s tokens=%d/%d latency=%.2fs effort=%s",
+            "LLM call [openai]: model=%s tokens=%d/%d latency=%.2fs effort=%s",
             model,
             inp,
             out,
@@ -183,6 +319,18 @@ class LLMClient:
         model = model or self._model
         max_tokens = max_tokens or settings.llm.max_tokens_default
 
+        # ── DeepInfra path ────────────────────────────────────────────
+        if is_deepinfra_model(model):
+            content, inp, out, elapsed, effort, was_truncated = self._chat_deepinfra(
+                messages, model, temperature, max_tokens, json_mode, reasoning_effort,
+            )
+            logger.debug(
+                "LLM call [deepinfra]: model=%s tokens=%d/%d latency=%.2fs effort=%s truncated=%s",
+                model, inp, out, elapsed, effort, was_truncated,
+            )
+            return content, was_truncated
+
+        # ── OpenAI Responses API path ─────────────────────────────────
         kwargs: dict[str, Any] = {
             "model": model,
             "input": messages,
@@ -224,7 +372,7 @@ class LLMClient:
         was_truncated = getattr(response, "status", "") == "incomplete"
 
         logger.debug(
-            "LLM call: model=%s tokens=%d/%d latency=%.2fs effort=%s truncated=%s",
+            "LLM call [openai]: model=%s tokens=%d/%d latency=%.2fs effort=%s truncated=%s",
             model,
             inp,
             out,

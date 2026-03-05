@@ -92,22 +92,48 @@ const STAGE_LABELS: Record<string, string> = {
   verification: "Verify",
 }
 
-const MODELS = ["gpt-5.2", "gpt-5.2-pro", "gpt-5-mini", "gpt-5-nano"]
+// Default fallback models (used if none provided via props)
+const DEFAULT_MODELS = ["gpt-5.2", "gpt-5.2-pro", "gpt-5-mini", "gpt-5-nano"]
 
-const MODEL_SHORT: Record<string, string> = {
-  "gpt-5.2": "5.2",
-  "gpt-5.2-pro": "5.2-pro",
-  "gpt-5-mini": "5-mini",
-  "gpt-5-nano": "5-nano",
+function getModelShort(modelId: string): string {
+  // OpenAI models: strip "gpt-" prefix
+  if (modelId.startsWith("gpt-")) return modelId.replace("gpt-", "")
+  // DeepInfra models: strip org prefix (e.g. "zai-org/GLM-5" → "GLM-5")
+  if (modelId.includes("/")) return modelId.split("/").pop() || modelId
+  return modelId
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+interface BenchmarkModel {
+  id: string
+  label: string
+  tier?: string
+  speed?: string
+  reasoning?: string
+  provider?: string
+}
+
 export function LLMTournament({
   questions,
+  benchmarkModels,
 }: {
   questions: BenchmarkQuestion[]
+  benchmarkModels?: BenchmarkModel[]
 }) {
+  const ALL_MODELS = React.useMemo(
+    () => benchmarkModels?.map(m => m.id) || DEFAULT_MODELS,
+    [benchmarkModels],
+  )
+  const MODEL_SHORT = React.useMemo(() => {
+    const map: Record<string, string> = {}
+    if (benchmarkModels) {
+      for (const m of benchmarkModels) map[m.id] = m.label || getModelShort(m.id)
+    } else {
+      for (const id of DEFAULT_MODELS) map[id] = getModelShort(id)
+    }
+    return map
+  }, [benchmarkModels])
   const [status, setStatus] = React.useState<"idle" | "running" | "done">("idle")
   const [battles, setBattles] = React.useState<Record<string, BattleResult>>({})
   const [cellStatus, setCellStatus] = React.useState<Record<string, BattleStatus>>({})
@@ -129,7 +155,7 @@ export function LLMTournament({
   const toggleModel = (m: string) => setSelModels(p => p.includes(m) ? p.filter(x => x !== m) : [...p, m])
 
   const activeStages = selStages.length > 0 ? STAGES.filter(s => selStages.includes(s)) : [...STAGES]
-  const activeModels = selModels.length > 0 ? MODELS.filter(m => selModels.includes(m)) : [...MODELS]
+  const activeModels = selModels.length > 0 ? ALL_MODELS.filter(m => selModels.includes(m)) : [...ALL_MODELS]
 
   // Timer
   React.useEffect(() => {
@@ -223,7 +249,7 @@ export function LLMTournament({
 
     for (const stage of STAGES) {
       result[stage] = {}
-      for (const model of MODELS) {
+      for (const model of ALL_MODELS) {
         result[stage][model] = { totalScore: 0, wins: 0, battles: 0, avgScore: 0 }
       }
 
@@ -233,7 +259,9 @@ export function LLMTournament({
         if (!battle?.judge?.rankings) continue
 
         for (const r of battle.judge.rankings) {
-          if (!result[stage][r.model]) continue
+          if (!result[stage][r.model]) {
+            result[stage][r.model] = { totalScore: 0, wins: 0, battles: 0, avgScore: 0 }
+          }
           result[stage][r.model].totalScore += r.score
           result[stage][r.model].battles++
           if (r.rank === 1) result[stage][r.model].wins++
@@ -241,14 +269,14 @@ export function LLMTournament({
       }
 
       // Compute averages
-      for (const model of MODELS) {
+      for (const model of ALL_MODELS) {
         const s = result[stage][model]
-        s.avgScore = s.battles > 0 ? Math.round(s.totalScore / s.battles * 10) / 10 : 0
+        if (s) s.avgScore = s.battles > 0 ? Math.round(s.totalScore / s.battles * 10) / 10 : 0
       }
     }
 
     return result
-  }, [battles, questions])
+  }, [battles, questions, ALL_MODELS])
 
   // Best model per stage (by average judge score)
   const bestPerStage = React.useMemo(() => {
@@ -257,16 +285,16 @@ export function LLMTournament({
       const sw = stageWins[stage]
       if (!sw) continue
       let best = { model: "", avgScore: 0, wins: 0 }
-      for (const model of MODELS) {
+      for (const model of ALL_MODELS) {
         const s = sw[model]
-        if (s.avgScore > best.avgScore || (s.avgScore === best.avgScore && s.wins > best.wins)) {
+        if (s && (s.avgScore > best.avgScore || (s.avgScore === best.avgScore && s.wins > best.wins))) {
           best = { model, avgScore: s.avgScore, wins: s.wins }
         }
       }
       if (best.model) result[stage] = best
     }
     return result
-  }, [stageWins])
+  }, [stageWins, ALL_MODELS])
 
   // Optimal combo
   const optimalCombo = React.useMemo(() => {
@@ -297,7 +325,7 @@ export function LLMTournament({
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {activeStages.length} stage{activeStages.length !== 1 ? "s" : ""} &times; {questions.length} questions = {total} battles.
-            {activeModels.length < MODELS.length ? ` (${activeModels.map(m => MODEL_SHORT[m]).join(" vs ")})` : " Each: 4 models compete."} GPT-5.2-pro judges.
+            {activeModels.length < ALL_MODELS.length ? ` (${activeModels.map(m => MODEL_SHORT[m] || getModelShort(m)).join(" vs ")})` : ` Each: ${ALL_MODELS.length} models compete.`} GPT-5.2-pro judges.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -353,7 +381,7 @@ export function LLMTournament({
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs text-muted-foreground font-medium uppercase">Models:</span>
-          {MODELS.map(m => (
+          {ALL_MODELS.map(m => (
             <button
               key={m}
               onClick={() => toggleModel(m)}
@@ -367,7 +395,7 @@ export function LLMTournament({
                     : "bg-muted/20 border-border/50 text-muted-foreground/50"
               )}
             >
-              {MODEL_SHORT[m]}
+              {MODEL_SHORT[m] || getModelShort(m)}
             </button>
           ))}
           {selModels.length > 0 && (
@@ -432,7 +460,7 @@ export function LLMTournament({
                             >
                               <Crown className="h-3 w-3 text-amber-500" />
                               <span className="text-xs text-muted-foreground ml-0.5">
-                                {MODEL_SHORT[winner || ""] || "?"}
+                                {MODEL_SHORT[winner || ""] || getModelShort(winner || "") || "?"}
                               </span>
                             </button>
                           ) : cs === "error" ? (
@@ -476,8 +504,8 @@ export function LLMTournament({
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Stage</th>
-                      {MODELS.map(m => (
-                        <th key={m} className="text-center px-2 py-1.5 text-muted-foreground font-medium">{MODEL_SHORT[m]}</th>
+                      {ALL_MODELS.map(m => (
+                        <th key={m} className="text-center px-2 py-1.5 text-muted-foreground font-medium">{MODEL_SHORT[m] || getModelShort(m)}</th>
                       ))}
                       <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">Winner</th>
                     </tr>
@@ -486,11 +514,11 @@ export function LLMTournament({
                     {STAGES.map(stage => {
                       const sw = stageWins[stage]
                       const best = bestPerStage[stage]
-                      const maxScore = Math.max(...MODELS.map(m => sw?.[m]?.avgScore || 0))
+                      const maxScore = Math.max(...ALL_MODELS.map(m => sw?.[m]?.avgScore || 0))
                       return (
                         <tr key={stage} className="border-b border-border/50">
                           <td className="px-2 py-2 font-medium text-foreground">{STAGE_LABELS[stage]}</td>
-                          {MODELS.map(m => {
+                          {ALL_MODELS.map(m => {
                             const s = sw?.[m]
                             if (!s || s.battles === 0) return <td key={m} className="text-center px-2 py-2 text-muted-foreground">&mdash;</td>
                             const isBest = s.avgScore === maxScore && maxScore > 0
@@ -509,7 +537,7 @@ export function LLMTournament({
                             {best && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
                                 <Crown className="h-3 w-3" />
-                                {MODEL_SHORT[best.model]}
+                                {MODEL_SHORT[best.model] || getModelShort(best.model)}
                               </span>
                             )}
                           </td>
@@ -580,7 +608,7 @@ export function LLMTournament({
                                         ? "text-amber-600 dark:text-amber-400"
                                         : "text-foreground"
                                     )}>
-                                      {MODEL_SHORT[winner]}
+                                      {MODEL_SHORT[winner] || getModelShort(winner)}
                                     </span>
                                     <span className="text-muted-foreground ml-0.5">
                                       ({topRank?.score || "?"})
@@ -624,8 +652,8 @@ export function LLMTournament({
           <Swords className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
           <p className="text-xs text-muted-foreground">Tournament not started</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Each battle runs 4 models + 1 judge call = ~5 LLM calls per battle.
-            Total: ~{total * 5} LLM calls ({total} battles).
+            Each battle runs {ALL_MODELS.length} models + 1 judge call = ~{ALL_MODELS.length + 1} LLM calls per battle.
+            Total: ~{total * (ALL_MODELS.length + 1)} LLM calls ({total} battles).
           </p>
         </div>
       )}
@@ -873,7 +901,7 @@ function HeadToHead({
       >
         {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         <Zap className="h-3.5 w-3.5 text-blue-500" />
-        Head-to-Head: {MODEL_SHORT[M_A]} vs {MODEL_SHORT[M_B]}
+        Head-to-Head: {getModelShort(M_A)} vs {getModelShort(M_B)}
       </button>
 
       {expanded && (
@@ -882,7 +910,7 @@ function HeadToHead({
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="rounded-lg bg-muted/30 p-3">
               <div className="text-xs font-bold text-foreground">{avgA}</div>
-              <div className="text-xs text-muted-foreground">{MODEL_SHORT[M_A]} avg score</div>
+              <div className="text-xs text-muted-foreground">{getModelShort(M_A)} avg score</div>
             </div>
             <div className="rounded-lg bg-muted/30 p-3">
               <div className={cn(
@@ -895,15 +923,15 @@ function HeadToHead({
             </div>
             <div className="rounded-lg bg-muted/30 p-3">
               <div className="text-xs font-bold text-foreground">{avgB}</div>
-              <div className="text-xs text-muted-foreground">{MODEL_SHORT[M_B]} avg score</div>
+              <div className="text-xs text-muted-foreground">{getModelShort(M_B)} avg score</div>
             </div>
           </div>
 
           {/* Win/loss summary */}
           <div className="flex items-center justify-center gap-4 text-xs">
-            <span className="text-blue-400 font-semibold">{MODEL_SHORT[M_B]} wins: {proWinsCount}</span>
+            <span className="text-blue-400 font-semibold">{getModelShort(M_B)} wins: {proWinsCount}</span>
             <span className="text-muted-foreground">Ties: {tiesCount}</span>
-            <span className="text-orange-400 font-semibold">{MODEL_SHORT[M_A]} wins: {baseWinsCount}</span>
+            <span className="text-orange-400 font-semibold">{getModelShort(M_A)} wins: {baseWinsCount}</span>
             <span className="text-muted-foreground/60">({totalQuestionsCompared} compared)</span>
           </div>
 
@@ -913,8 +941,8 @@ function HeadToHead({
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-2 py-1.5 text-muted-foreground font-medium">Stage</th>
-                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">{MODEL_SHORT[M_A]}</th>
-                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">{MODEL_SHORT[M_B]}</th>
+                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">{getModelShort(M_A)}</th>
+                  <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">{getModelShort(M_B)}</th>
                   <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">Delta</th>
                   <th className="text-center px-2 py-1.5 text-muted-foreground font-medium">Better</th>
                 </tr>
@@ -941,9 +969,9 @@ function HeadToHead({
                     </td>
                     <td className="text-center px-2 py-2">
                       {sc.delta > 2 ? (
-                        <span className="text-blue-400 font-semibold">{MODEL_SHORT[M_B]}</span>
+                        <span className="text-blue-400 font-semibold">{getModelShort(M_B)}</span>
                       ) : sc.delta < -2 ? (
-                        <span className="text-orange-400 font-semibold">{MODEL_SHORT[M_A]}</span>
+                        <span className="text-orange-400 font-semibold">{getModelShort(M_A)}</span>
                       ) : (
                         <span className="text-muted-foreground">~same</span>
                       )}
@@ -956,7 +984,7 @@ function HeadToHead({
 
           {/* Per-question delta grid */}
           <div className="space-y-1">
-            <h5 className="text-xs font-semibold text-muted-foreground uppercase">Per-Question Score Delta ({MODEL_SHORT[M_B]} − {MODEL_SHORT[M_A]})</h5>
+            <h5 className="text-xs font-semibold text-muted-foreground uppercase">Per-Question Score Delta ({getModelShort(M_B)} − {getModelShort(M_A)})</h5>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -1007,13 +1035,13 @@ function HeadToHead({
           )}>
             <strong>Verdict:</strong>{" "}
             {overallDelta > 3 ? (
-              <span>{MODEL_SHORT[M_B]} is clearly better overall by +{overallDelta} avg points. Pro wins {proWinsCount}/{totalQuestionsCompared} head-to-head comparisons.</span>
+              <span>{getModelShort(M_B)} is clearly better overall by +{overallDelta} avg points. Pro wins {proWinsCount}/{totalQuestionsCompared} head-to-head comparisons.</span>
             ) : overallDelta > 0 ? (
-              <span>{MODEL_SHORT[M_B]} has a marginal edge (+{overallDelta}). The difference is small — {MODEL_SHORT[M_A]} could be used for cost savings with minimal quality loss.</span>
+              <span>{getModelShort(M_B)} has a marginal edge (+{overallDelta}). The difference is small — {getModelShort(M_A)} could be used for cost savings with minimal quality loss.</span>
             ) : overallDelta === 0 ? (
-              <span>Both models perform identically on average. Use {MODEL_SHORT[M_A]} for cost savings.</span>
+              <span>Both models perform identically on average. Use {getModelShort(M_A)} for cost savings.</span>
             ) : (
-              <span>{MODEL_SHORT[M_A]} actually outperforms {MODEL_SHORT[M_B]} by {Math.abs(overallDelta)} avg points. No benefit to using Pro here.</span>
+              <span>{getModelShort(M_A)} actually outperforms {getModelShort(M_B)} by {Math.abs(overallDelta)} avg points. No benefit to using Pro here.</span>
             )}
           </div>
         </div>

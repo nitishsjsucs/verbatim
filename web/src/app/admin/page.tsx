@@ -1642,7 +1642,10 @@ function LLMBenchmarkTab({
 
       {/* ── Tournament Mode ── */}
       <div className="border-t border-border pt-6 mt-6">
-        <LLMTournament questions={questions} />
+        <LLMTournament
+          questions={questions}
+          benchmarkModels={(config?.benchmark_models || []) as Array<{ id: string; label: string; tier?: string; speed?: string; reasoning?: string; provider?: string }>}
+        />
       </div>
     </>
   )
