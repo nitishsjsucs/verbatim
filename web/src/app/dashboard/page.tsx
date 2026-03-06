@@ -1316,43 +1316,100 @@ export default function DashboardPage() {
                                                                 </div>
                                                             )}
 
-                                                            {/* Risk Assessment fields (new structured + legacy fallback) */}
-                                                            {(item.likelihood_score || item.impact_score || item.inherent_risk_label || item.residual_risk_label || item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3 || item.theme) && (
-                                                                <div className="grid grid-cols-3 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
+                                                            {/* Risk Assessment Framework */}
+                                                            <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
+                                                                </div>
+
+                                                                {/* Row 1: Theme + Tranche3 + Impact */}
+                                                                <div className="grid grid-cols-3 gap-2">
                                                                     <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Likelihood</p>
-                                                                        <p className="text-xs text-foreground/80">{item.likelihood_score != null ? item.likelihood_score : (item.likelihood || "—")}</p>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                                                        <p className="text-xs text-foreground/80">{item.theme || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                                                        <p className="text-xs text-foreground/80">{item.tranche3 || "—"}</p>
                                                                     </div>
                                                                     <div>
                                                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                                                        <p className="text-xs text-foreground/80">{item.impact_score != null ? item.impact_score : (item.impact || "—")}</p>
+                                                                        <p className="text-xs text-foreground/80">{item.impact_dropdown?.label || "—"}</p>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Control</p>
-                                                                        <p className="text-xs text-foreground/80">{item.control_score != null ? item.control_score.toFixed(1) : (item.control || "—")}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Inherent Risk</p>
-                                                                        <p className="text-xs text-foreground/80">{item.inherent_risk_label || item.inherent_risk || "—"}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Residual Risk</p>
-                                                                        <p className="text-xs text-foreground/80">{item.residual_risk_label || item.residual_risk || "—"}</p>
-                                                                    </div>
-                                                                    {item.tranche3 && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
-                                                                            <p className="text-xs text-foreground/80">{item.tranche3}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {item.theme && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
-                                                                            <p className="text-xs text-foreground/80">{item.theme}</p>
-                                                                        </div>
-                                                                    )}
                                                                 </div>
-                                                            )}
+
+                                                                {/* Row 2: Likelihood */}
+                                                                <div>
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood</p>
+                                                                        <span className="text-[10px] font-mono text-blue-400/60">
+                                                                            Score: {item.likelihood_score != null ? item.likelihood_score : "—"} (MAX of 3)
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-3 gap-2">
+                                                                        <div>
+                                                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">Business Volume</p>
+                                                                            <p className="text-xs text-foreground/80">{item.likelihood_business_volume?.label || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">Products & Processes</p>
+                                                                            <p className="text-xs text-foreground/80">{item.likelihood_products_processes?.label || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">Compliance Violations</p>
+                                                                            <p className="text-xs text-foreground/80">{item.likelihood_compliance_violations?.label || "—"}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Row 3: Control */}
+                                                                <div>
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control</p>
+                                                                        <span className="text-[10px] font-mono text-teal-400/60">
+                                                                            Score: {item.control_score != null ? item.control_score.toFixed(1) : "—"} (avg)
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <div>
+                                                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">Monitoring Mechanism</p>
+                                                                            <p className="text-xs text-foreground/80">{item.control_monitoring?.label || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">Control Effectiveness</p>
+                                                                            <p className="text-xs text-foreground/80">{item.control_effectiveness?.label || "—"}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Row 4: Scores */}
+                                                                <div>
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Scores</p>
+                                                                        <span className="text-[10px] text-muted-foreground/40">Derived automatically</span>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-3 gap-2">
+                                                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
+                                                                            <p className="text-sm font-semibold text-foreground">
+                                                                                {item.inherent_risk_score != null ? item.inherent_risk_score.toFixed(2) : <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                                                            <p className="text-sm font-semibold text-foreground">
+                                                                                {item.residual_risk_score != null ? item.residual_risk_score.toFixed(2) : <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Interpretation</p>
+                                                                            <p className="text-sm font-semibold text-foreground">
+                                                                                {item.residual_risk_label || <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
                                                             {/* Evidence Files */}
                                                             {(item.evidence_files && item.evidence_files.length > 0) && (
