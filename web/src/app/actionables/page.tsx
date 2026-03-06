@@ -802,7 +802,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* Theme + Tranche3 + Impact (3 cols — Modality removed) */}
+                                {/* Row 1: Theme + Tranche3 + Impact */}
                                 <div className="grid grid-cols-3 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme") || "Theme"}</p>
@@ -831,8 +831,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             </select>
                                         )}
                                     </div>
+                                </div>
 
-                                {/* LIKELIHOOD — editable by members, read-only for CO */}
+                                {/* Row 2: Likelihood */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood</p>
@@ -878,7 +879,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* CONTROL — editable by members, read-only for CO */}
+                                {/* Row 3: Control */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control</p>
@@ -914,6 +915,34 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             </div>
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Row 4: Scores */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Scores</p>
+                                        <span className="text-[10px] text-muted-foreground/40">Derived automatically</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {inherentRiskScore || inherentRiskScore === 0 ? inherentRiskScore.toFixed(2) : "—"}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {residualRiskScore || residualRiskScore === 0 ? residualRiskScore.toFixed(2) : "—"}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Interpretation</p>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {residualRiskLabel || "—"}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
