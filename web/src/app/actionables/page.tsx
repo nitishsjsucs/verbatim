@@ -212,6 +212,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     // RESIDUAL RISK = inherent × control
     const residualRiskScore = inherentRiskScore * controlScore
     const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
+    const impactLabel = React.useMemo(() => {
+        const label = getLabel("impact_dropdown")
+        return label.toLowerCase() === "impact_dropdown" ? "Impact" : label
+    }, [getLabel])
     const inherentRiskLabel = classifyRisk(inherentRiskScore)
     const residualRiskLabel = classifyRisk(residualRiskScore)
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
@@ -815,7 +819,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         </select>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("impact_dropdown") || "Impact"}</p>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{impactLabel}</p>
                                         {isComplianceOfficer ? (
                                             <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">
                                                 {item.impact_dropdown?.label || "—"}
@@ -827,7 +831,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             </select>
                                         )}
                                     </div>
-                                </div>
 
                                 {/* LIKELIHOOD — editable by members, read-only for CO */}
                                 <div>
