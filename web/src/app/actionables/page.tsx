@@ -798,8 +798,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* Theme + Tranche3 (2 cols — Modality removed) */}
-                                <div className="grid grid-cols-2 gap-2">
+                                {/* Theme + Tranche3 + Impact (3 cols — Modality removed) */}
+                                <div className="grid grid-cols-3 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme") || "Theme"}</p>
                                         <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} disabled={isComplianceOfficer} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed">
@@ -813,6 +813,19 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             <option value="">—</option>
                                             {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("impact_dropdown") || "Impact"}</p>
+                                        {isComplianceOfficer ? (
+                                            <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">
+                                                {item.impact_dropdown?.label || "—"}
+                                            </div>
+                                        ) : (
+                                            <select value={draftImpactDD?.label || ""} onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <option value="">—</option>
+                                                {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                            </select>
+                                        )}
                                     </div>
                                 </div>
 
@@ -859,19 +872,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 </select>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* IMPACT — single dropdown, score hidden from UI */}
-                                <div>
-                                    <p className="text-[10px] font-semibold text-amber-400/80 uppercase tracking-wider mb-1">Impact</p>
-                                    {isComplianceOfficer ? (
-                                        <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 w-1/2">{item.impact_dropdown?.label || "—"}</div>
-                                    ) : (
-                                        <select value={draftImpactDD?.label || ""} onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-1/2 bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                            <option value="">—</option>
-                                            {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                        </select>
                                     )}
                                 </div>
 
