@@ -437,11 +437,12 @@ function TeamReviewContent() {
                                     </div>
 
                                     {/* Rows */}
-                                    {activeRows.map(({ item, docId }) => (
+                                    {activeRows.map(({ item, docId, docName }) => (
                                         <ReviewRow
                                             key={`${docId}-${item.id}`}
                                             item={item}
                                             docId={docId}
+                                            docName={docName}
                                             expandedRow={expandedRow}
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
@@ -476,11 +477,12 @@ function TeamReviewContent() {
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Published</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1 text-center">Actions</div>
                                     </div>
-                                    {completedRows.map(({ item, docId }) => (
+                                    {completedRows.map(({ item, docId, docName }) => (
                                         <ReviewRow
                                             key={`completed-${docId}-${item.id}`}
                                             item={item}
                                             docId={docId}
+                                            docName={docName}
                                             expandedRow={expandedRow}
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
@@ -507,6 +509,7 @@ function TeamReviewContent() {
 function ReviewRow({
     item,
     docId,
+    docName,
     expandedRow,
     setExpandedRow,
     userName,
@@ -519,6 +522,7 @@ function ReviewRow({
 }: {
     item: ActionableItem
     docId: string
+    docName: string
     expandedRow: string | null
     setExpandedRow: (v: string | null) => void
     userName: string
@@ -604,6 +608,9 @@ function ReviewRow({
                     <span className="text-xs text-foreground/90 truncate">
                         {safeStr(item.action)}
                     </span>
+                    {item.actionable_id && (
+                        <span className="shrink-0 text-[9px] font-mono text-muted-foreground/40 bg-muted/30 px-1 py-0.5 rounded border border-border/20">{item.actionable_id}</span>
+                    )}
                     {isMultiTeam(item) && (
                         <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
                             {MIXED_TEAM_CLASSIFICATION}
@@ -781,6 +788,37 @@ function ReviewRow({
                             </div>
                         </div>
                     )}
+                    {/* Circular Source Information */}
+                    <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5 mb-4">
+                        <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Risk Assessment Framework */}
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5 mb-4">
                         <div className="flex items-center justify-between">

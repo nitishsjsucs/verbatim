@@ -576,6 +576,36 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
                                 </div>
                             )}
+                            {/* Circular Source Information */}
+                            <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDateDMY(item.regulation_issue_date) : "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDateDMY(item.circular_effective_date) : "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                        <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDateDMY(item.created_at) : "—"}</p>
+                                    </div>
+                                </div>
+                            </div>
                         </>
                     ) : (
                         <>
@@ -792,6 +822,37 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     })}
                                 </div>
                             )}
+
+                            {/* Circular Source Information */}
+                            <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDateDMY(item.regulation_issue_date) : "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDateDMY(item.circular_effective_date) : "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                        <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDateDMY(item.created_at) : "—"}</p>
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* Risk Assessment Framework */}
                             <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">

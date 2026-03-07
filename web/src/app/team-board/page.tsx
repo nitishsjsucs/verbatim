@@ -162,6 +162,9 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                         : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                     <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
+                    {item.actionable_id && (
+                        <span className="shrink-0 text-[9px] font-mono text-muted-foreground/40 bg-muted/30 px-1 py-0.5 rounded border border-border/20">{item.actionable_id}</span>
+                    )}
                     {isMultiTeam(item) && (
                         <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
                             {MIXED_TEAM_CLASSIFICATION}
@@ -293,6 +296,37 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                         </div>
                     )}
+
+                    {/* Circular Source Information */}
+                    <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5 mb-4">
+                        <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Risk Assessment Framework */}
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5 mb-4">

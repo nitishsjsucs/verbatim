@@ -340,8 +340,13 @@ export interface ActionableItem {
     regulation_issue_date?: string;   // ISO date — regulation issued date
     circular_effective_date?: string;  // ISO date — circular effective date
     regulator?: string;               // Regulator name
+    // Source document reference (hydrated when fetched from tracker/approved-by-team)
+    doc_id?: string;                  // ID of the document this actionable was extracted from
+    doc_name?: string;                // Title/name of the source document
     // Unique actionable display ID
     actionable_id?: string;           // e.g. "ACT-20260304-001"
+    // Creation timestamp
+    created_at?: string;              // ISO timestamp when this actionable was first created
     // Risk assessment dropdowns (legacy flat fields — kept for backward compat)
     impact?: string;
     tranche3?: string;                // Yes / No

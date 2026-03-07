@@ -1355,6 +1355,11 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
                 from models.actionable import ActionablesResult as AR
 
                 result_obj = AR.from_dict(final_result)
+                # Stamp created_at on any actionable that doesn't have one
+                _now = datetime.now(timezone.utc).isoformat()
+                for _a in result_obj.actionables:
+                    if not _a.created_at:
+                        _a.created_at = _now
                 act_store.save(result_obj)
 
         except Exception as e:
@@ -1735,6 +1740,7 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
         validation_status="manual",
         approval_status="pending",
         is_manual=True,
+        created_at=datetime.now(timezone.utc).isoformat(),
     )
 
     result.actionables.append(item)

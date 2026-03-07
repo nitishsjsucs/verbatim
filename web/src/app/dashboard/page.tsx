@@ -678,7 +678,7 @@ export default function DashboardPage() {
                                 )}
 
                                 {/* ── Rows ── */}
-                                {!isCollapsed && rows.map(({ item, docId }) => {
+                                {!isCollapsed && rows.map(({ item, docId, docName }) => {
                                     const rowKey = `${docId}-${item.id}`
                                     const taskStatus = item.task_status || "assigned"
                                     const statusStyle = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
@@ -1286,35 +1286,38 @@ export default function DashboardPage() {
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                                                             </div>
 
-                                                            {/* Actionable ID + Parent doc metadata */}
-                                                            {(item.actionable_id || item.regulation_issue_date || item.circular_effective_date || item.regulator) && (
-                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
-                                                                    {item.actionable_id && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
-                                                                            <p className="text-xs text-foreground/80 font-mono">{item.actionable_id}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {item.regulator && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
-                                                                            <p className="text-xs text-foreground/80">{item.regulator}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {item.regulation_issue_date && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulation Issue Date</p>
-                                                                            <p className="text-xs text-foreground/80 font-mono">{formatDate(item.regulation_issue_date)}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {item.circular_effective_date && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
-                                                                            <p className="text-xs text-foreground/80 font-mono">{formatDate(item.circular_effective_date)}</p>
-                                                                        </div>
-                                                                    )}
+                                                            {/* Circular Source Information */}
+                                                            <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
                                                                 </div>
-                                                            )}
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                                                        <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
                                                             {/* Risk Assessment Framework */}
                                                             <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
@@ -1521,7 +1524,7 @@ export default function DashboardPage() {
                                             </div>
                                         )}
 
-                                        {!isCollapsed && rows.map(({ item, docId }) => {
+                                        {!isCollapsed && rows.map(({ item, docId, docName }) => {
                                             const rowKey = `completed-${docId}-${item.id}`
                                             const isExpanded = expandedRows.has(rowKey)
                                             const commentCount = (item.comments || []).length
@@ -1543,6 +1546,9 @@ export default function DashboardPage() {
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                             {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
+                                                            {item.actionable_id && (
+                                                                <span className="shrink-0 text-[9px] font-mono text-muted-foreground/40 bg-muted/30 px-1 py-0.5 rounded border border-border/20">{item.actionable_id}</span>
+                                                            )}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
                                                             <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
@@ -1560,6 +1566,36 @@ export default function DashboardPage() {
                                                     </div>
                                                     {isExpanded && (
                                                         <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
+                                                            {/* Circular Source Information */}
+                                                            <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                                                <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                                                        <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div className="space-y-3">
                                                                     <div>

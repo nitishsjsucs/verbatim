@@ -97,6 +97,8 @@ class ActionableItem:
     regulator: str = ""  # Regulator name (e.g. "RBI", "SEBI")
     # ── Unique actionable display ID ──
     actionable_id: str = ""  # Human-readable unique ID, e.g. "ACT-20260304-001"
+    # ── Creation timestamp ──
+    created_at: str = ""  # ISO timestamp when this actionable was created
     # ── Risk assessment dropdowns (legacy flat fields — kept for backward compat) ──
     impact: str = ""  # Legacy: flat string
     tranche3: str = ""  # Yes / No
@@ -271,6 +273,7 @@ class ActionableItem:
             "circular_effective_date": self.circular_effective_date,
             "regulator": self.regulator,
             "actionable_id": self.actionable_id,
+            "created_at": self.created_at,
             "impact": self.impact,
             "tranche3": self.tranche3,
             "control": self.control,
@@ -363,6 +366,7 @@ class ActionableItem:
             circular_effective_date=data.get("circular_effective_date", ""),
             regulator=data.get("regulator", ""),
             actionable_id=data.get("actionable_id", ""),
+            created_at=data.get("created_at", ""),
             impact=data.get("impact", ""),
             tranche3=data.get("tranche3", ""),
             control=data.get("control", ""),
