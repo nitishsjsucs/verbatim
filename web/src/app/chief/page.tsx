@@ -350,35 +350,40 @@ function ChiefContent() {
                                     <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(item.evidence_quote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                                 </div>
 
-                                {/* Actionable ID + Parent doc metadata */}
-                                {(item.actionable_id || item.regulation_issue_date || item.circular_effective_date || item.regulator) && (
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 bg-muted/20 rounded-lg p-2.5 border border-border/20">
-                                        {item.actionable_id && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
-                                                <p className="text-xs text-foreground/80 font-mono">{item.actionable_id}</p>
-                                            </div>
-                                        )}
-                                        {item.regulator && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
-                                                <p className="text-xs text-foreground/80">{item.regulator}</p>
-                                            </div>
-                                        )}
-                                        {item.regulation_issue_date && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulation Issue Date</p>
-                                                <p className="text-xs text-foreground/80 font-mono">{formatDate(item.regulation_issue_date)}</p>
-                                            </div>
-                                        )}
-                                        {item.circular_effective_date && (
-                                            <div>
-                                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
-                                                <p className="text-xs text-foreground/80 font-mono">{formatDate(item.circular_effective_date)}</p>
-                                            </div>
-                                        )}
+                                {/* Circular Source Information */}
+                                <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                    <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{item.actionable_id || "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                            <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                            <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                            <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                        </div>
                                     </div>
-                                )}
+                                </div>
 
                                 {/* Risk Assessment fields (new structured + legacy fallback) */}
                                 {(item.likelihood_score || item.impact_score || item.inherent_risk_label || item.residual_risk_label || item.impact || item.likelihood || item.control || item.inherent_risk || item.residual_risk || item.tranche3 || item.theme) && (

@@ -1277,6 +1277,12 @@ export default function DashboardPage() {
                                                     {/* 2-column: left=impl+evidence, right=comments (full height) */}
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className="space-y-3">
+                                                            {item.actionable_id && (
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Actionable ID</p>
+                                                                    <p className="text-xs font-mono text-foreground/80 bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id}</p>
+                                                                </div>
+                                                            )}
                                                             <div>
                                                                 <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                                                 <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
@@ -1292,6 +1298,10 @@ export default function DashboardPage() {
                                                                     <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
                                                                 </div>
                                                                 <div className="grid grid-cols-2 gap-2">
+                                                                    <div className="col-span-2">
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                                                    </div>
                                                                     <div>
                                                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
                                                                         <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
@@ -1570,6 +1580,10 @@ export default function DashboardPage() {
                                                             <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                                                                 <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
                                                                 <div className="grid grid-cols-2 gap-2">
+                                                                    <div className="col-span-2">
+                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                                                        <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                                                    </div>
                                                                     <div>
                                                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
                                                                         <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>

@@ -108,6 +108,31 @@ def _load_persisted_runtime_config() -> dict:
     return {}
 
 
+def _generate_actionable_id() -> str:
+    """Return a globally unique human-readable actionable ID, e.g. ACT-20260304-0001.
+
+    Uses a MongoDB atomic counter (find_one_and_update + $inc) so the sequence
+    is correct even under concurrent requests or across multiple doc extractions.
+    Falls back to a UUID-based ID if the DB is unavailable.
+    """
+    try:
+        from utils.mongo import get_db
+        db = get_db()
+        result = db["counters"].find_one_and_update(
+            {"_id": "actionable_id"},
+            {"$inc": {"seq": 1}},
+            upsert=True,
+            return_document=True,  # pymongo.ReturnDocument.AFTER equivalent
+        )
+        seq = result.get("seq", 1)
+        date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+        return f"ACT-{date_str}-{seq:04d}"
+    except Exception as e:
+        logger.warning("actionable_id counter failed, using UUID fallback: %s", e)
+        import uuid as _uuid
+        return f"ACT-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{str(_uuid.uuid4())[:8].upper()}"
+
+
 def get_retrieval_mode() -> str:
     """Get the current retrieval mode (runtime override > env default)."""
     return _runtime_config.get("retrieval_mode", get_settings().optimization.retrieval_mode)
@@ -1355,11 +1380,13 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
                 from models.actionable import ActionablesResult as AR
 
                 result_obj = AR.from_dict(final_result)
-                # Stamp created_at on any actionable that doesn't have one
+                # Stamp created_at and actionable_id on any actionable that doesn't have one
                 _now = datetime.now(timezone.utc).isoformat()
                 for _a in result_obj.actionables:
                     if not _a.created_at:
                         _a.created_at = _now
+                    if not _a.actionable_id:
+                        _a.actionable_id = _generate_actionable_id()
                 act_store.save(result_obj)
 
         except Exception as e:
@@ -1741,6 +1768,7 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
         approval_status="pending",
         is_manual=True,
         created_at=datetime.now(timezone.utc).isoformat(),
+        actionable_id=_generate_actionable_id(),
     )
 
     result.actionables.append(item)

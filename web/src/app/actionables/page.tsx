@@ -580,6 +580,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
                                 <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
                                 <div className="grid grid-cols-2 gap-2">
+                                    <div className="col-span-2">
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                        <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                    </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
                                         <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
@@ -827,6 +831,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
                                 <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
                                 <div className="grid grid-cols-2 gap-2">
+                                    <div className="col-span-2">
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                        <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                    </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
                                         <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
