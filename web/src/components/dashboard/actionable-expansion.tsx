@@ -167,12 +167,15 @@ export function ActionableExpansion({
             {/* 2-column: left=impl+evidence+metadata, right=comments (full height) */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
-                    {item.actionable_id && (
+                    {/* For compliance_officer: Actionable ID at top */}
+                    {userRole === "compliance_officer" && item.actionable_id && (
                         <div>
                             <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Actionable ID</p>
                             <p className="text-xs font-mono text-foreground/80 bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id}</p>
                         </div>
                     )}
+                    
+                    {/* Implementation and Evidence - always at top for non-compliance roles */}
                     <div>
                         <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                         <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(implementationNotes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
@@ -182,42 +185,60 @@ export function ActionableExpansion({
                         <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(evidenceQuote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                     </div>
 
-                    {/* Circular Source Information */}
-                    <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
-                        <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                    {/* Evidence Files - for non-compliance roles, show here before metadata */}
+                    {userRole !== "compliance_officer" && evidenceFiles && evidenceFiles.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <Paperclip className="h-3.5 w-3.5 text-primary/60" />
+                                <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
+                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{evidenceFiles.length}</span>
+                            </div>
+                            <EvidenceFileList
+                                files={evidenceFiles}
+                                formatDate={formatDate}
+                                readOnly
+                            />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="col-span-2">
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
-                                <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                    )}
+
+                    {/* For compliance_officer: Circular Source Info before Risk Assessment */}
+                    {userRole === "compliance_officer" && (
+                        <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
                             </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                                <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                                <p className="text-xs text-foreground/80">{docName || "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
-                                <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
-                                <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
-                                <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
-                                <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="col-span-2">
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                    <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                    <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                    <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Risk Assessment Framework */}
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
@@ -314,8 +335,47 @@ export function ActionableExpansion({
                         </div>
                     </div>
 
-                    {/* Evidence Files */}
-                    {evidenceFiles && evidenceFiles.length > 0 && (
+                    {/* For non-compliance roles: Circular Source Info after Risk Assessment */}
+                    {userRole !== "compliance_officer" && (
+                        <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="col-span-2">
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                    <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                    <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                    <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Evidence Files - for compliance_officer, show at bottom */}
+                    {userRole === "compliance_officer" && evidenceFiles && evidenceFiles.length > 0 && (
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <Paperclip className="h-3.5 w-3.5 text-primary/60" />
