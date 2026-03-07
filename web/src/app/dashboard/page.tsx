@@ -1010,6 +1010,134 @@ export default function DashboardPage() {
                                                         {/* Per-team expanded: 2-column layout — styled like single-team */}
                                                         {isTeamExpanded && (
                                                             <div className={cn("border-t border-border/10 px-6 py-4 space-y-3", teamColors.bg)}>
+                                                                {/* Circular Source Information */}
+                                                                <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <div className="col-span-2">
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                                                            <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                                                            <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                                                            <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Risk Assessment Framework */}
+                                                                <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
+                                                                    </div>
+
+                                                                    {/* Row 1: Theme + Tranche3 + Impact */}
+                                                                    <div className="grid grid-cols-3 gap-2">
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                                                            <p className="text-xs text-foreground/80">{item.theme || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                                                            <p className="text-xs text-foreground/80">{item.tranche3 || "—"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
+                                                                            <p className="text-xs text-foreground/80">{item.impact_dropdown?.label || "—"}</p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Row 2: Likelihood */}
+                                                                    <div>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood</p>
+                                                                            <span className="text-[10px] text-muted-foreground/40">Score: {item.likelihood_score != null ? item.likelihood_score : "—"} (MAX of 3)</span>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-3 gap-2">
+                                                                            <div>
+                                                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">Business Volume</p>
+                                                                                <p className="text-xs text-foreground/80">{item.likelihood_business_volume?.label || "—"}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">Products & Processes</p>
+                                                                                <p className="text-xs text-foreground/80">{item.likelihood_products_processes?.label || "—"}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">Compliance Violations</p>
+                                                                                <p className="text-xs text-foreground/80">{item.likelihood_compliance_violations?.label || "—"}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Row 3: Control */}
+                                                                    <div>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control</p>
+                                                                            <span className="text-[10px] text-muted-foreground/40">Score: {item.control_score != null ? item.control_score.toFixed(1) : "—"} (avg)</span>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                            <div>
+                                                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">Monitoring Mechanism</p>
+                                                                                <p className="text-xs text-foreground/80">{item.control_monitoring?.label || "—"}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">Control Effectiveness</p>
+                                                                                <p className="text-xs text-foreground/80">{item.control_effectiveness?.label || "—"}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Row 4: Scores */}
+                                                                    <div>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Scores</p>
+                                                                            <span className="text-[10px] text-muted-foreground/40">Derived automatically</span>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-3 gap-2">
+                                                                            <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
+                                                                                <p className="text-sm font-semibold text-foreground">
+                                                                                    {item.inherent_risk_score != null ? item.inherent_risk_score.toFixed(2) : <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                                                                <p className="text-sm font-semibold text-foreground">
+                                                                                    {item.residual_risk_score != null ? item.residual_risk_score.toFixed(2) : <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Interpretation</p>
+                                                                                <p className="text-sm font-semibold text-foreground">
+                                                                                    {item.residual_risk_label || <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
                                                                 {/* Banners: justification + rejection */}
                                                                 {tw?.justification && tw?.justification_status === "pending_review" && (
                                                                     <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
