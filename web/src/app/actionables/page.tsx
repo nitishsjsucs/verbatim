@@ -40,7 +40,7 @@ import {
     RESIDUAL_RISK_INTERPRETATION_STYLES, THEME_OPTIONS,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
-import { useDropdownConfig } from "@/lib/use-dropdown-config"
+import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
 import { HierarchicalTeamMultiSelect, HierarchicalTeamSelect } from "@/components/shared/hierarchical-team-selector"
 import { RiskIcon, EmptyState } from "@/components/shared/status-components"
 
@@ -49,6 +49,42 @@ const PdfViewer = dynamic(
     { ssr: false }
 )
 
+const FALLBACK_DROPDOWN_OPTIONS: Record<string, DropdownOption[]> = {
+    tranche3: [
+        { label: "No", value: 0 },
+        { label: "Yes", value: 1 },
+    ],
+    impact_dropdown: [
+        { label: "No Significant Impact on occurrence of regulatory breach", value: 1 },
+        { label: "Material Impact", value: 2 },
+        { label: "Very High Regulatory or Reputational Impact", value: 3 },
+    ],
+    likelihood_business_volume: [
+        { label: "Moderate Increase — Up to 15%", value: 1 },
+        { label: "Substantial Increase — Between 15% and 30%", value: 2 },
+        { label: "Very High Increase — More than 30%", value: 3 },
+    ],
+    likelihood_products_processes: [
+        { label: "Products/processes rolled out during the year — Less than 4", value: 1 },
+        { label: "Products/processes rolled out during the year — Between 4 and 7", value: 2 },
+        { label: "Many products rolled out during the year — More than 7", value: 3 },
+    ],
+    likelihood_compliance_violations: [
+        { label: "No violation", value: 1 },
+        { label: "1 violation", value: 2 },
+        { label: "Greater than 1", value: 3 },
+    ],
+    control_monitoring: [
+        { label: "Automated", value: 1 },
+        { label: "Maker-Checker", value: 2 },
+        { label: "No Checker / No Control", value: 3 },
+    ],
+    control_effectiveness: [
+        { label: "Well Controlled / Meets Requirements", value: 1 },
+        { label: "Improvement Needed", value: 2 },
+        { label: "Significant Improvement Needed", value: 3 },
+    ],
+}
 
 // --- Types ---
 
@@ -192,9 +228,14 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(item.impact_dropdown || emptyRSD)
     const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
     const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
+    const getSafeOptions = React.useCallback((key: string): DropdownOption[] => {
+        const opts = getOptions(key)
+        return opts.length ? opts : (FALLBACK_DROPDOWN_OPTIONS[key] || [])
+    }, [getOptions])
+
     // Helper: select a sub-dropdown from config options
     const pickSubDropdown = (configKey: string, selectedLabel: string): RiskSubDropdown => {
-        const opt = getOptions(configKey).find(o => o.label === selectedLabel)
+        const opt = getSafeOptions(configKey).find(o => o.label === selectedLabel)
         return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
     }
     // Computed scores (reactive, new formulas)
@@ -894,8 +935,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
                                         <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                            <option value="">—</option>
-                                            {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                            <option value="">— Select Tranche 3 —</option>
+                                            {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -914,11 +955,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
                                         >
                                             <option value="">— Select Impact —</option>
-                                            {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                            {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     ) : (
                                         <div className="text-xs bg-muted/20 rounded px-2 py-1.5 border border-border/20 text-foreground/70 min-h-[28px]">
-                                            {item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">Not yet assessed</span>}
+                                            {item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">Will be filled by Compliance</span>}
                                         </div>
                                     )}
                                 </div>
@@ -939,7 +980,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             ].map(({ key, val, fallback }) => (
                                                 <div key={key}>
                                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
-                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "—"}>{val?.label || "—"}</div>
+                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "Will be filled by Member"}>
+                                                        {val?.label ? (
+                                                            <span className="flex items-center justify-between gap-1">
+                                                                <span className="truncate">{val.label}</span>
+                                                                <span className="text-[10px] font-mono text-muted-foreground/60">Score: {safeScore(val) || "—"}</span>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground/40 italic">Will be filled by Member</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -948,22 +998,22 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
                                                 <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
-                                                    <option value="">—</option>
-                                                    {getOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                    <option value="">— Select volume change —</option>
+                                                    {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
                                                 <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
-                                                    <option value="">—</option>
-                                                    {getOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                    <option value="">— Select rollouts —</option>
+                                                    {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
                                                 <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
-                                                    <option value="">—</option>
-                                                    {getOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                    <option value="">— Select violation history —</option>
+                                                    {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                         </div>
@@ -985,7 +1035,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             ].map(({ key, val, fallback }) => (
                                                 <div key={key}>
                                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
-                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "—"}>{val?.label || "—"}</div>
+                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "Will be filled by Member"}>
+                                                        {val?.label ? (
+                                                            <span className="flex items-center justify-between gap-1">
+                                                                <span className="truncate">{val.label}</span>
+                                                                <span className="text-[10px] font-mono text-muted-foreground/60">Score: {safeScore(val) || "—"}</span>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground/40 italic">Will be filled by Member</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -994,15 +1053,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
                                                 <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
-                                                    <option value="">—</option>
-                                                    {getOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                    <option value="">— Select monitoring type —</option>
+                                                    {getSafeOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
                                                 <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
-                                                    <option value="">—</option>
-                                                    {getOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                                    <option value="">— Select effectiveness —</option>
+                                                    {getSafeOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                         </div>
