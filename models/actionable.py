@@ -86,10 +86,19 @@ class ActionableItem:
     # ── Delay monitoring & Team Lead fields ──
     is_delayed: bool = False  # True if deadline has passed and task not completed
     delay_detected_at: str = ""  # ISO timestamp when delay was first detected
-    justification: str = ""  # Team Lead's explanation for the delay
-    justification_by: str = ""  # Name of team lead who provided justification
-    justification_at: str = ""  # ISO timestamp when justification was provided
-    justification_status: str = ""  # "pending_review" or "reviewed"
+    justification: str = ""  # Team Lead's explanation for the delay (legacy)
+    justification_by: str = ""  # Name of team lead who provided justification (legacy)
+    justification_at: str = ""  # ISO timestamp when justification was provided (legacy)
+    justification_status: str = ""  # "pending_review" or "reviewed" (legacy)
+    # ── 4-stage delay justification workflow ──
+    justification_member_text: str = ""  # Stage 1: Member justification text
+    justification_member_at: str = ""  # Stage 1: ISO timestamp
+    justification_reviewer_text: str = ""  # Stage 2: Reviewer justification text
+    justification_reviewer_at: str = ""  # Stage 2: ISO timestamp
+    justification_lead_comment: str = ""  # Stage 3: Lead review comment
+    justification_lead_approved_at: str = ""  # Stage 3: ISO timestamp
+    justification_compliance_comment: str = ""  # Stage 4: Compliance approval comment
+    justification_compliance_approved_at: str = ""  # Stage 4: ISO timestamp
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
     # ── Document metadata (inherited from parent document) ──
     regulation_issue_date: str = ""  # ISO date — when the regulation was issued
@@ -125,6 +134,11 @@ class ActionableItem:
     inherent_risk_label: str = ""  # Display label
     residual_risk_score: float = 0  # inherent_risk_score × control_score
     residual_risk_label: str = ""  # Display label
+    residual_risk_interpretation: str = ""  # "Satisfactory (Low)" / "Improvement Needed (Medium)" / "Weak (High)"
+    # Aliases for spec-compliant field names (stored as integers)
+    overall_likelihood_score: int = 0  # MAX(L1, L2, L3)
+    overall_impact_score: int = 0  # (impact_dropdown.score)²
+    overall_control_score: float = 0  # (monitoring + effectiveness) / 2
     # Legacy impact sub-fields (kept for backward compat with existing data)
     impact_sub1: dict = field(default_factory=dict)  # Deprecated → use impact_dropdown
     impact_sub2: dict = field(default_factory=dict)  # Deprecated
@@ -268,6 +282,15 @@ class ActionableItem:
             "justification_by": self.justification_by,
             "justification_at": self.justification_at,
             "justification_status": self.justification_status,
+            # 4-stage delay justification workflow
+            "justification_member_text": self.justification_member_text,
+            "justification_member_at": self.justification_member_at,
+            "justification_reviewer_text": self.justification_reviewer_text,
+            "justification_reviewer_at": self.justification_reviewer_at,
+            "justification_lead_comment": self.justification_lead_comment,
+            "justification_lead_approved_at": self.justification_lead_approved_at,
+            "justification_compliance_comment": self.justification_compliance_comment,
+            "justification_compliance_approved_at": self.justification_compliance_approved_at,
             "audit_trail": self.audit_trail,
             "regulation_issue_date": self.regulation_issue_date,
             "circular_effective_date": self.circular_effective_date,
@@ -294,6 +317,11 @@ class ActionableItem:
             "inherent_risk_label": self.inherent_risk_label,
             "residual_risk_score": self.residual_risk_score,
             "residual_risk_label": self.residual_risk_label,
+            "residual_risk_interpretation": self.residual_risk_interpretation,
+            # Spec-compliant overall score aliases
+            "overall_likelihood_score": self.overall_likelihood_score,
+            "overall_impact_score": self.overall_impact_score,
+            "overall_control_score": self.overall_control_score,
             # Legacy impact sub-fields (backward compat)
             "impact_sub1": self.impact_sub1,
             "impact_sub2": self.impact_sub2,
@@ -361,6 +389,14 @@ class ActionableItem:
             justification_by=data.get("justification_by", ""),
             justification_at=data.get("justification_at", ""),
             justification_status=data.get("justification_status", ""),
+            justification_member_text=data.get("justification_member_text", ""),
+            justification_member_at=data.get("justification_member_at", ""),
+            justification_reviewer_text=data.get("justification_reviewer_text", ""),
+            justification_reviewer_at=data.get("justification_reviewer_at", ""),
+            justification_lead_comment=data.get("justification_lead_comment", ""),
+            justification_lead_approved_at=data.get("justification_lead_approved_at", ""),
+            justification_compliance_comment=data.get("justification_compliance_comment", ""),
+            justification_compliance_approved_at=data.get("justification_compliance_approved_at", ""),
             audit_trail=data.get("audit_trail", []),
             regulation_issue_date=data.get("regulation_issue_date", ""),
             circular_effective_date=data.get("circular_effective_date", ""),
@@ -388,6 +424,10 @@ class ActionableItem:
             inherent_risk_label=data.get("inherent_risk_label", ""),
             residual_risk_score=data.get("residual_risk_score", 0),
             residual_risk_label=data.get("residual_risk_label", ""),
+            residual_risk_interpretation=data.get("residual_risk_interpretation", ""),
+            overall_likelihood_score=data.get("overall_likelihood_score", 0),
+            overall_impact_score=data.get("overall_impact_score", 0),
+            overall_control_score=data.get("overall_control_score", 0),
             # Legacy impact sub-fields (backward compat)
             impact_sub1=data.get("impact_sub1", {}),
             impact_sub2=data.get("impact_sub2", {}),

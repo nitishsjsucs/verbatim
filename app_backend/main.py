@@ -1446,14 +1446,11 @@ def list_all_actionables():
 
 
 # Risk fields that only team_member / team_reviewer / team_lead / admin can write.
-# compliance_officer is READ-ONLY for these.
+# compliance_officer is READ-ONLY for these (per spec §11A).
+# NOTE: impact_dropdown is NOT in this set — compliance CAN set/confirm impact.
 RISK_MEMBER_ONLY_FIELDS = {
     "likelihood_business_volume", "likelihood_products_processes", "likelihood_compliance_violations",
-    "likelihood_score",
-    "impact_dropdown", "impact_score",
-    "control_monitoring", "control_effectiveness", "control_score",
-    "inherent_risk_score", "inherent_risk_label",
-    "residual_risk_score", "residual_risk_label",
+    "control_monitoring", "control_effectiveness",
 }
 
 
@@ -1507,7 +1504,13 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "team_reviewer_approved_at", "team_reviewer_rejected_at",
         "is_delayed", "delay_detected_at",
         "justification", "justification_by", "justification_at",
-        "justification_status", "audit_trail",
+        "justification_status",
+        # 4-stage delay justification workflow
+        "justification_member_text", "justification_member_at",
+        "justification_reviewer_text", "justification_reviewer_at",
+        "justification_lead_comment", "justification_lead_approved_at",
+        "justification_compliance_comment", "justification_compliance_approved_at",
+        "audit_trail",
         "assigned_teams", "team_workflows",
         # Document metadata (inherited from parent doc)
         "regulation_issue_date", "circular_effective_date", "regulator",
@@ -1524,6 +1527,9 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "control_score",
         "inherent_risk_score", "inherent_risk_label",
         "residual_risk_score", "residual_risk_label",
+        "residual_risk_interpretation",
+        # Spec-compliant overall score aliases
+        "overall_likelihood_score", "overall_impact_score", "overall_control_score",
         # Legacy impact sub-fields (backward compat)
         "impact_sub1", "impact_sub2", "impact_sub3",
         # Theme dropdown
@@ -1599,11 +1605,13 @@ def _recompute_risk_scores(target) -> None:
     cv = _safe_score(target.likelihood_compliance_violations)
     ls = max(bv, pp, cv)
     target.likelihood_score = ls
+    target.overall_likelihood_score = int(ls)
 
     # Impact = (single dropdown score)²
     raw_impact = _safe_score(target.impact_dropdown)
     ims = raw_impact ** 2
     target.impact_score = ims
+    target.overall_impact_score = int(ims)
 
     # Inherent risk = likelihood × impact
     ir = ls * ims
@@ -1615,11 +1623,13 @@ def _recompute_risk_scores(target) -> None:
     eff = _safe_score(target.control_effectiveness)
     cs = (mon + eff) / 2 if (mon or eff) else 0
     target.control_score = cs
+    target.overall_control_score = cs
 
     # Residual risk = inherent × control
     rr = ir * cs
     target.residual_risk_score = rr
     target.residual_risk_label = _resolve_residual_risk_label(rr)
+    target.residual_risk_interpretation = _interpret_residual_risk(rr)
 
 
 def _classify_inherent_risk(score: int) -> str:
@@ -1657,6 +1667,22 @@ def _resolve_residual_risk_label(residual_score: float) -> str:
     if residual_score <= 9:
         return "Medium"
     return "High"
+
+
+def _interpret_residual_risk(residual_score: float) -> str:
+    """Map residual risk score to a human-readable interpretation per spec §10.
+
+    1 ≤ score < 13  → "Satisfactory (Low)"
+    13 ≤ score < 28 → "Improvement Needed (Medium)"
+    28 ≤ score < 81 → "Weak (High)"
+    """
+    if residual_score < 1:
+        return ""
+    if residual_score < 13:
+        return "Satisfactory (Low)"
+    if residual_score < 28:
+        return "Improvement Needed (Medium)"
+    return "Weak (High)"
 
 
 # ---------------------------------------------------------------------------
@@ -4034,14 +4060,38 @@ DROPDOWN_COLLECTION = "dropdown_configs"
 
 # Default seed data — provides sensible defaults on first boot (idempotent)
 DEFAULT_DROPDOWN_CONFIGS = [
-    # ── Theme (no scoring) ──
+    # ── Theme (categorical only — no numeric score) ──
     {
         "_id": "theme",
         "label": "Theme",
         "options": [
-            {"label": "1", "value": 1},
-            {"label": "2", "value": 2},
-            {"label": "3", "value": 3},
+            {"label": "Audit", "value": 0},
+            {"label": "Branch Banking", "value": 0},
+            {"label": "Business Continuity", "value": 0},
+            {"label": "CMS", "value": 0},
+            {"label": "Compliance", "value": 0},
+            {"label": "Corporate Governance", "value": 0},
+            {"label": "Credit Card", "value": 0},
+            {"label": "Credit Risk", "value": 0},
+            {"label": "Customer Service", "value": 0},
+            {"label": "Cyber & Information Security", "value": 0},
+            {"label": "Debit Card", "value": 0},
+            {"label": "Deposit", "value": 0},
+            {"label": "Digital Banking", "value": 0},
+            {"label": "Employer Communications", "value": 0},
+            {"label": "Financial Accounting & Records", "value": 0},
+            {"label": "Information Technology Governance / Data Governance", "value": 0},
+            {"label": "KYC / AML", "value": 0},
+            {"label": "Loans & Advances", "value": 0},
+            {"label": "Market Risk", "value": 0},
+            {"label": "NPA & Restructuring", "value": 0},
+            {"label": "Other Operating Regulations", "value": 0},
+            {"label": "Outsourcing", "value": 0},
+            {"label": "Priority Sector Lending (PSL)", "value": 0},
+            {"label": "Third Party Products", "value": 0},
+            {"label": "Trade & FEMA", "value": 0},
+            {"label": "Treasury", "value": 0},
+            {"label": "FCRM (Earlier part of the Vigilance theme)", "value": 0},
         ],
     },
     # ── Tranche 3 ──
@@ -4053,64 +4103,65 @@ DEFAULT_DROPDOWN_CONFIGS = [
             {"label": "Yes", "value": 1},
         ],
     },
-    # ── Likelihood sub-dropdowns (3) ──
+    # ── Likelihood sub-dropdowns (3) — Member Role input ──
     {
         "_id": "likelihood_business_volume",
-        "label": "Increase in Business Volume",
+        "label": "Increase in Business Volumes",
         "options": [
-            {"label": "Low",    "value": 1},
-            {"label": "Medium", "value": 2},
-            {"label": "High",   "value": 3},
+            {"label": "Moderate Increase \u2014 Up to 15%", "value": 1},
+            {"label": "Substantial Increase \u2014 Between 15% and 30%", "value": 2},
+            {"label": "Very High Increase \u2014 More than 30%", "value": 3},
         ],
     },
     {
         "_id": "likelihood_products_processes",
         "label": "Changes in Products & Processes",
         "options": [
-            {"label": "Low",    "value": 1},
-            {"label": "Medium", "value": 2},
-            {"label": "High",   "value": 3},
+            {"label": "Products/processes rolled out during the year \u2014 Less than 4", "value": 1},
+            {"label": "Products/processes rolled out during the year \u2014 Between 4 and 7", "value": 2},
+            {"label": "Many products rolled out during the year \u2014 More than 7", "value": 3},
         ],
     },
     {
         "_id": "likelihood_compliance_violations",
-        "label": "Compliance Violations (12 months)",
+        "label": "Compliance Violations in Previous 12 Months",
         "options": [
-            {"label": "Low",    "value": 1},
-            {"label": "Medium", "value": 2},
-            {"label": "High",   "value": 3},
+            {"label": "No violation", "value": 1},
+            {"label": "1 violation", "value": 2},
+            {"label": "Greater than 1", "value": 3},
         ],
     },
     # ── Impact (single dropdown — score is squared for overall impact) ──
     {
         "_id": "impact_dropdown",
-        "label": "Impact",
+        "label": "Impact Assessment",
         "options": [
-            {"label": "Low",    "value": 1},
-            {"label": "Medium", "value": 2},
-            {"label": "High",   "value": 3},
+            {"label": "No Significant Impact on occurrence of regulatory breach", "value": 1},
+            {"label": "Material Impact", "value": 2},
+            {"label": "Very High Regulatory or Reputational Impact", "value": 3},
         ],
     },
-    # ── Control sub-dropdowns (2) ──
+    # ── Control sub-dropdowns (2) — Member Role input ──
+    # Scores are reversed: stronger control = lower score = lower risk
     {
         "_id": "control_monitoring",
         "label": "Monitoring Mechanism",
         "options": [
-            {"label": "Weak",     "value": 1},
-            {"label": "Moderate", "value": 2},
-            {"label": "Strong",   "value": 3},
+            {"label": "Automated", "value": 1},
+            {"label": "Maker-Checker", "value": 2},
+            {"label": "No Checker / No Control", "value": 3},
         ],
     },
     {
         "_id": "control_effectiveness",
         "label": "Control Effectiveness",
         "options": [
-            {"label": "Weak",     "value": 1},
-            {"label": "Moderate", "value": 2},
-            {"label": "Strong",   "value": 3},
+            {"label": "Well Controlled / Meets Requirements", "value": 1},
+            {"label": "Improvement Needed", "value": 2},
+            {"label": "Significant Improvement Needed", "value": 3},
         ],
     },
-    # ── Inherent Risk (informational — label derived from score) ──
+    # ── Inherent Risk (informational — label derived from score, not user-selectable) ──
     {
         "_id": "inherent_risk",
         "label": "Inherent Risk",
@@ -4120,14 +4171,14 @@ DEFAULT_DROPDOWN_CONFIGS = [
             {"label": "High",   "value": 3},
         ],
     },
-    # ── Residual Risk (informational — label derived from matrix/score) ──
+    # ── Residual Risk (informational — label derived from matrix/score, not user-selectable) ──
     {
         "_id": "residual_risk",
         "label": "Residual Risk",
         "options": [
-            {"label": "Low",    "value": 1},
-            {"label": "Medium", "value": 2},
-            {"label": "High",   "value": 3},
+            {"label": "Satisfactory (Low)",          "value": 1},
+            {"label": "Improvement Needed (Medium)",  "value": 2},
+            {"label": "Weak (High)",                  "value": 3},
         ],
     },
     # ── Legacy flat keys (kept so old dropdown-configs API calls still work) ──
@@ -4162,12 +4213,16 @@ DEFAULT_DROPDOWN_CONFIGS = [
 
 
 def _seed_dropdown_configs():
-    """Idempotently seed default dropdown categories if they don't exist."""
+    """Seed default dropdown categories — updates options to latest spec if they changed."""
     from utils.mongo import get_db
     db = get_db()
     col = db[DROPDOWN_COLLECTION]
     for cfg in DEFAULT_DROPDOWN_CONFIGS:
-        col.update_one({"_id": cfg["_id"]}, {"$setOnInsert": cfg}, upsert=True)
+        col.update_one(
+            {"_id": cfg["_id"]},
+            {"$set": {"label": cfg["label"], "options": cfg["options"]}},
+            upsert=True,
+        )
 
 
 # Seed on startup

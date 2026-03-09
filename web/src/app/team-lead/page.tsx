@@ -35,6 +35,7 @@ import {
     safeStr, normalizeRisk, formatDate, formatTime, deadlineCategory,
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
+    RESIDUAL_RISK_INTERPRETATION_STYLES,
 } from "@/lib/status-config"
 import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { useTeams } from "@/lib/use-teams"
@@ -913,30 +914,61 @@ function OversightRow({
                             </div>
                         </div>
 
-                        {/* Row 4: Scores */}
+                        {/* Risk Summary */}
                         <div>
                             <div className="flex items-center justify-between mb-1">
-                                <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Scores</p>
-                                <span className="text-[10px] text-muted-foreground/40">Derived automatically</span>
+                                <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Risk Summary</p>
+                                <span className="text-[10px] text-muted-foreground/40">Auto-calculated</span>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
+                                    <p className="text-sm font-semibold tabular-nums text-blue-400">
+                                        {(item.overall_likelihood_score ?? item.likelihood_score ?? 0) > 0 ? (item.overall_likelihood_score ?? item.likelihood_score) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
+                                    <p className="text-sm font-semibold tabular-nums text-pink-400">
+                                        {(item.overall_impact_score ?? item.impact_score ?? 0) > 0 ? (item.overall_impact_score ?? item.impact_score) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                    </p>
+                                </div>
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {item.inherent_risk_score != null ? item.inherent_risk_score.toFixed(2) : <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                    <p className="text-sm font-semibold tabular-nums text-orange-400">
+                                        {(item.inherent_risk_score ?? 0) > 0 ? item.inherent_risk_score!.toFixed(0) : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
+                                    {item.inherent_risk_label && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{item.inherent_risk_label}</p>}
                                 </div>
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
-                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {item.residual_risk_score != null ? item.residual_risk_score.toFixed(2) : <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
+                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
+                                    <p className="text-sm font-semibold tabular-nums text-teal-400">
+                                        {(item.overall_control_score ?? item.control_score ?? 0) > 0 ? (item.overall_control_score ?? item.control_score)!.toFixed(1) : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
                                 </div>
-                                <div className="rounded-lg border border-border/40 bg-background/60 p-2">
-                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Interpretation</p>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {item.residual_risk_label || <span className="text-muted-foreground/60 text-xs">Not yet calculated</span>}
-                                    </p>
+                            </div>
+                            <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                        <p className="text-sm font-semibold tabular-nums text-foreground">
+                                            {(item.residual_risk_score ?? 0) > 0 ? item.residual_risk_score!.toFixed(1) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                        </p>
+                                    </div>
+                                    {(() => {
+                                        const interp = item.residual_risk_interpretation || item.residual_risk_label || ""
+                                        if (!interp) return <span className="text-xs text-muted-foreground/30">—</span>
+                                        const style = RESIDUAL_RISK_INTERPRETATION_STYLES[interp]
+                                        return (
+                                            <span className={cn(
+                                                "text-xs font-medium px-2 py-0.5 rounded-full",
+                                                style?.bg ?? "bg-muted/30",
+                                                style?.text ?? "text-foreground"
+                                            )}>
+                                                {interp}
+                                            </span>
+                                        )
+                                    })()}
                                 </div>
                             </div>
                         </div>

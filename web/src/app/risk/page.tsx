@@ -7,6 +7,7 @@ import { ShieldAlert, TrendingUp, BarChart3, Shield, AlertTriangle } from "lucid
 import { fetchAllActionables, fetchRiskMatrix, type RiskMatrixEntry } from "@/lib/api"
 import type { ActionableItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { RESIDUAL_RISK_INTERPRETATION_STYLES } from "@/lib/status-config"
 
 function getRiskColor(label: string) {
   const l = (label || "").toLowerCase()
@@ -46,12 +47,20 @@ export default function RiskPage() {
     load()
   }, [])
 
-  // Compute distribution stats
-  const scored = items.filter(i => i.residual_risk_label)
-  const highCount = scored.filter(i => i.residual_risk_label === "High").length
-  const medCount = scored.filter(i => i.residual_risk_label === "Medium").length
-  const lowCount = scored.filter(i => i.residual_risk_label === "Low").length
+  // Compute distribution stats — prefer interpretation (new spec) over legacy label
+  const scored = items.filter(i => i.residual_risk_interpretation || i.residual_risk_label)
+  const getInterpretation = (i: ActionableItem) => i.residual_risk_interpretation || i.residual_risk_label || ""
+  const highCount = scored.filter(i => { const v = getInterpretation(i); return v === "Weak (High)" || v === "High" }).length
+  const medCount  = scored.filter(i => { const v = getInterpretation(i); return v === "Improvement Needed (Medium)" || v === "Medium" }).length
+  const lowCount  = scored.filter(i => { const v = getInterpretation(i); return v === "Satisfactory (Low)" || v === "Low" }).length
   const unscored = items.length - scored.length
+
+  // Theme distribution
+  const themeMap: Record<string, number> = {}
+  for (const i of items) {
+    if (i.theme) themeMap[i.theme] = (themeMap[i.theme] || 0) + 1
+  }
+  const themeEntries = Object.entries(themeMap).sort((a, b) => b[1] - a[1])
 
   const avgResidual = scored.length > 0
     ? scored.reduce((s, i) => s + (i.residual_risk_score || 0), 0) / scored.length
@@ -151,21 +160,46 @@ export default function RiskPage() {
                   )}
                 </div>
 
+                {/* Theme Distribution */}
+                {themeEntries.length > 0 && (
+                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
+                    <p className="text-xs font-semibold text-foreground/70 mb-3">Actionables by Theme</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+                      {themeEntries.slice(0, 12).map(([theme, count]) => (
+                        <div key={theme} className="flex items-center justify-between rounded-md border border-border/20 bg-background/40 px-2 py-1">
+                          <span className="text-[10px] text-foreground/70 truncate flex-1 mr-1" title={theme}>{theme}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* High-risk actionables table */}
                 {highCount > 0 && (
                   <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <p className="text-xs font-semibold text-foreground/70 mb-3">High Risk Actionables ({highCount})</p>
+                    <p className="text-xs font-semibold text-foreground/70 mb-3">High / Weak Risk Actionables ({highCount})</p>
                     <div className="space-y-2">
                       {scored
-                        .filter(i => i.residual_risk_label === "High")
+                        .filter(i => { const v = getInterpretation(i); return v === "Weak (High)" || v === "High" })
                         .slice(0, 20)
-                        .map(item => (
-                          <div key={item.id} className="flex items-start gap-3 text-xs border-b border-border/10 pb-2">
-                            <span className="font-mono text-muted-foreground/50 shrink-0">{item.actionable_id || item.id.slice(0, 8)}</span>
-                            <span className="flex-1 text-foreground/80 line-clamp-1">{item.action}</span>
-                            <span className="font-mono text-red-400 shrink-0">{(item.residual_risk_score || 0).toFixed(1)}</span>
-                          </div>
-                        ))}
+                        .map(item => {
+                          const interp = item.residual_risk_interpretation || item.residual_risk_label || ""
+                          const interpStyle = RESIDUAL_RISK_INTERPRETATION_STYLES[interp]
+                          return (
+                            <div key={item.id} className="flex items-start gap-3 text-xs border-b border-border/10 pb-2">
+                              <span className="font-mono text-muted-foreground/50 shrink-0">{item.actionable_id || item.id.slice(0, 8)}</span>
+                              <span className="flex-1 text-foreground/80 line-clamp-1">{item.action}</span>
+                              {item.theme && <span className="text-[10px] text-muted-foreground/50 shrink-0 hidden md:inline">{item.theme}</span>}
+                              <span className={cn(
+                                "text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0",
+                                interpStyle ? `${interpStyle.bg} ${interpStyle.text}` : "bg-red-500/15 text-red-400"
+                              )}>
+                                {(item.residual_risk_score || 0).toFixed(1)}
+                              </span>
+                            </div>
+                          )
+                        })}
                     </div>
                   </div>
                 )}

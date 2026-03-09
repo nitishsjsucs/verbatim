@@ -37,6 +37,7 @@ import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr, normalizeRisk,
     RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
+    RESIDUAL_RISK_INTERPRETATION_STYLES, THEME_OPTIONS,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { useDropdownConfig } from "@/lib/use-dropdown-config"
@@ -214,10 +215,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
     const impactLabel = React.useMemo(() => {
         const label = getLabel("impact_dropdown")
-        return label.toLowerCase() === "impact_dropdown" ? "Impact" : label
+        return label.toLowerCase() === "impact_dropdown" ? "Impact Assessment" : label
     }, [getLabel])
     const inherentRiskLabel = classifyRisk(inherentRiskScore)
     const residualRiskLabel = classifyRisk(residualRiskScore)
+    const residualRiskInterpretation = residualRiskScore < 1 ? "" : residualRiskScore < 13 ? "Satisfactory (Low)" : residualRiskScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -361,6 +363,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             updates.inherent_risk_label = inherentRiskLabel
             updates.residual_risk_score = residualRiskScore
             updates.residual_risk_label = residualRiskLabel
+            updates.residual_risk_interpretation = residualRiskInterpretation
+            updates.overall_likelihood_score = Math.round(likelihoodScore)
+            updates.overall_impact_score = Math.round(impactScore)
+            updates.overall_control_score = controlScore
             // Deadline
             const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
             if (dl !== (item.deadline || "")) updates.deadline = dl
@@ -863,83 +869,99 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             </div>
 
                             {/* Risk Assessment Framework */}
-                            <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                            <div className="space-y-3 rounded-lg border border-border/30 p-3 bg-muted/5">
                                 <div className="flex items-center justify-between">
                                     <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
-                                    {isComplianceOfficer && (
-                                        <span className="text-[10px] text-muted-foreground/40 italic">Read-only — filled by team members</span>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Impact editable · Likelihood &amp; Control read-only</span>}
+                                        {!isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Likelihood &amp; Control editable · Impact read-only</span>}
+                                    </div>
                                 </div>
 
-                                {/* Row 1: Theme + Tranche3 + Impact */}
-                                <div className="grid grid-cols-3 gap-2">
+                                {/* Theme — both roles can edit */}
+                                <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("theme") || "Theme"}</p>
-                                        <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} disabled={isComplianceOfficer} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed">
-                                            <option value="">—</option>
-                                            {getOptions("theme").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                        <select
+                                            value={draftTheme}
+                                            onChange={e => setDraftTheme(e.target.value)}
+                                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground"
+                                        >
+                                            <option value="">— Select Theme —</option>
+                                            {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
-                                        <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} disabled={isComplianceOfficer} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                             <option value="">—</option>
                                             {getOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{impactLabel}</p>
-                                        {isComplianceOfficer ? (
-                                            <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">
-                                                {item.impact_dropdown?.label || "—"}
-                                            </div>
-                                        ) : (
-                                            <select value={draftImpactDD?.label || ""} onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                                <option value="">—</option>
-                                                {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                            </select>
-                                        )}
-                                    </div>
                                 </div>
 
-                                {/* Row 2: Likelihood */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood</p>
-                                        <span className="text-[10px] font-mono text-blue-400/60">Score: {likelihoodScore} (MAX of 3)</span>
+                                {/* Impact Assessment — CO editable, Member read-only */}
+                                <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[10px] font-semibold text-pink-400/80 uppercase tracking-wider">Impact Assessment</p>
+                                        {!isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Set by Compliance</span>}
+                                        {isComplianceOfficer && <span className="text-[10px] font-mono text-pink-400/60">Score: {rawImpact} → Squared: {impactScore}</span>}
+                                    </div>
+                                    {isComplianceOfficer ? (
+                                        <select
+                                            value={draftImpactDD?.label || ""}
+                                            onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
+                                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
+                                        >
+                                            <option value="">— Select Impact —</option>
+                                            {getOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    ) : (
+                                        <div className="text-xs bg-muted/20 rounded px-2 py-1.5 border border-border/20 text-foreground/70 min-h-[28px]">
+                                            {item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">Not yet assessed</span>}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Likelihood — Member editable, CO read-only */}
+                                <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
+                                        {isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Filled by team members</span>}
+                                        {!isComplianceOfficer && <span className="text-[10px] font-mono text-blue-400/60">Overall: {likelihoodScore} (MAX of 3)</span>}
                                     </div>
                                     {isComplianceOfficer ? (
                                         <div className="grid grid-cols-3 gap-2">
                                             {[
-                                                { key: "likelihood_business_volume", val: item.likelihood_business_volume, fallback: "Business Volume" },
-                                                { key: "likelihood_products_processes", val: item.likelihood_products_processes, fallback: "Products & Processes" },
+                                                { key: "likelihood_business_volume",      val: item.likelihood_business_volume,      fallback: "Business Volumes" },
+                                                { key: "likelihood_products_processes",   val: item.likelihood_products_processes,   fallback: "Products & Processes" },
                                                 { key: "likelihood_compliance_violations", val: item.likelihood_compliance_violations, fallback: "Compliance Violations" },
                                             ].map(({ key, val, fallback }) => (
                                                 <div key={key}>
                                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
-                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">{val?.label || "—"}</div>
+                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "—"}>{val?.label || "—"}</div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-3 gap-2">
                                             <div>
-                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volume"}</p>
-                                                <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
+                                                <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                                     <option value="">—</option>
                                                     {getOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
-                                                <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                                     <option value="">—</option>
                                                     {getOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
-                                                <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                                     <option value="">—</option>
                                                     {getOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
@@ -948,21 +970,22 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* Row 3: Control */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control</p>
-                                        <span className="text-[10px] font-mono text-teal-400/60">Score: {controlScore.toFixed(1)} (avg)</span>
+                                {/* Control Assessment — Member editable, CO read-only */}
+                                <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
+                                        {isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Filled by team members</span>}
+                                        {!isComplianceOfficer && <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore.toFixed(1)} (avg)</span>}
                                     </div>
                                     {isComplianceOfficer ? (
                                         <div className="grid grid-cols-2 gap-2">
                                             {[
-                                                { key: "control_monitoring", val: item.control_monitoring, fallback: "Monitoring Mechanism" },
+                                                { key: "control_monitoring",    val: item.control_monitoring,    fallback: "Monitoring Mechanism" },
                                                 { key: "control_effectiveness", val: item.control_effectiveness, fallback: "Control Effectiveness" },
                                             ].map(({ key, val, fallback }) => (
                                                 <div key={key}>
                                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
-                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70">{val?.label || "—"}</div>
+                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "—"}>{val?.label || "—"}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -970,14 +993,14 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
-                                                <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
                                                     <option value="">—</option>
                                                     {getOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
-                                                <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                                <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
                                                     <option value="">—</option>
                                                     {getOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
@@ -986,30 +1009,47 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* Row 4: Scores */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Scores</p>
-                                        <span className="text-[10px] text-muted-foreground/40">Derived automatically</span>
+                                {/* Risk Summary — read-only for all roles */}
+                                <div className="rounded-md border border-border/20 p-2 bg-background/40">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Risk Summary</p>
+                                        <span className="text-[10px] text-muted-foreground/40">Auto-calculated</span>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
+                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
+                                            <p className="text-sm font-semibold tabular-nums text-blue-400">{likelihoodScore > 0 ? likelihoodScore : "—"}</p>
+                                        </div>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
+                                            <p className="text-sm font-semibold tabular-nums text-pink-400">{impactScore > 0 ? impactScore : "—"}</p>
+                                        </div>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
                                             <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                {inherentRiskScore || inherentRiskScore === 0 ? inherentRiskScore.toFixed(2) : "—"}
-                                            </p>
+                                            <p className="text-sm font-semibold tabular-nums text-orange-400">{inherentRiskScore > 0 ? inherentRiskScore.toFixed(0) : "—"}</p>
+                                            {inherentRiskLabel && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{inherentRiskLabel}</p>}
                                         </div>
-                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
-                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                {residualRiskScore || residualRiskScore === 0 ? residualRiskScore.toFixed(2) : "—"}
-                                            </p>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
+                                            <p className="text-sm font-semibold tabular-nums text-teal-400">{controlScore > 0 ? controlScore.toFixed(1) : "—"}</p>
                                         </div>
-                                        <div className="rounded-lg border border-border/40 bg-background/60 p-2">
-                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Interpretation</p>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                {residualRiskLabel || "—"}
-                                            </p>
+                                    </div>
+                                    <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                                <p className="text-sm font-semibold tabular-nums text-foreground">{residualRiskScore > 0 ? residualRiskScore.toFixed(1) : "—"}</p>
+                                            </div>
+                                            {residualRiskInterpretation && (
+                                                <span className={cn(
+                                                    "text-xs font-medium px-2 py-0.5 rounded-full",
+                                                    RESIDUAL_RISK_INTERPRETATION_STYLES[residualRiskInterpretation]?.bg ?? "bg-muted/30",
+                                                    RESIDUAL_RISK_INTERPRETATION_STYLES[residualRiskInterpretation]?.text ?? "text-foreground"
+                                                )}>
+                                                    {residualRiskInterpretation}
+                                                </span>
+                                            )}
+                                            {!residualRiskInterpretation && <span className="text-xs text-muted-foreground/30">—</span>}
                                         </div>
                                     </div>
                                 </div>

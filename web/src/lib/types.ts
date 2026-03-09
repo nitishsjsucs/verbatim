@@ -328,10 +328,19 @@ export interface ActionableItem {
     // Delay monitoring & Team Lead fields
     is_delayed?: boolean;                // True if deadline passed and task not completed
     delay_detected_at?: string;          // ISO datetime when delay was detected
-    justification?: string;        // Team Lead's justification for the delay
-    justification_by?: string;     // Name of team lead who justified
-    justification_at?: string;     // ISO datetime of justification
-    justification_status?: "pending_review" | "reviewed";  // CO must review before final
+    justification?: string;        // Team Lead's justification for the delay (legacy)
+    justification_by?: string;     // Name of team lead who justified (legacy)
+    justification_at?: string;     // ISO datetime of justification (legacy)
+    justification_status?: "pending_review" | "reviewed";  // CO must review before final (legacy)
+    // 4-stage delay justification workflow
+    justification_member_text?: string;   // Stage 1: Member justification text
+    justification_member_at?: string;     // Stage 1: ISO timestamp
+    justification_reviewer_text?: string; // Stage 2: Reviewer justification text
+    justification_reviewer_at?: string;   // Stage 2: ISO timestamp
+    justification_lead_comment?: string;  // Stage 3: Lead review comment
+    justification_lead_approved_at?: string; // Stage 3: ISO timestamp
+    justification_compliance_comment?: string; // Stage 4: Compliance approval comment
+    justification_compliance_approved_at?: string; // Stage 4: ISO timestamp
     audit_trail?: AuditTrailEntry[];     // Full audit trail
     // Multi-team assignment
     assigned_teams?: string[];             // Teams assigned to this actionable
@@ -372,6 +381,11 @@ export interface ActionableItem {
     inherent_risk_label?: string;
     residual_risk_score?: number;      // inherent × control
     residual_risk_label?: string;
+    residual_risk_interpretation?: string; // "Satisfactory (Low)" / "Improvement Needed (Medium)" / "Weak (High)"
+    // Spec-compliant overall score aliases
+    overall_likelihood_score?: number; // MAX(L1, L2, L3)
+    overall_impact_score?: number;     // (impact_dropdown.score)²
+    overall_control_score?: number;    // (monitoring + effectiveness) / 2
     // Legacy impact sub-fields (backward compat with existing data)
     impact_sub1?: RiskSubDropdown;
     impact_sub2?: RiskSubDropdown;

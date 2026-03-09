@@ -81,7 +81,21 @@ const TOP_LEVEL_DEFAULTS = {
     inherent_risk_label:            "",
     residual_risk_score:            0,
     residual_risk_label:            "",
+    residual_risk_interpretation:   "",
+    // Spec-compliant overall score aliases
+    overall_likelihood_score:       0,
+    overall_impact_score:           0,
+    overall_control_score:          0,
     theme:                          "",
+    // 4-stage delay justification workflow
+    justification_member_text:      "",
+    justification_member_at:        "",
+    justification_reviewer_text:    "",
+    justification_reviewer_at:      "",
+    justification_lead_comment:     "",
+    justification_lead_approved_at: "",
+    justification_compliance_comment:      "",
+    justification_compliance_approved_at:  "",
 };
 
 function patchTeamWorkflows(teamWorkflows) {

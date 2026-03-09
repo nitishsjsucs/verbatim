@@ -198,6 +198,46 @@ export const STATUS_SORT_ORDER: Record<string, number> = {
     bypass_approved: 10,
 }
 
+// ─── Residual Risk Interpretation Styles ─────────────────────────────────────
+
+export const RESIDUAL_RISK_INTERPRETATION_STYLES: Record<string, { bg: string; text: string }> = {
+    "Satisfactory (Low)":          { bg: "bg-emerald-500/15", text: "text-emerald-400" },
+    "Improvement Needed (Medium)": { bg: "bg-yellow-500/15",  text: "text-yellow-400" },
+    "Weak (High)":                 { bg: "bg-red-500/15",     text: "text-red-400" },
+}
+
+// ─── Theme Options (categorical — no scoring) ───────────────────────────────
+
+export const THEME_OPTIONS: string[] = [
+    "Audit",
+    "Branch Banking",
+    "Business Continuity",
+    "CMS",
+    "Compliance",
+    "Corporate Governance",
+    "Credit Card",
+    "Credit Risk",
+    "Customer Service",
+    "Cyber & Information Security",
+    "Debit Card",
+    "Deposit",
+    "Digital Banking",
+    "Employer Communications",
+    "Financial Accounting & Records",
+    "Information Technology Governance / Data Governance",
+    "KYC / AML",
+    "Loans & Advances",
+    "Market Risk",
+    "NPA & Restructuring",
+    "Other Operating Regulations",
+    "Outsourcing",
+    "Priority Sector Lending (PSL)",
+    "Third Party Products",
+    "Trade & FEMA",
+    "Treasury",
+    "FCRM (Earlier part of the Vigilance theme)",
+]
+
 // ─── Role Badge Config ──────────────────────────────────────────────────────
 
 export const ROLE_BADGE: Record<string, { label: string; className: string }> = {
