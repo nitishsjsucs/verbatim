@@ -31,9 +31,106 @@ interface ActionableExpansionProps {
     // Handlers
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>, team?: string) => Promise<void>
     onAddComment: (text: string) => Promise<void>
+    onBypassApprove?: (docId: string, item: ActionableItem) => Promise<void>
+    onBypassDisapprove?: (docId: string, item: ActionableItem, reason: string, userName: string) => Promise<void>
     
     // Formatters
     formatDate: (date: string | undefined) => string
+}
+
+function BypassBannerCOInline({
+    item,
+    docId,
+    taskStatus,
+    userName,
+    formatDate,
+    onBypassApprove,
+    onBypassDisapprove,
+}: {
+    item: ActionableItem
+    docId: string
+    taskStatus: string
+    userName: string
+    formatDate: (d: string | undefined) => string
+    onBypassApprove?: (docId: string, item: ActionableItem) => Promise<void>
+    onBypassDisapprove?: (docId: string, item: ActionableItem, reason: string, userName: string) => Promise<void>
+}) {
+    const [disapproveReason, setDisapproveReason] = React.useState("")
+    const [showDisapproveInput, setShowDisapproveInput] = React.useState(false)
+
+    return (
+        <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
+            <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Flag — Awaiting Your Decision</p>
+                <p className="text-xs text-foreground/80">
+                    {taskStatus === "bypass_approved"
+                        ? "The Team Reviewer approved this wrongly-tagged flag. Approve to return this item to Actionables (clearing all submissions), or Disapprove to return it to the team member."
+                        : "This item has been flagged as incorrectly assigned."}
+                </p>
+                {item.bypass_tagged_by && (
+                    <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
+                )}
+                {item.bypass_approved_by && (
+                    <p className="text-xs text-muted-foreground/50">Reviewer approved: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
+                )}
+                {taskStatus === "bypass_approved" && !showDisapproveInput && (
+                    <div className="mt-2 flex gap-2">
+                        <button
+                            onClick={() => onBypassApprove?.(docId, item)}
+                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors font-medium"
+                        >
+                            <CheckCircle2 className="h-3 w-3" /> Approve — Return to Actionables
+                        </button>
+                        <button
+                            onClick={() => setShowDisapproveInput(true)}
+                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
+                        >
+                            <XCircle className="h-3 w-3" /> Disapprove — Return to Member
+                        </button>
+                    </div>
+                )}
+                {showDisapproveInput && (
+                    <div className="mt-2 flex items-center gap-2">
+                        <input
+                            value={disapproveReason}
+                            onChange={e => setDisapproveReason(e.target.value)}
+                            placeholder="Reason for disapproving..."
+                            className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                            autoFocus
+                            onKeyDown={e => {
+                                if (e.key === "Enter" && disapproveReason.trim()) {
+                                    onBypassDisapprove?.(docId, item, disapproveReason.trim(), userName)
+                                    setShowDisapproveInput(false)
+                                    setDisapproveReason("")
+                                }
+                                if (e.key === "Escape") { setShowDisapproveInput(false); setDisapproveReason("") }
+                            }}
+                        />
+                        <button
+                            onClick={() => {
+                                if (disapproveReason.trim()) {
+                                    onBypassDisapprove?.(docId, item, disapproveReason.trim(), userName)
+                                    setShowDisapproveInput(false)
+                                    setDisapproveReason("")
+                                }
+                            }}
+                            disabled={!disapproveReason.trim()}
+                            className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            Confirm
+                        </button>
+                        <button
+                            onClick={() => { setShowDisapproveInput(false); setDisapproveReason("") }}
+                            className="text-xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
 }
 
 export function ActionableExpansion({
@@ -48,6 +145,8 @@ export function ActionableExpansion({
     bgClassName,
     onUpdate,
     onAddComment,
+    onBypassApprove,
+    onBypassDisapprove,
     formatDate,
 }: ActionableExpansionProps) {
     // Use team workflow data if available, otherwise use parent item data
@@ -101,38 +200,17 @@ export function ActionableExpansion({
                 </div>
             )}
             
-            {/* Bypass tag banner (only for single-team items) */}
-            {!teamName && item.bypass_tag && (
-                <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
-                    <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Tagged as Incorrectly Assigned</p>
-                        <p className="text-xs text-foreground/80">This task was flagged by a team member and approved by the Team Reviewer for reassignment.</p>
-                        {item.bypass_tagged_by && (
-                            <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
-                        )}
-                        {item.bypass_approved_by && (
-                            <p className="text-xs text-muted-foreground/50">Bypass approved by {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
-                        )}
-                        {taskStatus === "review" && (
-                            <button
-                                onClick={() => onUpdate(docId, item.id, {
-                                    task_status: "assigned",
-                                    bypass_tag: false,
-                                    bypass_tagged_at: "",
-                                    bypass_tagged_by: "",
-                                    bypass_approved_by: "",
-                                    bypass_approved_at: "",
-                                    team_reviewer_approved_at: "",
-                                    team_reviewer_name: "",
-                                })}
-                                className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors font-medium"
-                            >
-                                <RotateCcw className="h-3 w-3" /> Reset Team Assignment
-                            </button>
-                        )}
-                    </div>
-                </div>
+            {/* Bypass tag banner (only for single-team items, when item is awaiting CO decision) */}
+            {!teamName && (item.bypass_tag || taskStatus === "bypass_approved") && userRole === "compliance_officer" && (
+                <BypassBannerCOInline
+                    item={item}
+                    docId={docId}
+                    taskStatus={taskStatus}
+                    userName={userName}
+                    formatDate={formatDate}
+                    onBypassApprove={onBypassApprove}
+                    onBypassDisapprove={onBypassDisapprove}
+                />
             )}
             
             {/* Approve/Reject buttons for items under review */}

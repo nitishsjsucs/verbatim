@@ -151,6 +151,12 @@ class ActionableItem:
     bypass_tagged_by: str = ""  # Name of team member who tagged
     bypass_approved_by: str = ""  # Name of checker who approved the bypass
     bypass_approved_at: str = ""  # ISO timestamp when checker approved bypass
+    bypass_disapproved_by: str = ""  # CO who disapproved the bypass
+    bypass_disapproved_at: str = ""
+    bypass_disapproval_reason: str = ""  # Reason CO disapproved
+    bypass_reviewer_rejected_by: str = ""  # Reviewer who rejected the bypass
+    bypass_reviewer_rejected_at: str = ""
+    bypass_reviewer_rejection_reason: str = ""  # Reason reviewer rejected bypass
     # ── Multi-team assignment ──
     assigned_teams: list = field(default_factory=list)  # e.g. ["Policy", "Technology"] — empty = single-team via workstream
     team_workflows: dict = field(default_factory=dict)  # Per-team workflow state, keyed by team name
@@ -332,6 +338,12 @@ class ActionableItem:
             "bypass_tagged_by": self.bypass_tagged_by,
             "bypass_approved_by": self.bypass_approved_by,
             "bypass_approved_at": self.bypass_approved_at,
+            "bypass_disapproved_by": self.bypass_disapproved_by,
+            "bypass_disapproved_at": self.bypass_disapproved_at,
+            "bypass_disapproval_reason": self.bypass_disapproval_reason,
+            "bypass_reviewer_rejected_by": self.bypass_reviewer_rejected_by,
+            "bypass_reviewer_rejected_at": self.bypass_reviewer_rejected_at,
+            "bypass_reviewer_rejection_reason": self.bypass_reviewer_rejection_reason,
             "assigned_teams": self.assigned_teams,
             "team_workflows": self.team_workflows,
         }
@@ -438,6 +450,12 @@ class ActionableItem:
             bypass_tagged_by=data.get("bypass_tagged_by", ""),
             bypass_approved_by=data.get("bypass_approved_by", ""),
             bypass_approved_at=data.get("bypass_approved_at", ""),
+            bypass_disapproved_by=data.get("bypass_disapproved_by", ""),
+            bypass_disapproved_at=data.get("bypass_disapproved_at", ""),
+            bypass_disapproval_reason=data.get("bypass_disapproval_reason", ""),
+            bypass_reviewer_rejected_by=data.get("bypass_reviewer_rejected_by", ""),
+            bypass_reviewer_rejected_at=data.get("bypass_reviewer_rejected_at", ""),
+            bypass_reviewer_rejection_reason=data.get("bypass_reviewer_rejection_reason", ""),
             assigned_teams=data.get("assigned_teams", []),
             team_workflows=data.get("team_workflows", {}),
         )

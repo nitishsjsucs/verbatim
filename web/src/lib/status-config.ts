@@ -148,8 +148,8 @@ export const TASK_STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; 
     reviewer_rejected:      { bg: "bg-rose-500/15",    text: "text-rose-400",    label: "Rejected by Reviewer" },
     awaiting_justification: { bg: "bg-yellow-600/15",  text: "text-yellow-500",  label: "Awaiting Justification" },
     pending_all_teams:      { bg: "bg-violet-500/15",  text: "text-violet-400",  label: "Pending All Teams" },
-    tagged_incorrectly:     { bg: "bg-fuchsia-500/15", text: "text-fuchsia-400", label: "Tagged Incorrectly" },
-    bypass_approved:        { bg: "bg-sky-500/15",     text: "text-sky-400",     label: "Bypass Approved" },
+    tagged_incorrectly:     { bg: "bg-orange-500/15",  text: "text-orange-400",  label: "Wrongly Tagged — Awaiting Reviewer" },
+    bypass_approved:        { bg: "bg-sky-500/15",     text: "text-sky-400",     label: "Wrongly Tagged — Awaiting CO" },
 }
 
 // ─── Task Status Colors (hex — for SVG / charts) ────────────────────────────
@@ -185,17 +185,17 @@ export const ALL_TASK_STATUSES: TaskStatus[] = [
 // ─── Status Sort Order ───────────────────────────────────────────────────────
 
 export const STATUS_SORT_ORDER: Record<string, number> = {
-    awaiting_justification: 0,
-    pending_all_teams: 1,
-    team_review: 2,
-    reviewer_rejected: 3,
-    review: 4,
-    reworking: 5,
-    in_progress: 6,
-    assigned: 7,
-    completed: 8,
-    tagged_incorrectly: 9,
-    bypass_approved: 10,
+    bypass_approved: 0,
+    tagged_incorrectly: 1,
+    awaiting_justification: 2,
+    pending_all_teams: 3,
+    team_review: 4,
+    reviewer_rejected: 5,
+    review: 6,
+    reworking: 7,
+    in_progress: 8,
+    assigned: 9,
+    completed: 10,
 }
 
 // ─── Residual Risk Interpretation Styles ─────────────────────────────────────

@@ -125,25 +125,48 @@ function TeamReviewContent() {
         }
     }, [userName, handleUpdate])
 
-    // Team Reviewer approve bypass: sends flagged item directly to CO review
+    // Team Reviewer approve bypass: sends flagged item to CO for final decision
     const handleBypassApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
         const bypassComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
             role: "team_reviewer",
-            text: "Bypass approved by Team Reviewer — forwarded to Compliance Officer for reassignment.",
+            text: "Wrongly tagged flag approved by Team Reviewer — forwarded to Compliance Officer for final decision.",
             timestamp: new Date().toISOString(),
         }
         const existing = item.comments || []
         await handleUpdate(docId, item.id, {
-            task_status: "review",
+            task_status: "bypass_approved",
             bypass_approved_by: userName,
             bypass_approved_at: new Date().toISOString(),
             team_reviewer_approved_at: new Date().toISOString(),
             team_reviewer_name: userName,
             comments: [...existing, bypassComment],
         })
-        toast.success("Bypass approved — sent to Compliance Officer for reassignment")
+        toast.success("Wrongly tagged flag approved — sent to Compliance Officer")
+    }, [userName, handleUpdate])
+
+    // Team Reviewer reject bypass: returns flagged item back to member
+    const handleBypassReject = React.useCallback(async (docId: string, item: ActionableItem, reason: string) => {
+        const rejectComment: ActionableComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "team_reviewer",
+            text: `Wrongly tagged flag rejected by Reviewer: ${reason}`,
+            timestamp: new Date().toISOString(),
+        }
+        const existing = item.comments || []
+        await handleUpdate(docId, item.id, {
+            task_status: "in_progress",
+            bypass_tag: false,
+            bypass_tagged_at: "",
+            bypass_tagged_by: "",
+            bypass_reviewer_rejected_by: userName,
+            bypass_reviewer_rejected_at: new Date().toISOString(),
+            bypass_reviewer_rejection_reason: reason,
+            comments: [...existing, rejectComment],
+        })
+        toast.success("Wrongly tagged flag rejected — returned to Team Member")
     }, [userName, handleUpdate])
 
     // Team Reviewer reject: team_review → in_progress (sends back to team member)
@@ -212,7 +235,10 @@ function TeamReviewContent() {
     // Filter by tab
     const tabRows = React.useMemo(() => {
         if (tab === "pending") {
-            return viewRows.filter(r => r.item.task_status === "team_review")
+            return viewRows.filter(r =>
+                r.item.task_status === "team_review" ||
+                r.item.task_status === "tagged_incorrectly"
+            )
         }
         return viewRows
     }, [viewRows, tab])
@@ -450,6 +476,7 @@ function TeamReviewContent() {
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onBypassApprove={handleBypassApprove}
+                                            onBypassReject={handleBypassReject}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -490,6 +517,7 @@ function TeamReviewContent() {
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onBypassApprove={handleBypassApprove}
+                                            onBypassReject={handleBypassReject}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -517,6 +545,7 @@ function ReviewRow({
     onApprove,
     onReject,
     onBypassApprove,
+    onBypassReject,
     onAddComment,
     onUpload,
     onUpdate,
@@ -530,6 +559,7 @@ function ReviewRow({
     onApprove: (docId: string, item: ActionableItem) => Promise<void>
     onReject: (docId: string, item: ActionableItem, reason: string) => Promise<void>
     onBypassApprove: (docId: string, item: ActionableItem) => Promise<void>
+    onBypassReject: (docId: string, item: ActionableItem, reason: string) => Promise<void>
     onAddComment: (docId: string, item: ActionableItem, text: string) => Promise<void>
     onUpload: (docId: string, itemId: string, file: File) => void
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>, teamOverride?: string) => Promise<void>
@@ -540,10 +570,13 @@ function ReviewRow({
     const isExpanded = expandedRow === rowKey
     const commentCount = (item.comments || []).length
     const isTeamReviewStatus = taskStatus === "team_review"
-    const isReadOnly = taskStatus === "completed" || taskStatus === "review"
+    const isTaggedIncorrectly = taskStatus === "tagged_incorrectly"
+    const isReadOnly = taskStatus === "completed" || taskStatus === "review" || taskStatus === "bypass_approved"
 
     const [rejectReason, setRejectReason] = React.useState("")
     const [showRejectInput, setShowRejectInput] = React.useState(false)
+    const [bypassRejectReason, setBypassRejectReason] = React.useState("")
+    const [showBypassRejectInput, setShowBypassRejectInput] = React.useState(false)
     const inputRef = React.useRef<HTMLInputElement>(null)
     const files = item.evidence_files || []
 
@@ -664,6 +697,7 @@ function ReviewRow({
 
                 {/* Actions */}
                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                    {/* Regular task review actions */}
                     {isTeamReviewStatus && (
                         <>
                             <button
@@ -682,6 +716,30 @@ function ReviewRow({
                             </button>
                         </>
                     )}
+                    {/* Wrongly-tagged bypass actions */}
+                    {isTaggedIncorrectly && (
+                        <>
+                            <button
+                                onClick={() => onBypassApprove(docId, item)}
+                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors font-medium"
+                                title="Approve wrongly-tagged flag — forward to CO"
+                            >
+                                <Flag className="h-2.5 w-2.5" /> Approve Flag
+                            </button>
+                            <button
+                                onClick={() => setShowBypassRejectInput(true)}
+                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                title="Reject wrongly-tagged flag — return to member"
+                            >
+                                <XCircle className="h-2.5 w-2.5" /> Reject Flag
+                            </button>
+                        </>
+                    )}
+                    {taskStatus === "bypass_approved" && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium">
+                            <Flag className="h-2.5 w-2.5" /> With CO
+                        </span>
+                    )}
                     {taskStatus === "review" && (
                         <span className="text-[10px] text-blue-400">CO Review</span>
                     )}
@@ -691,28 +749,13 @@ function ReviewRow({
                     {taskStatus === "reworking" && (
                         <span className="text-[10px] text-orange-400">Reworking</span>
                     )}
-                    {(taskStatus === "assigned" || taskStatus === "in_progress") && (
+                    {(taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reviewer_rejected") && (
                         <span className="text-[10px] text-muted-foreground/30">—</span>
-                    )}
-                    {/* Bypass tag indicator + approve bypass button */}
-                    {item.bypass_tag && isTeamReviewStatus && (
-                        <button
-                            onClick={() => onBypassApprove(docId, item)}
-                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 transition-colors font-medium"
-                            title="Approve bypass — forward to CO for reassignment"
-                        >
-                            <Flag className="h-2.5 w-2.5" /> Approve Bypass
-                        </button>
-                    )}
-                    {item.bypass_tag && !isTeamReviewStatus && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium">
-                            <Flag className="h-2.5 w-2.5" /> Flagged
-                        </span>
                     )}
                 </div>
             </div>
 
-            {/* Reject reason input */}
+            {/* Regular reject reason input */}
             {showRejectInput && (
                 <div className="bg-red-500/5 border-t border-red-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                     <input
@@ -755,26 +798,85 @@ function ReviewRow({
                 </div>
             )}
 
+            {/* Bypass reject reason input */}
+            {showBypassRejectInput && (
+                <div className="bg-amber-500/5 border-t border-amber-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <Flag className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                    <input
+                        value={bypassRejectReason}
+                        onChange={e => setBypassRejectReason(e.target.value)}
+                        placeholder="Reason for rejecting the wrongly-tagged flag..."
+                        className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-amber-500/30 focus:border-amber-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                        autoFocus
+                        onKeyDown={e => {
+                            if (e.key === "Enter" && bypassRejectReason.trim()) {
+                                onBypassReject(docId, item, bypassRejectReason.trim())
+                                setShowBypassRejectInput(false)
+                                setBypassRejectReason("")
+                            }
+                            if (e.key === "Escape") {
+                                setShowBypassRejectInput(false)
+                                setBypassRejectReason("")
+                            }
+                        }}
+                    />
+                    <button
+                        onClick={() => {
+                            if (bypassRejectReason.trim()) {
+                                onBypassReject(docId, item, bypassRejectReason.trim())
+                                setShowBypassRejectInput(false)
+                                setBypassRejectReason("")
+                            }
+                        }}
+                        disabled={!bypassRejectReason.trim()}
+                        className="text-xs px-2.5 py-1.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                        Confirm Reject Flag
+                    </button>
+                    <button
+                        onClick={() => { setShowBypassRejectInput(false); setBypassRejectReason("") }}
+                        className="text-xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            )}
+
             {/* Expanded: Comment thread */}
             {isExpanded && (
                 <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
                     {/* Bypass tag banner */}
-                    {item.bypass_tag && (
+                    {(item.bypass_tag || isTaggedIncorrectly || taskStatus === "bypass_approved") && (
                         <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
                             <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
                             <div className="flex-1">
-                                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Tagged as Incorrectly Assigned</p>
-                                <p className="text-xs text-foreground/80">A team member has flagged this task as incorrectly assigned to their team.</p>
+                                <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Flag</p>
+                                <p className="text-xs text-foreground/80">
+                                    {taskStatus === "bypass_approved"
+                                        ? "You approved this flag — it is now with the Compliance Officer for final decision."
+                                        : "A team member has flagged this task as incorrectly assigned to their team."}
+                                </p>
                                 {item.bypass_tagged_by && (
                                     <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
                                 )}
-                                {isTeamReviewStatus && (
-                                    <button
-                                        onClick={() => onBypassApprove(docId, item)}
-                                        className="mt-2 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors font-medium"
-                                    >
-                                        <CheckCircle2 className="h-3 w-3" /> Approve Bypass — Forward to CO
-                                    </button>
+                                {item.bypass_approved_by && (
+                                    <p className="text-xs text-muted-foreground/50">Approved by: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
+                                )}
+                                {isTaggedIncorrectly && (
+                                    <div className="mt-2 flex gap-2">
+                                        <button
+                                            onClick={() => onBypassApprove(docId, item)}
+                                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 transition-colors font-medium"
+                                        >
+                                            <CheckCircle2 className="h-3 w-3" /> Approve Flag — Forward to CO
+                                        </button>
+                                        <button
+                                            onClick={() => setShowBypassRejectInput(true)}
+                                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
+                                        >
+                                            <XCircle className="h-3 w-3" /> Reject Flag — Return to Member
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>

@@ -54,7 +54,8 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const isCompleted = taskStatus === "completed"
     const isUnderTeamReview = taskStatus === "team_review"
     const isUnderReview = taskStatus === "review"
-    const isReadOnly = isCompleted || isUnderTeamReview || isUnderReview
+    const isTaggedIncorrectly = taskStatus === "tagged_incorrectly" || taskStatus === "bypass_approved"
+    const isReadOnly = isCompleted || isUnderTeamReview || isUnderReview || isTaggedIncorrectly
     const files = item.evidence_files || []
 
     // Check if revert is allowed (within 10 minutes of submission)
@@ -250,8 +251,8 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                     {isCompleted && (
                         <span className="text-[10px] text-emerald-400">Done</span>
                     )}
-                    {/* Tagged Incorrectly button — only for active non-completed items */}
-                    {!isCompleted && !item.bypass_tag && (
+                    {/* Tagged Incorrectly button — available when not completed, not currently flagged/under bypass review */}
+                    {!isCompleted && !isTaggedIncorrectly && !item.bypass_tag && (
                         <button
                             onClick={() => onTagIncorrect(docId, item)}
                             className="inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-orange-500/10 hover:text-orange-500 transition-colors"
@@ -260,7 +261,12 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             <Flag className="h-2.5 w-2.5" />
                         </button>
                     )}
-                    {item.bypass_tag && (
+                    {isTaggedIncorrectly && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium" title="Awaiting reviewer/CO decision">
+                            <Flag className="h-2.5 w-2.5" /> Awaiting Review
+                        </span>
+                    )}
+                    {item.bypass_tag && !isTaggedIncorrectly && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium" title="Flagged as incorrectly assigned">
                             <Flag className="h-2.5 w-2.5" /> Flagged
                         </span>
@@ -271,15 +277,48 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             {/* Expanded: 2-column layout */}
             {expanded && (
                 <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
-                    {/* Bypass tag banner */}
-                    {item.bypass_tag && (
+                    {/* Bypass tag banner — item is currently flagged and under review */}
+                    {(item.bypass_tag || isTaggedIncorrectly) && (
                         <div className="flex items-start gap-2.5 bg-orange-500/5 border border-orange-500/20 rounded-lg px-4 py-3">
                             <Flag className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
                             <div>
                                 <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-0.5">Tagged as Incorrectly Assigned</p>
-                                <p className="text-xs text-foreground/80">This task has been flagged as incorrectly assigned to your team. The Team Reviewer will review this flag.</p>
+                                <p className="text-xs text-foreground/80">
+                                    {taskStatus === "bypass_approved"
+                                        ? "Your flag was approved by the Team Reviewer and is now with the Compliance Officer for final decision."
+                                        : "This task has been flagged as incorrectly assigned to your team. The Team Reviewer will review this flag."}
+                                </p>
                                 {item.bypass_tagged_by && (
                                     <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
+                                )}
+                                {item.bypass_approved_by && (
+                                    <p className="text-xs text-muted-foreground/50">Approved by reviewer: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {/* CO disapproval banner — CO rejected the wrongly-tagged request */}
+                    {item.bypass_disapproval_reason && (
+                        <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                            <XCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Request Disapproved by Compliance Officer</p>
+                                <p className="text-xs text-foreground/80">{item.bypass_disapproval_reason}</p>
+                                {item.bypass_disapproved_by && (
+                                    <p className="text-xs text-muted-foreground/50 mt-1">By {item.bypass_disapproved_by}{item.bypass_disapproved_at ? ` on ${formatDate(item.bypass_disapproved_at)}` : ""}</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {/* Reviewer bypass rejection banner — reviewer rejected the wrongly-tagged request */}
+                    {item.bypass_reviewer_rejection_reason && (
+                        <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
+                            <XCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Request Rejected by Reviewer</p>
+                                <p className="text-xs text-foreground/80">{item.bypass_reviewer_rejection_reason}</p>
+                                {item.bypass_reviewer_rejected_by && (
+                                    <p className="text-xs text-muted-foreground/50 mt-1">By {item.bypass_reviewer_rejected_by}{item.bypass_reviewer_rejected_at ? ` on ${formatDate(item.bypass_reviewer_rejected_at)}` : ""}</p>
                                 )}
                             </div>
                         </div>
@@ -561,9 +600,19 @@ function TeamBoardContent() {
 
     const handleTagIncorrect = React.useCallback(async (docId: string, item: ActionableItem) => {
         await handleUpdate(docId, item.id, {
+            task_status: "tagged_incorrectly",
             bypass_tag: true,
             bypass_tagged_at: new Date().toISOString(),
             bypass_tagged_by: userName,
+            // Clear any previous disapproval/rejection notes from prior cycles
+            bypass_disapproved_by: "",
+            bypass_disapproved_at: "",
+            bypass_disapproval_reason: "",
+            bypass_reviewer_rejected_by: "",
+            bypass_reviewer_rejected_at: "",
+            bypass_reviewer_rejection_reason: "",
+            bypass_approved_by: "",
+            bypass_approved_at: "",
         })
         toast.success("Task flagged as incorrectly assigned — Team Reviewer will review")
     }, [handleUpdate, userName])

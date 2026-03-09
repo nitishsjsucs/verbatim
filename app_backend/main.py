@@ -1537,6 +1537,8 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         # Tagged Incorrectly bypass flow
         "bypass_tag", "bypass_tagged_at", "bypass_tagged_by",
         "bypass_approved_by", "bypass_approved_at",
+        "bypass_disapproved_by", "bypass_disapproved_at", "bypass_disapproval_reason",
+        "bypass_reviewer_rejected_by", "bypass_reviewer_rejected_at", "bypass_reviewer_rejection_reason",
     ]
     for field_name in editable_fields:
         if field_name in body:

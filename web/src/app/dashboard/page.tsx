@@ -83,6 +83,10 @@ export default function DashboardPage() {
     // Unpublish confirmation state
     const [unpublishingItem, setUnpublishingItem] = React.useState<{ docId: string; itemId: string } | null>(null)
 
+    // Bypass disapprove state (CO disapproves wrongly-tagged flag)
+    const [disapprovingBypass, setDisapprovingBypass] = React.useState<{ docId: string; item: ActionableItem } | null>(null)
+    const [disapproveReason, setDisapproveReason] = React.useState("")
+
     const handleUnpublish = React.useCallback(async (docId: string, item: ActionableItem) => {
         // Reset actionable back to default state in Actionables section
         // Preserve: deadline, theme, tranche3, impact (impact_dropdown)
@@ -122,12 +126,18 @@ export default function DashboardPage() {
             residual_risk_score: null,
             residual_risk_interpretation: "",
             residual_risk_label: "",
-            // Clear bypass flags
+            // Clear all bypass flags
             bypass_tag: false,
             bypass_tagged_at: "",
             bypass_tagged_by: "",
             bypass_approved_by: "",
             bypass_approved_at: "",
+            bypass_disapproved_by: "",
+            bypass_disapproved_at: "",
+            bypass_disapproval_reason: "",
+            bypass_reviewer_rejected_by: "",
+            bypass_reviewer_rejected_at: "",
+            bypass_reviewer_rejection_reason: "",
         }
         // For multi-team items, also reset each team workflow's submission fields
         if (isMultiTeam(item) && item.team_workflows) {
@@ -163,55 +173,70 @@ export default function DashboardPage() {
         toast.success("Actionable unpublished — returned to Actionables")
     }, [handleUpdate])
 
-    // Reset team for wrongly-tagged items
-    // Single-team: full reset (clear all role data, retain deadlines/theme/tranche/impact)
-    // Multi-team: partial reset (only reset the flagged team's workflow)
-    const handleResetTeam = React.useCallback(async (docId: string, item: ActionableItem) => {
-        const multi = isMultiTeam(item)
-        const baseBypassClear: Record<string, unknown> = {
+    // CO approves wrongly-tagged flag → full unpublish + clear back to Actionables section
+    // Clears all member data (comments, evidence, risk inputs, parameters)
+    // Preserves: deadline, theme, tranche3, impact_dropdown
+    const handleBypassApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
+        const bypassClear: Record<string, unknown> = {
+            // Return to Actionables (unpublish)
+            published_at: "",
+            task_status: "",
+            approval_status: "pending",
+            // Clear all member/reviewer data
+            completion_date: "",
+            evidence_files: [],
+            comments: [],
+            rejection_reason: "",
+            justification: "",
+            justification_by: "",
+            justification_at: "",
+            justification_status: "",
+            is_delayed: false,
+            delay_detected_at: "",
+            submitted_at: "",
+            team_reviewer_name: "",
+            team_reviewer_approved_at: "",
+            team_reviewer_rejected_at: "",
+            reviewer_comments: "",
+            implementation_notes: "",
+            // Clear risk inputs
+            likelihood_business_volume: null,
+            likelihood_products_processes: null,
+            likelihood_compliance_violations: null,
+            likelihood_score: null,
+            control_monitoring: null,
+            control_effectiveness: null,
+            control_score: null,
+            overall_likelihood_score: null,
+            overall_impact_score: null,
+            inherent_risk_score: null,
+            inherent_risk_label: "",
+            overall_control_score: null,
+            residual_risk_score: null,
+            residual_risk_interpretation: "",
+            residual_risk_label: "",
+            // Clear all bypass flags
             bypass_tag: false,
             bypass_tagged_at: "",
             bypass_tagged_by: "",
             bypass_approved_by: "",
             bypass_approved_at: "",
-            team_reviewer_approved_at: "",
-            team_reviewer_name: "",
+            bypass_disapproved_by: "",
+            bypass_disapproved_at: "",
+            bypass_disapproval_reason: "",
+            bypass_reviewer_rejected_by: "",
+            bypass_reviewer_rejected_at: "",
+            bypass_reviewer_rejection_reason: "",
         }
-
-        if (!multi) {
-            // Single-team: full reset — clear all role submissions, keep deadlines/theme/tranche/impact/implementation_notes
-            await handleUpdate(docId, item.id, {
-                ...baseBypassClear,
-                task_status: "assigned",
-                completion_date: "",
-                evidence_files: [],
-                comments: [],
-                rejection_reason: "",
-                justification: "",
-                justification_by: "",
-                justification_at: "",
-                justification_status: "",
-                is_delayed: false,
-                delay_detected_at: "",
-                submitted_at: "",
-                team_reviewer_rejected_at: "",
-                reviewer_comments: "",
-            })
-            toast.success("Team reset — actionable returned to Assigned for reassignment")
-        } else {
-            // Multi-team: partial reset — only clear the workflows of bypassed teams
-            // Find which teams were bypass-tagged (those in "review" with bypass_tag)
-            // Reset those team workflows, keep others intact
+        // For multi-team items, also reset each team's workflow
+        if (isMultiTeam(item) && item.team_workflows) {
             const resetWorkflows: Record<string, unknown> = {}
-            const teamsToKeep: string[] = []
             for (const team of item.assigned_teams || []) {
-                const tw = item.team_workflows?.[team]
-                // If this team's workflow led to the bypass, reset it
-                // For simplicity, reset all team workflows but keep team assignments
+                const tw = item.team_workflows[team]
                 if (tw) {
                     resetWorkflows[team] = {
                         ...tw,
-                        task_status: "assigned",
+                        task_status: "",
                         completion_date: "",
                         evidence_files: [],
                         comments: [],
@@ -227,17 +252,45 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
+                        implementation_notes: "",
                     }
                 }
-                teamsToKeep.push(team)
             }
-            await handleUpdate(docId, item.id, {
-                ...baseBypassClear,
-                task_status: "assigned",
-                team_workflows: resetWorkflows,
-            })
-            toast.success("Team workflows reset — actionable returned to Assigned for reassignment")
+            bypassClear.team_workflows = resetWorkflows
         }
+        await handleUpdate(docId, item.id, bypassClear)
+        toast.success("Wrongly-tagged approved — actionable returned to Actionables for re-assignment and re-publish")
+    }, [handleUpdate])
+
+    // CO disapproves wrongly-tagged flag → return to member in_progress with note
+    const handleBypassDisapprove = React.useCallback(async (docId: string, item: ActionableItem, reason: string, userName: string) => {
+        const updates: Record<string, unknown> = {
+            task_status: "in_progress",
+            bypass_tag: false,
+            bypass_tagged_at: "",
+            bypass_tagged_by: "",
+            bypass_approved_by: "",
+            bypass_approved_at: "",
+            bypass_reviewer_rejected_by: "",
+            bypass_reviewer_rejected_at: "",
+            bypass_reviewer_rejection_reason: "",
+            bypass_disapproved_by: userName,
+            bypass_disapproved_at: new Date().toISOString(),
+            bypass_disapproval_reason: reason,
+        }
+        // For multi-team items, restore each team workflow to in_progress
+        if (isMultiTeam(item) && item.team_workflows) {
+            const updatedWorkflows: Record<string, unknown> = {}
+            for (const team of item.assigned_teams || []) {
+                const tw = item.team_workflows[team]
+                if (tw) {
+                    updatedWorkflows[team] = { ...tw, task_status: "in_progress" }
+                }
+            }
+            updates.team_workflows = updatedWorkflows
+        }
+        await handleUpdate(docId, item.id, updates)
+        toast.success("Wrongly-tagged disapproved — actionable returned to Team Member")
     }, [handleUpdate])
 
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
@@ -925,21 +978,30 @@ export default function DashboardPage() {
                                                     {!multi && (taskStatus === "assigned" || taskStatus === "in_progress") && (
                                                         <span className="text-[10px] text-muted-foreground/30">—</span>
                                                     )}
-                                                    {/* Bypass flag indicator */}
-                                                    {item.bypass_tag && (
-                                                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium" title={`Flagged by ${item.bypass_tagged_by || "team member"}`}>
-                                                            <Flag className="h-2.5 w-2.5" /> Bypass
-                                                        </span>
+                                                    {/* Wrongly-tagged: CO approve/disapprove buttons */}
+                                                    {taskStatus === "bypass_approved" && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleBypassApprove(docId, item)}
+                                                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
+                                                                title="Approve — return to Actionables for reassignment"
+                                                            >
+                                                                <CheckCircle2 className="h-2.5 w-2.5" /> Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setDisapprovingBypass({ docId, item }); setDisapproveReason("") }}
+                                                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
+                                                                title="Disapprove — return to team member"
+                                                            >
+                                                                <XCircle className="h-2.5 w-2.5" /> Disapprove
+                                                            </button>
+                                                        </>
                                                     )}
-                                                    {/* Reset Team — for bypassed items under CO review */}
-                                                    {item.bypass_tag && taskStatus === "review" && (
-                                                        <button
-                                                            onClick={() => handleResetTeam(docId, item)}
-                                                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors font-medium"
-                                                            title="Reset team assignment — return to Assigned status"
-                                                        >
-                                                            <RotateCcw className="h-2.5 w-2.5" /> Reset Team
-                                                        </button>
+                                                    {/* Bypass flag indicator for non-actionable bypass statuses */}
+                                                    {item.bypass_tag && taskStatus !== "bypass_approved" && (
+                                                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-500 font-medium" title={`Flagged by ${item.bypass_tagged_by || "team member"}`}>
+                                                            <Flag className="h-2.5 w-2.5" /> Flagged
+                                                        </span>
                                                     )}
                                                     {/* Unpublish button */}
                                                     <button
@@ -1194,6 +1256,47 @@ export default function DashboardPage() {
                                                 </div>
                                             )}
 
+                                            {/* ── Bypass disapprove dialog ── */}
+                                            {disapprovingBypass?.item.id === item.id && disapprovingBypass.docId === docId && (
+                                                <div className="bg-red-500/5 border-t border-red-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                    <Flag className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                                                    <input
+                                                        value={disapproveReason}
+                                                        onChange={e => setDisapproveReason(e.target.value)}
+                                                        placeholder="Reason for disapproving the wrongly-tagged request..."
+                                                        className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
+                                                        autoFocus
+                                                        onKeyDown={e => {
+                                                            if (e.key === "Enter" && disapproveReason.trim()) {
+                                                                handleBypassDisapprove(disapprovingBypass.docId, disapprovingBypass.item, disapproveReason.trim(), userName)
+                                                                setDisapprovingBypass(null)
+                                                                setDisapproveReason("")
+                                                            }
+                                                            if (e.key === "Escape") { setDisapprovingBypass(null); setDisapproveReason("") }
+                                                        }}
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            if (disapproveReason.trim()) {
+                                                                handleBypassDisapprove(disapprovingBypass.docId, disapprovingBypass.item, disapproveReason.trim(), userName)
+                                                                setDisapprovingBypass(null)
+                                                                setDisapproveReason("")
+                                                            }
+                                                        }}
+                                                        disabled={!disapproveReason.trim()}
+                                                        className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    >
+                                                        Confirm Disapprove
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setDisapprovingBypass(null); setDisapproveReason("") }}
+                                                        className="text-xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             {/* ── Single-team expanded ── */}
                                             {!multi && isExpanded && (
                                                 <ActionableExpansion
@@ -1206,6 +1309,8 @@ export default function DashboardPage() {
                                                     bgClassName={(WORKSTREAM_COLORS[item.workstream] || DEFAULT_WORKSTREAM_COLORS).bg}
                                                     onUpdate={handleUpdate}
                                                     onAddComment={async (text) => handleAddComment(docId, item, text)}
+                                                    onBypassApprove={handleBypassApprove}
+                                                    onBypassDisapprove={handleBypassDisapprove}
                                                     formatDate={formatDate}
                                                 />
                                             )}

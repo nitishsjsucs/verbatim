@@ -397,6 +397,12 @@ export interface ActionableItem {
     bypass_tagged_by?: string;
     bypass_approved_by?: string;
     bypass_approved_at?: string;
+    bypass_disapproved_by?: string;   // CO who disapproved
+    bypass_disapproved_at?: string;
+    bypass_disapproval_reason?: string; // Reason for CO disapproval
+    bypass_reviewer_rejected_by?: string;  // Reviewer who rejected the bypass
+    bypass_reviewer_rejected_at?: string;
+    bypass_reviewer_rejection_reason?: string; // Reason for reviewer rejection
     // Legacy fields kept for backward compat with existing data
     actor?: string;
     object?: string;
