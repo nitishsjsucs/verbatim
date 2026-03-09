@@ -1,7 +1,7 @@
 const { MongoClient } = require('./web/node_modules/mongodb');
 
 /**
- * Global Actionable Status Reset (Dynamic Teams Edition)
+ * Global Actionable Status Reset (Latest Schema Edition)
  *
  * Resets task_status to "assigned" for every ActionableItem nested inside
  * every ActionablesResult document in the 'actionables' collection.
@@ -11,13 +11,24 @@ const { MongoClient } = require('./web/node_modules/mongodb');
  *   Collection: actionables
  *   Document:   { _id: <doc_id>, actionables: [ { task_status, team_workflows, ... }, ... ], ... }
  *
- * Workflow-state fields reset per item:
+ * Workflow-state fields reset per item (legacy):
  *   task_status, submitted_at, completion_date, reviewer_comments,
  *   team_reviewer_name, team_reviewer_approved_at, team_reviewer_rejected_at,
  *   is_delayed, delay_detected_at, justification, justification_by,
- *   justification_at, team_workflows (each team reset to "assigned")
+ *   justification_at, justification_status
  *
- * Fields NOT touched: evidence_files, comments, delay_chat, audit_trail,
+ * NEW: 4-stage justification approval chain (all cleared):
+ *   justification_member_text, justification_member_at, justification_member_by,
+ *   justification_reviewer_approved, justification_reviewer_comment, justification_reviewer_by, justification_reviewer_at,
+ *   justification_lead_approved, justification_lead_comment, justification_lead_by, justification_lead_at,
+ *   justification_co_approved, justification_co_comment, justification_co_by, justification_co_at
+ *
+ * NEW: Role-specific mandatory comment fields (all cleared):
+ *   member_comment, reviewer_comment, lead_comment, co_comment
+ *
+ * Per-team workflows: each team reset to "assigned" with same new fields cleared.
+ *
+ * Fields NOT touched: evidence_files, comments, audit_trail,
  *   assigned_teams, workstream, and all extraction/metadata fields.
  *
  * Preserves: teams collection, users collection.
@@ -98,7 +109,7 @@ async function resetActionables() {
                 approval_status:              "pending",
                 published_at:                 "",
                 task_status:                  "",
-                // Clear all workflow state
+                // Clear all workflow state (legacy)
                 submitted_at:                 "",
                 completion_date:              "",
                 reviewer_comments:            "",
@@ -112,6 +123,27 @@ async function resetActionables() {
                 justification_by:             "",
                 justification_at:             "",
                 justification_status:         "",
+                // Clear new 4-stage justification approval chain
+                justification_member_text:    "",
+                justification_member_at:      "",
+                justification_member_by:      "",
+                justification_reviewer_approved: false,
+                justification_reviewer_comment: "",
+                justification_reviewer_by:    "",
+                justification_reviewer_at:    "",
+                justification_lead_approved:  false,
+                justification_lead_comment:   "",
+                justification_lead_by:        "",
+                justification_lead_at:        "",
+                justification_co_approved:    false,
+                justification_co_comment:     "",
+                justification_co_by:          "",
+                justification_co_at:          "",
+                // Clear role-specific mandatory comment fields
+                member_comment:               "",
+                reviewer_comment:             "",
+                lead_comment:                 "",
+                co_comment:                   "",
                 team_workflows:               resetTeamWorkflows(item.team_workflows),
             }));
 
