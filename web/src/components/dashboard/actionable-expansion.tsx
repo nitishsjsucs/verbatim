@@ -149,6 +149,20 @@ export function ActionableExpansion({
     onBypassDisapprove,
     formatDate,
 }: ActionableExpansionProps) {
+    // Recompute risk scores client-side using new formula so CO tracker always shows correct values
+    const safeRiskScore = (d: { score?: number } | null | undefined) => (d && typeof d.score === "number" ? d.score : 0)
+    const computedLikScore = Math.max(safeRiskScore(item.likelihood_business_volume), safeRiskScore(item.likelihood_products_processes), safeRiskScore(item.likelihood_compliance_violations))
+    const computedImpScore = safeRiskScore(item.impact_dropdown) ** 2
+    const computedMonS = safeRiskScore(item.control_monitoring)
+    const computedEffS = safeRiskScore(item.control_effectiveness)
+    const computedCtrlScore = (computedMonS || computedEffS) ? (computedMonS + computedEffS) / 2 : 0
+    const computedInherent = computedLikScore * computedImpScore
+    const allRiskFilled = !!(item.likelihood_business_volume?.label && item.likelihood_products_processes?.label && item.likelihood_compliance_violations?.label && item.impact_dropdown?.label && item.control_monitoring?.label && item.control_effectiveness?.label)
+    const computedResidual = allRiskFilled ? computedInherent + computedCtrlScore : 0
+    const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
+    const computedResidualLabel = allRiskFilled ? classifyRisk(computedResidual) : ""
+    const computedResidualInterp = !allRiskFilled ? "" : computedResidual < 13 ? "Satisfactory (Low)" : computedResidual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+
     // Use team workflow data if available, otherwise use parent item data
     const tw = teamWorkflow
     const justification = tw?.justification || item.justification
@@ -387,7 +401,7 @@ export function ActionableExpansion({
                             </div>
                         </div>
 
-                        {/* Risk Summary */}
+                        {/* Risk Summary — computed client-side with new formula */}
                         <div>
                             <div className="flex items-center justify-between mb-1">
                                 <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Risk Summary</p>
@@ -397,26 +411,26 @@ export function ActionableExpansion({
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
                                     <p className="text-sm font-semibold tabular-nums text-blue-400">
-                                        {(item.overall_likelihood_score ?? item.likelihood_score ?? 0) > 0 ? (item.overall_likelihood_score ?? item.likelihood_score) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                        {computedLikScore > 0 ? computedLikScore : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
                                 </div>
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
                                     <p className="text-sm font-semibold tabular-nums text-pink-400">
-                                        {(item.overall_impact_score ?? item.impact_score ?? 0) > 0 ? (item.overall_impact_score ?? item.impact_score) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                        {computedImpScore > 0 ? computedImpScore : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
                                 </div>
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
                                     <p className="text-sm font-semibold tabular-nums text-orange-400">
-                                        {(item.inherent_risk_score ?? 0) > 0 ? item.inherent_risk_score!.toFixed(0) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                        {computedInherent > 0 ? computedInherent.toFixed(0) : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
-                                    {item.inherent_risk_label && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{item.inherent_risk_label}</p>}
+                                    {computedInherent > 0 && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{classifyRisk(computedInherent)}</p>}
                                 </div>
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
                                     <p className="text-sm font-semibold tabular-nums text-teal-400">
-                                        {(item.overall_control_score ?? item.control_score ?? 0) > 0 ? (item.overall_control_score ?? item.control_score)!.toFixed(1) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                        {computedCtrlScore > 0 ? computedCtrlScore.toFixed(1) : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
                                 </div>
                             </div>
@@ -425,23 +439,21 @@ export function ActionableExpansion({
                                     <div>
                                         <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
                                         <p className="text-sm font-semibold tabular-nums text-foreground">
-                                            {(item.residual_risk_score ?? 0) > 0 ? item.residual_risk_score!.toFixed(1) : <span className="text-muted-foreground/40 text-xs">—</span>}
+                                            {allRiskFilled && computedResidual > 0 ? computedResidual.toFixed(1) : <span className="text-muted-foreground/40 text-xs">—</span>}
                                         </p>
                                     </div>
-                                    {(item.residual_risk_interpretation || item.residual_risk_label) && (() => {
-                                        const interp = item.residual_risk_interpretation || item.residual_risk_label || ""
-                                        const style = RESIDUAL_RISK_INTERPRETATION_STYLES[interp]
+                                    {computedResidualInterp ? (() => {
+                                        const style = RESIDUAL_RISK_INTERPRETATION_STYLES[computedResidualInterp]
                                         return (
                                             <span className={cn(
                                                 "text-xs font-medium px-2 py-0.5 rounded-full",
                                                 style?.bg ?? "bg-muted/30",
                                                 style?.text ?? "text-foreground"
                                             )}>
-                                                {interp}
+                                                {computedResidualInterp}
                                             </span>
                                         )
-                                    })()}
-                                    {!(item.residual_risk_interpretation || item.residual_risk_label) && (
+                                    })() : (
                                         <span className="text-xs text-muted-foreground/30">—</span>
                                     )}
                                 </div>

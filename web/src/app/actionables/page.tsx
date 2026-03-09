@@ -251,16 +251,18 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const monScore = safeScore(draftCtrlMon)
     const effScore = safeScore(draftCtrlEff)
     const controlScore = (monScore || effScore) ? (monScore + effScore) / 2 : 0
-    // RESIDUAL RISK = inherent × control
-    const residualRiskScore = inherentRiskScore * controlScore
+    // All 6 risk parameters must be filled for residual to calculate
+    const allRiskFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
+    // RESIDUAL RISK = inherent risk + control score (only when all params filled)
+    const residualRiskScore = allRiskFilled ? inherentRiskScore + controlScore : 0
     const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
     const impactLabel = React.useMemo(() => {
         const label = getLabel("impact_dropdown")
         return label.toLowerCase() === "impact_dropdown" ? "Impact Assessment" : label
     }, [getLabel])
     const inherentRiskLabel = classifyRisk(inherentRiskScore)
-    const residualRiskLabel = classifyRisk(residualRiskScore)
-    const residualRiskInterpretation = residualRiskScore < 1 ? "" : residualRiskScore < 13 ? "Satisfactory (Low)" : residualRiskScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+    const residualRiskLabel = allRiskFilled ? classifyRisk(residualRiskScore) : ""
+    const residualRiskInterpretation = !allRiskFilled ? "" : residualRiskScore < 13 ? "Satisfactory (Low)" : residualRiskScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -390,24 +392,31 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             // Risk assessment — structured sub-dropdowns
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
             if (draftTheme !== safeStr(item.theme)) updates.theme = draftTheme
-            if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
-            if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
-            if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
-            if (subDiffers(draftImpactDD, item.impact_dropdown)) updates.impact_dropdown = draftImpactDD
-            if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
-            if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
-            // Send computed scores so backend recomputes and persists
-            updates.likelihood_score = likelihoodScore
-            updates.impact_score = impactScore
-            updates.control_score = controlScore
-            updates.inherent_risk_score = inherentRiskScore
-            updates.inherent_risk_label = inherentRiskLabel
-            updates.residual_risk_score = residualRiskScore
-            updates.residual_risk_label = residualRiskLabel
-            updates.residual_risk_interpretation = residualRiskInterpretation
-            updates.overall_likelihood_score = Math.round(likelihoodScore)
-            updates.overall_impact_score = Math.round(impactScore)
-            updates.overall_control_score = controlScore
+            // CO only sets impact_dropdown; members set likelihood + control
+            if (isComplianceOfficer) {
+                if (subDiffers(draftImpactDD, item.impact_dropdown)) {
+                    updates.impact_dropdown = draftImpactDD
+                    updates.overall_impact_score = impactScore
+                }
+            } else {
+                if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
+                if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
+                if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+                if (subDiffers(draftImpactDD, item.impact_dropdown)) updates.impact_dropdown = draftImpactDD
+                if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
+                if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
+                // Send computed scores
+                updates.likelihood_score = likelihoodScore
+                updates.control_score = controlScore
+                updates.inherent_risk_score = inherentRiskScore
+                updates.inherent_risk_label = inherentRiskLabel
+                updates.residual_risk_score = residualRiskScore
+                updates.residual_risk_label = residualRiskLabel
+                updates.residual_risk_interpretation = residualRiskInterpretation
+                updates.overall_likelihood_score = Math.round(likelihoodScore)
+                updates.overall_impact_score = Math.round(impactScore)
+                updates.overall_control_score = controlScore
+            }
             // Deadline
             const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
             if (dl !== (item.deadline || "")) updates.deadline = dl

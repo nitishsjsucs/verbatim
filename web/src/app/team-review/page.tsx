@@ -10,6 +10,7 @@ import {
     ActionableItem,
     TaskStatus,
     ActionableComment,
+    RiskSubDropdown,
     getTeamView,
     isMultiTeam,
     getClassification,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/status-config"
 import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { useTeams } from "@/lib/use-teams"
+import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
 import { useActionables } from "@/lib/use-actionables"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -579,6 +581,74 @@ function ReviewRow({
     const [showBypassRejectInput, setShowBypassRejectInput] = React.useState(false)
     const inputRef = React.useRef<HTMLInputElement>(null)
     const files = item.evidence_files || []
+    const { getOptions, getLabel } = useDropdownConfig()
+
+    const FALLBACK_RISK_OPTIONS: Record<string, DropdownOption[]> = React.useMemo(() => ({
+        likelihood_business_volume: [
+            { label: "Moderate Increase — Up to 15%", value: 1 },
+            { label: "Substantial Increase — Between 15% and 30%", value: 2 },
+            { label: "Very High Increase — More than 30%", value: 3 },
+        ],
+        likelihood_products_processes: [
+            { label: "Products/processes rolled out during the year — Less than 4", value: 1 },
+            { label: "Products/processes rolled out during the year — Between 4 and 7", value: 2 },
+            { label: "Many products rolled out during the year — More than 7", value: 3 },
+        ],
+        likelihood_compliance_violations: [
+            { label: "No violation", value: 1 },
+            { label: "1 violation", value: 2 },
+            { label: "Greater than 1", value: 3 },
+        ],
+        control_monitoring: [
+            { label: "Automated", value: 1 },
+            { label: "Maker-Checker", value: 2 },
+            { label: "No Checker / No Control", value: 3 },
+        ],
+        control_effectiveness: [
+            { label: "Well Controlled / Meets Requirements", value: 1 },
+            { label: "Improvement Needed", value: 2 },
+            { label: "Significant Improvement Needed", value: 3 },
+        ],
+    }), [])
+
+    const getSafeOptions = React.useCallback((key: string): DropdownOption[] => {
+        const opts = getOptions(key)
+        return opts.length ? opts : (FALLBACK_RISK_OPTIONS[key] || [])
+    }, [getOptions, FALLBACK_RISK_OPTIONS])
+
+    const pickSubDropdown = React.useCallback((configKey: string, selectedLabel: string): RiskSubDropdown => {
+        const opt = getSafeOptions(configKey).find(o => o.label === selectedLabel)
+        return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
+    }, [getSafeOptions])
+
+    // Reviewer can override likelihood/control — saves immediately with recomputed scores
+    const handleRiskFieldChange = React.useCallback(async (field: string, value: RiskSubDropdown) => {
+        const updated = { ...item, [field]: value }
+        const safeScore = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
+        const likScore = Math.max(safeScore(updated.likelihood_business_volume), safeScore(updated.likelihood_products_processes), safeScore(updated.likelihood_compliance_violations))
+        const impScore = safeScore(updated.impact_dropdown) ** 2
+        const monS = safeScore(updated.control_monitoring)
+        const effS = safeScore(updated.control_effectiveness)
+        const ctrlScore = (monS || effS) ? (monS + effS) / 2 : 0
+        const inherent = likScore * impScore
+        const allFilled = !!(updated.likelihood_business_volume?.label && updated.likelihood_products_processes?.label && updated.likelihood_compliance_violations?.label && updated.impact_dropdown?.label && updated.control_monitoring?.label && updated.control_effectiveness?.label)
+        const residual = allFilled ? inherent + ctrlScore : 0
+        const classify = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
+        const interp = !allFilled ? "" : residual < 13 ? "Satisfactory (Low)" : residual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+        await onUpdate(docId, item.id, {
+            [field]: value,
+            likelihood_score: likScore,
+            control_score: ctrlScore,
+            overall_likelihood_score: Math.round(likScore),
+            overall_impact_score: Math.round(impScore),
+            overall_control_score: ctrlScore,
+            inherent_risk_score: inherent,
+            inherent_risk_label: classify(inherent),
+            residual_risk_score: residual,
+            residual_risk_label: allFilled ? classify(residual) : "",
+            residual_risk_interpretation: interp,
+        })
+    }, [item, docId, onUpdate])
 
     const handleUploadClick = () => {
         inputRef.current?.click()
@@ -926,7 +996,104 @@ function ReviewRow({
                         </div>
                     </div>
 
-                    {/* Risk Assessment removed — CO only */}
+                    {/* Risk Assessment — Theme/Tranche/Impact read-only, Likelihood+Control overridable by reviewer */}
+                    <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
+                            <span className="text-[10px] text-muted-foreground/40 italic">Reviewer can override Likelihood &amp; Control · Theme, Tranche, Impact set by Compliance</span>
+                        </div>
+
+                        {/* Row 1: Theme + Tranche3 + Impact (read-only from CO) */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.tranche3 || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Likelihood (3 dropdowns) — reviewer can override */}
+                        <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
+                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {item.likelihood_score ?? "—"} (MAX of 3)</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                        <select value={item.likelihood_business_volume?.label || ""} onChange={e => handleRiskFieldChange("likelihood_business_volume", pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                            <option value="">— Select —</option>
+                                            {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.likelihood_business_volume?.label || "—"}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                        <select value={item.likelihood_products_processes?.label || ""} onChange={e => handleRiskFieldChange("likelihood_products_processes", pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                            <option value="">— Select —</option>
+                                            {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.likelihood_products_processes?.label || "—"}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                        <select value={item.likelihood_compliance_violations?.label || ""} onChange={e => handleRiskFieldChange("likelihood_compliance_violations", pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                            <option value="">— Select —</option>
+                                            {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.likelihood_compliance_violations?.label || "—"}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Row 3: Control (2 dropdowns) — reviewer can override */}
+                        <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
+                                <span className="text-[10px] font-mono text-teal-400/60">Overall: {item.control_score != null ? item.control_score.toFixed(1) : "—"} (avg)</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                        <select value={item.control_monitoring?.label || ""} onChange={e => handleRiskFieldChange("control_monitoring", pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
+                                            <option value="">— Select —</option>
+                                            {getSafeOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.control_monitoring?.label || "—"}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                        <select value={item.control_effectiveness?.label || ""} onChange={e => handleRiskFieldChange("control_effectiveness", pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
+                                            <option value="">— Select —</option>
+                                            {getSafeOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.control_effectiveness?.label || "—"}</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* 2-column: left=impl+files, right=comments */}
                     <div className="grid grid-cols-2 gap-4">
