@@ -598,8 +598,8 @@ export function ActionableExpansion({
                         </div>
                     )}
 
-                    {/* CO mandatory comment box */}
-                    {userRole === "compliance_officer" && (
+                    {/* CO mandatory comment box — only during review */}
+                    {userRole === "compliance_officer" && taskStatus === "review" && (
                         <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-1.5">
