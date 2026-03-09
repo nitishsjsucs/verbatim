@@ -282,7 +282,7 @@ async function fullSystemReset() {
                     id: `account_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                     userId: userId,
                     accountId: userData.email,
-                    providerId: 'credential',
+                    providerId: 'email',
                     accessToken: null,
                     refreshToken: null,
                     idToken: null,
