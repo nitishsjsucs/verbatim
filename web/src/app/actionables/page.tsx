@@ -964,36 +964,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* Likelihood — Member editable, CO read-only */}
-                                <div className="rounded-md border border-border/20 p-2 bg-muted/10">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
-                                        {isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Filled by team members</span>}
-                                        {!isComplianceOfficer && <span className="text-[10px] font-mono text-blue-400/60">Overall: {likelihoodScore} (MAX of 3)</span>}
-                                    </div>
-                                    {isComplianceOfficer ? (
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { key: "likelihood_business_volume",      val: item.likelihood_business_volume,      fallback: "Business Volumes" },
-                                                { key: "likelihood_products_processes",   val: item.likelihood_products_processes,   fallback: "Products & Processes" },
-                                                { key: "likelihood_compliance_violations", val: item.likelihood_compliance_violations, fallback: "Compliance Violations" },
-                                            ].map(({ key, val, fallback }) => (
-                                                <div key={key}>
-                                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
-                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "Will be filled by Member"}>
-                                                        {val?.label ? (
-                                                            <span className="flex items-center justify-between gap-1">
-                                                                <span className="truncate">{val.label}</span>
-                                                                <span className="text-[10px] font-mono text-muted-foreground/60">Score: {safeScore(val) || "—"}</span>
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground/40 italic">Will be filled by Member</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                {/* Likelihood — Member editable, hidden for Compliance */}
+                                {!isComplianceOfficer && (
+                                    <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
+                                            <span className="text-[10px] font-mono text-blue-400/60">Overall: {likelihoodScore} (MAX of 3)</span>
                                         </div>
-                                    ) : (
                                         <div className="grid grid-cols-3 gap-2">
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
@@ -1017,38 +994,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 </select>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Control Assessment — Member editable, CO read-only */}
-                                <div className="rounded-md border border-border/20 p-2 bg-muted/10">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
-                                        {isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Filled by team members</span>}
-                                        {!isComplianceOfficer && <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore.toFixed(1)} (avg)</span>}
                                     </div>
-                                    {isComplianceOfficer ? (
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {[
-                                                { key: "control_monitoring",    val: item.control_monitoring,    fallback: "Monitoring Mechanism" },
-                                                { key: "control_effectiveness", val: item.control_effectiveness, fallback: "Control Effectiveness" },
-                                            ].map(({ key, val, fallback }) => (
-                                                <div key={key}>
-                                                    <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel(key) || fallback}</p>
-                                                    <div className="text-xs bg-muted/20 rounded px-2 py-1 border border-border/20 text-foreground/70 truncate" title={val?.label || "Will be filled by Member"}>
-                                                        {val?.label ? (
-                                                            <span className="flex items-center justify-between gap-1">
-                                                                <span className="truncate">{val.label}</span>
-                                                                <span className="text-[10px] font-mono text-muted-foreground/60">Score: {safeScore(val) || "—"}</span>
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground/40 italic">Will be filled by Member</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                )}
+
+                                {/* Control Assessment — Member editable, hidden for Compliance */}
+                                {!isComplianceOfficer && (
+                                    <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
+                                            <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore.toFixed(1)} (avg)</span>
                                         </div>
-                                    ) : (
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
@@ -1065,53 +1020,55 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 </select>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
 
-                                {/* Risk Summary — read-only for all roles */}
-                                <div className="rounded-md border border-border/20 p-2 bg-background/40">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Risk Summary</p>
-                                        <span className="text-[10px] text-muted-foreground/40">Auto-calculated</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 mb-2">
-                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
-                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
-                                            <p className="text-sm font-semibold tabular-nums text-blue-400">{likelihoodScore > 0 ? likelihoodScore : "—"}</p>
+                                {/* Risk Summary — hidden for Compliance */}
+                                {!isComplianceOfficer && (
+                                    <div className="rounded-md border border-border/20 p-2 bg-background/40">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Risk Summary</p>
+                                            <span className="text-[10px] text-muted-foreground/40">Auto-calculated</span>
                                         </div>
-                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
-                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
-                                            <p className="text-sm font-semibold tabular-nums text-pink-400">{impactScore > 0 ? impactScore : "—"}</p>
-                                        </div>
-                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
-                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
-                                            <p className="text-sm font-semibold tabular-nums text-orange-400">{inherentRiskScore > 0 ? inherentRiskScore.toFixed(0) : "—"}</p>
-                                            {inherentRiskLabel && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{inherentRiskLabel}</p>}
-                                        </div>
-                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
-                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
-                                            <p className="text-sm font-semibold tabular-nums text-teal-400">{controlScore > 0 ? controlScore.toFixed(1) : "—"}</p>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-md border border-border/30 bg-background/60 p-2">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
-                                                <p className="text-sm font-semibold tabular-nums text-foreground">{residualRiskScore > 0 ? residualRiskScore.toFixed(1) : "—"}</p>
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                            <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
+                                                <p className="text-sm font-semibold tabular-nums text-blue-400">{likelihoodScore > 0 ? likelihoodScore : "—"}</p>
                                             </div>
-                                            {residualRiskInterpretation && (
-                                                <span className={cn(
-                                                    "text-xs font-medium px-2 py-0.5 rounded-full",
-                                                    RESIDUAL_RISK_INTERPRETATION_STYLES[residualRiskInterpretation]?.bg ?? "bg-muted/30",
-                                                    RESIDUAL_RISK_INTERPRETATION_STYLES[residualRiskInterpretation]?.text ?? "text-foreground"
-                                                )}>
-                                                    {residualRiskInterpretation}
-                                                </span>
-                                            )}
-                                            {!residualRiskInterpretation && <span className="text-xs text-muted-foreground/30">—</span>}
+                                            <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
+                                                <p className="text-sm font-semibold tabular-nums text-pink-400">{impactScore > 0 ? impactScore : "—"}</p>
+                                            </div>
+                                            <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
+                                                <p className="text-sm font-semibold tabular-nums text-orange-400">{inherentRiskScore > 0 ? inherentRiskScore.toFixed(0) : "—"}</p>
+                                                {inherentRiskLabel && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{inherentRiskLabel}</p>}
+                                            </div>
+                                            <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
+                                                <p className="text-sm font-semibold tabular-nums text-teal-400">{controlScore > 0 ? controlScore.toFixed(1) : "—"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                                    <p className="text-sm font-semibold tabular-nums text-foreground">{residualRiskScore > 0 ? residualRiskScore.toFixed(1) : "—"}</p>
+                                                </div>
+                                                {residualRiskInterpretation && (
+                                                    <span className={cn(
+                                                        "text-xs font-medium px-2 py-0.5 rounded-full",
+                                                        RESIDUAL_RISK_INTERPRETATION_STYLES[residualRiskInterpretation]?.bg ?? "bg-muted/30",
+                                                        RESIDUAL_RISK_INTERPRETATION_STYLES[residualRiskInterpretation]?.text ?? "text-foreground"
+                                                    )}>
+                                                        {residualRiskInterpretation}
+                                                    </span>
+                                                )}
+                                                {!residualRiskInterpretation && <span className="text-xs text-muted-foreground/30">—</span>}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
 
                             {/* Unified Save button */}
