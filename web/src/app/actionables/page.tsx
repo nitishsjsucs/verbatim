@@ -451,16 +451,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     // Publish: resolves deadline, sets published_at + task_status, moves to tracker
     const handlePublish = async (e: React.MouseEvent) => {
         e.stopPropagation()
-        // Validate required fields before publish
+        // Validate required fields before publish (CO publishes to tracker)
+        // Note: likelihood/control fields are filled by member during submission, not by CO
         const missing: string[] = []
         if (!draftTheme) missing.push("Theme")
         if (!draftTranche3) missing.push("Tranche 3")
         if (!draftImpactDD?.label) missing.push("Impact")
-        if (!draftLikeBV?.label) missing.push("Business Volume")
-        if (!draftLikePP?.label) missing.push("Products & Processes")
-        if (!draftLikeCV?.label) missing.push("Compliance Violations")
-        if (!draftCtrlMon?.label) missing.push("Monitoring Mechanism")
-        if (!draftCtrlEff?.label) missing.push("Control Effectiveness")
         if (missing.length > 0) {
             toast.error(`Cannot publish — please fill: ${missing.join(", ")}`)
             return
@@ -1586,16 +1582,14 @@ export default function ActionablesPage() {
     const handlePublishAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
         const pending = items.filter(e => e.item.approval_status === "pending")
         if (pending.length === 0) { toast.info("No pending items to publish"); return }
-        // Validate required fields (theme, tranche3, impact, all likelihood/control) on every pending item
+        // Validate required fields (theme, tranche3, impact) on every pending item
+        // Note: likelihood/control fields are filled by member during submission, not by CO
         const incomplete = pending.filter(({ item }) =>
-            !item.theme || !item.tranche3 || !item.impact_dropdown?.label ||
-            !item.likelihood_business_volume?.label || !item.likelihood_products_processes?.label ||
-            !item.likelihood_compliance_violations?.label || !item.control_monitoring?.label ||
-            !item.control_effectiveness?.label
+            !item.theme || !item.tranche3 || !item.impact_dropdown?.label
         )
         if (incomplete.length > 0) {
             const ids = incomplete.map(({ item }) => item.actionable_id || item.id).slice(0, 5).join(", ")
-            toast.error(`Cannot bulk publish — ${incomplete.length} item(s) missing required risk fields (e.g. ${ids})`)
+            toast.error(`Cannot bulk publish — ${incomplete.length} item(s) missing Theme / Tranche 3 / Impact (e.g. ${ids})`)
             return
         }
         const globalDl = globalDeadline ? `${globalDeadline}T${globalDeadlineTime || "23:59"}` : ""

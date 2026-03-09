@@ -515,10 +515,32 @@ function TeamBoardContent() {
 
         if (currentStatus === "assigned") nextStatus = "in_progress"
         else if (currentStatus === "in_progress") {
+            // Member submission: validate all 5 likelihood/control fields are filled
+            const missing: string[] = []
+            if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
+            if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
+            if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
+            if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
+            if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
+            if (missing.length > 0) {
+                toast.error(`Cannot submit — please fill: ${missing.join(", ")}`)
+                return
+            }
             nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
         }
         else if (currentStatus === "reworking") {
+            // Resubmission: same validation
+            const missing: string[] = []
+            if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
+            if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
+            if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
+            if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
+            if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
+            if (missing.length > 0) {
+                toast.error(`Cannot resubmit — please fill: ${missing.join(", ")}`)
+                return
+            }
             nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
         }
