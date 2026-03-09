@@ -239,31 +239,28 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
     }
     // Computed scores (reactive, new formulas)
-    const safeScore = (d: RiskSubDropdown | undefined): number | null => (d && typeof d.score === "number" ? d.score : null)
+    const safeScore = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
     // OVERALL LIKELIHOOD = MAX of 3 sub-dropdown scores
-    const bvScore = safeScore(draftLikeBV)
-    const ppScore = safeScore(draftLikePP)
-    const cvScore = safeScore(draftLikeCV)
-    const likelihoodScore = (bvScore !== null && ppScore !== null && cvScore !== null) ? Math.max(bvScore, ppScore, cvScore) : null
+    const likelihoodScore = Math.max(safeScore(draftLikeBV), safeScore(draftLikePP), safeScore(draftLikeCV))
     // OVERALL IMPACT = (selected impact score)²
     const rawImpact = safeScore(draftImpactDD)
-    const impactScore = rawImpact !== null ? rawImpact ** 2 : null
+    const impactScore = rawImpact ** 2
     // INHERENT RISK = likelihood × impact
-    const inherentRiskScore = (likelihoodScore !== null && impactScore !== null) ? likelihoodScore * impactScore : null
+    const inherentRiskScore = likelihoodScore * impactScore
     // OVERALL CONTROL = average of 2 sub-dropdown scores
     const monScore = safeScore(draftCtrlMon)
     const effScore = safeScore(draftCtrlEff)
-    const controlScore = (monScore !== null && effScore !== null) ? (monScore + effScore) / 2 : null
+    const controlScore = (monScore || effScore) ? (monScore + effScore) / 2 : 0
     // RESIDUAL RISK = inherent × control
-    const residualRiskScore = (inherentRiskScore !== null && controlScore !== null) ? inherentRiskScore * controlScore : null
-    const classifyRisk = (score: number | null) => (score === null || score <= 0) ? "-" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
+    const residualRiskScore = inherentRiskScore * controlScore
+    const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
     const impactLabel = React.useMemo(() => {
         const label = getLabel("impact_dropdown")
         return label.toLowerCase() === "impact_dropdown" ? "Impact Assessment" : label
     }, [getLabel])
     const inherentRiskLabel = classifyRisk(inherentRiskScore)
     const residualRiskLabel = classifyRisk(residualRiskScore)
-    const residualRiskInterpretation = (residualRiskScore === null || residualRiskScore < 1) ? "" : residualRiskScore < 13 ? "Satisfactory (Low)" : residualRiskScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+    const residualRiskInterpretation = residualRiskScore < 1 ? "" : residualRiskScore < 13 ? "Satisfactory (Low)" : residualRiskScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -408,8 +405,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             updates.residual_risk_score = residualRiskScore
             updates.residual_risk_label = residualRiskLabel
             updates.residual_risk_interpretation = residualRiskInterpretation
-            updates.overall_likelihood_score = likelihoodScore !== null ? Math.round(likelihoodScore) : null
-            updates.overall_impact_score = impactScore !== null ? Math.round(impactScore) : null
+            updates.overall_likelihood_score = Math.round(likelihoodScore)
+            updates.overall_impact_score = Math.round(impactScore)
             updates.overall_control_score = controlScore
             // Deadline
             const dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : ""
@@ -1005,7 +1002,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                                         <div className="flex items-center justify-between mb-1.5">
                                             <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
-                                            <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore !== null ? controlScore.toFixed(1) : "-"} (avg)</span>
+                                            <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore.toFixed(1)} (avg)</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1036,27 +1033,27 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         <div className="grid grid-cols-2 gap-2 mb-2">
                                             <div className="rounded-md border border-border/30 bg-background/60 p-2">
                                                 <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
-                                                <p className="text-sm font-semibold tabular-nums text-blue-400">{likelihoodScore !== null && likelihoodScore > 0 ? likelihoodScore : "—"}</p>
+                                                <p className="text-sm font-semibold tabular-nums text-blue-400">{likelihoodScore > 0 ? likelihoodScore : "—"}</p>
                                             </div>
                                             <div className="rounded-md border border-border/30 bg-background/60 p-2">
                                                 <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
-                                                <p className="text-sm font-semibold tabular-nums text-pink-400">{impactScore !== null && impactScore > 0 ? impactScore : "—"}</p>
+                                                <p className="text-sm font-semibold tabular-nums text-pink-400">{impactScore > 0 ? impactScore : "—"}</p>
                                             </div>
                                             <div className="rounded-md border border-border/30 bg-background/60 p-2">
                                                 <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
-                                                <p className="text-sm font-semibold tabular-nums text-orange-400">{inherentRiskScore !== null && inherentRiskScore > 0 ? inherentRiskScore.toFixed(0) : "—"}</p>
+                                                <p className="text-sm font-semibold tabular-nums text-orange-400">{inherentRiskScore > 0 ? inherentRiskScore.toFixed(0) : "—"}</p>
                                                 {inherentRiskLabel && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{inherentRiskLabel}</p>}
                                             </div>
                                             <div className="rounded-md border border-border/30 bg-background/60 p-2">
                                                 <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
-                                                <p className="text-sm font-semibold tabular-nums text-teal-400">{controlScore !== null && controlScore > 0 ? controlScore.toFixed(1) : "—"}</p>
+                                                <p className="text-sm font-semibold tabular-nums text-teal-400">{controlScore > 0 ? controlScore.toFixed(1) : "—"}</p>
                                             </div>
                                         </div>
                                         <div className="rounded-md border border-border/30 bg-background/60 p-2">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
-                                                    <p className="text-sm font-semibold tabular-nums text-foreground">{residualRiskScore !== null && residualRiskScore > 0 ? residualRiskScore.toFixed(1) : "—"}</p>
+                                                    <p className="text-sm font-semibold tabular-nums text-foreground">{residualRiskScore > 0 ? residualRiskScore.toFixed(1) : "—"}</p>
                                                 </div>
                                                 {residualRiskInterpretation && (
                                                     <span className={cn(
