@@ -106,7 +106,6 @@ export default function DashboardPage() {
             team_reviewer_approved_at: "",
             team_reviewer_rejected_at: "",
             reviewer_comments: "",
-            implementation_notes: "",
             // Wipe risk inputs
             likelihood_business_volume: null,
             likelihood_products_processes: null,
@@ -154,7 +153,6 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
-                        implementation_notes: "",
                     }
                 }
             }
@@ -181,7 +179,7 @@ export default function DashboardPage() {
         }
 
         if (!multi) {
-            // Single-team: full reset — clear all role submissions, keep deadlines/theme/tranche/impact
+            // Single-team: full reset — clear all role submissions, keep deadlines/theme/tranche/impact/implementation_notes
             await handleUpdate(docId, item.id, {
                 ...baseBypassClear,
                 task_status: "assigned",
@@ -198,7 +196,6 @@ export default function DashboardPage() {
                 submitted_at: "",
                 team_reviewer_rejected_at: "",
                 reviewer_comments: "",
-                implementation_notes: "",
             })
             toast.success("Team reset — actionable returned to Assigned for reassignment")
         } else {
@@ -230,7 +227,6 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
-                        implementation_notes: "",
                     }
                 }
                 teamsToKeep.push(team)

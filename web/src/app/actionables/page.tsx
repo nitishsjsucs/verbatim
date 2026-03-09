@@ -457,6 +457,14 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (!draftTheme) missing.push("Theme")
         if (!draftTranche3) missing.push("Tranche 3")
         if (!draftImpactDD?.label) missing.push("Impact")
+        
+        // Check implementation evidence for all assigned teams
+        const teamsToCheck = draftTeams.length > 0 ? draftTeams : [item.workstream]
+        for (const team of teamsToCheck) {
+            const teamImpl = draftTeamImpl[team] || safeStr(item.team_workflows?.[team]?.implementation_notes || item.implementation_notes)
+            if (!teamImpl) missing.push(`Implementation Evidence for ${team}`)
+        }
+        
         if (missing.length > 0) {
             toast.error(`Cannot publish — please fill: ${missing.join(", ")}`)
             return
@@ -1582,14 +1590,21 @@ export default function ActionablesPage() {
     const handlePublishAll = React.useCallback(async (items: { item: ActionableItem; docId: string }[]) => {
         const pending = items.filter(e => e.item.approval_status === "pending")
         if (pending.length === 0) { toast.info("No pending items to publish"); return }
-        // Validate required fields (theme, tranche3, impact) on every pending item
+        // Validate required fields (theme, tranche3, impact, implementation evidence) on every pending item
         // Note: likelihood/control fields are filled by member during submission, not by CO
-        const incomplete = pending.filter(({ item }) =>
-            !item.theme || !item.tranche3 || !item.impact_dropdown?.label
-        )
+        const incomplete = pending.filter(({ item }) => {
+            if (!item.theme || !item.tranche3 || !item.impact_dropdown?.label) return true
+            // Check implementation evidence for all assigned teams
+            const teamsToCheck = (item.assigned_teams && item.assigned_teams.length > 0) ? item.assigned_teams : [item.workstream]
+            for (const team of teamsToCheck) {
+                const teamImpl = item.team_workflows?.[team]?.implementation_notes || item.implementation_notes
+                if (!teamImpl) return true
+            }
+            return false
+        })
         if (incomplete.length > 0) {
             const ids = incomplete.map(({ item }) => item.actionable_id || item.id).slice(0, 5).join(", ")
-            toast.error(`Cannot bulk publish — ${incomplete.length} item(s) missing Theme / Tranche 3 / Impact (e.g. ${ids})`)
+            toast.error(`Cannot bulk publish — ${incomplete.length} item(s) missing required fields (e.g. ${ids})`)
             return
         }
         const globalDl = globalDeadline ? `${globalDeadline}T${globalDeadlineTime || "23:59"}` : ""
