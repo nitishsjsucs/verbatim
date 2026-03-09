@@ -25,13 +25,13 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
-    safeStr, normalizeRisk, formatDate, formatDateShort, formatTime, formatDateTime, deadlineCategory,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS,
+    safeStr, formatDate, formatDateShort, formatTime, formatDateTime, deadlineCategory,
+    WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
-import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
+import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { ActionableExpansion } from "@/components/dashboard/actionable-expansion"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -54,11 +54,10 @@ export default function DashboardPage() {
     })
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
-    const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
     const [docFilter, setDocFilter] = React.useState<string>("all")
     const [teamFilter, setTeamFilter] = React.useState<string>("all")
-    const [sortBy, setSortBy] = React.useState<string>("risk")
+    const [sortBy, setSortBy] = React.useState<string>("status")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
     const [activeCollapsed, setActiveCollapsed] = React.useState(true)
@@ -393,7 +392,6 @@ export default function DashboardPage() {
     const filtered = React.useMemo(() => {
         let result = allRows.filter(({ item, docId }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
-            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (docFilter !== "all" && docId !== docFilter) return false
             if (teamFilter !== "all" && getClassification(item) !== teamFilter) return false
@@ -401,7 +399,7 @@ export default function DashboardPage() {
                 const q = searchQuery.toLowerCase()
                 // Include classification in search so "Mixed Team" is searchable
                 const classification = getClassification(item)
-                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${classification}`.toLowerCase()
+                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${classification} ${safeStr(item.actionable_id)}`.toLowerCase()
                 if (!s.includes(q)) return false
             }
             return true
@@ -415,9 +413,6 @@ export default function DashboardPage() {
                 const da = a.item.deadline ? new Date(a.item.deadline).getTime() : Infinity
                 const db = b.item.deadline ? new Date(b.item.deadline).getTime() : Infinity
                 cmp = da - db
-            } else if (sortBy === "risk") {
-                const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
-                cmp = (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1)
             } else if (sortBy === "published") {
                 const pa = a.item.published_at ? new Date(a.item.published_at).getTime() : 0
                 const pb = b.item.published_at ? new Date(b.item.published_at).getTime() : 0
@@ -426,7 +421,7 @@ export default function DashboardPage() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [allRows, statusFilter, riskFilter, deadlineFilter, docFilter, teamFilter, searchQuery, sortBy, sortDir])
+    }, [allRows, statusFilter, deadlineFilter, docFilter, teamFilter, searchQuery, sortBy, sortDir])
 
     // Split into active (non-completed) and completed
     const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
@@ -542,7 +537,7 @@ export default function DashboardPage() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, highRisk: 0, midRisk: 0, lowRisk: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
+        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
         for (const r of allRows) {
             const st = r.item.task_status || "assigned"
             if (st === "completed") s.completed++
@@ -552,10 +547,6 @@ export default function DashboardPage() {
             else if (st === "reworking") s.reworking++
             else if (st === "pending_all_teams") s.pendingAllTeams++
             else s.assigned++
-            const risk = normalizeRisk(r.item.modality)
-            if (risk === "High Risk") s.highRisk++
-            else if (risk === "Medium Risk") s.midRisk++
-            else s.lowRisk++
             if (st !== "completed") {
                 const dc = deadlineCategory(r.item.deadline)
                 if (dc === "yet") s.yetToDeadline++
@@ -575,8 +566,8 @@ export default function DashboardPage() {
         })
     }
 
-    // Grid columns: Team | Risk | Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Actions
-    const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 90px 90px"
+    // Grid columns: Team | Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Actions
+    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px 90px 90px"
 
     // ─── Render ──────────────────────────────────────────────────────────
 
@@ -645,15 +636,6 @@ export default function DashboardPage() {
                     </select>
 
                     <select
-                        value={riskFilter}
-                        onChange={e => setRiskFilter(e.target.value)}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
-                    >
-                        <option value="all">All Risk</option>
-                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-
-                    <select
                         value={deadlineFilter}
                         onChange={e => setDeadlineFilter(e.target.value)}
                         className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
@@ -687,11 +669,10 @@ export default function DashboardPage() {
                         ))}
                     </select>
 
-                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || docFilter !== "all" || teamFilter !== "all" || searchQuery) && (
+                    {(statusFilter !== "all" || deadlineFilter !== "all" || docFilter !== "all" || teamFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
                                 setStatusFilter("all")
-                                setRiskFilter("all")
                                 setDeadlineFilter("all")
                                 setDocFilter("all")
                                 setTeamFilter("all")
@@ -712,7 +693,6 @@ export default function DashboardPage() {
                         >
                             <option value="status">Status</option>
                             <option value="deadline">Deadline</option>
-                            <option value="risk">Risk</option>
                             <option value="published">Date Published</option>
                         </select>
                         <button
@@ -816,7 +796,6 @@ export default function DashboardPage() {
                                 {!isCollapsed && (
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -860,10 +839,6 @@ export default function DashboardPage() {
                                                     <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(getClassification(item)))}>
                                                         {getClassification(item)}
                                                     </span>
-                                                </div>
-                                                {/* Risk icon */}
-                                                <div className="py-1.5 flex justify-center">
-                                                    <RiskIcon modality={item.modality} />
                                                 </div>
                                                 {/* Actionable text + progress indicator for multi-team */}
                                                 <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
@@ -1037,10 +1012,6 @@ export default function DashboardPage() {
                                                                     {team}
                                                                 </span>
                                                             </div>
-                                                            {/* Risk — inherit parent */}
-                                                            <div className="py-1.5 flex justify-center">
-                                                                <RiskIcon modality={item.modality} />
-                                                            </div>
                                                             {/* Implementation text */}
                                                             <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                                 {isTeamExpanded
@@ -1169,7 +1140,6 @@ export default function DashboardPage() {
                                                                 userName={userName}
                                                                 userRole="compliance_officer"
                                                                 taskStatus={twStatus}
-                                                                bgClassName={teamColors.bg}
                                                                 onUpdate={handleUpdate}
                                                                 onAddComment={async (text) => {
                                                                     const newComment: ActionableComment = {
@@ -1304,7 +1274,6 @@ export default function DashboardPage() {
                                                     userName={userName}
                                                     userRole="compliance_officer"
                                                     taskStatus={taskStatus}
-                                                    bgClassName={(WORKSTREAM_COLORS[item.workstream] || DEFAULT_WORKSTREAM_COLORS).bg}
                                                     onUpdate={handleUpdate}
                                                     onAddComment={async (text) => handleAddComment(docId, item, text)}
                                                     onBypassApprove={handleBypassApprove}
@@ -1382,7 +1351,6 @@ export default function DashboardPage() {
                                         {!isCollapsed && (
                                             <div className="grid gap-0 border-b border-border/10 bg-muted/5 px-3" style={{ gridTemplateColumns: gridCols }}>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
@@ -1411,14 +1379,10 @@ export default function DashboardPage() {
                                                                 {getClassification(item)}
                                                             </span>
                                                         </div>
-                                                        <div className="py-1.5 flex justify-center"><RiskIcon modality={item.modality} /></div>
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                             {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
-                                                            {item.actionable_id && (
-                                                                <span className="shrink-0 text-[9px] font-mono text-muted-foreground/40 bg-muted/30 px-1 py-0.5 rounded border border-border/20">{item.actionable_id}</span>
-                                                            )}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
                                                             <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>

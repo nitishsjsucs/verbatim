@@ -614,7 +614,7 @@ function OversightRow({
     }
 
 
-    const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
+    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
 
     return (
         <div className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70", isDelayed && "bg-red-500/[0.03]")}>

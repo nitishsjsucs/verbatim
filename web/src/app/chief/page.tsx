@@ -170,7 +170,7 @@ function ChiefContent() {
     const stats = React.useMemo(() => {
         const s = {
             total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, review: 0,
-            reworking: 0, assigned: 0, highRisk: 0, midRisk: 0, lowRisk: 0,
+            reworking: 0, assigned: 0,
             yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0, bypassed: 0,
         }
         for (const e of allRows) {
@@ -191,8 +191,8 @@ function ChiefContent() {
         return s
     }, [allRows])
 
-    // Grid columns: Team | Risk | Actionable | Status | Deadline | Time | Evidence | Published
-    const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px"
+    // Grid columns: Team | Actionable | Status | Deadline | Time | Evidence | Published
+    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px"
 
     if (!isChief) {
         return (
@@ -205,7 +205,6 @@ function ChiefContent() {
     const renderHeader = () => (
         <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -321,82 +320,99 @@ function ChiefContent() {
                             </div>
                         )}
 
-                        {/* 2-column: left=details, right=comments */}
+                        {/* Assigned To */}
+                        {item.assigned_to && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider">Assigned To</span>
+                                <span className="text-xs text-foreground/70">{item.assigned_to}</span>
+                            </div>
+                        )}
+
+                        {/* Circular Source Information */}
+                        <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5 mb-4">
+                            <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="col-span-2">
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                                    <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                                    <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                                    <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                                    <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Theme / Tranche / Impact — read-only from Compliance */}
+                        <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
+                            <p className="text-xs font-semibold text-foreground/70">Compliance Parameters</p>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                    <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                    <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.tranche3 || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
+                                    <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2-column: left=impl+evidence, right=comments */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-3">
                                 <div>
                                     <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                                     <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                                 </div>
-                                {/* Circular Source Information */}
-                                <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
-                                    <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{item.actionable_id || "—"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                                            <p className="text-xs text-foreground/80">{docName || "—"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
-                                            <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Theme / Tranche / Impact — read-only from Compliance */}
-                                <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
-                                    <p className="text-xs font-semibold text-foreground/70">Compliance Parameters</p>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
-                                            <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
-                                            <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.tranche3 || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                            <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {/* Evidence Files */}
-                                {files.length > 0 && (
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
                                             <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                             <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
-                                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                            {files.length > 0 && (
+                                                <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                            )}
                                         </div>
+                                    </div>
+                                    {files.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-4 bg-background rounded-lg border border-dashed border-border/40">
+                                            <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
+                                            <p className="text-xs text-muted-foreground/40">No evidence files uploaded yet</p>
+                                        </div>
+                                    ) : (
                                         <EvidenceFileList
                                             files={files}
                                             formatDate={formatDate}
                                             readOnly
                                         />
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                             <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                 <CommentThread
@@ -520,7 +536,6 @@ function ChiefContent() {
                         <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground">
                             <option value="status">Status</option>
                             <option value="deadline">Deadline</option>
-                            <option value="risk">Risk</option>
                             <option value="published">Date Published</option>
                         </select>
                         <button
