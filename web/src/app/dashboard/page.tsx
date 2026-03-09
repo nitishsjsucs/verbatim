@@ -85,8 +85,8 @@ export default function DashboardPage() {
 
     const handleUnpublish = React.useCallback(async (docId: string, item: ActionableItem) => {
         // Reset actionable back to default state in Actionables section
-        // Preserve: deadline, text content, implementation, evidence structure, risk
-        // Reset: evidence submissions, comments, completion state, task_status, published_at
+        // Preserve: deadline, theme, tranche3, impact (impact_dropdown)
+        // Clear: all role data, risk inputs, evidence, comments, bypass flags
         const resetUpdates: Record<string, unknown> = {
             published_at: "",
             task_status: "",
@@ -106,6 +106,29 @@ export default function DashboardPage() {
             team_reviewer_approved_at: "",
             team_reviewer_rejected_at: "",
             reviewer_comments: "",
+            implementation_notes: "",
+            // Wipe risk inputs
+            likelihood_business_volume: null,
+            likelihood_products_processes: null,
+            likelihood_compliance_violations: null,
+            likelihood_score: null,
+            control_monitoring: null,
+            control_effectiveness: null,
+            control_score: null,
+            overall_likelihood_score: null,
+            overall_impact_score: null,
+            inherent_risk_score: null,
+            inherent_risk_label: "",
+            overall_control_score: null,
+            residual_risk_score: null,
+            residual_risk_interpretation: "",
+            residual_risk_label: "",
+            // Clear bypass flags
+            bypass_tag: false,
+            bypass_tagged_at: "",
+            bypass_tagged_by: "",
+            bypass_approved_by: "",
+            bypass_approved_at: "",
         }
         // For multi-team items, also reset each team workflow's submission fields
         if (isMultiTeam(item) && item.team_workflows) {
@@ -131,6 +154,7 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
+                        implementation_notes: "",
                     }
                 }
             }
@@ -139,6 +163,85 @@ export default function DashboardPage() {
         await handleUpdate(docId, item.id, resetUpdates)
         setUnpublishingItem(null)
         toast.success("Actionable unpublished — returned to Actionables")
+    }, [handleUpdate])
+
+    // Reset team for wrongly-tagged items
+    // Single-team: full reset (clear all role data, retain deadlines/theme/tranche/impact)
+    // Multi-team: partial reset (only reset the flagged team's workflow)
+    const handleResetTeam = React.useCallback(async (docId: string, item: ActionableItem) => {
+        const multi = isMultiTeam(item)
+        const baseBypassClear: Record<string, unknown> = {
+            bypass_tag: false,
+            bypass_tagged_at: "",
+            bypass_tagged_by: "",
+            bypass_approved_by: "",
+            bypass_approved_at: "",
+            team_reviewer_approved_at: "",
+            team_reviewer_name: "",
+        }
+
+        if (!multi) {
+            // Single-team: full reset — clear all role submissions, keep deadlines/theme/tranche/impact
+            await handleUpdate(docId, item.id, {
+                ...baseBypassClear,
+                task_status: "assigned",
+                completion_date: "",
+                evidence_files: [],
+                comments: [],
+                rejection_reason: "",
+                justification: "",
+                justification_by: "",
+                justification_at: "",
+                justification_status: "",
+                is_delayed: false,
+                delay_detected_at: "",
+                submitted_at: "",
+                team_reviewer_rejected_at: "",
+                reviewer_comments: "",
+                implementation_notes: "",
+            })
+            toast.success("Team reset — actionable returned to Assigned for reassignment")
+        } else {
+            // Multi-team: partial reset — only clear the workflows of bypassed teams
+            // Find which teams were bypass-tagged (those in "review" with bypass_tag)
+            // Reset those team workflows, keep others intact
+            const resetWorkflows: Record<string, unknown> = {}
+            const teamsToKeep: string[] = []
+            for (const team of item.assigned_teams || []) {
+                const tw = item.team_workflows?.[team]
+                // If this team's workflow led to the bypass, reset it
+                // For simplicity, reset all team workflows but keep team assignments
+                if (tw) {
+                    resetWorkflows[team] = {
+                        ...tw,
+                        task_status: "assigned",
+                        completion_date: "",
+                        evidence_files: [],
+                        comments: [],
+                        rejection_reason: "",
+                        justification: "",
+                        justification_by: "",
+                        justification_at: "",
+                        justification_status: "",
+                        is_delayed: false,
+                        delay_detected_at: "",
+                        submitted_at: "",
+                        team_reviewer_name: "",
+                        team_reviewer_approved_at: "",
+                        team_reviewer_rejected_at: "",
+                        reviewer_comments: "",
+                        implementation_notes: "",
+                    }
+                }
+                teamsToKeep.push(team)
+            }
+            await handleUpdate(docId, item.id, {
+                ...baseBypassClear,
+                task_status: "assigned",
+                team_workflows: resetWorkflows,
+            })
+            toast.success("Team workflows reset — actionable returned to Assigned for reassignment")
+        }
     }, [handleUpdate])
 
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
@@ -835,16 +938,7 @@ export default function DashboardPage() {
                                                     {/* Reset Team — for bypassed items under CO review */}
                                                     {item.bypass_tag && taskStatus === "review" && (
                                                         <button
-                                                            onClick={() => handleUpdate(docId, item.id, {
-                                                                task_status: "assigned",
-                                                                bypass_tag: false,
-                                                                bypass_tagged_at: "",
-                                                                bypass_tagged_by: "",
-                                                                bypass_approved_by: "",
-                                                                bypass_approved_at: "",
-                                                                team_reviewer_approved_at: "",
-                                                                team_reviewer_name: "",
-                                                            }).then(() => toast.success("Team reset — actionable returned to Assigned for reassignment"))}
+                                                            onClick={() => handleResetTeam(docId, item)}
                                                             className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors font-medium"
                                                             title="Reset team assignment — return to Assigned status"
                                                         >
@@ -855,9 +949,9 @@ export default function DashboardPage() {
                                                     <button
                                                         onClick={() => setUnpublishingItem({ docId, itemId: item.id })}
                                                         className="inline-flex items-center gap-0.5 text-xs px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-amber-500/10 hover:text-amber-500 transition-colors"
-                                                        title="Unpublish — return to Actionables"
+                                                        title="unpublished"
                                                     >
-                                                        <Undo2 className="h-2.5 w-2.5" />
+                                                        <Undo2 className="h-2.5 w-2.5" /> unpublished
                                                     </button>
                                                 </div>
                                             </div>
@@ -1086,7 +1180,7 @@ export default function DashboardPage() {
                                             {unpublishingItem?.itemId === item.id && unpublishingItem.docId === docId && (
                                                 <div className="bg-amber-500/5 border-t border-amber-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                                                     <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                                    <span className="text-xs text-amber-500 font-medium">Unpublish this actionable? It will return to the Actionables page with submissions reset.</span>
+                                                    <span className="text-xs text-amber-500 font-medium">Mark as unpublished? It will return to the Actionables page with submissions reset.</span>
                                                     <div className="flex items-center gap-1.5 ml-auto shrink-0">
                                                         <button
                                                             onClick={() => handleUnpublish(docId, item)}

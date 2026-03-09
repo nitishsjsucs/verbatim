@@ -180,10 +180,12 @@ export function ActionableExpansion({
                         <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                         <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(implementationNotes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                     </div>
+                    {userRole === "compliance_officer" && (
                     <div>
                         <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                         <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(evidenceQuote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
                     </div>
+                    )}
 
                     {/* Evidence Files - for non-compliance roles, show here before metadata */}
                     {userRole !== "compliance_officer" && evidenceFiles && evidenceFiles.length > 0 && (
@@ -240,7 +242,8 @@ export function ActionableExpansion({
                         </div>
                     )}
 
-                    {/* Risk Assessment Framework */}
+                    {/* Risk Assessment Framework — CO only */}
+                    {userRole === "compliance_officer" && (
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                         <div className="flex items-center justify-between">
                             <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
@@ -367,6 +370,7 @@ export function ActionableExpansion({
                             </div>
                         </div>
                     </div>
+                    )}
 
                     {/* For non-compliance roles: Circular Source Info after Risk Assessment */}
                     {userRole !== "compliance_officer" && (
