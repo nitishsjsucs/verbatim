@@ -1505,11 +1505,19 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "is_delayed", "delay_detected_at",
         "justification", "justification_by", "justification_at",
         "justification_status",
-        # 4-stage delay justification workflow
-        "justification_member_text", "justification_member_at",
-        "justification_reviewer_text", "justification_reviewer_at",
-        "justification_lead_comment", "justification_lead_approved_at",
+        # 4-stage delay justification approval chain
+        "justification_member_text", "justification_member_at", "justification_member_by",
+        "justification_reviewer_approved", "justification_reviewer_comment",
+        "justification_reviewer_by", "justification_reviewer_at",
+        "justification_lead_approved", "justification_lead_comment",
+        "justification_lead_by", "justification_lead_at",
+        "justification_co_approved", "justification_co_comment",
+        "justification_co_by", "justification_co_at",
+        # Legacy justification fields (backward compat)
+        "justification_reviewer_text", "justification_lead_approved_at",
         "justification_compliance_comment", "justification_compliance_approved_at",
+        # Role-specific mandatory comment fields
+        "member_comment", "reviewer_comment", "lead_comment", "co_comment",
         "audit_trail",
         "assigned_teams", "team_workflows",
         # Document metadata (inherited from parent doc)

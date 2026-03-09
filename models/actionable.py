@@ -90,16 +90,28 @@ class ActionableItem:
     justification_by: str = ""  # Name of team lead who provided justification (legacy)
     justification_at: str = ""  # ISO timestamp when justification was provided (legacy)
     justification_status: str = ""  # "pending_review" or "reviewed" (legacy)
-    # ── 4-stage delay justification workflow ──
-    justification_member_text: str = ""  # Stage 1: Member justification text
+    # ── NEW: 4-stage delay justification workflow (Member → Reviewer → Lead → CO) ──
+    justification_member_text: str = ""  # Stage 1: Member submits justification
+    justification_member_by: str = ""  # Stage 1: Member name
     justification_member_at: str = ""  # Stage 1: ISO timestamp
-    justification_reviewer_text: str = ""  # Stage 2: Reviewer justification text
+    justification_reviewer_approved: bool = False  # Stage 2: Reviewer approval status
+    justification_reviewer_comment: str = ""  # Stage 2: Reviewer comment
+    justification_reviewer_by: str = ""  # Stage 2: Reviewer name
     justification_reviewer_at: str = ""  # Stage 2: ISO timestamp
-    justification_lead_comment: str = ""  # Stage 3: Lead review comment
-    justification_lead_approved_at: str = ""  # Stage 3: ISO timestamp
-    justification_compliance_comment: str = ""  # Stage 4: Compliance approval comment
-    justification_compliance_approved_at: str = ""  # Stage 4: ISO timestamp
+    justification_lead_approved: bool = False  # Stage 3: Lead approval status
+    justification_lead_comment: str = ""  # Stage 3: Lead comment
+    justification_lead_by: str = ""  # Stage 3: Lead name
+    justification_lead_at: str = ""  # Stage 3: ISO timestamp
+    justification_co_approved: bool = False  # Stage 4: CO approval status
+    justification_co_comment: str = ""  # Stage 4: CO comment
+    justification_co_by: str = ""  # Stage 4: CO name
+    justification_co_at: str = ""  # Stage 4: ISO timestamp
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
+    # ── NEW: Role-specific mandatory comments (separate from chat thread) ──
+    member_comment: str = ""  # Mandatory comment from member before submission
+    reviewer_comment: str = ""  # Mandatory comment from reviewer before approval
+    lead_comment: str = ""  # Mandatory comment from lead (if applicable)
+    co_comment: str = ""  # Mandatory comment from CO before final approval
     # ── Document metadata (inherited from parent document) ──
     regulation_issue_date: str = ""  # ISO date — when the regulation was issued
     circular_effective_date: str = ""  # ISO date — when the circular becomes effective

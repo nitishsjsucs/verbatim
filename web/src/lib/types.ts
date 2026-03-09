@@ -332,16 +332,28 @@ export interface ActionableItem {
     justification_by?: string;     // Name of team lead who justified (legacy)
     justification_at?: string;     // ISO datetime of justification (legacy)
     justification_status?: "pending_review" | "reviewed";  // CO must review before final (legacy)
-    // 4-stage delay justification workflow
-    justification_member_text?: string;   // Stage 1: Member justification text
-    justification_member_at?: string;     // Stage 1: ISO timestamp
-    justification_reviewer_text?: string; // Stage 2: Reviewer justification text
-    justification_reviewer_at?: string;   // Stage 2: ISO timestamp
-    justification_lead_comment?: string;  // Stage 3: Lead review comment
-    justification_lead_approved_at?: string; // Stage 3: ISO timestamp
-    justification_compliance_comment?: string; // Stage 4: Compliance approval comment
-    justification_compliance_approved_at?: string; // Stage 4: ISO timestamp
-    audit_trail?: AuditTrailEntry[];     // Full audit trail
+    // NEW: 4-stage delay justification workflow (Member → Reviewer → Lead → CO)
+    justification_member_text?: string;        // Stage 1: Member submits justification
+    justification_member_by?: string;          // Stage 1: Member name
+    justification_member_at?: string;          // Stage 1: ISO timestamp
+    justification_reviewer_approved?: boolean; // Stage 2: Reviewer approval status
+    justification_reviewer_comment?: string;   // Stage 2: Reviewer comment
+    justification_reviewer_by?: string;        // Stage 2: Reviewer name
+    justification_reviewer_at?: string;        // Stage 2: ISO timestamp
+    justification_lead_approved?: boolean;     // Stage 3: Lead approval status
+    justification_lead_comment?: string;       // Stage 3: Lead comment
+    justification_lead_by?: string;            // Stage 3: Lead name
+    justification_lead_at?: string;            // Stage 3: ISO timestamp
+    justification_co_approved?: boolean;       // Stage 4: CO approval status
+    justification_co_comment?: string;         // Stage 4: CO comment
+    justification_co_by?: string;              // Stage 4: CO name
+    justification_co_at?: string;              // Stage 4: ISO timestamp
+    audit_trail?: AuditTrailEntry[];           // Full audit trail
+    // NEW: Role-specific mandatory comments (separate from chat thread)
+    member_comment?: string;           // Mandatory comment from member before submission
+    reviewer_comment?: string;         // Mandatory comment from reviewer before approval
+    lead_comment?: string;             // Mandatory comment from lead (if applicable)
+    co_comment?: string;               // Mandatory comment from CO before final approval
     // Multi-team assignment
     assigned_teams?: string[];             // Teams assigned to this actionable
     team_workflows?: Record<string, TeamWorkflow>;  // Per-team workflow state

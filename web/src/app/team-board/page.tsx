@@ -18,7 +18,7 @@ import {
     FileText, Paperclip, Calendar, CheckCircle2,
     ArrowRight, RotateCcw, Trash2,
     MessageSquare, ExternalLink, Download, Upload, Undo2,
-    SortAsc, SortDesc,
+    SortAsc, SortDesc, Save,
     LayoutDashboard, AlertTriangle, XCircle, Users, Flag,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -88,36 +88,109 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
     }, [getSafeOptions])
 
-    // Handler to save a single risk sub-dropdown and recompute scores
-    const handleRiskFieldChange = React.useCallback(async (field: string, value: RiskSubDropdown) => {
-        const updated = { ...item, [field]: value }
-        const safeScore = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
-        const likScore = Math.max(safeScore(updated.likelihood_business_volume), safeScore(updated.likelihood_products_processes), safeScore(updated.likelihood_compliance_violations))
-        const impScore = safeScore(updated.impact_dropdown) ** 2
-        const monS = safeScore(updated.control_monitoring)
-        const effS = safeScore(updated.control_effectiveness)
-        const ctrlScore = (monS || effS) ? (monS + effS) / 2 : 0
-        const inherent = likScore * impScore
-        const allFilled = !!(updated.likelihood_business_volume?.label && updated.likelihood_products_processes?.label && updated.likelihood_compliance_violations?.label && updated.impact_dropdown?.label && updated.control_monitoring?.label && updated.control_effectiveness?.label)
-        const residual = allFilled ? inherent + ctrlScore : 0
-        const classify = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
-        const interp = !allFilled ? "" : residual < 13 ? "Satisfactory (Low)" : residual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
-        await onUpdate(docId, item.id, {
-            [field]: value,
-            likelihood_score: likScore,
-            control_score: ctrlScore,
-            overall_likelihood_score: Math.round(likScore),
-            overall_impact_score: Math.round(impScore),
-            overall_control_score: ctrlScore,
-            inherent_risk_score: inherent,
-            inherent_risk_label: classify(inherent),
-            residual_risk_score: residual,
-            residual_risk_label: allFilled ? classify(residual) : "",
-            residual_risk_interpretation: interp,
-        })
-    }, [item, docId, onUpdate])
-
+    // Declare taskStatus early so it's available in callbacks below
     const taskStatus = (item.task_status || "assigned") as TaskStatus
+
+    // Draft state for risk dropdowns (Save button pattern like CO actionables page)
+    const emptyRSD = {} as RiskSubDropdown
+    const [draftLikeBV, setDraftLikeBV] = React.useState<RiskSubDropdown>(item.likelihood_business_volume || emptyRSD)
+    const [draftLikePP, setDraftLikePP] = React.useState<RiskSubDropdown>(item.likelihood_products_processes || emptyRSD)
+    const [draftLikeCV, setDraftLikeCV] = React.useState<RiskSubDropdown>(item.likelihood_compliance_violations || emptyRSD)
+    const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
+    const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
+    const [draftMemberComment, setDraftMemberComment] = React.useState(item.member_comment || "")
+    const [draftJustification, setDraftJustification] = React.useState(item.justification_member_text || "")
+    const [showJustifyInput, setShowJustifyInput] = React.useState(false)
+    const [saving, setSaving] = React.useState(false)
+
+    // Sync drafts when item changes externally
+    React.useEffect(() => {
+        setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
+        setDraftLikePP(item.likelihood_products_processes || emptyRSD)
+        setDraftLikeCV(item.likelihood_compliance_violations || emptyRSD)
+        setDraftCtrlMon(item.control_monitoring || emptyRSD)
+        setDraftCtrlEff(item.control_effectiveness || emptyRSD)
+        setDraftMemberComment(item.member_comment || "")
+        setDraftJustification(item.justification_member_text || "")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.id])
+
+    const subDiffers = (a: RiskSubDropdown | undefined, b: RiskSubDropdown | undefined) =>
+        (a?.label || "") !== (b?.label || "")
+
+    const isDirty = React.useMemo(() => {
+        if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
+        if (subDiffers(draftLikePP, item.likelihood_products_processes)) return true
+        if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) return true
+        if (subDiffers(draftCtrlMon, item.control_monitoring)) return true
+        if (subDiffers(draftCtrlEff, item.control_effectiveness)) return true
+        if (draftMemberComment !== (item.member_comment || "")) return true
+        return false
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftMemberComment, item])
+
+    // Compute scores from drafts
+    const safeRSD = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
+    const draftLikScore = Math.max(safeRSD(draftLikeBV), safeRSD(draftLikePP), safeRSD(draftLikeCV))
+    const draftImpScore = safeRSD(item.impact_dropdown) ** 2
+    const draftMonS = safeRSD(draftCtrlMon)
+    const draftEffS = safeRSD(draftCtrlEff)
+    const draftCtrlScore = (draftMonS || draftEffS) ? (draftMonS + draftEffS) / 2 : 0
+    const draftInherent = draftLikScore * draftImpScore
+    const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && item.impact_dropdown?.label && draftCtrlMon?.label && draftCtrlEff?.label)
+    const draftResidual = draftAllFilled ? draftInherent + draftCtrlScore : 0
+    const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
+
+    // Explicit Save — batches all risk + comment changes
+    const handleSaveChanges = React.useCallback(async () => {
+        setSaving(true)
+        try {
+            const updates: Record<string, unknown> = {}
+            // Auto-transition assigned → in_progress on first save
+            if (taskStatus === "assigned") updates.task_status = "in_progress"
+            if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
+            if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
+            if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+            if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
+            if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
+            if (draftMemberComment !== (item.member_comment || "")) updates.member_comment = draftMemberComment
+            // Always recompute scores
+            const interp = !draftAllFilled ? "" : draftResidual < 13 ? "Satisfactory (Low)" : draftResidual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+            updates.likelihood_score = draftLikScore
+            updates.control_score = draftCtrlScore
+            updates.overall_likelihood_score = Math.round(draftLikScore)
+            updates.overall_impact_score = Math.round(draftImpScore)
+            updates.overall_control_score = draftCtrlScore
+            updates.inherent_risk_score = draftInherent
+            updates.inherent_risk_label = classifyRisk(draftInherent)
+            updates.residual_risk_score = draftResidual
+            updates.residual_risk_label = draftAllFilled ? classifyRisk(draftResidual) : ""
+            updates.residual_risk_interpretation = interp
+            await onUpdate(docId, item.id, updates)
+            if (taskStatus === "assigned") toast.success("Changes saved — task started (In Progress)")
+            else toast.success("Changes saved")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to save")
+        } finally {
+            setSaving(false)
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftMemberComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate, taskStatus])
+
+    // Submit justification (Member → Reviewer approval)
+    const handleSubmitJustification = React.useCallback(async () => {
+        if (!draftJustification.trim()) return
+        await onUpdate(docId, item.id, {
+            justification_member_text: draftJustification.trim(),
+            justification_member_by: userName,
+            justification_member_at: new Date().toISOString(),
+            justification_reviewer_approved: false,
+            justification_lead_approved: false,
+            justification_co_approved: false,
+        })
+        setShowJustifyInput(false)
+        toast.success("Justification submitted — awaiting Reviewer approval")
+    }, [draftJustification, onUpdate, docId, item.id, userName])
+
     const statusCfg = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
     const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
     const canAdvance = taskStatus === "assigned" || taskStatus === "in_progress" || taskStatus === "reworking" || taskStatus === "reviewer_rejected"
@@ -456,17 +529,17 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                         </div>
 
-                        {/* Row 2: Likelihood (3 dropdowns) — member editable */}
+                        {/* Row 2: Likelihood (3 dropdowns) — member editable via draft */}
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
-                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {item.likelihood_score ?? "—"} (MAX of 3)</span>
+                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {draftLikScore || "—"} (MAX of 3)</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
                                     {!isReadOnly ? (
-                                        <select value={item.likelihood_business_volume?.label || ""} onChange={e => handleRiskFieldChange("likelihood_business_volume", pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                        <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -477,7 +550,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
                                     {!isReadOnly ? (
-                                        <select value={item.likelihood_products_processes?.label || ""} onChange={e => handleRiskFieldChange("likelihood_products_processes", pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                        <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -488,7 +561,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
                                     {!isReadOnly ? (
-                                        <select value={item.likelihood_compliance_violations?.label || ""} onChange={e => handleRiskFieldChange("likelihood_compliance_violations", pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                        <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -499,17 +572,17 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                         </div>
 
-                        {/* Row 3: Control (2 dropdowns) — member editable */}
+                        {/* Row 3: Control (2 dropdowns) — member editable via draft */}
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
-                                <span className="text-[10px] font-mono text-teal-400/60">Overall: {item.control_score != null ? item.control_score.toFixed(1) : "—"} (avg)</span>
+                                <span className="text-[10px] font-mono text-teal-400/60">Overall: {draftCtrlScore ? draftCtrlScore.toFixed(1) : "—"} (avg)</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
                                     {!isReadOnly ? (
-                                        <select value={item.control_monitoring?.label || ""} onChange={e => handleRiskFieldChange("control_monitoring", pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
+                                        <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -520,7 +593,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
                                     {!isReadOnly ? (
-                                        <select value={item.control_effectiveness?.label || ""} onChange={e => handleRiskFieldChange("control_effectiveness", pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
+                                        <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -530,7 +603,77 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 </div>
                             </div>
                         </div>
+
+                        {/* Save Changes button */}
+                        {!isReadOnly && isDirty && (
+                            <div className="flex justify-end pt-1">
+                                <button
+                                    onClick={handleSaveChanges}
+                                    disabled={saving}
+                                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    {saving ? "Saving…" : "Save Changes"}
+                                </button>
+                            </div>
+                        )}
                     </div>
+
+                    {/* Delay Justification — member submits, shows status of reviewer/lead/CO approval */}
+                    {(item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")) && (
+                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification Required</p>
+                            {/* Stage 1: Member has NOT submitted yet */}
+                            {!item.justification_member_text && (
+                                <>
+                                    {!showJustifyInput ? (
+                                        <button onClick={() => setShowJustifyInput(true)} className="text-xs px-2.5 py-1.5 rounded bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 font-medium">
+                                            Submit Justification
+                                        </button>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <textarea
+                                                value={draftJustification}
+                                                onChange={e => setDraftJustification(e.target.value)}
+                                                rows={3}
+                                                placeholder="Explain the reason for delay and corrective steps…"
+                                                className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button onClick={handleSubmitJustification} disabled={!draftJustification.trim()} className="text-xs px-2.5 py-1.5 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-semibold disabled:opacity-40">
+                                                    Submit
+                                                </button>
+                                                <button onClick={() => { setShowJustifyInput(false); setDraftJustification(item.justification_member_text || "") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            {/* Stage 1 submitted — show trail */}
+                            {item.justification_member_text && (
+                                <div className="space-y-1.5 text-xs">
+                                    <div className="bg-muted/20 rounded p-2">
+                                        <span className="font-semibold text-foreground/60">Your justification: </span>
+                                        <span className="text-foreground/80">{item.justification_member_text}</span>
+                                        {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                            Reviewer: {item.justification_reviewer_approved ? `Approved${item.justification_reviewer_comment ? ` — ${item.justification_reviewer_comment}` : ""}` : "Pending"}
+                                        </span>
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                            Lead: {item.justification_lead_approved ? `Approved${item.justification_lead_comment ? ` — ${item.justification_lead_comment}` : ""}` : "Pending"}
+                                        </span>
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.justification_co_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                            CO: {item.justification_co_approved ? `Approved${item.justification_co_comment ? ` — ${item.justification_co_comment}` : ""}` : "Pending"}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* 2-column: left=impl+evidence+files, right=comments */}
                     <div className="grid grid-cols-2 gap-4">
@@ -584,23 +727,52 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                         </div>
 
-                        {/* Right column: comments */}
-                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                            {!isCompleted && (
-                                <CommentThread
-                                    comments={item.comments || []}
-                                    currentUser={userName}
-                                    currentRole="team_member"
-                                    onAddComment={!isReadOnly ? handleAddComment : undefined}
-                                />
+                        {/* Right column: mandatory member comment + chat thread */}
+                        <div className="space-y-3">
+                            {/* Mandatory comment box — required before submission */}
+                            {!isReadOnly && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <p className="text-xs font-semibold text-foreground/70">Your Comment</p>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required before submission</span>
+                                    </div>
+                                    <textarea
+                                        value={draftMemberComment}
+                                        onChange={e => setDraftMemberComment(e.target.value)}
+                                        rows={4}
+                                        placeholder="Describe your implementation approach, steps taken, and any issues encountered. This is mandatory before you can submit."
+                                        className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-border/30 focus:border-primary focus:outline-none text-foreground resize-none"
+                                    />
+                                    {item.member_comment && (
+                                        <p className="text-[10px] text-muted-foreground/40 mt-1">Previously saved: <span className="text-foreground/60">{item.member_comment}</span></p>
+                                    )}
+                                </div>
                             )}
-                            {isCompleted && (item.comments || []).length > 0 && (
-                                <CommentThread
-                                    comments={item.comments || []}
-                                    currentUser={userName}
-                                    currentRole="team_member"
-                                />
+                            {isReadOnly && item.member_comment && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Member Comment</p>
+                                    <p className="text-xs text-foreground/80">{item.member_comment}</p>
+                                </div>
                             )}
+                            {/* Chat thread */}
+                            <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
+                                {!isCompleted && (
+                                    <CommentThread
+                                        comments={item.comments || []}
+                                        currentUser={userName}
+                                        currentRole="team_member"
+                                        onAddComment={!isReadOnly ? handleAddComment : undefined}
+                                    />
+                                )}
+                                {isCompleted && (item.comments || []).length > 0 && (
+                                    <CommentThread
+                                        comments={item.comments || []}
+                                        currentUser={userName}
+                                        currentRole="team_member"
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -712,13 +884,14 @@ function TeamBoardContent() {
 
         if (currentStatus === "assigned") nextStatus = "in_progress"
         else if (currentStatus === "in_progress") {
-            // Member submission: validate all 5 likelihood/control fields are filled
+            // Member submission: validate all 5 likelihood/control fields and member comment
             const missing: string[] = []
             if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
             if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
             if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
+            if (!item.member_comment?.trim()) missing.push("Member Comment (required — save it first)")
             if (missing.length > 0) {
                 toast.error(`Cannot submit — please fill: ${missing.join(", ")}`)
                 return
@@ -734,6 +907,7 @@ function TeamBoardContent() {
             if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
+            if (!item.member_comment?.trim()) missing.push("Member Comment (required — save it first)")
             if (missing.length > 0) {
                 toast.error(`Cannot resubmit — please fill: ${missing.join(", ")}`)
                 return

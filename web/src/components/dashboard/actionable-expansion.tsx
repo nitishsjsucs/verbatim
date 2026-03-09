@@ -4,7 +4,7 @@ import * as React from "react"
 import { ActionableItem, ActionableComment, TeamWorkflow } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import {
-    AlertTriangle, CheckCircle2, XCircle, Flag, RotateCcw, Paperclip
+    AlertTriangle, CheckCircle2, XCircle, Flag, RotateCcw, Paperclip, Save, Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { safeStr, formatDate, RESIDUAL_RISK_INTERPRETATION_STYLES } from "@/lib/status-config"
@@ -149,6 +149,26 @@ export function ActionableExpansion({
     onBypassDisapprove,
     formatDate,
 }: ActionableExpansionProps) {
+    // CO comment draft state
+    const [draftCoComment, setDraftCoComment] = React.useState(item.co_comment || "")
+    const [savingComment, setSavingComment] = React.useState(false)
+    const isCoCommentDirty = draftCoComment !== (item.co_comment || "")
+
+    React.useEffect(() => {
+        setDraftCoComment(item.co_comment || "")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.id])
+
+    const handleSaveCoComment = React.useCallback(async () => {
+        setSavingComment(true)
+        try {
+            await onUpdate(docId, item.id, { co_comment: draftCoComment }, teamName)
+        } catch {
+            /* toast handled by parent */
+        } finally {
+            setSavingComment(false)
+        }
+    }, [draftCoComment, onUpdate, docId, item.id, teamName])
     // Recompute risk scores client-side using new formula so CO tracker always shows correct values
     const safeRiskScore = (d: { score?: number } | null | undefined) => (d && typeof d.score === "number" ? d.score : 0)
     const computedLikScore = Math.max(safeRiskScore(item.likelihood_business_volume), safeRiskScore(item.likelihood_products_processes), safeRiskScore(item.likelihood_compliance_violations))
@@ -517,13 +537,111 @@ export function ActionableExpansion({
                         </div>
                     )}
                 </div>
-                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                    <CommentThread
-                        comments={comments}
-                        currentUser={userName}
-                        currentRole={userRole}
-                        onAddComment={onAddComment}
-                    />
+                <div className="space-y-3">
+                    {/* Justification chain status (CO sees full chain) */}
+                    {item.justification_member_text && userRole === "compliance_officer" && (
+                        <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-1.5">
+                            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Justification Chain</p>
+                            <div className="text-xs">
+                                <span className="font-semibold text-foreground/60">Member: </span>
+                                <span className="text-foreground/80">{item.justification_member_text}</span>
+                                {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                            </div>
+                            <div className={`text-xs ${item.justification_reviewer_approved ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                Reviewer: {item.justification_reviewer_approved ? '✓ Approved' : '⏳ Pending'}
+                                {item.justification_reviewer_comment && <span className="text-foreground/70 ml-1">— {item.justification_reviewer_comment}</span>}
+                            </div>
+                            {item.justification_reviewer_approved && (
+                                <div className={`text-xs ${item.justification_lead_approved ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    Lead: {item.justification_lead_approved ? '✓ Approved' : '⏳ Pending'}
+                                    {item.justification_lead_comment && <span className="text-foreground/70 ml-1">— {item.justification_lead_comment}</span>}
+                                </div>
+                            )}
+                            {item.justification_lead_approved && !item.justification_co_approved && (
+                                <div className="pt-1 flex gap-2">
+                                    <button
+                                        onClick={() => onUpdate(docId, item.id, { justification_co_approved: true, justification_co_by: userName, justification_co_at: new Date().toISOString() }, teamName)}
+                                        className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-semibold"
+                                    >
+                                        Acknowledge Justification
+                                    </button>
+                                </div>
+                            )}
+                            {item.justification_co_approved && (
+                                <div className="text-xs text-emerald-400">CO: ✓ Acknowledged{item.justification_co_at ? ` on ${formatDate(item.justification_co_at)}` : ""}</div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Role-specific comments display (read-only, for CO to see all) */}
+                    {userRole === "compliance_officer" && (item.member_comment || item.reviewer_comment || item.lead_comment) && (
+                        <div className="rounded-lg border border-border/30 bg-muted/5 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Team Comments</p>
+                            {item.member_comment && (
+                                <div>
+                                    <p className="text-[10px] font-semibold text-foreground/50">Member</p>
+                                    <p className="text-xs text-foreground/80">{item.member_comment}</p>
+                                </div>
+                            )}
+                            {item.reviewer_comment && (
+                                <div>
+                                    <p className="text-[10px] font-semibold text-foreground/50">Reviewer</p>
+                                    <p className="text-xs text-foreground/80">{item.reviewer_comment}</p>
+                                </div>
+                            )}
+                            {item.lead_comment && (
+                                <div>
+                                    <p className="text-[10px] font-semibold text-foreground/50">Lead</p>
+                                    <p className="text-xs text-foreground/80">{item.lead_comment}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* CO mandatory comment box */}
+                    {userRole === "compliance_officer" && (
+                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-1.5">
+                                    <p className="text-xs font-semibold text-foreground/70">CO Comment</p>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required before approval</span>
+                                </div>
+                                {isCoCommentDirty && (
+                                    <button
+                                        onClick={handleSaveCoComment}
+                                        disabled={savingComment}
+                                        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50"
+                                    >
+                                        {savingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                        {savingComment ? "Saving\u2026" : "Save"}
+                                    </button>
+                                )}
+                            </div>
+                            <textarea
+                                value={draftCoComment}
+                                onChange={e => setDraftCoComment(e.target.value)}
+                                rows={4}
+                                placeholder="Provide your compliance review observations, approval rationale, or rejection reason. This is mandatory before approving or rejecting."
+                                className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-border/30 focus:border-primary focus:outline-none text-foreground resize-none"
+                            />
+                            {item.co_comment && (
+                                <p className="text-[10px] text-muted-foreground/40 mt-1">Previously saved: <span className="text-foreground/60">{item.co_comment}</span></p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Chat thread */}
+                    <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                        {userRole === "compliance_officer" && (
+                            <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
+                        )}
+                        <CommentThread
+                            comments={comments}
+                            currentUser={userName}
+                            currentRole={userRole}
+                            onAddComment={onAddComment}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

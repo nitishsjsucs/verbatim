@@ -27,7 +27,7 @@ import {
     Loader2, Search, AlertTriangle,
     CheckCircle2,
     MessageSquare, SortAsc, SortDesc,
-    Eye, Clock, Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2,
+    Eye, Clock, Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2, Save,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -580,6 +580,64 @@ function OversightRow({
     const inputRef = React.useRef<HTMLInputElement>(null)
     const files = item.evidence_files || []
 
+    // Draft state for lead comment + Save button
+    const [draftLeadComment, setDraftLeadComment] = React.useState(item.lead_comment || "")
+    const [saving, setSaving] = React.useState(false)
+    // Justification approval state (Stage 3: Lead)
+    const [justApproveComment, setJustApproveComment] = React.useState("")
+    const [showJustApprove, setShowJustApprove] = React.useState(false)
+
+    React.useEffect(() => {
+        setDraftLeadComment(item.lead_comment || "")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.id])
+
+    const isCommentDirty = draftLeadComment !== (item.lead_comment || "")
+
+    const handleSaveComment = React.useCallback(async () => {
+        setSaving(true)
+        try {
+            await onUpdate(docId, item.id, { lead_comment: draftLeadComment })
+            toast.success("Comment saved")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to save")
+        } finally {
+            setSaving(false)
+        }
+    }, [draftLeadComment, onUpdate, docId, item.id])
+
+    // Approve justification (Stage 3: Lead)
+    const handleApproveJustification = React.useCallback(async () => {
+        if (!justApproveComment.trim()) return
+        await onUpdate(docId, item.id, {
+            justification_lead_approved: true,
+            justification_lead_comment: justApproveComment.trim(),
+            justification_lead_by: userName,
+            justification_lead_at: new Date().toISOString(),
+        })
+        setShowJustApprove(false)
+        setJustApproveComment("")
+        toast.success("Justification approved — forwarded to Compliance Officer")
+    }, [justApproveComment, onUpdate, docId, item.id, userName])
+
+    // Reject justification — returns to member
+    const handleRejectJustification = React.useCallback(async () => {
+        if (!justApproveComment.trim()) return
+        await onUpdate(docId, item.id, {
+            justification_lead_approved: false,
+            justification_lead_comment: justApproveComment.trim(),
+            justification_lead_by: userName,
+            justification_lead_at: new Date().toISOString(),
+            justification_reviewer_approved: false,
+            justification_member_text: "",
+            justification_member_at: "",
+            justification_member_by: "",
+        })
+        setShowJustApprove(false)
+        setJustApproveComment("")
+        toast.success("Justification rejected — member must resubmit")
+    }, [justApproveComment, onUpdate, docId, item.id, userName])
+
     const handleUploadClick = () => {
         inputRef.current?.click()
     }
@@ -841,7 +899,63 @@ function OversightRow({
                         </div>
                     </div>
 
-                    {/* 2-column: left=impl+files, right=comments */}
+                    {/* Justification approval — Lead sees member's justification after Reviewer approved it */}
+                    {item.justification_member_text && item.justification_reviewer_approved && !item.justification_lead_approved && (
+                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Justification Approval Required (Lead)</p>
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Member&apos;s justification: </span>
+                                <span className="text-foreground/80">{item.justification_member_text}</span>
+                                {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                            </div>
+                            {item.justification_reviewer_comment && (
+                                <div className="text-xs text-emerald-400/80">Reviewer approved: {item.justification_reviewer_comment}</div>
+                            )}
+                            {!showJustApprove ? (
+                                <button onClick={() => setShowJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review Justification</button>
+                            ) : (
+                                <div className="space-y-2">
+                                    <textarea
+                                        value={justApproveComment}
+                                        onChange={e => setJustApproveComment(e.target.value)}
+                                        rows={2}
+                                        placeholder="Your comment on this justification (required)…"
+                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={handleApproveJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve</button>
+                                        <button onClick={handleRejectJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold disabled:opacity-40">Reject &amp; Return</button>
+                                        <button onClick={() => { setShowJustApprove(false); setJustApproveComment("") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {item.justification_lead_approved && (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-400">
+                            Justification approved by Lead{item.justification_lead_comment ? ` — ${item.justification_lead_comment}` : ""}{item.justification_lead_at ? ` on ${formatDate(item.justification_lead_at)}` : ""}
+                        </div>
+                    )}
+
+                    {/* Member + Reviewer comments display */}
+                    {(item.member_comment || item.reviewer_comment) && (
+                        <div className="grid grid-cols-2 gap-2">
+                            {item.member_comment && (
+                                <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
+                                    <p className="text-[10px] font-semibold text-foreground/50 mb-1">Member Comment</p>
+                                    <p className="text-xs text-foreground/70">{item.member_comment}</p>
+                                </div>
+                            )}
+                            {item.reviewer_comment && (
+                                <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
+                                    <p className="text-[10px] font-semibold text-foreground/50 mb-1">Reviewer Comment</p>
+                                    <p className="text-xs text-foreground/70">{item.reviewer_comment}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 2-column: left=impl+files, right=lead comment + chat */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                             <div>
@@ -876,12 +990,7 @@ function OversightRow({
                                         <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
                                         <p className="text-xs text-muted-foreground/40">No evidence files uploaded yet</p>
                                         {!isReadOnly && (
-                                            <button
-                                                onClick={handleUploadClick}
-                                                className="text-xs text-primary hover:underline mt-1"
-                                            >
-                                                Click to upload
-                                            </button>
+                                            <button onClick={handleUploadClick} className="text-xs text-primary hover:underline mt-1">Click to upload</button>
                                         )}
                                     </div>
                                 ) : (
@@ -894,16 +1003,57 @@ function OversightRow({
                                 )}
                             </div>
                         </div>
-                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                            <CommentThread
-                                comments={item.comments || []}
-                                currentUser={userName}
-                                currentRole="team_lead"
-                                onAddComment={taskStatus !== "completed"
-                                    ? async (text) => onAddComment(docId, item.id, text)
-                                    : undefined
-                                }
-                            />
+                        <div className="space-y-3">
+                            {/* Lead mandatory comment */}
+                            {!isReadOnly && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-1.5">
+                                            <p className="text-xs font-semibold text-foreground/70">Lead Comment</p>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required</span>
+                                        </div>
+                                        {isCommentDirty && (
+                                            <button
+                                                onClick={handleSaveComment}
+                                                disabled={saving}
+                                                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50"
+                                            >
+                                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                {saving ? "Saving…" : "Save"}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <textarea
+                                        value={draftLeadComment}
+                                        onChange={e => setDraftLeadComment(e.target.value)}
+                                        rows={4}
+                                        placeholder="Provide your oversight observations and any escalation notes. Required for all active items."
+                                        className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-border/30 focus:border-primary focus:outline-none text-foreground resize-none"
+                                    />
+                                    {item.lead_comment && (
+                                        <p className="text-[10px] text-muted-foreground/40 mt-1">Previously saved: <span className="text-foreground/60">{item.lead_comment}</span></p>
+                                    )}
+                                </div>
+                            )}
+                            {isReadOnly && item.lead_comment && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Lead Comment</p>
+                                    <p className="text-xs text-foreground/80">{item.lead_comment}</p>
+                                </div>
+                            )}
+                            {/* Chat thread */}
+                            <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
+                                <CommentThread
+                                    comments={item.comments || []}
+                                    currentUser={userName}
+                                    currentRole="team_lead"
+                                    onAddComment={taskStatus !== "completed"
+                                        ? async (text) => onAddComment(docId, item.id, text)
+                                        : undefined
+                                    }
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

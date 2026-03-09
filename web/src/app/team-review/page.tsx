@@ -26,7 +26,7 @@ import {
     Loader2, Search, AlertTriangle,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc,
-    Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2, Flag,
+    Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2, Flag, Save,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -605,34 +605,114 @@ function ReviewRow({
         return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
     }, [getSafeOptions])
 
-    // Reviewer can override likelihood/control — saves immediately with recomputed scores
-    const handleRiskFieldChange = React.useCallback(async (field: string, value: RiskSubDropdown) => {
-        const updated = { ...item, [field]: value }
-        const safeScore = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
-        const likScore = Math.max(safeScore(updated.likelihood_business_volume), safeScore(updated.likelihood_products_processes), safeScore(updated.likelihood_compliance_violations))
-        const impScore = safeScore(updated.impact_dropdown) ** 2
-        const monS = safeScore(updated.control_monitoring)
-        const effS = safeScore(updated.control_effectiveness)
-        const ctrlScore = (monS || effS) ? (monS + effS) / 2 : 0
-        const inherent = likScore * impScore
-        const allFilled = !!(updated.likelihood_business_volume?.label && updated.likelihood_products_processes?.label && updated.likelihood_compliance_violations?.label && updated.impact_dropdown?.label && updated.control_monitoring?.label && updated.control_effectiveness?.label)
-        const residual = allFilled ? inherent + ctrlScore : 0
-        const classify = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
-        const interp = !allFilled ? "" : residual < 13 ? "Satisfactory (Low)" : residual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+    // Draft state for risk overrides + reviewer comment (Save button pattern)
+    const emptyRSD = {} as RiskSubDropdown
+    const [draftLikeBV, setDraftLikeBV] = React.useState<RiskSubDropdown>(item.likelihood_business_volume || emptyRSD)
+    const [draftLikePP, setDraftLikePP] = React.useState<RiskSubDropdown>(item.likelihood_products_processes || emptyRSD)
+    const [draftLikeCV, setDraftLikeCV] = React.useState<RiskSubDropdown>(item.likelihood_compliance_violations || emptyRSD)
+    const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
+    const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
+    const [draftReviewerComment, setDraftReviewerComment] = React.useState(item.reviewer_comment || "")
+    const [saving, setSaving] = React.useState(false)
+    // Justification approval state
+    const [justApproveComment, setJustApproveComment] = React.useState("")
+    const [showJustApprove, setShowJustApprove] = React.useState(false)
+
+    React.useEffect(() => {
+        setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
+        setDraftLikePP(item.likelihood_products_processes || emptyRSD)
+        setDraftLikeCV(item.likelihood_compliance_violations || emptyRSD)
+        setDraftCtrlMon(item.control_monitoring || emptyRSD)
+        setDraftCtrlEff(item.control_effectiveness || emptyRSD)
+        setDraftReviewerComment(item.reviewer_comment || "")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [item.id])
+
+    const subDiffers = (a: RiskSubDropdown | undefined, b: RiskSubDropdown | undefined) =>
+        (a?.label || "") !== (b?.label || "")
+
+    const isDirty = React.useMemo(() => {
+        if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
+        if (subDiffers(draftLikePP, item.likelihood_products_processes)) return true
+        if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) return true
+        if (subDiffers(draftCtrlMon, item.control_monitoring)) return true
+        if (subDiffers(draftCtrlEff, item.control_effectiveness)) return true
+        if (draftReviewerComment !== (item.reviewer_comment || "")) return true
+        return false
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftReviewerComment, item])
+
+    const safeRSD = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
+    const draftLikScore = Math.max(safeRSD(draftLikeBV), safeRSD(draftLikePP), safeRSD(draftLikeCV))
+    const draftImpScore = safeRSD(item.impact_dropdown) ** 2
+    const draftMonS = safeRSD(draftCtrlMon)
+    const draftEffS = safeRSD(draftCtrlEff)
+    const draftCtrlScore = (draftMonS || draftEffS) ? (draftMonS + draftEffS) / 2 : 0
+    const draftInherent = draftLikScore * draftImpScore
+    const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && item.impact_dropdown?.label && draftCtrlMon?.label && draftCtrlEff?.label)
+    const draftResidual = draftAllFilled ? draftInherent + draftCtrlScore : 0
+    const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
+
+    const handleSaveChanges = React.useCallback(async () => {
+        setSaving(true)
+        try {
+            const updates: Record<string, unknown> = {}
+            if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
+            if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
+            if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+            if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
+            if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
+            if (draftReviewerComment !== (item.reviewer_comment || "")) updates.reviewer_comment = draftReviewerComment
+            const interp = !draftAllFilled ? "" : draftResidual < 13 ? "Satisfactory (Low)" : draftResidual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
+            updates.likelihood_score = draftLikScore
+            updates.control_score = draftCtrlScore
+            updates.overall_likelihood_score = Math.round(draftLikScore)
+            updates.overall_impact_score = Math.round(draftImpScore)
+            updates.overall_control_score = draftCtrlScore
+            updates.inherent_risk_score = draftInherent
+            updates.inherent_risk_label = classifyRisk(draftInherent)
+            updates.residual_risk_score = draftResidual
+            updates.residual_risk_label = draftAllFilled ? classifyRisk(draftResidual) : ""
+            updates.residual_risk_interpretation = interp
+            await onUpdate(docId, item.id, updates)
+            toast.success("Changes saved")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to save")
+        } finally {
+            setSaving(false)
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftReviewerComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate])
+
+    // Approve justification (Stage 2: Reviewer)
+    const handleApproveJustification = React.useCallback(async () => {
+        if (!justApproveComment.trim()) return
         await onUpdate(docId, item.id, {
-            [field]: value,
-            likelihood_score: likScore,
-            control_score: ctrlScore,
-            overall_likelihood_score: Math.round(likScore),
-            overall_impact_score: Math.round(impScore),
-            overall_control_score: ctrlScore,
-            inherent_risk_score: inherent,
-            inherent_risk_label: classify(inherent),
-            residual_risk_score: residual,
-            residual_risk_label: allFilled ? classify(residual) : "",
-            residual_risk_interpretation: interp,
+            justification_reviewer_approved: true,
+            justification_reviewer_comment: justApproveComment.trim(),
+            justification_reviewer_by: userName,
+            justification_reviewer_at: new Date().toISOString(),
         })
-    }, [item, docId, onUpdate])
+        setShowJustApprove(false)
+        setJustApproveComment("")
+        toast.success("Justification approved — forwarded to Lead")
+    }, [justApproveComment, onUpdate, docId, item.id, userName])
+
+    // Reject justification — send back to member
+    const handleRejectJustification = React.useCallback(async () => {
+        if (!justApproveComment.trim()) return
+        await onUpdate(docId, item.id, {
+            justification_reviewer_approved: false,
+            justification_reviewer_comment: justApproveComment.trim(),
+            justification_reviewer_by: userName,
+            justification_reviewer_at: new Date().toISOString(),
+            justification_member_text: "",
+            justification_member_at: "",
+            justification_member_by: "",
+        })
+        setShowJustApprove(false)
+        setJustApproveComment("")
+        toast.success("Justification rejected — member must resubmit")
+    }, [justApproveComment, onUpdate, docId, item.id, userName])
 
     const handleUploadClick = () => {
         inputRef.current?.click()
@@ -995,17 +1075,17 @@ function ReviewRow({
                             </div>
                         </div>
 
-                        {/* Row 2: Likelihood (3 dropdowns) — reviewer can override */}
+                        {/* Row 2: Likelihood (3 dropdowns) — reviewer override via draft */}
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
-                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {item.likelihood_score ?? "—"} (MAX of 3)</span>
+                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {draftLikScore || "—"} (MAX of 3)</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
                                     {(isTeamReviewStatus || isTaggedIncorrectly) ? (
-                                        <select value={item.likelihood_business_volume?.label || ""} onChange={e => handleRiskFieldChange("likelihood_business_volume", pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                        <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -1016,7 +1096,7 @@ function ReviewRow({
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
                                     {(isTeamReviewStatus || isTaggedIncorrectly) ? (
-                                        <select value={item.likelihood_products_processes?.label || ""} onChange={e => handleRiskFieldChange("likelihood_products_processes", pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                        <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -1027,7 +1107,7 @@ function ReviewRow({
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
                                     {(isTeamReviewStatus || isTaggedIncorrectly) ? (
-                                        <select value={item.likelihood_compliance_violations?.label || ""} onChange={e => handleRiskFieldChange("likelihood_compliance_violations", pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                        <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -1038,17 +1118,17 @@ function ReviewRow({
                             </div>
                         </div>
 
-                        {/* Row 3: Control (2 dropdowns) — reviewer can override */}
+                        {/* Row 3: Control (2 dropdowns) — reviewer override via draft */}
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
-                                <span className="text-[10px] font-mono text-teal-400/60">Overall: {item.control_score != null ? item.control_score.toFixed(1) : "—"} (avg)</span>
+                                <span className="text-[10px] font-mono text-teal-400/60">Overall: {draftCtrlScore ? draftCtrlScore.toFixed(1) : "—"} (avg)</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_monitoring") || "Monitoring Mechanism"}</p>
                                     {(isTeamReviewStatus || isTaggedIncorrectly) ? (
-                                        <select value={item.control_monitoring?.label || ""} onChange={e => handleRiskFieldChange("control_monitoring", pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
+                                        <select value={draftCtrlMon?.label || ""} onChange={e => setDraftCtrlMon(pickSubDropdown("control_monitoring", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("control_monitoring").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -1059,7 +1139,7 @@ function ReviewRow({
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("control_effectiveness") || "Control Effectiveness"}</p>
                                     {(isTeamReviewStatus || isTaggedIncorrectly) ? (
-                                        <select value={item.control_effectiveness?.label || ""} onChange={e => handleRiskFieldChange("control_effectiveness", pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
+                                        <select value={draftCtrlEff?.label || ""} onChange={e => setDraftCtrlEff(pickSubDropdown("control_effectiveness", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-teal-400/30 focus:border-teal-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("control_effectiveness").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
@@ -1069,9 +1149,69 @@ function ReviewRow({
                                 </div>
                             </div>
                         </div>
+
+                        {/* Save Changes button */}
+                        {(isTeamReviewStatus || isTaggedIncorrectly) && isDirty && (
+                            <div className="flex justify-end pt-1">
+                                <button
+                                    onClick={handleSaveChanges}
+                                    disabled={saving}
+                                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    {saving ? "Saving…" : "Save Changes"}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    {/* 2-column: left=impl+files, right=comments */}
+                    {/* Justification approval section — reviewer sees member's justification and approves/rejects */}
+                    {item.justification_member_text && !item.justification_reviewer_approved && (isTeamReviewStatus || taskStatus === "awaiting_justification") && (
+                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Justification Approval Required</p>
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Member&apos;s justification: </span>
+                                <span className="text-foreground/80">{item.justification_member_text}</span>
+                                {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                                {item.justification_member_by && <span className="text-muted-foreground/40 ml-1">by {item.justification_member_by}</span>}
+                            </div>
+                            {!showJustApprove ? (
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review Justification</button>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <textarea
+                                        value={justApproveComment}
+                                        onChange={e => setJustApproveComment(e.target.value)}
+                                        rows={2}
+                                        placeholder="Your comment on this justification (required)…"
+                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={handleApproveJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve</button>
+                                        <button onClick={handleRejectJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold disabled:opacity-40">Reject &amp; Return</button>
+                                        <button onClick={() => { setShowJustApprove(false); setJustApproveComment("") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {item.justification_reviewer_approved && (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-400">
+                            Justification approved by Reviewer{item.justification_reviewer_comment ? ` — ${item.justification_reviewer_comment}` : ""}{item.justification_reviewer_at ? ` on ${formatDate(item.justification_reviewer_at)}` : ""}
+                        </div>
+                    )}
+
+                    {/* Member comment display */}
+                    {item.member_comment && (
+                        <div className="rounded-lg border border-border/30 bg-muted/5 p-3">
+                            <p className="text-xs font-semibold text-foreground/60 mb-1">Member&apos;s Comment</p>
+                            <p className="text-xs text-foreground/80">{item.member_comment}</p>
+                        </div>
+                    )}
+
+                    {/* 2-column: left=impl+files, right=mandatory reviewer comment + chat */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                             <div>
@@ -1106,12 +1246,7 @@ function ReviewRow({
                                         <Paperclip className="h-5 w-5 text-muted-foreground/20 mb-1" />
                                         <p className="text-xs text-muted-foreground/40">No evidence files uploaded yet</p>
                                         {!isReadOnly && (
-                                            <button
-                                                onClick={handleUploadClick}
-                                                className="text-xs text-primary hover:underline mt-1"
-                                            >
-                                                Click to upload
-                                            </button>
+                                            <button onClick={handleUploadClick} className="text-xs text-primary hover:underline mt-1">Click to upload</button>
                                         )}
                                     </div>
                                 ) : (
@@ -1124,13 +1259,42 @@ function ReviewRow({
                                 )}
                             </div>
                         </div>
-                        <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                            <CommentThread
-                                comments={item.comments || []}
-                                currentUser={userName}
-                                currentRole="team_reviewer"
-                                onAddComment={async (text) => onAddComment(docId, item, text)}
-                            />
+                        <div className="space-y-3">
+                            {/* Mandatory reviewer comment */}
+                            {isTeamReviewStatus && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <p className="text-xs font-semibold text-foreground/70">Reviewer Comment</p>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required before approval</span>
+                                    </div>
+                                    <textarea
+                                        value={draftReviewerComment}
+                                        onChange={e => setDraftReviewerComment(e.target.value)}
+                                        rows={4}
+                                        placeholder="Provide your review comments, observations, and any issues found. This is mandatory before you can approve or reject."
+                                        className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-border/30 focus:border-primary focus:outline-none text-foreground resize-none"
+                                    />
+                                    {item.reviewer_comment && (
+                                        <p className="text-[10px] text-muted-foreground/40 mt-1">Previously saved: <span className="text-foreground/60">{item.reviewer_comment}</span></p>
+                                    )}
+                                </div>
+                            )}
+                            {!isTeamReviewStatus && item.reviewer_comment && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Reviewer Comment</p>
+                                    <p className="text-xs text-foreground/80">{item.reviewer_comment}</p>
+                                </div>
+                            )}
+                            {/* Chat thread */}
+                            <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
+                                <CommentThread
+                                    comments={item.comments || []}
+                                    currentUser={userName}
+                                    currentRole="team_reviewer"
+                                    onAddComment={async (text) => onAddComment(docId, item, text)}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
