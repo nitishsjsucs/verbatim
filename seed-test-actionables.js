@@ -56,6 +56,10 @@ async function run() {
     const actionables = [];
     const now = new Date().toISOString();
 
+    const regulationIssueDate = "2026-02-01";
+    const circularEffectiveDate = "2026-04-01";
+    const regulatorName = "RBI";
+
     for (let i = 1; i <= 100; i++) {
       // Round-robin assign to L2 teams
       const l2Team = l2Teams[(i - 1) % l2Teams.length];
@@ -70,6 +74,9 @@ async function run() {
         source_location: "Test Document",
         source_node_id: `test-node-${i}`,
         workstream: l2Team.name,
+        regulation_issue_date: regulationIssueDate,
+        circular_effective_date: circularEffectiveDate,
+        regulator: regulatorName,
         approval_status: "pending",
         is_manual: true,
         created_at: now,
@@ -159,9 +166,9 @@ async function run() {
       _id: "DOC-TEST-001",
       doc_id: "DOC-TEST-001",
       doc_name: "Test Document for System Testing",
-      regulation_issue_date: "2026-03-09",
-      circular_effective_date: "2026-03-09",
-      regulator: "Test Regulator",
+      regulation_issue_date: regulationIssueDate,
+      circular_effective_date: circularEffectiveDate,
+      regulator: regulatorName,
       actionables: actionables,
       total_extracted: 100,
       total_validated: 0,
