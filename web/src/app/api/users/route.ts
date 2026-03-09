@@ -12,7 +12,7 @@ import { MongoClient } from "mongodb"
  */
 
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017"
-const AUTH_DB = process.env.MONGO_DB_NAME || process.env.AUTH_DB_NAME || "govinda_auth"
+const AUTH_DB = process.env.AUTH_DB_NAME || "govinda_auth"
 const DEFAULT_PASSWORD = "RedTech@2026"
 
 // ─── Email generation ────────────────────────────────────────────────────────

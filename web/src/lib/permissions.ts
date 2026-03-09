@@ -49,3 +49,19 @@ export const teamMember = ac.newRole({
     dashboard: ["view"],
     evidence: ["view", "submit"],
 })
+
+export const chief = ac.newRole({
+    actionable: ["view"],
+    dashboard: ["view"],
+    evidence: ["view"],
+    delay: ["view", "justify"],
+})
+
+export const adminRole = ac.newRole({
+    actionable: ["view", "approve", "reject", "edit", "create", "delete"],
+    document: ["view", "upload", "query", "research"],
+    dashboard: ["view", "manage"],
+    evidence: ["view", "submit"],
+    admin: ["manage_users", "manage_roles"],
+    delay: ["view", "justify"],
+})
