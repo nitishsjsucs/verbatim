@@ -250,7 +250,7 @@ function TeamReviewContent() {
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)}`.toLowerCase()
+                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${safeStr(item.actionable_id)}`.toLowerCase()
                 if (!s.includes(q)) return false
             }
             return true
@@ -691,9 +691,6 @@ function ReviewRow({
                     <span className="text-xs text-foreground/90 truncate">
                         {safeStr(item.action)}
                     </span>
-                    {item.actionable_id && (
-                        <span className="shrink-0 text-[9px] font-mono text-muted-foreground/40 bg-muted/30 px-1 py-0.5 rounded border border-border/20">{item.actionable_id}</span>
-                    )}
                     {isMultiTeam(item) && (
                         <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-xs font-medium", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))} title={`Teams: ${item.assigned_teams!.join(", ")}`}>
                             {MIXED_TEAM_CLASSIFICATION}

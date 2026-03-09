@@ -546,13 +546,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
 
-                    {/* Actionable ID badge */}
-                    {item.actionable_id && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-muted/50 text-muted-foreground shrink-0">
-                            {item.actionable_id}
-                        </span>
-                    )}
-
                     {/* Team tag - uses saved classification (not draft) */}
                     <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", getWorkstreamClass(getClassification(item)))}>
                         {getClassification(item)}
@@ -1534,7 +1527,7 @@ export default function ActionablesPage() {
                 const q = searchQuery.toLowerCase()
                 // Include classification in search so "Mixed Team" is searchable
                 const classification = getClassification(item)
-                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)} ${classification}`.toLowerCase()
+                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)} ${classification} ${safeStr(item.actionable_id)}`.toLowerCase()
                 if (!searchable.includes(q)) return false
             }
             return true
