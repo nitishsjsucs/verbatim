@@ -7,6 +7,10 @@ import { ac, complianceOfficer, teamReviewer, teamLead, teamMember, chief } from
 const client = new MongoClient(process.env.MONGODB_URI || "mongodb://localhost:27017")
 const db = client.db(process.env.AUTH_DB_NAME || "govinda_auth")
 
+console.log(`[AUTH-INIT] MONGODB_URI: ${process.env.MONGODB_URI ? 'set' : 'not set'}`)
+console.log(`[AUTH-INIT] AUTH_DB_NAME: ${process.env.AUTH_DB_NAME || 'govinda_auth'}`)
+console.log(`[AUTH-INIT] BETTER_AUTH_SECRET: ${process.env.BETTER_AUTH_SECRET ? 'set' : 'not set'}`)
+
 export const auth = betterAuth({
     database: mongodbAdapter(db),
 
