@@ -47,8 +47,22 @@ const COLOR_PALETTE = [
 
 // Special teams (no sub-teams)
 const SPECIAL_TEAMS = [
-    { name: "Compliance", summary: "Compliance and regulatory affairs team", hasSubTeams: false },
-    { name: "Admin", summary: "Administrative and system management team", hasSubTeams: false }
+    {
+        name: "Compliance",
+        summary: "Compliance and regulatory affairs team",
+        hasSubTeams: false,
+        role: "compliance_officer",
+        userTitle: "Compliance Officer",
+        emailHandle: "compliance.officer",
+    },
+    {
+        name: "Admin",
+        summary: "Administrative and system management team",
+        hasSubTeams: false,
+        role: "admin",
+        userTitle: "Admin",
+        emailHandle: "admin",
+    },
 ];
 
 // Operational teams (with L1/L2 hierarchy)
@@ -188,12 +202,16 @@ async function fullSystemReset() {
         
         const usersToCreate = [];
 
-        // Special teams (Compliance, Admin) - 1 Chief each
+        // Special teams (Compliance, Admin) with their predefined roles
         for (const specialTeam of SPECIAL_TEAMS) {
+            const role = specialTeam.role || 'chief';
+            const title = specialTeam.userTitle || (role === 'chief' ? 'Chief' : role.replace(/_/g, ' '));
+            const emailHandle = specialTeam.emailHandle
+                || `${specialTeam.name.toLowerCase().replace(/\s+/g, '.')}.${role.replace(/_/g, '.')}`;
             usersToCreate.push({
-                name: `${specialTeam.name} Chief`,
-                email: `${specialTeam.name.toLowerCase()}.chief@redtech.com`,
-                role: 'chief',
+                name: `${specialTeam.name} ${title}`.trim(),
+                email: `${emailHandle}@redtech.com`,
+                role,
                 team: specialTeam.name,
             });
         }
@@ -301,12 +319,14 @@ async function fullSystemReset() {
         console.log(`   Users: ${createdCount} created with password "Govinda123"`);
         console.log(`   Actionables: All deleted (will be recreated via document processing)`);
         console.log('\nTeam Structure:');
-        console.log(`   Standalone L0: Compliance, Admin (1 Chief each)`);
+        console.log(`   Standalone L0: Compliance (1 Compliance Officer), Admin (1 Admin role)`);
         console.log(`   Operational L0: Engineering, Operations, Finance (1 Chief each)`);
         console.log(`   L1 Teams: 6 (2 under each operational L0)`);
         console.log(`   L2 Teams: 12 (2 under each L1)`);
         console.log('\nRole Distribution:');
-        console.log(`   Chief: ${2 + 3 + createdTeams.l1.length} (2 special + 3 operational L0 + ${createdTeams.l1.length} L1)`);
+        console.log(`   Compliance Officer: 1 (Compliance L0)`);
+        console.log(`   Admin: 1 (Admin L0)`);
+        console.log(`   Chief: ${3 + createdTeams.l1.length} (3 operational L0 + ${createdTeams.l1.length} L1)`);
         console.log(`   Member: ${createdTeams.l2.length} (L2)`);
         console.log(`   Reviewer: ${createdTeams.l2.length} (L2)`);
         console.log(`   Lead: ${createdTeams.l2.length} (L2)`);
