@@ -32,12 +32,12 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
-    safeStr, normalizeRisk, formatDate, formatTime, deadlineCategory,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS,
+    safeStr, formatDate, formatTime, deadlineCategory,
+    WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
     RESIDUAL_RISK_INTERPRETATION_STYLES,
 } from "@/lib/status-config"
-import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
+import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
 
@@ -84,7 +84,6 @@ function TeamLeadContent() {
         autoLoad: false,
     })
     const [searchQuery, setSearchQuery] = React.useState("")
-    const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
     const [sortBy, setSortBy] = React.useState<string>("risk")
@@ -172,7 +171,6 @@ function TeamLeadContent() {
     // Filter + Sort
     const filtered = React.useMemo(() => {
         let result = tabRows.filter(({ item }) => {
-            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (statusFilter !== "all" && item.task_status !== statusFilter) return false
             if (searchQuery) {
@@ -190,9 +188,6 @@ function TeamLeadContent() {
                 const da = a.item.deadline ? new Date(a.item.deadline).getTime() : Infinity
                 const db = b.item.deadline ? new Date(b.item.deadline).getTime() : Infinity
                 cmp = da - db
-            } else if (sortBy === "risk") {
-                const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
-                cmp = (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1)
             } else if (sortBy === "published") {
                 const pa = a.item.published_at ? new Date(a.item.published_at).getTime() : 0
                 const pb = b.item.published_at ? new Date(b.item.published_at).getTime() : 0
@@ -201,7 +196,7 @@ function TeamLeadContent() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [tabRows, riskFilter, deadlineFilter, statusFilter, searchQuery, sortBy, sortDir])
+    }, [tabRows, deadlineFilter, statusFilter, searchQuery, sortBy, sortDir])
 
     // Split
     const delayedRows = React.useMemo(() => filtered.filter(r => r.item.is_delayed || (r.item.deadline && new Date(r.item.deadline).getTime() < Date.now() && r.item.task_status !== "completed")), [filtered])
@@ -220,7 +215,7 @@ function TeamLeadContent() {
         return { total, delayed, completed, inProgress, inReview, reworking, justified }
     }, [viewRows])
 
-    const gridCols = "minmax(80px,0.7fr) 36px minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
+    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px 80px"
 
     if (!isTeamLead) return null
 
@@ -298,14 +293,6 @@ function TeamLeadContent() {
                         />
                     </div>
 
-                    <select
-                        value={riskFilter}
-                        onChange={e => setRiskFilter(e.target.value)}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
-                    >
-                        <option value="all">All Risk</option>
-                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
 
                     <select
                         value={statusFilter}
@@ -333,12 +320,11 @@ function TeamLeadContent() {
                         <option value="d90">Delayed 90d</option>
                     </select>
 
-                    {(riskFilter !== "all" || deadlineFilter !== "all" || statusFilter !== "all" || searchQuery) && (
+                    {(statusFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
-                                setRiskFilter("all")
-                                setDeadlineFilter("all")
                                 setStatusFilter("all")
+                                setDeadlineFilter("all")
                                 setSearchQuery("")
                             }}
                             className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-border/40"
@@ -399,7 +385,6 @@ function TeamLeadContent() {
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
                                         <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
                                         <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                         <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                         <div className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -438,7 +423,6 @@ function TeamLeadContent() {
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -473,7 +457,6 @@ function TeamLeadContent() {
                         <>
                             <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
-                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -510,7 +493,6 @@ function TeamLeadContent() {
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-1">Risk</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
@@ -646,11 +628,6 @@ function OversightRow({
                     <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
                         {item.workstream}
                     </span>
-                </div>
-
-                {/* Risk icon */}
-                <div className="py-1.5 flex justify-center">
-                    <RiskIcon modality={item.modality} />
                 </div>
 
                 {/* Actionable text */}

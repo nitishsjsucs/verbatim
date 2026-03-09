@@ -24,13 +24,13 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
-    safeStr, normalizeRisk, formatDateShort as formatDate, formatTime, deadlineCategory,
-    RISK_STYLES, RISK_OPTIONS, TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
+    safeStr, formatDateShort as formatDate, formatTime, deadlineCategory,
+    TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER,
     WORKSTREAM_COLORS, getWorkstreamClass, RESIDUAL_RISK_INTERPRETATION_STYLES,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
-import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
+import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
@@ -222,11 +222,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                 style={{ gridTemplateColumns: gridCols }}
                 onClick={() => setExpanded(!expanded)}
             >
-                {/* Risk icon */}
-                <div className="py-1.5 flex justify-center">
-                    <RiskIcon modality={item.modality} />
-                </div>
-
                 {/* Actionable text */}
                 <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                     {expanded
@@ -650,9 +645,8 @@ function TeamBoardContent() {
     const [loading, setLoading] = React.useState(true)
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
-    const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
-    const [sortBy, setSortBy] = React.useState<string>("risk")
+    const [sortBy, setSortBy] = React.useState<string>("deadline")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
 
@@ -796,10 +790,6 @@ function TeamBoardContent() {
             else if (st === "reworking") s.reworking++
             else if (st === "reviewer_rejected") s.reviewerRejected++
             else s.assigned++
-            const risk = normalizeRisk(e.item.modality)
-            if (risk === "High Risk") s.highRisk++
-            else if (risk === "Medium Risk") s.midRisk++
-            else s.lowRisk++
             const dc = deadlineCategory(e.item.deadline)
             if (dc === "yet") s.yetToDeadline++
             else if (dc === "d30") s.delayed30++
@@ -813,7 +803,6 @@ function TeamBoardContent() {
     const filtered = React.useMemo(() => {
         let result = viewItems.filter(({ item }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
-            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
@@ -831,9 +820,6 @@ function TeamBoardContent() {
                 const da = a.item.deadline ? new Date(a.item.deadline).getTime() : Infinity
                 const db = b.item.deadline ? new Date(b.item.deadline).getTime() : Infinity
                 cmp = da - db
-            } else if (sortBy === "risk") {
-                const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
-                cmp = (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1)
             } else if (sortBy === "published") {
                 const pa = a.item.published_at ? new Date(a.item.published_at).getTime() : 0
                 const pb = b.item.published_at ? new Date(b.item.published_at).getTime() : 0
@@ -842,7 +828,7 @@ function TeamBoardContent() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [viewItems, statusFilter, riskFilter, deadlineFilter, searchQuery, sortBy, sortDir])
+    }, [viewItems, statusFilter, deadlineFilter, searchQuery, sortBy, sortDir])
 
     // Group: Active (not completed) and Completed
     const activeItems = React.useMemo(() => filtered.filter(e => e.item.task_status !== "completed"), [filtered])
@@ -875,12 +861,11 @@ function TeamBoardContent() {
         )
     }
 
-    // Grid columns matching dashboard: Risk | Actionable | Status | Deadline | Time | Evidence | Published | Action
-    const gridCols = "36px minmax(180px,3fr) 100px 100px 70px 80px 90px 90px"
+    // Grid columns: Actionable | Status | Deadline | Time | Evidence | Published | Action
+    const gridCols = "minmax(180px,3fr) 100px 100px 70px 80px 90px 90px"
 
     const renderHeader = () => (
         <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-            <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1">Risk</div>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
             <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -967,14 +952,6 @@ function TeamBoardContent() {
                         ))}
                     </select>
 
-                    <select
-                        value={riskFilter}
-                        onChange={e => setRiskFilter(e.target.value)}
-                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
-                    >
-                        <option value="all">All Risk</option>
-                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
 
                     <select
                         value={deadlineFilter}
@@ -988,11 +965,10 @@ function TeamBoardContent() {
                         <option value="d90">Delayed 90d</option>
                     </select>
 
-                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
+                    {(statusFilter !== "all" || deadlineFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
                                 setStatusFilter("all")
-                                setRiskFilter("all")
                                 setDeadlineFilter("all")
                                 setSearchQuery("")
                             }}
