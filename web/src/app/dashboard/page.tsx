@@ -89,7 +89,7 @@ export default function DashboardPage() {
 
     const handleUnpublish = React.useCallback(async (docId: string, item: ActionableItem) => {
         // Reset actionable back to default state in Actionables section
-        // Preserve: deadline, theme, tranche3, impact (impact_dropdown)
+        // Preserve: deadline, theme, tranche3, impact (impact_dropdown), implementation_notes, team assignments (workstream, assigned_teams)
         // Clear: all role data, risk inputs, evidence, comments, bypass flags
         const resetUpdates: Record<string, unknown> = {
             published_at: "",
@@ -175,7 +175,7 @@ export default function DashboardPage() {
 
     // CO approves wrongly-tagged flag → full unpublish + clear back to Actionables section
     // Clears all member data (comments, evidence, risk inputs, parameters)
-    // Preserves: deadline, theme, tranche3, impact_dropdown
+    // Preserves: deadline, theme, tranche3, impact_dropdown, implementation_notes, team assignments
     const handleBypassApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
         const bypassClear: Record<string, unknown> = {
             // Return to Actionables (unpublish)
@@ -198,7 +198,6 @@ export default function DashboardPage() {
             team_reviewer_approved_at: "",
             team_reviewer_rejected_at: "",
             reviewer_comments: "",
-            implementation_notes: "",
             // Clear risk inputs
             likelihood_business_volume: null,
             likelihood_products_processes: null,
@@ -252,7 +251,6 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
-                        implementation_notes: "",
                     }
                 }
             }
@@ -262,10 +260,10 @@ export default function DashboardPage() {
         toast.success("Wrongly-tagged approved — actionable returned to Actionables for re-assignment and re-publish")
     }, [handleUpdate])
 
-    // CO disapproves wrongly-tagged flag → return to member in_progress with note
+    // CO disapproves wrongly-tagged flag → return to member assigned state (Start button visible)
     const handleBypassDisapprove = React.useCallback(async (docId: string, item: ActionableItem, reason: string, userName: string) => {
         const updates: Record<string, unknown> = {
-            task_status: "in_progress",
+            task_status: "assigned",
             bypass_tag: false,
             bypass_tagged_at: "",
             bypass_tagged_by: "",
@@ -278,19 +276,19 @@ export default function DashboardPage() {
             bypass_disapproved_at: new Date().toISOString(),
             bypass_disapproval_reason: reason,
         }
-        // For multi-team items, restore each team workflow to in_progress
+        // For multi-team items, restore each team workflow to assigned
         if (isMultiTeam(item) && item.team_workflows) {
             const updatedWorkflows: Record<string, unknown> = {}
             for (const team of item.assigned_teams || []) {
                 const tw = item.team_workflows[team]
                 if (tw) {
-                    updatedWorkflows[team] = { ...tw, task_status: "in_progress" }
+                    updatedWorkflows[team] = { ...tw, task_status: "assigned" }
                 }
             }
             updates.team_workflows = updatedWorkflows
         }
         await handleUpdate(docId, item.id, updates)
-        toast.success("Wrongly-tagged disapproved — actionable returned to Team Member")
+        toast.success("Wrongly-tagged disapproved — actionable returned to Team Member (Start state)")
     }, [handleUpdate])
 
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
