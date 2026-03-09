@@ -35,14 +35,14 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
-    safeStr, normalizeRisk,
-    RISK_STYLES, RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
+    safeStr,
+    WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
     RESIDUAL_RISK_INTERPRETATION_STYLES, THEME_OPTIONS,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
 import { HierarchicalTeamMultiSelect, HierarchicalTeamSelect } from "@/components/shared/hierarchical-team-selector"
-import { RiskIcon, EmptyState } from "@/components/shared/status-components"
+import { EmptyState } from "@/components/shared/status-components"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
@@ -272,7 +272,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     // --- Draft state: all editable fields are local until Save ---
     const [draftImpl, setDraftImpl] = React.useState(safeStr(item.implementation_notes))
     const [draftEvidence, setDraftEvidence] = React.useState(safeStr(item.evidence_quote))
-    const [draftRisk, setDraftRisk] = React.useState(normalizeRisk(item.modality))
     const [deadlineDate, setDeadlineDate] = React.useState(item.deadline ? item.deadline.split("T")[0] || "" : "")
     const [deadlineTime, setDeadlineTime] = React.useState(item.deadline ? item.deadline.split("T")[1] || "23:59" : "23:59")
 
@@ -312,7 +311,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftAction(safeStr(item.action))
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
-        setDraftRisk(normalizeRisk(item.modality))
         setDraftTranche3(safeStr(item.tranche3))
         setDraftTheme(safeStr(item.theme))
         // Structured risk sub-dropdowns
@@ -547,8 +545,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
 
-                    {/* Risk icon — before team tag */}
-                    <RiskIcon modality={item.modality} />
 
                     {/* Actionable ID badge */}
                     {item.actionable_id && (
@@ -638,10 +634,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(t))}>{t}</span>
                                         ))}
                                     </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Risk Level</p>
-                                    <span className={cn("inline-block px-2 py-0.5 rounded text-xs font-medium", RISK_STYLES[normalizeRisk(item.modality)]?.bg || "bg-muted/40", RISK_STYLES[normalizeRisk(item.modality)]?.text || "text-foreground")}>{normalizeRisk(item.modality)}</span>
                                 </div>
                             </div>
                             {item.deadline && (
@@ -1153,7 +1145,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     const [docSearchQuery, setDocSearchQuery] = React.useState("")
     const [form, setForm] = React.useState({
         action: "",
-        modality: "High Risk" as ActionableModality,
         workstream: "Other" as ActionableWorkstream,
         implementation_notes: "",
         evidence_quote: "",
@@ -1384,7 +1375,6 @@ export default function ActionablesPage() {
 
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")
-    const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [searchQuery, setSearchQuery] = React.useState("")
 
     // PDF state
@@ -1540,7 +1530,6 @@ export default function ActionablesPage() {
     const filtered = React.useMemo(() => {
         return allItems.filter(({ item, docId }) => {
             if (docFilter !== "all" && docId !== docFilter) return false
-            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 // Include classification in search so "Mixed Team" is searchable
@@ -1551,7 +1540,7 @@ export default function ActionablesPage() {
             return true
         })
         // Keep actionables in creation order - no sorting by risk
-    }, [allItems, docFilter, riskFilter, searchQuery])
+    }, [allItems, docFilter, searchQuery])
 
     // Group by team/classification for the "by-team" view
     // Multi-team items are grouped under "Mixed Team" (system-generated classification)
@@ -1761,14 +1750,6 @@ export default function ActionablesPage() {
                                 {allDocs.map(d => (
                                     <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>
                                 ))}
-                            </select>
-                            <select
-                                value={riskFilter}
-                                onChange={e => setRiskFilter(e.target.value)}
-                                className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground"
-                            >
-                                <option value="all">All risk</option>
-                                {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                             </select>
                             {/* Publish Selected / Publish All buttons */}
                             {viewTab === "all" && checkedItems.size > 0 && (

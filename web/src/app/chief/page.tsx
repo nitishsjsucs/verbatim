@@ -23,13 +23,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
-    safeStr, normalizeRisk, formatDateShort as formatDate, formatTime, deadlineCategory,
-    RISK_OPTIONS, WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS,
+    safeStr, formatDateShort as formatDate, formatTime, deadlineCategory,
+    WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, ALL_TASK_STATUSES, STATUS_SORT_ORDER, getWorkstreamClass,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
-import { RiskIcon, ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
+import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,11 +70,10 @@ function ChiefContent() {
 
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")
-    const [riskFilter, setRiskFilter] = React.useState<string>("all")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
     const [docFilter, setDocFilter] = React.useState<string>("all")
     const [teamFilter, setTeamFilter] = React.useState<string>("all")
-    const [sortBy, setSortBy] = React.useState<string>("risk")
+    const [sortBy, setSortBy] = React.useState<string>("status")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [activeCollapsed, setActiveCollapsed] = React.useState(true)
     const [completedCollapsed, setCompletedCollapsed] = React.useState(true)
@@ -127,7 +126,6 @@ function ChiefContent() {
     const filtered = React.useMemo(() => {
         let result = allRows.filter(({ item, docId }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
-            if (riskFilter !== "all" && normalizeRisk(item.modality) !== riskFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (docFilter !== "all" && docId !== docFilter) return false
             if (teamFilter !== "all" && getClassification(item) !== teamFilter) return false
@@ -147,9 +145,6 @@ function ChiefContent() {
                 const da = a.item.deadline ? new Date(a.item.deadline).getTime() : Infinity
                 const db = b.item.deadline ? new Date(b.item.deadline).getTime() : Infinity
                 cmp = da - db
-            } else if (sortBy === "risk") {
-                const ro: Record<string, number> = { "High Risk": 0, "Medium Risk": 1, "Low Risk": 2 }
-                cmp = (ro[normalizeRisk(a.item.modality)] ?? 1) - (ro[normalizeRisk(b.item.modality)] ?? 1)
             } else if (sortBy === "published") {
                 const pa = a.item.published_at ? new Date(a.item.published_at).getTime() : 0
                 const pb = b.item.published_at ? new Date(b.item.published_at).getTime() : 0
@@ -158,7 +153,7 @@ function ChiefContent() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [allRows, statusFilter, riskFilter, deadlineFilter, docFilter, teamFilter, searchQuery, sortBy, sortDir])
+    }, [allRows, statusFilter, deadlineFilter, docFilter, teamFilter, searchQuery, sortBy, sortDir])
 
     // Split active / completed
     const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
@@ -186,10 +181,6 @@ function ChiefContent() {
             else if (st === "review") s.review++
             else if (st === "reworking") s.reworking++
             else s.assigned++
-            const risk = normalizeRisk(e.item.modality)
-            if (risk === "High Risk") s.highRisk++
-            else if (risk === "Medium Risk") s.midRisk++
-            else s.lowRisk++
             const dc = deadlineCategory(e.item.deadline)
             if (dc === "yet") s.yetToDeadline++
             else if (dc === "d30") s.delayed30++
@@ -249,11 +240,6 @@ function ChiefContent() {
                         <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", teamColors.bg, teamColors.text || "text-muted-foreground")}>
                             {classification}
                         </span>
-                    </div>
-
-                    {/* Risk icon */}
-                    <div className="py-1.5 flex justify-center">
-                        <RiskIcon modality={item.modality} />
                     </div>
 
                     {/* Actionable text */}
@@ -494,10 +480,6 @@ function ChiefContent() {
                         ))}
                     </select>
 
-                    <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)} className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground">
-                        <option value="all">All Risk</option>
-                        {RISK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
 
                     <select value={deadlineFilter} onChange={e => setDeadlineFilter(e.target.value)} className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground">
                         <option value="all">All Deadlines</option>
@@ -521,11 +503,10 @@ function ChiefContent() {
                         ))}
                     </select>
 
-                    {(statusFilter !== "all" || riskFilter !== "all" || deadlineFilter !== "all" || docFilter !== "all" || teamFilter !== "all" || searchQuery) && (
+                    {(statusFilter !== "all" || deadlineFilter !== "all" || docFilter !== "all" || teamFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
                                 setStatusFilter("all")
-                                setRiskFilter("all")
                                 setDeadlineFilter("all")
                                 setDocFilter("all")
                                 setTeamFilter("all")
