@@ -1575,15 +1575,17 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
     return target.to_dict()
 
 
-def _safe_score(d: dict | None) -> float:
-    """Extract numeric score from a sub-dropdown dict, defaulting to 0."""
+def _safe_score(d: dict | None) -> float | None:
+    """Extract numeric score from a sub-dropdown dict, returning None if missing."""
     if not d or not isinstance(d, dict):
-        return 0
-    v = d.get("score", 0)
+        return None
+    v = d.get("score")
+    if v is None:
+        return None
     try:
         return float(v)
     except (TypeError, ValueError):
-        return 0
+        return None
 
 
 def _recompute_risk_scores(target) -> None:
@@ -1598,43 +1600,69 @@ def _recompute_risk_scores(target) -> None:
     The residual_risk_label is resolved via the admin-configurable
     residual_risk_matrix collection. If no matrix match, falls back to
     a simple threshold classification.
+    
+    If ANY required parameter is missing, all dependent scores are set to None.
     """
     # Likelihood = MAX of 3 independent sub-dropdown scores
     bv = _safe_score(target.likelihood_business_volume)
     pp = _safe_score(target.likelihood_products_processes)
     cv = _safe_score(target.likelihood_compliance_violations)
-    ls = max(bv, pp, cv)
+    
+    # If any likelihood component is missing, likelihood is None
+    if bv is None or pp is None or cv is None:
+        ls = None
+    else:
+        ls = max(bv, pp, cv)
+    
     target.likelihood_score = ls
-    target.overall_likelihood_score = int(ls)
+    target.overall_likelihood_score = int(ls) if ls is not None else None
 
     # Impact = (single dropdown score)²
     raw_impact = _safe_score(target.impact_dropdown)
-    ims = raw_impact ** 2
+    if raw_impact is None:
+        ims = None
+    else:
+        ims = raw_impact ** 2
+    
     target.impact_score = ims
-    target.overall_impact_score = int(ims)
+    target.overall_impact_score = int(ims) if ims is not None else None
 
-    # Inherent risk = likelihood × impact
-    ir = ls * ims
+    # Inherent risk = likelihood × impact (None if either is None)
+    if ls is None or ims is None:
+        ir = None
+    else:
+        ir = ls * ims
+    
     target.inherent_risk_score = ir
     target.inherent_risk_label = _classify_inherent_risk(ir)
 
     # Control = average of 2 sub-dropdown scores
     mon = _safe_score(target.control_monitoring)
     eff = _safe_score(target.control_effectiveness)
-    cs = (mon + eff) / 2 if (mon or eff) else 0
+    
+    # If any control component is missing, control is None
+    if mon is None or eff is None:
+        cs = None
+    else:
+        cs = (mon + eff) / 2
+    
     target.control_score = cs
     target.overall_control_score = cs
 
-    # Residual risk = inherent × control
-    rr = ir * cs
+    # Residual risk = inherent × control (None if either is None)
+    if ir is None or cs is None:
+        rr = None
+    else:
+        rr = ir * cs
+    
     target.residual_risk_score = rr
     target.residual_risk_label = _resolve_residual_risk_label(rr)
     target.residual_risk_interpretation = _interpret_residual_risk(rr)
 
 
-def _classify_inherent_risk(score: int) -> str:
+def _classify_inherent_risk(score: int | None) -> str:
     """Simple threshold-based inherent risk label."""
-    if score <= 0:
+    if score is None or score <= 0:
         return ""
     if score <= 3:
         return "Low"
@@ -1643,9 +1671,12 @@ def _classify_inherent_risk(score: int) -> str:
     return "High"
 
 
-def _resolve_residual_risk_label(residual_score: float) -> str:
+def _resolve_residual_risk_label(residual_score: float | None) -> str:
     """Look up residual risk label from the admin-configurable interpretation matrix.
     Falls back to simple threshold if no matrix entry matches."""
+    if residual_score is None:
+        return ""
+    
     try:
         from utils.mongo import get_db
         db = get_db()
@@ -1669,14 +1700,14 @@ def _resolve_residual_risk_label(residual_score: float) -> str:
     return "High"
 
 
-def _interpret_residual_risk(residual_score: float) -> str:
+def _interpret_residual_risk(residual_score: float | None) -> str:
     """Map residual risk score to a human-readable interpretation per spec §10.
 
     1 ≤ score < 13  → "Satisfactory (Low)"
     13 ≤ score < 28 → "Improvement Needed (Medium)"
     28 ≤ score < 81 → "Weak (High)"
     """
-    if residual_score < 1:
+    if residual_score is None or residual_score < 1:
         return ""
     if residual_score < 13:
         return "Satisfactory (Low)"
