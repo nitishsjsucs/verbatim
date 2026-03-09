@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth"
 import { mongodbAdapter } from "better-auth/adapters/mongodb"
 import { admin } from "better-auth/plugins"
 import { MongoClient } from "mongodb"
-import { ac, complianceOfficer, teamReviewer, teamLead, teamMember } from "./permissions"
+import { ac, complianceOfficer, teamReviewer, teamLead, teamMember, chief } from "./permissions"
 
 const client = new MongoClient(process.env.MONGODB_URI || "mongodb://localhost:27017")
 const db = client.db(process.env.AUTH_DB_NAME || "govinda_auth")
@@ -53,6 +53,7 @@ export const auth = betterAuth({
                 team_reviewer: teamReviewer,
                 team_lead: teamLead,
                 team_member: teamMember,
+                chief: chief,
             },
             defaultRole: "team_member",
         }),
