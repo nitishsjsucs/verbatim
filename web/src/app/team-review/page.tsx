@@ -751,7 +751,7 @@ function ReviewRow({
         <div className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70")}>
             <div
                 className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
-                style={{ gridTemplateColumns: props.gridCols }}
+                style={{ gridTemplateColumns: gridCols }}
                 onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
             >
                 {/* Actionable text */}
