@@ -30,6 +30,7 @@ import {
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
+import { getVisibleTeamsForRole, isActionableVisible } from "@/lib/visibility"
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
@@ -795,12 +796,12 @@ function TeamBoardContent() {
     const userTeam = getUserTeam(session)
     const isComplianceOfficer = role === "compliance_officer" || role === "admin"
     const userName = session?.user?.name || "Team Member"
-    const { getVisibleTeams } = useTeams()
+    const { teams, getDescendants } = useTeams()
 
-    // Get all teams visible to this user (their team + all descendants)
+    // Determine visible teams based on member's role and assigned team
     const visibleTeams = React.useMemo(
-        () => userTeam ? getVisibleTeams(userTeam) : [],
-        [userTeam, getVisibleTeams]
+        () => Array.from(getVisibleTeamsForRole(role as any, userTeam, teams, getDescendants)),
+        [role, userTeam, teams, getDescendants]
     )
 
     // Redirect compliance officers away from team board
@@ -829,10 +830,8 @@ function TeamBoardContent() {
                 if (!r.actionables) continue
                 for (const a of r.actionables) {
                     if (!a.published_at) continue
-                    // Include if workstream or any assigned_team is in visible teams
-                    const matchesTeam = visSet.has(a.workstream) ||
-                        (a.assigned_teams && a.assigned_teams.some(t => visSet.has(t)))
-                    if (matchesTeam) {
+                    // Use centralized visibility check
+                    if (isActionableVisible(a, visSet)) {
                         items.push({ item: a, docId: r.doc_id, docName: r.doc_name || r.doc_id })
                     }
                 }

@@ -40,6 +40,7 @@ import {
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
+import { getVisibleTeamsForRole, isActionableVisible } from "@/lib/visibility"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -57,12 +58,12 @@ function TeamLeadContent() {
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
     const userName = session?.user?.name || "Team Lead"
-    const { getVisibleTeams } = useTeams()
+    const { teams, getDescendants } = useTeams()
 
-    // Get all teams visible to this user (their team + all descendants)
+    // Determine visible teams based on lead's role and assigned team
     const visibleTeams = React.useMemo(
-        () => userTeam ? new Set(getVisibleTeams(userTeam)) : new Set<string>(),
-        [userTeam, getVisibleTeams]
+        () => getVisibleTeamsForRole(role as any, userTeam, teams, getDescendants),
+        [role, userTeam, teams, getDescendants]
     )
 
     // Redirect non-team-leads away
@@ -143,16 +144,13 @@ function TeamLeadContent() {
         const rows: FlatRow[] = []
         for (const doc of allDocs) {
             for (const item of doc.actionables) {
-                if (item.published_at) {
-                    // If lead has a team assigned, filter by it + descendants; otherwise show all
-                    if (!userTeam || visibleTeams.has(item.workstream) || (item.assigned_teams && item.assigned_teams.some(t => visibleTeams.has(t)))) {
-                        rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
-                    }
+                if (item.published_at && isActionableVisible(item, visibleTeams)) {
+                    rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
                 }
             }
         }
         return rows
-    }, [allDocs, userTeam, visibleTeams])
+    }, [allDocs, visibleTeams])
 
     // Project multi-team items to show team-specific status/evidence/comments
     const viewRows = React.useMemo(() => {

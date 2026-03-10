@@ -11,7 +11,7 @@ import {
 } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"
-import { AuthGuard, getUserRole } from "@/components/auth/auth-guard"
+import { AuthGuard, getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { useRouter } from "next/navigation"
 import {
     LayoutDashboard, ChevronDown, ChevronRight,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
+import { getVisibleTeamsForRole, isActionableVisible } from "@/lib/visibility"
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -45,8 +46,9 @@ function ChiefContent() {
     const router = useRouter()
     const { data: session } = useSession()
     const role = getUserRole(session)
+    const userTeam = getUserTeam(session)
     const userName = session?.user?.name || "Chief"
-    useTeams() // ensure teams are loaded
+    const { teams, getDescendants } = useTeams()
 
     // Redirect non-chiefs away
     const isChief = role === "chief"
@@ -90,18 +92,24 @@ function ChiefContent() {
 
     React.useEffect(() => { if (isChief) loadAll() }, [loadAll, isChief])
 
-    // Build flat rows — all published actionables across all teams
+    // Determine visible teams based on chief's role and assigned team
+    const visibleTeams = React.useMemo(
+        () => getVisibleTeamsForRole(role as any, userTeam, teams, getDescendants),
+        [role, userTeam, teams, getDescendants]
+    )
+
+    // Build flat rows — only published actionables within visible teams
     const allRows: FlatRow[] = React.useMemo(() => {
         const rows: FlatRow[] = []
         for (const doc of allDocs) {
             for (const item of doc.actionables) {
-                if (item.published_at) {
+                if (item.published_at && isActionableVisible(item, visibleTeams)) {
                     rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
                 }
             }
         }
         return rows
-    }, [allDocs])
+    }, [allDocs, visibleTeams])
 
     // Unique doc names for filter dropdown
     const docOptions = React.useMemo(() => {
