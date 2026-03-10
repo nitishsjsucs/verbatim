@@ -26,13 +26,12 @@ import {
     Loader2, Search, AlertTriangle,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc,
-    Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2, Flag, Save,
+    Users, Paperclip, FileText, ExternalLink, Download, Upload, Trash2, Flag, Save, Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
     safeStr, formatDate, formatTime, deadlineCategory,
-    WORKSTREAM_COLORS,
     TASK_STATUS_STYLES, STATUS_SORT_ORDER, getWorkstreamClass,
     RESIDUAL_RISK_INTERPRETATION_STYLES,
 } from "@/lib/status-config"
@@ -286,7 +285,7 @@ function TeamReviewContent() {
         return { total, teamReview, review, completed, inProgress, reworking }
     }, [viewRows])
 
-    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px 120px"
+    const gridCols = "minmax(180px,3fr) 100px 100px 70px 80px 90px 90px"
 
     if (!isTeamReviewer) return null
 
@@ -438,7 +437,6 @@ function TeamReviewContent() {
                                 <>
                                     {/* Column headers */}
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -465,6 +463,7 @@ function TeamReviewContent() {
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
+                                            gridCols={gridCols}
                                         />
                                     ))}
                                 </>
@@ -480,7 +479,6 @@ function TeamReviewContent() {
                             {!completedCollapsed && (
                                 <>
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Team</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2">Actionable</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Status</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider py-1.5 px-2 text-center">Deadline</div>
@@ -505,6 +503,7 @@ function TeamReviewContent() {
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
+                                            gridCols={gridCols}
                                         />
                                     ))}
                                 </>
@@ -533,6 +532,7 @@ function ReviewRow({
     onAddComment,
     onUpload,
     onUpdate,
+    gridCols,
 }: {
     item: ActionableItem
     docId: string
@@ -547,6 +547,7 @@ function ReviewRow({
     onAddComment: (docId: string, item: ActionableItem, text: string) => Promise<void>
     onUpload: (docId: string, itemId: string, file: File) => void
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>, teamOverride?: string) => Promise<void>
+    gridCols: string
 }) {
     const rowKey = `${docId}-${item.id}`
     const taskStatus = (item.task_status || "assigned") as TaskStatus
@@ -746,22 +747,13 @@ function ReviewRow({
         toast.success("File removed")
     }
 
-    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px 120px"
-
     return (
         <div className={cn("border-b border-border/10", taskStatus === "completed" && "opacity-70")}>
             <div
                 className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
-                style={{ gridTemplateColumns: gridCols }}
+                style={{ gridTemplateColumns: props.gridCols }}
                 onClick={() => setExpandedRow(isExpanded ? null : rowKey)}
             >
-                {/* Team */}
-                <div className="py-1.5 px-1">
-                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", WORKSTREAM_COLORS[item.workstream]?.bg, WORKSTREAM_COLORS[item.workstream]?.text || "text-muted-foreground")}>
-                        {item.workstream}
-                    </span>
-                </div>
-
                 {/* Actionable text */}
                 <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                     {isExpanded
