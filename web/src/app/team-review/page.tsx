@@ -555,6 +555,7 @@ function ReviewRow({
     const commentCount = (item.comments || []).length
     const isTeamReviewStatus = taskStatus === "team_review"
     const isTaggedIncorrectly = taskStatus === "tagged_incorrectly"
+    const isReworking = taskStatus === "reworking"
     const isReadOnly = taskStatus === "completed" || taskStatus === "review" || taskStatus === "bypass_approved"
 
     const [rejectReason, setRejectReason] = React.useState("")
@@ -1149,11 +1150,12 @@ function ReviewRow({
                         </div>
 
                         {/* Save Changes button */}
-                        {(isTeamReviewStatus || isTaggedIncorrectly) && isDirty && (
+                        {(isTeamReviewStatus || isTaggedIncorrectly || isReworking) && isDirty && (
                             <div className="flex justify-end pt-1">
                                 <button
                                     onClick={handleSaveChanges}
-                                    disabled={saving}
+                                    disabled={saving || !draftReviewerComment.trim()}
+                                    title={!draftReviewerComment.trim() ? "Reviewer comment is required" : ""}
                                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50"
                                 >
                                     {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -1201,10 +1203,10 @@ function ReviewRow({
                         </div>
                     )}
 
-                    {/* Member comment display */}
+                    {/* Member comment display — show in all statuses when available */}
                     {item.member_comment && (
                         <div className="rounded-lg border border-border/30 bg-muted/5 p-3">
-                            <p className="text-xs font-semibold text-foreground/60 mb-1">Member&apos;s Comment</p>
+                            <p className="text-xs font-semibold text-foreground/60 mb-1">{isReworking ? "Member's Rework Comment" : "Member's Comment"}</p>
                             <p className="text-xs text-foreground/80">{item.member_comment}</p>
                         </div>
                     )}
@@ -1258,18 +1260,18 @@ function ReviewRow({
                             </div>
                         </div>
                         <div className="space-y-3">
-                            {/* Mandatory reviewer comment */}
-                            {isTeamReviewStatus && (
+                            {/* Mandatory reviewer comment — required in team_review and reworking statuses */}
+                            {(isTeamReviewStatus || isReworking) && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                     <div className="flex items-center gap-1.5 mb-2">
                                         <p className="text-xs font-semibold text-foreground/70">Reviewer Comment</p>
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required before approval</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required {isReworking ? "for rework review" : "before approval"}</span>
                                     </div>
                                     <textarea
                                         value={draftReviewerComment}
                                         onChange={e => setDraftReviewerComment(e.target.value)}
                                         rows={4}
-                                        placeholder="Provide your review comments, observations, and any issues found. This is mandatory before you can approve or reject."
+                                        placeholder={isReworking ? "Review the reworked implementation and provide your feedback (required)…" : "Provide your review comments, observations, and any issues found. This is mandatory before you can approve or reject."}
                                         className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-border/30 focus:border-primary focus:outline-none text-foreground resize-none"
                                     />
                                     {item.reviewer_comment && (
@@ -1277,7 +1279,7 @@ function ReviewRow({
                                     )}
                                 </div>
                             )}
-                            {!isTeamReviewStatus && item.reviewer_comment && (
+                            {!isTeamReviewStatus && !isReworking && item.reviewer_comment && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                     <p className="text-xs font-semibold text-foreground/70 mb-1">Reviewer Comment</p>
                                     <p className="text-xs text-foreground/80">{item.reviewer_comment}</p>

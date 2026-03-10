@@ -749,9 +749,9 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     )}
                                 </div>
                             )}
-                            {isReadOnly && item.member_comment && (
+                            {(isReadOnly || taskStatus === "reworking") && item.member_comment && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Member Comment</p>
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">{taskStatus === "reworking" ? "Your Previous Comment" : "Member Comment"}</p>
                                     <p className="text-xs text-foreground/80">{item.member_comment}</p>
                                 </div>
                             )}
