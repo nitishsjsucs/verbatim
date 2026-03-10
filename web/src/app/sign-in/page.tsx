@@ -13,6 +13,7 @@ function redirectForRole(role: string): string {
     if (role === "compliance_officer") return "/dashboard"
     if (role === "team_reviewer") return "/team-review"
     if (role === "team_lead") return "/team-lead"
+    if (role === "chief") return "/chief"
     return "/team-board"
 }
 
@@ -51,8 +52,16 @@ export default function SignInPage() {
                     const sessionRole = sess?.data?.user?.role
                     if (sessionRole === "admin") {
                         window.location.href = "/admin"
-                    } else {
+                    } else if (sessionRole === "compliance_officer") {
                         window.location.href = "/dashboard"
+                    } else if (sessionRole === "team_reviewer") {
+                        window.location.href = "/team-review"
+                    } else if (sessionRole === "team_lead") {
+                        window.location.href = "/team-lead"
+                    } else if (sessionRole === "chief") {
+                        window.location.href = "/chief"
+                    } else {
+                        window.location.href = "/team-board"
                     }
                 } catch {
                     window.location.href = "/dashboard"
