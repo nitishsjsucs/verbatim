@@ -35,9 +35,31 @@ export function getVisibleTeamsForRole(
     return new Set<string>()
   }
 
-  // User's team + all descendants
-  const visible = [userTeam, ...getDescendants(userTeam)]
-  return new Set(visible)
+  const normalize = (name: string) => name.trim().toLowerCase()
+  const normalizedTarget = normalize(userTeam)
+  const teamByNormalized = new Map<string, Team>()
+  for (const team of teams) {
+    teamByNormalized.set(normalize(team.name), team)
+  }
+
+  const matchedTeam = teamByNormalized.get(normalizedTarget)
+  if (!matchedTeam) {
+    // Team not found — safest fallback is empty
+    return new Set<string>()
+  }
+
+  const descendantNames = getDescendants(matchedTeam.name)
+  const visible = new Set<string>([matchedTeam.name, ...descendantNames])
+
+  // Include any teams whose breadcrumb path lists the matched team (covers deeply nested hierarchies)
+  for (const team of teams) {
+    const path = team.path || []
+    if (path.some(ancestor => normalize(ancestor) === normalize(matchedTeam.name))) {
+      visible.add(team.name)
+    }
+  }
+
+  return visible
 }
 
 /**
