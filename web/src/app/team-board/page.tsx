@@ -534,7 +534,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
-                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {draftLikScore || "—"} (MAX of 3)</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
@@ -577,7 +576,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
-                                <span className="text-[10px] font-mono text-teal-400/60">Overall: {draftCtrlScore ? draftCtrlScore.toFixed(1) : "—"} (avg)</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
