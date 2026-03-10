@@ -1204,16 +1204,16 @@ function TeamBoardContent() {
                         </>
                     )}
 
-                    {/* ── Completed section — matches dashboard ── */}
+                    {/* ── Completed section — matches Active with same content, read-only ── */}
                     {!loading && completedItems.length > 0 && (
                         <div className="mt-4">
                             <SectionDivider label="Completed" count={completedItems.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && (
-                                <>
+                                <div className="mb-1">
                                     {renderHeader()}
                                     {completedItems.map(renderTaskRow)}
-                                </>
+                                </div>
                             )}
                         </div>
                     )}

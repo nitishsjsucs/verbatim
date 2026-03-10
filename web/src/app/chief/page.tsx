@@ -587,7 +587,7 @@ function ChiefContent() {
                         </>
                     )}
 
-                    {/* ── Completed section ── */}
+                    {/* ── Completed section — matches Active with same content, read-only ── */}
                     {!loading && completedRows.length > 0 && (
                         <div className="mt-4">
                             <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
