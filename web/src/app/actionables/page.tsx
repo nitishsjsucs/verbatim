@@ -253,8 +253,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const controlScore = (monScore || effScore) ? (monScore + effScore) / 2 : 0
     // All 6 risk parameters must be filled for residual to calculate
     const allRiskFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
-    // RESIDUAL RISK = inherent risk + control score (only when all params filled)
-    const residualRiskScore = allRiskFilled ? inherentRiskScore + controlScore : 0
+    // RESIDUAL RISK = inherent risk × control score (only when all params filled)
+    const residualRiskScore = allRiskFilled ? inherentRiskScore * controlScore : 0
     const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
     const impactLabel = React.useMemo(() => {
         const label = getLabel("impact_dropdown")

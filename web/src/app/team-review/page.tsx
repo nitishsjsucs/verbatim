@@ -656,7 +656,7 @@ function ReviewRow({
     const draftCtrlScore = (draftMonS || draftEffS) ? (draftMonS + draftEffS) / 2 : 0
     const draftInherent = draftLikScore * draftImpScore
     const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && item.impact_dropdown?.label && draftCtrlMon?.label && draftCtrlEff?.label)
-    const draftResidual = draftAllFilled ? draftInherent + draftCtrlScore : 0
+    const draftResidual = draftAllFilled ? draftInherent * draftCtrlScore : 0
     const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
 
     const handleSaveChanges = React.useCallback(async () => {

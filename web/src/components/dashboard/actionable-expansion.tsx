@@ -178,7 +178,7 @@ export function ActionableExpansion({
     const computedCtrlScore = (computedMonS || computedEffS) ? (computedMonS + computedEffS) / 2 : 0
     const computedInherent = computedLikScore * computedImpScore
     const allRiskFilled = !!(item.likelihood_business_volume?.label && item.likelihood_products_processes?.label && item.likelihood_compliance_violations?.label && item.impact_dropdown?.label && item.control_monitoring?.label && item.control_effectiveness?.label)
-    const computedResidual = allRiskFilled ? computedInherent + computedCtrlScore : 0
+    const computedResidual = allRiskFilled ? computedInherent * computedCtrlScore : 0
     const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
     const computedResidualLabel = allRiskFilled ? classifyRisk(computedResidual) : ""
     const computedResidualInterp = !allRiskFilled ? "" : computedResidual < 13 ? "Satisfactory (Low)" : computedResidual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"

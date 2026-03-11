@@ -135,9 +135,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const draftMonS = safeRSD(draftCtrlMon)
     const draftEffS = safeRSD(draftCtrlEff)
     const draftCtrlScore = (draftMonS || draftEffS) ? (draftMonS + draftEffS) / 2 : 0
-    const draftInherent = draftLikScore * draftImpScore
+    // All 6 risk parameters must be filled for residual to calculate
     const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && item.impact_dropdown?.label && draftCtrlMon?.label && draftCtrlEff?.label)
-    const draftResidual = draftAllFilled ? draftInherent + draftCtrlScore : 0
+    const draftInherent = draftLikScore * draftImpScore
+    const draftResidual = draftAllFilled ? draftInherent * draftCtrlScore : 0
     const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
 
     // Explicit Save — batches all risk + comment changes
