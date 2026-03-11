@@ -1499,11 +1499,6 @@ function DeadlineCell({ value, onSave, disabled = false }: { value: string; onSa
         try { return new Date(v).getTime() < Date.now() } catch { return false }
     }, [localValue, value])
 
-    const todayMin = React.useMemo(() => {
-        const d = new Date()
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T00:00`
-    }, [])
-
     const handleSave = async () => {
         if (!localValue) return
         setSaving(true)
@@ -1541,7 +1536,6 @@ function DeadlineCell({ value, onSave, disabled = false }: { value: string; onSa
                     ref={inputRef}
                     type="datetime-local"
                     value={localValue}
-                    min={todayMin}
                     onChange={e => setLocalValue(e.target.value)}
                     className="absolute inset-0 opacity-0 cursor-pointer w-full h-full [color-scheme:dark] dark:[color-scheme:dark]"
                 />
