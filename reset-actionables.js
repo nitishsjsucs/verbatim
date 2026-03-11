@@ -26,6 +26,10 @@ const { MongoClient } = require('./web/node_modules/mongodb');
  * NEW: Role-specific mandatory comment fields (all cleared):
  *   member_comment, reviewer_comment, lead_comment, co_comment
  *
+ * NEW: Risk assessment resets (theme / tranche / dropdowns / derived scores):
+ *   theme, tranche3, legacy risk strings, likelihood_* sub-dropdowns, impact_dropdown,
+ *   control_* dropdowns, all *_score / *_label / *_interpretation fields.
+ *
  * Per-team workflows: each team reset to "assigned" with same new fields cleared.
  *
  * Fields NOT touched: evidence_files, comments, audit_trail,
@@ -144,6 +148,34 @@ async function resetActionables() {
                 reviewer_comment:             "",
                 lead_comment:                 "",
                 co_comment:                   "",
+                // Clear risk configuration + scores so dropdowns are empty
+                theme:                        "",
+                tranche3:                     "",
+                impact:                       "",
+                control:                      "",
+                likelihood:                   "",
+                residual_risk:               "",
+                inherent_risk:               "",
+                likelihood_business_volume:   null,
+                likelihood_products_processes:null,
+                likelihood_compliance_violations: null,
+                likelihood_score:             undefined,
+                overall_likelihood_score:     undefined,
+                impact_dropdown:              null,
+                impact_score:                 undefined,
+                overall_impact_score:         undefined,
+                control_monitoring:           null,
+                control_effectiveness:        null,
+                control_score:                undefined,
+                overall_control_score:        undefined,
+                inherent_risk_score:          undefined,
+                inherent_risk_label:          "",
+                residual_risk_score:          undefined,
+                residual_risk_label:          "",
+                residual_risk_interpretation: "",
+                impact_sub1:                  null,
+                impact_sub2:                  null,
+                impact_sub3:                  null,
                 team_workflows:               resetTeamWorkflows(item.team_workflows),
             }));
 
