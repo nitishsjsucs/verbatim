@@ -55,7 +55,7 @@ function TeamLeadContent() {
     const { data: session } = useSession()
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
-    const userName = session?.user?.name || "Team Lead"
+    const userName = session?.user?.name || "Team Head"
     const { teams, getDescendants } = useTeams()
 
     // Determine visible teams based on lead's role and assigned team
@@ -584,18 +584,15 @@ function OversightRow({
         }
     }, [draftLeadComment, onUpdate, docId, item.id])
 
-    // Approve delay justification (Lead optionally edits shared text + approves)
+    // Approve delay justification (Lead only approves — no text editing)
     const handleApproveDelayJustification = React.useCallback(async () => {
-        if (!draftDelayJustification.trim()) return
         await onUpdate(docId, item.id, {
-            delay_justification: draftDelayJustification.trim(),
             delay_justification_lead_approved: true,
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
         })
-        setShowDelayJustApprove(false)
         toast.success("Delay justification approved — fully approved")
-    }, [draftDelayJustification, onUpdate, docId, item.id, userName])
+    }, [onUpdate, docId, item.id, userName])
 
     // Reject delay justification — resets entire chain, member must re-enter
     const handleRejectDelayJustification = React.useCallback(async () => {
@@ -763,7 +760,7 @@ function OversightRow({
                                     <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
                                 )}
                                 {item.bypass_approved_by && (
-                                    <p className="text-xs text-muted-foreground/50">Approved by reviewer: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
+                                    <p className="text-xs text-muted-foreground/50">Approved by Checker: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
                                 )}
                             </div>
                         </div>
@@ -865,40 +862,23 @@ function OversightRow({
                         </div>
                     </div>
 
-                    {/* Delay Justification — shared field: Lead can edit + approve/reject */}
+                    {/* Delay Justification — Lead can only approve or reject (no text editing) */}
                     {(isDelayed || isAwaitingJustification) && item.delay_justification_member_submitted && item.delay_justification_reviewer_approved && !item.delay_justification_lead_approved && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification — Lead Approval Required</p>
+                                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification — Team Head Approval Required</p>
                             </div>
-                            {!showDelayJustApprove ? (
-                                <div className="space-y-2">
-                                    <div className="bg-muted/20 rounded p-2 text-xs">
-                                        <span className="font-semibold text-foreground/60">Reason for Delay: </span>
-                                        <span className="text-foreground/80">{item.delay_justification}</span>
-                                        {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
-                                    </div>
-                                    <div className="text-xs text-emerald-400/80">Reviewer: Approved</div>
-                                    <button onClick={() => setShowDelayJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review &amp; Approve Justification</button>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    <p className="text-[10px] text-amber-400/70">You may edit the justification text before approving, or reject to return to the member.</p>
-                                    <textarea
-                                        value={draftDelayJustification}
-                                        onChange={e => setDraftDelayJustification(e.target.value)}
-                                        rows={3}
-                                        placeholder="Edit or confirm the delay justification…"
-                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
-                                    />
-                                    <div className="flex gap-2">
-                                        <button onClick={handleApproveDelayJustification} disabled={!draftDelayJustification.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve Justification</button>
-                                        <button onClick={handleRejectDelayJustification} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold">Reject &amp; Return to Member</button>
-                                        <button onClick={() => { setShowDelayJustApprove(false); setDraftDelayJustification(item.delay_justification || "") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
-                                    </div>
-                                </div>
-                            )}
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Reason for Delay: </span>
+                                <span className="text-foreground/80">{item.delay_justification}</span>
+                                {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
+                            </div>
+                            <div className="text-xs text-emerald-400/80">Checker: Approved</div>
+                            <div className="flex gap-2">
+                                <button onClick={handleApproveDelayJustification} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold">Approve Justification</button>
+                                <button onClick={handleRejectDelayJustification} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold">Reject &amp; Return to Maker</button>
+                            </div>
                         </div>
                     )}
                     {/* Show fully-approved delay justification */}
@@ -913,9 +893,9 @@ function OversightRow({
                                 <span className="text-foreground/80">{item.delay_justification}</span>
                             </div>
                             <div className="flex gap-3">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Member: Submitted</span>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Reviewer: Approved</span>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Lead: Approved</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Maker: Submitted</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Checker: Approved</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Team Head: Approved</span>
                             </div>
                         </div>
                     )}
@@ -925,13 +905,13 @@ function OversightRow({
                         <div className="grid grid-cols-2 gap-2">
                             {item.member_comment && (
                                 <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
-                                    <p className="text-[10px] font-semibold text-foreground/50 mb-1">Member Comment</p>
+                                    <p className="text-[10px] font-semibold text-foreground/50 mb-1">Maker Comment</p>
                                     <p className="text-xs text-foreground/70">{item.member_comment}</p>
                                 </div>
                             )}
                             {item.reviewer_comment && (
                                 <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
-                                    <p className="text-[10px] font-semibold text-foreground/50 mb-1">Reviewer Comment</p>
+                                    <p className="text-[10px] font-semibold text-foreground/50 mb-1">Checker Comment</p>
                                     <p className="text-xs text-foreground/70">{item.reviewer_comment}</p>
                                 </div>
                             )}
@@ -992,7 +972,7 @@ function OversightRow({
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-1.5">
-                                            <p className="text-xs font-semibold text-foreground/70">Lead Comment</p>
+                                            <p className="text-xs font-semibold text-foreground/70">Team Head Comment</p>
                                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required</span>
                                         </div>
                                         {isCommentDirty && (
@@ -1020,7 +1000,7 @@ function OversightRow({
                             )}
                             {isReadOnly && item.lead_comment && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Lead Comment</p>
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Team Head Comment</p>
                                     <p className="text-xs text-foreground/80">{item.lead_comment}</p>
                                 </div>
                             )}

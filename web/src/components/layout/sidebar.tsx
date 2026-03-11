@@ -357,7 +357,7 @@ export function Sidebar({ className }: SidebarProps) {
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5">
             <p className="text-xs font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "chief" ? "Chief" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
+            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "CAG" : role === "chief" ? "Chief" : role === "team_reviewer" ? "Checker" : role === "team_lead" ? "Team Head" : "Maker"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>

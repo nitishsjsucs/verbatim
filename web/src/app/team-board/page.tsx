@@ -438,7 +438,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     <p className="text-xs text-muted-foreground/50 mt-1">Flagged by {item.bypass_tagged_by}{item.bypass_tagged_at ? ` on ${formatDate(item.bypass_tagged_at)}` : ""}</p>
                                 )}
                                 {item.bypass_approved_by && (
-                                    <p className="text-xs text-muted-foreground/50">Approved by reviewer: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
+                                    <p className="text-xs text-muted-foreground/50">Approved by Checker: {item.bypass_approved_by}{item.bypass_approved_at ? ` on ${formatDate(item.bypass_approved_at)}` : ""}</p>
                                 )}
                             </div>
                         </div>
@@ -664,13 +664,13 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     </div>
                                     <div className="flex gap-3">
                                         <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_member_submitted ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                            Member: Submitted
+                                            Maker: Submitted
                                         </span>
                                         <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                            Reviewer: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
+                                            Checker: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
                                         </span>
                                         <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                            Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
+                                            Team Head: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
                                         </span>
                                     </div>
                                 </div>
@@ -769,7 +769,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             )}
                             {isReadOnly && item.member_comment && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Member Comment</p>
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Maker Comment</p>
                                     <p className="text-xs text-foreground/80">{item.member_comment}</p>
                                 </div>
                             )}
@@ -804,7 +804,7 @@ function TeamBoardContent() {
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
     const isComplianceOfficer = role === "compliance_officer" || role === "admin"
-    const userName = session?.user?.name || "Team Member"
+    const userName = session?.user?.name || "Maker"
     const { teams, getDescendants } = useTeams()
 
     // Determine visible teams based on member's role and assigned team
@@ -899,7 +899,7 @@ function TeamBoardContent() {
             if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
-            if (!item.member_comment?.trim()) missing.push("Member Comment (required — save it first)")
+            if (!item.member_comment?.trim()) missing.push("Maker Comment (required — save it first)")
             // Evidence file requirement
             const files = item.evidence_files || []
             if (files.length === 0) missing.push("Evidence File (at least one required)")

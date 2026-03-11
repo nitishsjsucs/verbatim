@@ -562,13 +562,13 @@ export function ActionableExpansion({
                             </div>
                             <div className="flex gap-3">
                                 <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_member_submitted ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                    Member: Submitted
+                                    Maker: Submitted
                                 </span>
                                 <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                    Reviewer: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
+                                    Checker: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
                                 </span>
                                 <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                    Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
+                                    Team Head: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
                                 </span>
                             </div>
                         </div>

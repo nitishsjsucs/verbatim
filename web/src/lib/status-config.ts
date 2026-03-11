@@ -238,13 +238,30 @@ export const THEME_OPTIONS: string[] = [
     "FCRM (Earlier part of the Vigilance theme)",
 ]
 
+// ─── Role Display Names (centralized rename mapping) ────────────────────────
+// Internal IDs remain unchanged; only display labels are updated.
+// Member → Maker, Reviewer → Checker, Lead → Team Head, CO → CAG, Chief → Chief
+
+export const ROLE_DISPLAY_NAMES: Record<string, { short: string; full: string }> = {
+    team_member:        { short: "Maker",     full: "Maker" },
+    team_reviewer:      { short: "Checker",   full: "Checker" },
+    team_lead:          { short: "Team Head", full: "Team Head" },
+    compliance_officer: { short: "CAG",       full: "Compliance Advisory Group Officer" },
+    chief:              { short: "Chief",     full: "Chief" },
+    admin:              { short: "Admin",     full: "Admin" },
+}
+
+export function getRoleDisplayName(role: string, variant: "short" | "full" = "short"): string {
+    return ROLE_DISPLAY_NAMES[role]?.[variant] ?? role
+}
+
 // ─── Role Badge Config ──────────────────────────────────────────────────────
 
 export const ROLE_BADGE: Record<string, { label: string; className: string }> = {
-    compliance_officer: { label: "CO",       className: "bg-pink-500/15 text-pink-400" },
-    team_lead:          { label: "Lead",     className: "bg-indigo-500/15 text-indigo-400" },
-    team_reviewer:      { label: "Reviewer", className: "bg-teal-500/15 text-teal-400" },
-    team_member:        { label: "Member",   className: "bg-amber-500/15 text-amber-400" },
-    chief:              { label: "Chief",    className: "bg-purple-500/15 text-purple-400" },
-    admin:              { label: "Admin",    className: "bg-red-500/15 text-red-400" },
+    compliance_officer: { label: "CAG",       className: "bg-pink-500/15 text-pink-400" },
+    team_lead:          { label: "Team Head", className: "bg-indigo-500/15 text-indigo-400" },
+    team_reviewer:      { label: "Checker",   className: "bg-teal-500/15 text-teal-400" },
+    team_member:        { label: "Maker",     className: "bg-amber-500/15 text-amber-400" },
+    chief:              { label: "Chief",     className: "bg-purple-500/15 text-purple-400" },
+    admin:              { label: "Admin",     className: "bg-red-500/15 text-red-400" },
 }

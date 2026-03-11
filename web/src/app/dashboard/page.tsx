@@ -47,7 +47,7 @@ interface FlatRow {
 export default function DashboardPage() {
     const { teamTree } = useTeams()
     const { data: session } = useSession()
-    const userName = session?.user?.name || "Compliance Officer"
+    const userName = session?.user?.name || "CAG"
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
         commentRole: "compliance_officer",
         commentAuthor: userName,

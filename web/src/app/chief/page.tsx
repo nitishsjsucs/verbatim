@@ -345,7 +345,7 @@ function ChiefContent() {
                             <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
                                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Request Rejected by Reviewer</p>
+                                    <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Request Rejected by Checker</p>
                                     <p className="text-xs text-foreground/80">{item.bypass_reviewer_rejection_reason}</p>
                                     {item.bypass_reviewer_rejected_by && (
                                         <p className="text-xs text-muted-foreground/50 mt-1">By {item.bypass_reviewer_rejected_by}{item.bypass_reviewer_rejected_at ? ` on ${formatDate(item.bypass_reviewer_rejected_at)}` : ""}</p>
@@ -448,13 +448,13 @@ function ChiefContent() {
                                 </div>
                                 <div className="flex gap-3">
                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_member_submitted ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                        Member: {item.delay_justification_member_submitted ? "Submitted" : "Pending"}
+                                        Maker: {item.delay_justification_member_submitted ? "Submitted" : "Pending"}
                                     </span>
                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                        Reviewer: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
+                                        Checker: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
                                     </span>
                                     <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                        Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
+                                        Team Head: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
                                     </span>
                                 </div>
                             </div>
@@ -465,19 +465,19 @@ function ChiefContent() {
                             <div className="grid grid-cols-3 gap-2">
                                 {item.member_comment && (
                                     <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
-                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Member Comment</p>
+                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Maker Comment</p>
                                         <p className="text-xs text-foreground/70">{item.member_comment}</p>
                                     </div>
                                 )}
                                 {item.reviewer_comment && (
                                     <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
-                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Reviewer Comment</p>
+                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Checker Comment</p>
                                         <p className="text-xs text-foreground/70">{item.reviewer_comment}</p>
                                     </div>
                                 )}
                                 {item.lead_comment && (
                                     <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
-                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Lead Comment</p>
+                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Team Head Comment</p>
                                         <p className="text-xs text-foreground/70">{item.lead_comment}</p>
                                     </div>
                                 )}

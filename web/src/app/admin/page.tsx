@@ -2722,18 +2722,18 @@ function TeamsTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ROLE_OPTIONS = [
-  { value: "team_member", label: "Team Member" },
-  { value: "team_lead", label: "Team Lead" },
-  { value: "team_reviewer", label: "Team Reviewer" },
-  { value: "compliance_officer", label: "Compliance Officer" },
+  { value: "team_member", label: "Maker" },
+  { value: "team_lead", label: "Team Head" },
+  { value: "team_reviewer", label: "Checker" },
+  { value: "compliance_officer", label: "CAG" },
   { value: "admin", label: "Admin" },
 ]
 
 const ROLE_LABELS: Record<string, string> = {
-  team_member: "Team Member",
-  team_lead: "Team Lead",
-  team_reviewer: "Team Reviewer",
-  compliance_officer: "Compliance Officer",
+  team_member: "Maker",
+  team_lead: "Team Head",
+  team_reviewer: "Checker",
+  compliance_officer: "CAG",
   admin: "Admin",
 }
 
