@@ -921,7 +921,7 @@ export default function DashboardPage() {
                                                     {taskStatus === "review" && !multi && (
                                                         <>
                                                             <button
-                                                                onClick={() => handleUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })}
+                                                                onClick={() => handleApproveTeam(docId, item, item.workstream || "Technology")}
                                                                 className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 transition-colors font-medium"
                                                                 title="Approve — mark as completed"
                                                             >

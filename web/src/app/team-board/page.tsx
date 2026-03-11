@@ -147,6 +147,8 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             const updates: Record<string, unknown> = {}
             // Auto-transition assigned → in_progress on first save
             if (taskStatus === "assigned") updates.task_status = "in_progress"
+            // Auto-transition reworking → resubmit on save
+            if (taskStatus === "reworking") updates.task_status = "resubmit"
             if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
             if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
             if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
@@ -227,9 +229,12 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
     const handleAddComment = async (text: string) => {
         // Auto-transition from assigned to in_progress on comment
+        // Auto-transition from reworking to resubmit on comment
         const updates: Record<string, unknown> = {}
         if (taskStatus === "assigned") {
             updates.task_status = "in_progress"
+        } else if (taskStatus === "reworking") {
+            updates.task_status = "resubmit"
         }
         const newComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -243,6 +248,8 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         await onUpdate(docId, item.id, updates)
         if (taskStatus === "assigned") {
             toast.success("Task auto-started (In Progress)")
+        } else if (taskStatus === "reworking") {
+            toast.success("Task auto-marked for resubmission")
         }
     }
 
@@ -252,9 +259,13 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
     const handleFileSelected = async (file: File) => {
         // Auto-transition from assigned to in_progress on upload
+        // Auto-transition from reworking to resubmit on upload
         if (taskStatus === "assigned") {
             await onUpdate(docId, item.id, { task_status: "in_progress" })
             toast.success("Task auto-started (In Progress)")
+        } else if (taskStatus === "reworking") {
+            await onUpdate(docId, item.id, { task_status: "resubmit" })
+            toast.success("Task auto-marked for resubmission")
         }
         onUpload(docId, item.id, file)
     }

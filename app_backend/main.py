@@ -1491,6 +1491,15 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         for blocked in RISK_MEMBER_ONLY_FIELDS:
             body.pop(blocked, None)
 
+    # Validate CO comment before approval
+    if caller_role == "compliance_officer":
+        new_status = body.get("task_status")
+        # Check if CO is trying to approve (change to completed or move to next status)
+        if new_status == "completed" or (is_team_update and new_status == "completed"):
+            co_comment = body.get("co_comment", "").strip() if isinstance(body.get("co_comment"), str) else ""
+            if not co_comment:
+                raise HTTPException(status_code=400, detail="CO Comment is required before approval. Please fill the CO Comment field.")
+
     # Update allowed fields
     editable_fields = [
         "actor", "action", "object", "trigger_or_condition",
