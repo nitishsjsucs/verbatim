@@ -9,6 +9,7 @@ import {
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
 } from "@/lib/types"
+import { UserRole } from "@/lib/constants"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"
 import { AuthGuard, getUserRole, getUserTeam } from "@/components/auth/auth-guard"
@@ -51,21 +52,21 @@ function ChiefContent() {
     const { teams, getDescendants } = useTeams()
 
     // Redirect non-chiefs away
-    const isChief = role === "chief"
+    const isChief = role === UserRole.CHIEF
     React.useEffect(() => {
-        if (role === "compliance_officer" || role === "admin") {
+        if (role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN) {
             router.replace("/dashboard")
-        } else if (role === "team_member") {
+        } else if (role === UserRole.TEAM_MEMBER) {
             router.replace("/team-board")
-        } else if (role === "team_reviewer") {
+        } else if (role === UserRole.TEAM_REVIEWER) {
             router.replace("/team-review")
-        } else if (role === "team_lead") {
+        } else if (role === UserRole.TEAM_LEAD) {
             router.replace("/team-lead")
         }
     }, [role, router])
 
     const { allDocs, loading, load: loadAll } = useActionables({
-        commentRole: "chief",
+        commentRole: UserRole.CHIEF,
         commentAuthor: userName,
         autoLoad: false,
     })
@@ -426,7 +427,7 @@ function ChiefContent() {
                                 <CommentThread
                                     comments={item.comments || []}
                                     currentUser={userName}
-                                    currentRole="chief"
+                                    currentRole={UserRole.CHIEF}
                                 />
                             </div>
                         </div>

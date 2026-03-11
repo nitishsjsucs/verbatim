@@ -2,8 +2,9 @@
 
 import type { ActionableItem, Team } from "./types"
 import { isMultiTeam } from "./types"
+import { UserRole as UserRoleConstants, type UserRoleValue } from "./constants"
 
-export type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "chief" | "admin"
+export type UserRole = UserRoleValue
 
 /**
  * Determines which teams a user can see based on their role and assigned team.
@@ -25,7 +26,7 @@ export function getVisibleTeamsForRole(
   getDescendants: (teamName: string) => string[]
 ): Set<string> {
   // CO and Admin see all teams
-  if (role === "compliance_officer" || role === "admin") {
+  if (role === UserRoleConstants.COMPLIANCE_OFFICER || role === UserRoleConstants.ADMIN) {
     return new Set(teams.filter(t => !t.is_system).map(t => t.name))
   }
 

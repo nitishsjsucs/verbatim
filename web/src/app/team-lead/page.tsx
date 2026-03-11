@@ -17,6 +17,7 @@ import {
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
 } from "@/lib/types"
+import { UserRole } from "@/lib/constants"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole, getUserTeam } from "@/components/auth/auth-guard"
@@ -67,20 +68,20 @@ function TeamLeadContent() {
     )
 
     // Redirect non-team-leads away
-    const isTeamLead = role === "team_lead"
+    const isTeamLead = role === UserRole.TEAM_LEAD
     React.useEffect(() => {
-        if (role === "compliance_officer" || role === "admin") {
+        if (role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN) {
             router.replace("/dashboard")
-        } else if (role === "team_member") {
+        } else if (role === UserRole.TEAM_MEMBER) {
             router.replace("/team-board")
-        } else if (role === "team_reviewer") {
+        } else if (role === UserRole.TEAM_REVIEWER) {
             router.replace("/team-review")
         }
     }, [role, router])
 
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate } = useActionables({
         forTeam: userTeam || undefined,
-        commentRole: "team_lead",
+        commentRole: UserRole.TEAM_LEAD,
         commentAuthor: userName,
         autoLoad: false,
     })
@@ -104,7 +105,7 @@ function TeamLeadContent() {
         const newComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "team_lead",
+            role: UserRole.TEAM_LEAD,
             text,
             timestamp: new Date().toISOString(),
         }
@@ -1045,7 +1046,7 @@ function OversightRow({
                                 <CommentThread
                                     comments={item.comments || []}
                                     currentUser={userName}
-                                    currentRole="team_lead"
+                                    currentRole={UserRole.TEAM_LEAD}
                                     onAddComment={taskStatus !== "completed"
                                         ? async (text) => onAddComment(docId, item.id, text)
                                         : undefined

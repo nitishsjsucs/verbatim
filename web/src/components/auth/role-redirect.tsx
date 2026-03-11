@@ -5,6 +5,7 @@ import { useSession } from "@/lib/auth-client"
 import { useRouter, usePathname } from "next/navigation"
 import { getUserRole } from "@/components/auth/auth-guard"
 import { Loader2 } from "lucide-react"
+import { UserRole } from "@/lib/constants"
 
 /**
  * Pages that ONLY compliance officers / admins can access.
@@ -51,9 +52,9 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
         }
 
         const role = getUserRole(session)
-        const isTeamMember = role === "team_member"
-        const isTeamReviewer = role === "team_reviewer"
-        const isTeamLead = role === "team_lead"
+        const isTeamMember = role === UserRole.TEAM_MEMBER
+        const isTeamReviewer = role === UserRole.TEAM_REVIEWER
+        const isTeamLead = role === UserRole.TEAM_LEAD
 
         // Team member trying to access an officer-only, reviewer-only, or lead-only page → redirect
         if (isTeamMember) {
@@ -115,7 +116,7 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
 
     // Team member / reviewer / lead on restricted page — show nothing while redirecting
     const role = getUserRole(session)
-    if (role === "team_member") {
+    if (role === UserRole.TEAM_MEMBER) {
         const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
             pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
         )
@@ -127,7 +128,7 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
         )
         if (isOfficerOnly || isReviewerOnly || isLeadOnly) return null
     }
-    if (role === "team_reviewer") {
+    if (role === UserRole.TEAM_REVIEWER) {
         const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
             pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
         )
@@ -136,7 +137,7 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
         )
         if (isOfficerOnly || isLeadOnly) return null
     }
-    if (role === "team_lead") {
+    if (role === UserRole.TEAM_LEAD) {
         const isOfficerOnly = OFFICER_ONLY_PATHS.some(p =>
             pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
         )

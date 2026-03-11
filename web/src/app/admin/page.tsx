@@ -74,6 +74,7 @@ import {
   Minus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { UserRole, type UserRoleValue } from "@/lib/constants"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import { LLMExperiment } from "@/components/admin/llm-experiment"
 import { LLMTournament } from "@/components/admin/llm-tournament"
@@ -178,7 +179,7 @@ function AdminLoginGate({ children }: { children: React.ReactNode }) {
     // Check Better Auth session for admin role
     import("@/lib/auth-client").then(({ getSession }) => {
       getSession().then(sess => {
-        if (sess?.data?.user?.role === "admin") {
+        if (sess?.data?.user?.role === UserRole.ADMIN) {
           setAuthenticated(true)
         }
         setCheckingSession(false)
@@ -2722,19 +2723,19 @@ function TeamsTab() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ROLE_OPTIONS = [
-  { value: "team_member", label: "Team Member" },
-  { value: "team_lead", label: "Team Lead" },
-  { value: "team_reviewer", label: "Team Reviewer" },
-  { value: "compliance_officer", label: "Compliance Officer" },
-  { value: "admin", label: "Admin" },
+  { value: UserRole.TEAM_MEMBER, label: "Team Member" },
+  { value: UserRole.TEAM_LEAD, label: "Team Lead" },
+  { value: UserRole.TEAM_REVIEWER, label: "Team Reviewer" },
+  { value: UserRole.COMPLIANCE_OFFICER, label: "Compliance Officer" },
+  { value: UserRole.ADMIN, label: "Admin" },
 ]
 
 const ROLE_LABELS: Record<string, string> = {
-  team_member: "Team Member",
-  team_lead: "Team Lead",
-  team_reviewer: "Team Reviewer",
-  compliance_officer: "Compliance Officer",
-  admin: "Admin",
+  [UserRole.TEAM_MEMBER]: "Team Member",
+  [UserRole.TEAM_LEAD]: "Team Lead",
+  [UserRole.TEAM_REVIEWER]: "Team Reviewer",
+  [UserRole.COMPLIANCE_OFFICER]: "Compliance Officer",
+  [UserRole.ADMIN]: "Admin",
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -2771,7 +2772,7 @@ function UsersTab() {
   // Create form
   const [showCreate, setShowCreate] = React.useState(false)
   const [newName, setNewName] = React.useState("")
-  const [newRole, setNewRole] = React.useState("team_member")
+  const [newRole, setNewRole] = React.useState<UserRoleValue>(UserRole.TEAM_MEMBER)
   const [newTeam, setNewTeam] = React.useState("")
   const [newStartDate, setNewStartDate] = React.useState(() => {
     const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -2825,7 +2826,7 @@ function UsersTab() {
 
   const handleCreate = async () => {
     if (!newName.trim() || !newRole) return
-    if (!["admin", "compliance_officer"].includes(newRole) && !newTeam) return
+    if (![UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER].includes(newRole as any) && !newTeam) return
     setCreating(true)
     setCreateResult(null)
     try {
@@ -2838,7 +2839,7 @@ function UsersTab() {
       setCreateResult({ email: result.generated_email, password: result.default_password })
       setUserPasswords(prev => ({ ...prev, [result.generated_email]: result.default_password }))
       setNewName("")
-      setNewRole("team_member")
+      setNewRole(UserRole.TEAM_MEMBER)
       setNewTeam("")
       { const d = new Date(); setNewStartDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`) }
       loadUsers()
@@ -2932,7 +2933,7 @@ function UsersTab() {
               <label className="block text-xs font-medium text-muted-foreground mb-1">Role (required)</label>
               <select
                 value={newRole}
-                onChange={e => setNewRole(e.target.value)}
+                onChange={e => setNewRole(e.target.value as UserRoleValue)}
                 className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -2943,7 +2944,7 @@ function UsersTab() {
               <select
                 value={newTeam}
                 onChange={e => setNewTeam(e.target.value)}
-                disabled={["admin", "compliance_officer"].includes(newRole)}
+                disabled={[UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER].includes(newRole as any)}
                 className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               >
                 <option value="">Select team…</option>
@@ -2963,7 +2964,7 @@ function UsersTab() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleCreate}
-              disabled={creating || !newName.trim() || (!["admin", "compliance_officer"].includes(newRole) && !newTeam)}
+              disabled={creating || !newName.trim() || (![UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER].includes(newRole as any) && !newTeam)}
               className="flex items-center gap-1 h-8 px-4 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -3083,7 +3084,7 @@ function UsersTab() {
                           </td>
                           <td className="px-3 py-2">
                             {isEditing ? (
-                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground" disabled={["admin", "compliance_officer"].includes(editRole)}>
+                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground" disabled={[UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER].includes(editRole as any)}>
                                 <option value="">—</option>
                                 {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                               </select>

@@ -369,6 +369,87 @@ export async function fetchApprovedByTeam(): Promise<Record<string, ActionableIt
 }
 
 // ---------------------------------------------------------------------------
+// Flat Actionable API (Phase 2 — paginated, one-doc-per-item)
+// ---------------------------------------------------------------------------
+
+export interface FlatActionablesResponse {
+    items: ActionableItem[];
+    total: number;
+    page: number;
+    page_size: number;
+    pages: number;
+}
+
+export interface FlatActionableQuery {
+    page?: number;
+    page_size?: number;
+    status?: string;
+    approval?: string;
+    team?: string;
+    delayed?: string;
+    search?: string;
+    sort_field?: string;
+    sort_order?: number;
+}
+
+export async function fetchFlatActionables(
+    query: FlatActionableQuery = {},
+): Promise<FlatActionablesResponse> {
+    const params = new URLSearchParams();
+    if (query.page) params.set('page', String(query.page));
+    if (query.page_size) params.set('page_size', String(query.page_size));
+    if (query.status) params.set('status', query.status);
+    if (query.approval) params.set('approval', query.approval);
+    if (query.team) params.set('team', query.team);
+    if (query.delayed) params.set('delayed', query.delayed);
+    if (query.search) params.set('search', query.search);
+    if (query.sort_field) params.set('sort_field', query.sort_field);
+    if (query.sort_order !== undefined) params.set('sort_order', String(query.sort_order));
+    const qs = params.toString();
+    const res = await apiFetch(`/actionables/flat${qs ? `?${qs}` : ''}`);
+    if (!res.ok) throw new Error('Failed to fetch flat actionables');
+    return res.json();
+}
+
+export async function fetchFlatActionable(
+    docId: string,
+    itemId: string,
+): Promise<ActionableItem> {
+    const res = await apiFetch(`/actionables/flat/${docId}/${itemId}`);
+    if (!res.ok) throw new Error('Failed to fetch flat actionable');
+    return res.json();
+}
+
+export async function fetchFlatByDoc(
+    docId: string,
+): Promise<{ items: ActionableItem[]; total: number }> {
+    const res = await apiFetch(`/actionables/flat/by-doc/${docId}`);
+    if (!res.ok) throw new Error('Failed to fetch flat actionables by doc');
+    return res.json();
+}
+
+export async function fetchFlatStats(): Promise<{
+    by_status: Record<string, number>;
+    by_team: Record<string, number>;
+}> {
+    const res = await apiFetch('/actionables/flat/stats');
+    if (!res.ok) throw new Error('Failed to fetch flat stats');
+    return res.json();
+}
+
+export async function triggerFlatMigration(): Promise<{ ok: boolean; stats: Record<string, number> }> {
+    const res = await apiFetch('/actionables/flat/migrate', { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to trigger flat migration');
+    return res.json();
+}
+
+export async function ensureFlatIndexes(): Promise<{ ok: boolean }> {
+    const res = await apiFetch('/actionables/flat/ensure-indexes', { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to ensure flat indexes');
+    return res.json();
+}
+
+// ---------------------------------------------------------------------------
 // Conversation API
 // ---------------------------------------------------------------------------
 

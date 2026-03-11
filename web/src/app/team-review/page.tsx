@@ -16,6 +16,7 @@ import {
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
 } from "@/lib/types"
+import { UserRole } from "@/lib/constants"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole, getUserTeam } from "@/components/auth/auth-guard"
@@ -66,18 +67,18 @@ function TeamReviewContent() {
     )
 
     // Redirect non-team-reviewers away
-    const isTeamReviewer = role === "team_reviewer"
+    const isTeamReviewer = role === UserRole.TEAM_REVIEWER
     React.useEffect(() => {
-        if (role === "compliance_officer" || role === "admin") {
+        if (role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN) {
             router.replace("/dashboard")
-        } else if (role === "team_member") {
+        } else if (role === UserRole.TEAM_MEMBER) {
             router.replace("/team-board")
         }
     }, [role, router])
 
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
         forTeam: userTeam || undefined,
-        commentRole: "team_reviewer",
+        commentRole: UserRole.TEAM_REVIEWER,
         commentAuthor: userName,
         autoLoad: false,
     })
@@ -108,7 +109,7 @@ function TeamReviewContent() {
         const approveComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "team_reviewer",
+            role: UserRole.TEAM_REVIEWER,
             text: statusLabel,
             timestamp: new Date().toISOString(),
         }
@@ -131,7 +132,7 @@ function TeamReviewContent() {
         const bypassComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "team_reviewer",
+            role: UserRole.TEAM_REVIEWER,
             text: "Wrongly tagged flag approved by Team Reviewer — forwarded to Compliance Officer for final decision.",
             timestamp: new Date().toISOString(),
         }
@@ -152,7 +153,7 @@ function TeamReviewContent() {
         const rejectComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "team_reviewer",
+            role: UserRole.TEAM_REVIEWER,
             text: `Wrongly tagged flag rejected by Reviewer: ${reason}`,
             timestamp: new Date().toISOString(),
         }
@@ -175,7 +176,7 @@ function TeamReviewContent() {
         const rejectComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "team_reviewer",
+            role: UserRole.TEAM_REVIEWER,
             text: `Rejected by Team Reviewer: ${reason}`,
             timestamp: new Date().toISOString(),
         }
@@ -1281,7 +1282,7 @@ function ReviewRow({
                                 <CommentThread
                                     comments={item.comments || []}
                                     currentUser={userName}
-                                    currentRole="team_reviewer"
+                                    currentRole={UserRole.TEAM_REVIEWER}
                                     onAddComment={async (text) => onAddComment(docId, item, text)}
                                 />
                             </div>

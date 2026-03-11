@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { MongoClient } from "mongodb"
+import { UserRole } from "@/lib/constants"
 
 /**
  * POST /api/seed
@@ -31,7 +32,7 @@ const ADMIN_USER: SeedUser = {
     name: "Admin",
     email: "admin@govinda.com",
     password: "Govinda@2026",
-    role: "admin",
+    role: UserRole.ADMIN,
     team: ""
 };
 
@@ -39,7 +40,7 @@ const COMPLIANCE_OFFICER_USER: SeedUser = {
     name: "Compliance Officer",
     email: "compliance@govinda.com",
     password: "Govinda@2026",
-    role: "compliance_officer",
+    role: UserRole.COMPLIANCE_OFFICER,
     team: ""
 };
 
@@ -63,21 +64,21 @@ function buildTeamUsers(teams: string[]): SeedUser[] {
                 name: `${team} Lead`,
                 email: `${team.toLowerCase().replace(/\s+/g, '_')}.lead@govinda.com`,
                 password: "Govinda@2026",
-                role: "team_lead",
+                role: UserRole.TEAM_LEAD,
                 team
             },
             {
                 name: `${team} Reviewer`,
                 email: `${team.toLowerCase().replace(/\s+/g, '_')}.reviewer@govinda.com`,
                 password: "Govinda@2026",
-                role: "team_reviewer",
+                role: UserRole.TEAM_REVIEWER,
                 team
             },
             {
                 name: `${team} Member`,
                 email: `${team.toLowerCase().replace(/\s+/g, '_')}.member@govinda.com`,
                 password: "Govinda@2026",
-                role: "team_member",
+                role: UserRole.TEAM_MEMBER,
                 team
             }
         );

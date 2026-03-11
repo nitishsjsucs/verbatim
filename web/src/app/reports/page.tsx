@@ -6,6 +6,7 @@ import { AuthGuard, getUserRole, getUserTeam } from "@/components/auth/auth-guar
 import { useSession } from "@/lib/auth-client"
 import { fetchAllActionables } from "@/lib/api"
 import { ActionableItem, TaskStatus } from "@/lib/types"
+import { UserRole } from "@/lib/constants"
 import {
     LayoutDashboard, Loader2, Download, AlertTriangle, Shield,
     Users, ChevronDown, ChevronRight, Clock, CheckCircle2,
@@ -221,7 +222,7 @@ function upcomingIn(items: ActionableItem[], days: number): ActionableItem[] {
 function ReportsContent() {
     const { data: session } = useSession()
     const role = getUserRole(session)
-    const isOfficer = role === "compliance_officer" || role === "admin"
+    const isOfficer = role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN
     const userTeam = getUserTeam(session)
 
     const [allItems, setAllItems] = React.useState<ActionableItem[]>([])

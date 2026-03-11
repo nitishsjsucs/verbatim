@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { safeStr, formatDate, RESIDUAL_RISK_INTERPRETATION_STYLES } from "@/lib/status-config"
+import { UserRole, type UserRoleValue } from "@/lib/constants"
 import { EvidenceFileList } from "@/components/shared/status-components"
 
 interface ActionableExpansionProps {
@@ -22,7 +23,7 @@ interface ActionableExpansionProps {
     
     // Current user info
     userName: string
-    userRole: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead" | "chief"
+    userRole: UserRoleValue
     
     // Status and state
     taskStatus: string
@@ -235,7 +236,7 @@ export function ActionableExpansion({
             )}
             
             {/* Bypass tag banner (only for single-team items, when item is awaiting CO decision) */}
-            {!teamName && (item.bypass_tag || taskStatus === "bypass_approved") && userRole === "compliance_officer" && (
+            {!teamName && (item.bypass_tag || taskStatus === "bypass_approved") && userRole === UserRole.COMPLIANCE_OFFICER && (
                 <BypassBannerCOInline
                     item={item}
                     docId={docId}
@@ -280,7 +281,7 @@ export function ActionableExpansion({
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
                     {/* For compliance_officer: Actionable ID at top */}
-                    {userRole === "compliance_officer" && item.actionable_id && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && item.actionable_id && (
                         <div>
                             <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Actionable ID</p>
                             <p className="text-xs font-mono text-foreground/80 bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id}</p>
@@ -292,7 +293,7 @@ export function ActionableExpansion({
                         <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
                         <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(implementationNotes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
                     </div>
-                    {userRole === "compliance_officer" && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && (
                     <div>
                         <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Evidence</p>
                         <p className="text-xs text-foreground/80 whitespace-pre-wrap italic">{safeStr(evidenceQuote) || <span className="text-muted-foreground/30">No evidence</span>}</p>
@@ -300,7 +301,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* Evidence Files - for non-compliance roles, show here before metadata */}
-                    {userRole !== "compliance_officer" && evidenceFiles && evidenceFiles.length > 0 && (
+                    {userRole !== UserRole.COMPLIANCE_OFFICER && evidenceFiles && evidenceFiles.length > 0 && (
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <Paperclip className="h-3.5 w-3.5 text-primary/60" />
@@ -316,7 +317,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* For compliance_officer: Circular Source Info before Risk Assessment */}
-                    {userRole === "compliance_officer" && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && (
                         <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                             <div className="flex items-center justify-between">
                                 <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
@@ -355,7 +356,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* Risk Assessment Framework — CO only */}
-                    {userRole === "compliance_officer" && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && (
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                         <div className="flex items-center justify-between">
                             <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
@@ -483,7 +484,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* For non-compliance roles: Circular Source Info after Risk Assessment */}
-                    {userRole !== "compliance_officer" && (
+                    {userRole !== UserRole.COMPLIANCE_OFFICER && (
                         <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                             <div className="flex items-center justify-between">
                                 <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
@@ -522,7 +523,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* Evidence Files - for compliance_officer, show at bottom */}
-                    {userRole === "compliance_officer" && evidenceFiles && evidenceFiles.length > 0 && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && evidenceFiles && evidenceFiles.length > 0 && (
                         <div>
                             <div className="flex items-center gap-2 mb-2">
                                 <Paperclip className="h-3.5 w-3.5 text-primary/60" />
@@ -539,7 +540,7 @@ export function ActionableExpansion({
                 </div>
                 <div className="space-y-3">
                     {/* Justification chain status (CO sees full chain) */}
-                    {item.justification_member_text && userRole === "compliance_officer" && (
+                    {item.justification_member_text && userRole === UserRole.COMPLIANCE_OFFICER && (
                         <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-1.5">
                             <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Justification Chain</p>
                             <div className="text-xs">
@@ -574,7 +575,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* Role-specific comments display (read-only, for CO to see all) */}
-                    {userRole === "compliance_officer" && (item.member_comment || item.reviewer_comment || item.lead_comment) && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && (item.member_comment || item.reviewer_comment || item.lead_comment) && (
                         <div className="rounded-lg border border-border/30 bg-muted/5 p-3 space-y-2">
                             <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Team Comments</p>
                             {item.member_comment && (
@@ -599,7 +600,7 @@ export function ActionableExpansion({
                     )}
 
                     {/* CO mandatory comment box — only during review */}
-                    {userRole === "compliance_officer" && taskStatus === "review" && (
+                    {userRole === UserRole.COMPLIANCE_OFFICER && taskStatus === "review" && (
                         <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-1.5">
@@ -632,7 +633,7 @@ export function ActionableExpansion({
 
                     {/* Chat thread */}
                     <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                        {userRole === "compliance_officer" && (
+                        {userRole === UserRole.COMPLIANCE_OFFICER && (
                             <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
                         )}
                         <CommentThread

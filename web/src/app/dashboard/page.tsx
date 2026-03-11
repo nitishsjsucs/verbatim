@@ -11,6 +11,7 @@ import {
     getClassification,
     MIXED_TEAM_CLASSIFICATION,
 } from "@/lib/types"
+import { UserRole } from "@/lib/constants"
 import { CommentThread } from "@/components/shared/comment-thread"
 import { useSession } from "@/lib/auth-client"
 import {
@@ -49,7 +50,7 @@ export default function DashboardPage() {
     const { data: session } = useSession()
     const userName = session?.user?.name || "Compliance Officer"
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
-        commentRole: "compliance_officer",
+        commentRole: UserRole.COMPLIANCE_OFFICER,
         commentAuthor: userName,
     })
     const [searchQuery, setSearchQuery] = React.useState("")
@@ -316,7 +317,7 @@ export default function DashboardPage() {
         const rejectComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "compliance_officer",
+            role: UserRole.COMPLIANCE_OFFICER,
             text: `Rejected ${team} team: ${reason}`,
             timestamp: new Date().toISOString(),
         }
@@ -338,7 +339,7 @@ export default function DashboardPage() {
         const rejectComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: "compliance_officer",
+            role: UserRole.COMPLIANCE_OFFICER,
             text: `Rejected by Compliance Officer: ${reason}`,
             timestamp: new Date().toISOString(),
         }
@@ -1138,14 +1139,14 @@ export default function DashboardPage() {
                                                                 teamWorkflow={tw}
                                                                 teamName={team}
                                                                 userName={userName}
-                                                                userRole="compliance_officer"
+                                                                userRole={UserRole.COMPLIANCE_OFFICER}
                                                                 taskStatus={twStatus}
                                                                 onUpdate={handleUpdate}
                                                                 onAddComment={async (text) => {
                                                                     const newComment: ActionableComment = {
                                                                         id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                                                                         author: userName,
-                                                                        role: "compliance_officer",
+                                                                        role: UserRole.COMPLIANCE_OFFICER,
                                                                         text,
                                                                         timestamp: new Date().toISOString(),
                                                                     }
@@ -1272,7 +1273,7 @@ export default function DashboardPage() {
                                                     docId={docId}
                                                     docName={docName}
                                                     userName={userName}
-                                                    userRole="compliance_officer"
+                                                    userRole={UserRole.COMPLIANCE_OFFICER}
                                                     taskStatus={taskStatus}
                                                     onUpdate={handleUpdate}
                                                     onAddComment={async (text) => handleAddComment(docId, item, text)}
@@ -1445,7 +1446,7 @@ export default function DashboardPage() {
                                                                     <CommentThread
                                                                         comments={item.comments || []}
                                                                         currentUser={userName}
-                                                                        currentRole="compliance_officer"
+                                                                        currentRole={UserRole.COMPLIANCE_OFFICER}
                                                                         onAddComment={async (text) => handleAddComment(docId, item, text)}
                                                                     />
                                                                 </div>

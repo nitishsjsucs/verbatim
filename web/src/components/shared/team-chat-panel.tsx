@@ -10,6 +10,7 @@ import {
     type TeamChatMessage,
 } from "@/lib/api"
 import { ROLE_BADGE } from "@/lib/status-config"
+import { UserRole } from "@/lib/constants"
 
 type ChatChannel = "internal" | "compliance"
 
@@ -40,7 +41,7 @@ export function TeamChatPanel({ team, userName, userRole, open, onClose }: TeamC
     const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
 
     // Determine if CO — CO can only see/post to compliance channel
-    const isCO = userRole === "compliance_officer" || userRole === "admin"
+    const isCO = userRole === UserRole.COMPLIANCE_OFFICER || userRole === UserRole.ADMIN
 
     // If CO, force compliance channel
     React.useEffect(() => {

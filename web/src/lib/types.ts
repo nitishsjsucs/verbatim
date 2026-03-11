@@ -1,3 +1,4 @@
+import type { UserRoleValue } from "./constants"
 
 export interface DocumentMeta {
     id: string;
@@ -435,7 +436,7 @@ export interface ActionableItem {
 export interface ActionableComment {
     id: string;
     author: string;
-    role: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead" | "chief";
+    role: UserRoleValue;
     text: string;
     timestamp: string;  // ISO datetime
 }
