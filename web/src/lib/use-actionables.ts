@@ -3,7 +3,6 @@
 import * as React from "react"
 import { fetchAllActionables, updateActionable } from "./api"
 import type { ActionableItem, ActionablesResult, ActionableComment } from "./types"
-import { UserRole } from "./constants"
 import { toast } from "sonner"
 
 // ─── Shared doc-level shape used by most pages ─────────────────────────────
@@ -34,7 +33,7 @@ interface UseActionablesOptions {
  * Returns doc-level state (`allDocs`) plus convenience handlers.
  */
 export function useActionables(opts: UseActionablesOptions = {}) {
-    const { forTeam, commentRole = UserRole.TEAM_MEMBER, commentAuthor = "", autoLoad = true } = opts
+    const { forTeam, commentRole = "team_member", commentAuthor = "", autoLoad = true } = opts
 
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(false)

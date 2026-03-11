@@ -5,12 +5,11 @@ import { MessageSquare, Send, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ActionableComment } from "@/lib/types"
 import { ROLE_BADGE } from "@/lib/status-config"
-import { UserRole, type UserRoleValue } from "@/lib/constants"
 
 interface CommentThreadProps {
     comments: ActionableComment[]
     currentUser: string
-    currentRole: UserRoleValue
+    currentRole: "compliance_officer" | "team_member" | "team_reviewer" | "team_lead" | "chief"
     onAddComment?: (text: string) => Promise<void>
     readOnly?: boolean
 }

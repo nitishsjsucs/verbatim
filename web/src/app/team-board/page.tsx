@@ -12,7 +12,6 @@ import {
     deleteEvidence,
 } from "@/lib/api"
 import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, RiskSubDropdown, getTeamView, isMultiTeam, getClassification, MIXED_TEAM_CLASSIFICATION } from "@/lib/types"
-import { UserRole } from "@/lib/constants"
 import { CommentThread } from "@/components/shared/comment-thread"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
@@ -237,7 +236,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         const newComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             author: userName,
-            role: UserRole.TEAM_MEMBER,
+            role: "team_member",
             text,
             timestamp: new Date().toISOString(),
         }
@@ -761,7 +760,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     <CommentThread
                                         comments={item.comments || []}
                                         currentUser={userName}
-                                        currentRole={UserRole.TEAM_MEMBER}
+                                        currentRole="team_member"
                                         onAddComment={!isReadOnly ? handleAddComment : undefined}
                                     />
                                 )}
@@ -769,7 +768,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     <CommentThread
                                         comments={item.comments || []}
                                         currentUser={userName}
-                                        currentRole={UserRole.TEAM_MEMBER}
+                                        currentRole="team_member"
                                     />
                                 )}
                             </div>
@@ -793,7 +792,7 @@ function TeamBoardContent() {
     const { data: session } = useSession()
     const role = getUserRole(session)
     const userTeam = getUserTeam(session)
-    const isComplianceOfficer = role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN
+    const isComplianceOfficer = role === "compliance_officer" || role === "admin"
     const userName = session?.user?.name || "Team Member"
     const { teams, getDescendants } = useTeams()
 

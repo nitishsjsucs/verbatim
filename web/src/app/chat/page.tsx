@@ -13,7 +13,6 @@ import {
     ChatChannel,
     ChatMessage,
 } from "@/lib/api"
-import { UserRole } from "@/lib/constants"
 import {
     MessageSquare,
     Send,
@@ -180,7 +179,7 @@ function ChatContent() {
     }, [role, team, loadChannels])
 
     // Group channels by type for compliance view
-    const isComplianceView = role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN
+    const isComplianceView = role === "compliance_officer" || role === "admin"
     const complianceInternalChannels = channels.filter(c => c.type === "compliance_internal")
     const teamComplianceChannels = channels.filter(c => c.type === "team_compliance")
     const teamInternalChannels = channels.filter(c => c.type === "team_internal")
@@ -249,7 +248,7 @@ function ChatContent() {
                                         channel={ch}
                                         active={activeChannel === ch.channel}
                                         onClick={() => setActiveChannel(ch.channel)}
-                                        canRename={role === UserRole.TEAM_LEAD}
+                                        canRename={role === "team_lead"}
                                         onRename={handleRename}
                                     />
                                 ))}
@@ -259,7 +258,7 @@ function ChatContent() {
                                         channel={ch}
                                         active={activeChannel === ch.channel}
                                         onClick={() => setActiveChannel(ch.channel)}
-                                        canRename={role === UserRole.TEAM_LEAD}
+                                        canRename={role === "team_lead"}
                                         onRename={handleRename}
                                     />
                                 ))}

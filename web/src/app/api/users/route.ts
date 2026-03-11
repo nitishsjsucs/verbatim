@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { MongoClient } from "mongodb"
-import { UserRole } from "@/lib/constants"
 
 /**
  * User Management API
@@ -81,7 +80,7 @@ export async function POST(req: Request) {
         if (!role?.trim()) {
             return NextResponse.json({ error: "Role is required" }, { status: 400 })
         }
-        if (!team?.trim() && ![UserRole.ADMIN, UserRole.COMPLIANCE_OFFICER].includes(role as any)) {
+        if (!team?.trim() && !["admin", "compliance_officer"].includes(role)) {
             return NextResponse.json({ error: "Team is required" }, { status: 400 })
         }
 
@@ -236,7 +235,7 @@ export async function DELETE(req: Request) {
         }
 
         // Don't allow deleting the main admin
-        if (existing.role === UserRole.ADMIN && email === "admin@govinda.com") {
+        if (existing.role === "admin" && email === "admin@govinda.com") {
             return NextResponse.json({ error: "Cannot delete the primary admin account" }, { status: 403 })
         }
 

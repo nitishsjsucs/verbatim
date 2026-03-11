@@ -7,14 +7,13 @@ import { Loader2 } from "lucide-react"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { cn } from "@/lib/utils"
 import { getUserRole } from "@/components/auth/auth-guard"
-import { UserRole } from "@/lib/constants"
 
 function redirectForRole(role: string): string {
-    if (role === UserRole.ADMIN) return "/admin"
-    if (role === UserRole.COMPLIANCE_OFFICER) return "/dashboard"
-    if (role === UserRole.TEAM_REVIEWER) return "/team-review"
-    if (role === UserRole.TEAM_LEAD) return "/team-lead"
-    if (role === UserRole.CHIEF) return "/chief"
+    if (role === "admin") return "/admin"
+    if (role === "compliance_officer") return "/dashboard"
+    if (role === "team_reviewer") return "/team-review"
+    if (role === "team_lead") return "/team-lead"
+    if (role === "chief") return "/chief"
     return "/team-board"
 }
 
@@ -51,15 +50,15 @@ export default function SignInPage() {
                     const { getSession } = await import("@/lib/auth-client")
                     const sess = await getSession()
                     const sessionRole = sess?.data?.user?.role
-                    if (sessionRole === UserRole.ADMIN) {
+                    if (sessionRole === "admin") {
                         window.location.href = "/admin"
-                    } else if (sessionRole === UserRole.COMPLIANCE_OFFICER) {
+                    } else if (sessionRole === "compliance_officer") {
                         window.location.href = "/dashboard"
-                    } else if (sessionRole === UserRole.TEAM_REVIEWER) {
+                    } else if (sessionRole === "team_reviewer") {
                         window.location.href = "/team-review"
-                    } else if (sessionRole === UserRole.TEAM_LEAD) {
+                    } else if (sessionRole === "team_lead") {
                         window.location.href = "/team-lead"
-                    } else if (sessionRole === UserRole.CHIEF) {
+                    } else if (sessionRole === "chief") {
                         window.location.href = "/chief"
                     } else {
                         window.location.href = "/team-board"

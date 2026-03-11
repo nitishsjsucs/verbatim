@@ -20,7 +20,6 @@ import {
   MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { UserRole } from "@/lib/constants"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { UploadModal } from "@/components/dashboard/upload-modal"
@@ -45,10 +44,10 @@ export function Sidebar({ className }: SidebarProps) {
   const [_config, setConfig] = React.useState<AppConfig | null>(null)
   const { data: session } = useSession()
   const role = getUserRole(session)
-  const isOfficer = role === UserRole.COMPLIANCE_OFFICER || role === UserRole.ADMIN
-  const isChief = role === UserRole.CHIEF
-  const isTeamReviewer = role === UserRole.TEAM_REVIEWER
-  const isTeamLead = role === UserRole.TEAM_LEAD
+  const isOfficer = role === "compliance_officer" || role === "admin"
+  const isChief = role === "chief"
+  const isTeamReviewer = role === "team_reviewer"
+  const isTeamLead = role === "team_lead"
   const userTeam = getUserTeam(session)
   const [chatUnread, setChatUnread] = React.useState(0)
 
@@ -358,7 +357,7 @@ export function Sidebar({ className }: SidebarProps) {
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5">
             <p className="text-xs font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-xs text-sidebar-foreground/40 truncate">{role === UserRole.COMPLIANCE_OFFICER ? "Compliance Officer" : role === UserRole.CHIEF ? "Chief" : role === UserRole.TEAM_REVIEWER ? "Team Reviewer" : role === UserRole.TEAM_LEAD ? "Team Lead" : "Team Member"}</p>
+            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "Compliance Officer" : role === "chief" ? "Chief" : role === "team_reviewer" ? "Team Reviewer" : role === "team_lead" ? "Team Lead" : "Team Member"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>

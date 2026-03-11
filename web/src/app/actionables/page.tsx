@@ -10,7 +10,6 @@ import {
     deleteActionable as deleteActionableApi,
     API_BASE_URL,
 } from "@/lib/api"
-import { UserRole } from "@/lib/constants"
 import {
     ActionableItem,
     ActionablesResult,
@@ -213,7 +212,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     globalDeadlineTime: string
     callerRole: string
 }) {
-    const isComplianceOfficer = callerRole === UserRole.COMPLIANCE_OFFICER
+    const isComplianceOfficer = callerRole === "compliance_officer"
     const { teamNames, leafTeamNames } = useTeams()
     const { getOptions, getLabel } = useDropdownConfig()
     const [expanded, setExpanded] = React.useState(false)
@@ -1329,7 +1328,7 @@ function ByTeamTreeNode({ node, byTeam, collapsedTeams, toggleTeam, renderCard, 
 
 export default function ActionablesPage() {
     const { data: session } = useSession()
-    const callerRole = getUserRole(session) || UserRole.COMPLIANCE_OFFICER
+    const callerRole = getUserRole(session) || "compliance_officer"
     const { teamNames, teamTree, getTeamByName } = useTeams()
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)

@@ -4,9 +4,8 @@ import * as React from "react"
 import { useSession } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
 import { Loader2, ShieldAlert } from "lucide-react"
-import { UserRole as UserRoleConstants, type UserRoleValue } from "@/lib/constants"
 
-type UserRole = UserRoleValue
+type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "chief" | "admin"
 
 interface AuthGuardProps {
     children: React.ReactNode
@@ -19,11 +18,11 @@ interface AuthGuardProps {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getUserRole(session: any): UserRole {
     const role = session?.user?.role
-    if (role === UserRoleConstants.COMPLIANCE_OFFICER || role === UserRoleConstants.ADMIN) return role as UserRole
-    if (role === UserRoleConstants.CHIEF) return UserRoleConstants.CHIEF
-    if (role === UserRoleConstants.TEAM_REVIEWER) return UserRoleConstants.TEAM_REVIEWER
-    if (role === UserRoleConstants.TEAM_LEAD) return UserRoleConstants.TEAM_LEAD
-    return UserRoleConstants.TEAM_MEMBER
+    if (role === "compliance_officer" || role === "admin") return role as UserRole
+    if (role === "chief") return "chief"
+    if (role === "team_reviewer") return "team_reviewer"
+    if (role === "team_lead") return "team_lead"
+    return "team_member"
 }
 
 /** Get the team from session user object */
@@ -56,13 +55,13 @@ export function AuthGuard({ children, fallback, allowedRoles }: AuthGuardProps) 
             const role = getUserRole(session)
             if (!allowedRoles.includes(role)) {
                 // Team members get sent to their board
-                if (role === UserRoleConstants.TEAM_MEMBER) {
+                if (role === "team_member") {
                     router.replace("/team-board")
-                } else if (role === UserRoleConstants.TEAM_REVIEWER) {
+                } else if (role === "team_reviewer") {
                     router.replace("/team-review")
-                } else if (role === UserRoleConstants.TEAM_LEAD) {
+                } else if (role === "team_lead") {
                     router.replace("/team-lead")
-                } else if (role === UserRoleConstants.CHIEF) {
+                } else if (role === "chief") {
                     router.replace("/chief")
                 } else {
                     router.replace("/")
