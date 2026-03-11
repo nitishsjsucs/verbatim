@@ -96,6 +96,12 @@ function TeamReviewContent() {
     // Team Reviewer approve: team_review → review (sends to compliance officer)
     // If delayed and delay justification not fully approved by lead, gate at awaiting_justification
     const handleApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
+        // Validate reviewer_comment is filled before approval
+        if (!item.reviewer_comment?.trim()) {
+            toast.error("Cannot approve — Reviewer Comment is required. Please save your comment first.")
+            return
+        }
+
         const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && (item.task_status || "assigned") !== "completed")
         const delayJustFullyApproved = item.delay_justification_lead_approved
 
@@ -1265,6 +1271,13 @@ function ReviewRow({
                             </div>
                         </div>
                         <div className="space-y-3">
+                            {/* Member comment display — read-only for reviewer reference */}
+                            {item.member_comment && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Member Comment</p>
+                                    <p className="text-xs text-foreground/80">{item.member_comment}</p>
+                                </div>
+                            )}
                             {/* Mandatory reviewer comment — required in team_review and reworking statuses */}
                             {(isTeamReviewStatus || isReworking) && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
@@ -1301,6 +1314,10 @@ function ReviewRow({
                                 />
                             </div>
                         </div>
+                    </div>
+                    {/* Source info */}
+                    <div className="text-xs text-muted-foreground/30 pt-2 border-t border-border/10">
+                        Source: {docName}
                     </div>
                 </div>
             )}

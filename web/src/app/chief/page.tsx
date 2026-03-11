@@ -327,6 +327,42 @@ function ChiefContent() {
                                 </div>
                             </div>
                         )}
+                        {/* CO disapproval banner */}
+                        {item.bypass_disapproval_reason && (
+                            <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Request Disapproved by Compliance Officer</p>
+                                    <p className="text-xs text-foreground/80">{item.bypass_disapproval_reason}</p>
+                                    {item.bypass_disapproved_by && (
+                                        <p className="text-xs text-muted-foreground/50 mt-1">By {item.bypass_disapproved_by}{item.bypass_disapproved_at ? ` on ${formatDate(item.bypass_disapproved_at)}` : ""}</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {/* Reviewer bypass rejection banner */}
+                        {item.bypass_reviewer_rejection_reason && (
+                            <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg px-4 py-3">
+                                <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-0.5">Wrongly Tagged Request Rejected by Reviewer</p>
+                                    <p className="text-xs text-foreground/80">{item.bypass_reviewer_rejection_reason}</p>
+                                    {item.bypass_reviewer_rejected_by && (
+                                        <p className="text-xs text-muted-foreground/50 mt-1">By {item.bypass_reviewer_rejected_by}{item.bypass_reviewer_rejected_at ? ` on ${formatDate(item.bypass_reviewer_rejected_at)}` : ""}</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        {/* Rejection reason banner */}
+                        {(taskStatus === "reworking" || taskStatus === "in_progress") && item.rejection_reason && (
+                            <div className="flex items-start gap-2.5 bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                                    <p className="text-xs text-foreground/80">{item.rejection_reason}</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Assigned To */}
                         {item.assigned_to && (
@@ -421,6 +457,30 @@ function ChiefContent() {
                                         Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
                                     </span>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Member + Reviewer + Lead comments display */}
+                        {(item.member_comment || item.reviewer_comment || item.lead_comment) && (
+                            <div className="grid grid-cols-3 gap-2">
+                                {item.member_comment && (
+                                    <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
+                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Member Comment</p>
+                                        <p className="text-xs text-foreground/70">{item.member_comment}</p>
+                                    </div>
+                                )}
+                                {item.reviewer_comment && (
+                                    <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
+                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Reviewer Comment</p>
+                                        <p className="text-xs text-foreground/70">{item.reviewer_comment}</p>
+                                    </div>
+                                )}
+                                {item.lead_comment && (
+                                    <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
+                                        <p className="text-[10px] font-semibold text-foreground/50 mb-1">Lead Comment</p>
+                                        <p className="text-xs text-foreground/70">{item.lead_comment}</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 

@@ -764,21 +764,12 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             {/* Chat thread */}
                             <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                 <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
-                                {!isCompleted && (
-                                    <CommentThread
-                                        comments={item.comments || []}
-                                        currentUser={userName}
-                                        currentRole="team_member"
-                                        onAddComment={!isReadOnly ? handleAddComment : undefined}
-                                    />
-                                )}
-                                {isCompleted && (item.comments || []).length > 0 && (
-                                    <CommentThread
-                                        comments={item.comments || []}
-                                        currentUser={userName}
-                                        currentRole="team_member"
-                                    />
-                                )}
+                                <CommentThread
+                                    comments={item.comments || []}
+                                    currentUser={userName}
+                                    currentRole="team_member"
+                                    onAddComment={!isReadOnly ? handleAddComment : undefined}
+                                />
                             </div>
                         </div>
                     </div>

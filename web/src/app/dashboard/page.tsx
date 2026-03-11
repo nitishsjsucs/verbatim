@@ -291,6 +291,12 @@ export default function DashboardPage() {
     }, [handleUpdate])
 
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
+        // Validate co_comment is filled before approval
+        if (!item.co_comment?.trim()) {
+            toast.error("Cannot approve — CO Comment is required. Please save your comment first.")
+            return
+        }
+
         // Multi-team approval: approving any team marks ALL teams as approved
         const assignedTeams = item.assigned_teams || [item.workstream]
         const completionDate = new Date().toISOString()
