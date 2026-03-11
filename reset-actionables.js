@@ -118,7 +118,7 @@ async function resetActionables() {
                 // Move back to Actionable section (pre-approval)
                 approval_status:              "pending",
                 published_at:                 "",
-                task_status:                  "",
+                task_status:                  "assigned",
                 // Clear all workflow state (legacy)
                 submitted_at:                 "",
                 completion_date:              "",
@@ -186,6 +186,10 @@ async function resetActionables() {
                 residual_risk_score:          undefined,
                 residual_risk_label:          "",
                 residual_risk_interpretation: "",
+                // Clear deadline + evidence/comments data so Actionables restart cleanly
+                deadline:                     "",
+                evidence_files:               [],
+                comments:                     [],
                 impact_sub1:                  null,
                 impact_sub2:                  null,
                 impact_sub3:                  null,
