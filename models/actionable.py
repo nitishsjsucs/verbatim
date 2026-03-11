@@ -116,6 +116,7 @@ class ActionableItem:
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
     # ── NEW: Role-specific mandatory comments (separate from chat thread) ──
     member_comment: str = ""  # Mandatory comment from member before submission
+    member_comment_history: list = field(default_factory=list)  # List of {comment, submitted_at} for rework tracking
     reviewer_comment: str = ""  # Mandatory comment from reviewer before approval
     lead_comment: str = ""  # Mandatory comment from lead (if applicable)
     co_comment: str = ""  # Mandatory comment from CO before final approval
@@ -341,6 +342,7 @@ class ActionableItem:
             "delay_justification_updated_at": self.delay_justification_updated_at,
             # Role-specific mandatory comment fields
             "member_comment": self.member_comment,
+            "member_comment_history": self.member_comment_history,
             "reviewer_comment": self.reviewer_comment,
             "lead_comment": self.lead_comment,
             "co_comment": self.co_comment,
@@ -473,6 +475,7 @@ class ActionableItem:
             delay_justification_updated_at=data.get("delay_justification_updated_at", ""),
             # Role-specific mandatory comment fields
             member_comment=data.get("member_comment", ""),
+            member_comment_history=data.get("member_comment_history", []),
             reviewer_comment=data.get("reviewer_comment", ""),
             lead_comment=data.get("lead_comment", ""),
             co_comment=data.get("co_comment", ""),

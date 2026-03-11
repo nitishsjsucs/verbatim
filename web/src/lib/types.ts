@@ -364,6 +364,7 @@ export interface ActionableItem {
     audit_trail?: AuditTrailEntry[];           // Full audit trail
     // NEW: Role-specific mandatory comments (separate from chat thread)
     member_comment?: string;           // Mandatory comment from member before submission
+    member_comment_history?: Array<{comment: string; submitted_at: string}>;  // History of member comments during rework cycles
     reviewer_comment?: string;         // Mandatory comment from reviewer before approval
     lead_comment?: string;             // Mandatory comment from lead (if applicable)
     co_comment?: string;               // Mandatory comment from CO before final approval

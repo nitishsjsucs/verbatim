@@ -1517,7 +1517,11 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "justification_reviewer_text", "justification_lead_approved_at",
         "justification_compliance_comment", "justification_compliance_approved_at",
         # Role-specific mandatory comment fields
-        "member_comment", "reviewer_comment", "lead_comment", "co_comment",
+        "member_comment", "member_comment_history", "reviewer_comment", "lead_comment", "co_comment",
+        # Shared delay justification workflow
+        "delay_justification", "delay_justification_member_submitted",
+        "delay_justification_reviewer_approved", "delay_justification_lead_approved",
+        "delay_justification_updated_by", "delay_justification_updated_at",
         "audit_trail",
         "assigned_teams", "team_workflows",
         # Document metadata (inherited from parent doc)

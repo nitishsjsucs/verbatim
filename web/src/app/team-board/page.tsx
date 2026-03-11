@@ -679,8 +679,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     <div className="flex items-center gap-2">
                                         <Paperclip className="h-3.5 w-3.5 text-primary/60" />
                                         <span className="text-xs font-semibold text-foreground/80">Evidence Files</span>
-                                        {files.length > 0 && (
+                                        {files.length > 0 ? (
                                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
+                                        ) : !isReadOnly && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required for submission</span>
                                         )}
                                     </div>
                                     {!isReadOnly && (
@@ -720,18 +722,32 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
                         {/* Right column: mandatory member comment + chat thread */}
                         <div className="space-y-3">
+                            {/* Comment history (show when reworking or has history) */}
+                            {(item.member_comment_history && item.member_comment_history.length > 0) && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-foreground/70 mb-2">Comment History</p>
+                                    <div className="space-y-2">
+                                        {item.member_comment_history.map((entry, idx) => (
+                                            <div key={idx} className="bg-muted/20 rounded p-2 border-l-2 border-primary/30">
+                                                <p className="text-xs text-foreground/80">{entry.comment}</p>
+                                                <p className="text-[10px] text-muted-foreground/40 mt-1">Submitted: {formatDate(entry.submitted_at)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             {/* Mandatory comment box — required before submission */}
                             {!isReadOnly && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                     <div className="flex items-center gap-1.5 mb-2">
-                                        <p className="text-xs font-semibold text-foreground/70">Your Comment</p>
+                                        <p className="text-xs font-semibold text-foreground/70">{taskStatus === "reworking" ? "Rework Comment" : "Your Comment"}</p>
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required before submission</span>
                                     </div>
                                     <textarea
                                         value={draftMemberComment}
                                         onChange={e => setDraftMemberComment(e.target.value)}
                                         rows={4}
-                                        placeholder="Describe your implementation approach, steps taken, and any issues encountered. This is mandatory before you can submit."
+                                        placeholder={taskStatus === "reworking" ? "Describe what you changed and how you addressed the feedback. This is mandatory before resubmission." : "Describe your implementation approach, steps taken, and any issues encountered. This is mandatory before you can submit."}
                                         className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-border/30 focus:border-primary focus:outline-none text-foreground resize-none"
                                     />
                                     {item.member_comment && (
@@ -739,9 +755,9 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     )}
                                 </div>
                             )}
-                            {(isReadOnly || taskStatus === "reworking") && item.member_comment && (
+                            {isReadOnly && item.member_comment && (
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                                    <p className="text-xs font-semibold text-foreground/70 mb-1">{taskStatus === "reworking" ? "Your Previous Comment" : "Member Comment"}</p>
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Member Comment</p>
                                     <p className="text-xs text-foreground/80">{item.member_comment}</p>
                                 </div>
                             )}
@@ -873,7 +889,7 @@ function TeamBoardContent() {
 
         if (currentStatus === "assigned") nextStatus = "in_progress"
         else if (currentStatus === "in_progress") {
-            // Member submission: validate all 5 likelihood/control fields and member comment
+            // Member submission: validate all prerequisites
             const missing: string[] = []
             if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
             if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
@@ -881,28 +897,52 @@ function TeamBoardContent() {
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
             if (!item.member_comment?.trim()) missing.push("Member Comment (required — save it first)")
+            // Evidence file requirement
+            const files = item.evidence_files || []
+            if (files.length === 0) missing.push("Evidence File (at least one required)")
+            // Delay justification requirement (only if delayed)
+            const isDelayed = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
+            if (isDelayed && !item.delay_justification_member_submitted) {
+                missing.push("Delay Justification (submit justification first)")
+            }
             if (missing.length > 0) {
                 toast.error(`Cannot submit — please fill: ${missing.join(", ")}`)
                 return
             }
+            // Archive current comment to history
+            const history = item.member_comment_history || []
+            const newHistory = [...history, { comment: item.member_comment || "", submitted_at: new Date().toISOString() }]
             nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
+            extraUpdates.member_comment_history = newHistory
         }
         else if (currentStatus === "reworking") {
-            // Resubmission: same validation
+            // Resubmission: same validation as initial submission
             const missing: string[] = []
             if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
             if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
             if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
-            if (!item.member_comment?.trim()) missing.push("Member Comment (required — save it first)")
+            if (!item.member_comment?.trim()) missing.push("Rework Comment (required — save it first)")
+            // Evidence file requirement
+            const files = item.evidence_files || []
+            if (files.length === 0) missing.push("Evidence File (at least one required)")
+            // Delay justification requirement (only if delayed)
+            const isDelayed = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
+            if (isDelayed && !item.delay_justification_member_submitted) {
+                missing.push("Delay Justification (submit justification first)")
+            }
             if (missing.length > 0) {
                 toast.error(`Cannot resubmit — please fill: ${missing.join(", ")}`)
                 return
             }
+            // Archive current comment to history
+            const history = item.member_comment_history || []
+            const newHistory = [...history, { comment: item.member_comment || "", submitted_at: new Date().toISOString() }]
             nextStatus = "team_review"
             extraUpdates.submitted_at = new Date().toISOString()
+            extraUpdates.member_comment_history = newHistory
         }
         else if (currentStatus === "reviewer_rejected") {
             nextStatus = "in_progress"
