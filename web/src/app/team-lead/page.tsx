@@ -3,8 +3,6 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import {
-    fetchDelayedActionables,
-    submitJustification,
     uploadEvidence,
     deleteEvidence,
 } from "@/lib/api"
@@ -401,7 +399,6 @@ function TeamLeadContent() {
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
                                             userTeam={userTeam || ""}
-                                            onJustify={handleJustify}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -439,7 +436,6 @@ function TeamLeadContent() {
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
                                             userTeam={userTeam || ""}
-                                            onJustify={handleJustify}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -473,7 +469,6 @@ function TeamLeadContent() {
                                     setExpandedRow={setExpandedRow}
                                     userName={userName}
                                     userTeam={userTeam || ""}
-                                    onJustify={handleJustify}
                                     onAddComment={handleAddComment}
                                     onUpload={handleUpload}
                                     onUpdate={handleUpdate}
@@ -509,7 +504,6 @@ function TeamLeadContent() {
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
                                             userTeam={userTeam || ""}
-                                            onJustify={handleJustify}
                                             onAddComment={handleAddComment}
                                             onUpload={handleUpload}
                                             onUpdate={handleUpdate}
@@ -524,16 +518,6 @@ function TeamLeadContent() {
         </div>
     )
 
-    // ── Handler: submit justification ──
-    async function handleJustify(docId: string, itemId: string, justification: string) {
-        try {
-            await submitJustification(docId, itemId, justification, userName, userTeam || undefined)
-            toast.success("Justification submitted")
-            await loadAll()
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to submit justification")
-        }
-    }
 }
 
 // ─── Oversight Row (read-only + delay management) ────────────────────────────
@@ -546,7 +530,6 @@ function OversightRow({
     setExpandedRow,
     userName,
     userTeam,
-    onJustify,
     onAddComment,
     onUpload,
     onUpdate,
@@ -558,7 +541,6 @@ function OversightRow({
     setExpandedRow: (v: string | null) => void
     userName: string
     userTeam: string
-    onJustify: (docId: string, itemId: string, justification: string) => Promise<void>
     onAddComment: (docId: string, itemId: string, text: string) => Promise<void>
     onUpload: (docId: string, itemId: string, file: File) => void
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
@@ -569,24 +551,22 @@ function OversightRow({
     const isExpanded = expandedRow === rowKey
     const commentCount = (item.comments || []).length
     const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")
-    const hasJustification = !!item.justification
     const isAwaitingJustification = taskStatus === "awaiting_justification"
     const isReadOnly = taskStatus === "completed" || taskStatus === "review"
 
-    const [showJustifyInput, setShowJustifyInput] = React.useState(false)
-    const [justifyText, setJustifyText] = React.useState("")
     const inputRef = React.useRef<HTMLInputElement>(null)
     const files = item.evidence_files || []
 
     // Draft state for lead comment + Save button
     const [draftLeadComment, setDraftLeadComment] = React.useState(item.lead_comment || "")
     const [saving, setSaving] = React.useState(false)
-    // Justification approval state (Stage 3: Lead)
-    const [justApproveComment, setJustApproveComment] = React.useState("")
-    const [showJustApprove, setShowJustApprove] = React.useState(false)
+    // Delay justification state (shared field)
+    const [draftDelayJustification, setDraftDelayJustification] = React.useState(item.delay_justification || "")
+    const [showDelayJustApprove, setShowDelayJustApprove] = React.useState(false)
 
     React.useEffect(() => {
         setDraftLeadComment(item.lead_comment || "")
+        setDraftDelayJustification(item.delay_justification || "")
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item.id])
 
@@ -604,37 +584,33 @@ function OversightRow({
         }
     }, [draftLeadComment, onUpdate, docId, item.id])
 
-    // Approve justification (Stage 3: Lead)
-    const handleApproveJustification = React.useCallback(async () => {
-        if (!justApproveComment.trim()) return
+    // Approve delay justification (Lead optionally edits shared text + approves)
+    const handleApproveDelayJustification = React.useCallback(async () => {
+        if (!draftDelayJustification.trim()) return
         await onUpdate(docId, item.id, {
-            justification_lead_approved: true,
-            justification_lead_comment: justApproveComment.trim(),
-            justification_lead_by: userName,
-            justification_lead_at: new Date().toISOString(),
+            delay_justification: draftDelayJustification.trim(),
+            delay_justification_lead_approved: true,
+            delay_justification_updated_by: userName,
+            delay_justification_updated_at: new Date().toISOString(),
         })
-        setShowJustApprove(false)
-        setJustApproveComment("")
-        toast.success("Justification approved — forwarded to Compliance Officer")
-    }, [justApproveComment, onUpdate, docId, item.id, userName])
+        setShowDelayJustApprove(false)
+        toast.success("Delay justification approved — fully approved")
+    }, [draftDelayJustification, onUpdate, docId, item.id, userName])
 
-    // Reject justification — returns to member
-    const handleRejectJustification = React.useCallback(async () => {
-        if (!justApproveComment.trim()) return
+    // Reject delay justification — resets entire chain, member must re-enter
+    const handleRejectDelayJustification = React.useCallback(async () => {
         await onUpdate(docId, item.id, {
-            justification_lead_approved: false,
-            justification_lead_comment: justApproveComment.trim(),
-            justification_lead_by: userName,
-            justification_lead_at: new Date().toISOString(),
-            justification_reviewer_approved: false,
-            justification_member_text: "",
-            justification_member_at: "",
-            justification_member_by: "",
+            delay_justification: "",
+            delay_justification_member_submitted: false,
+            delay_justification_reviewer_approved: false,
+            delay_justification_lead_approved: false,
+            delay_justification_updated_by: userName,
+            delay_justification_updated_at: new Date().toISOString(),
         })
-        setShowJustApprove(false)
-        setJustApproveComment("")
-        toast.success("Justification rejected — member must resubmit")
-    }, [justApproveComment, onUpdate, docId, item.id, userName])
+        setShowDelayJustApprove(false)
+        setDraftDelayJustification("")
+        toast.success("Delay justification rejected — member must resubmit")
+    }, [onUpdate, docId, item.id, userName])
 
     const handleUploadClick = () => {
         inputRef.current?.click()
@@ -751,78 +727,23 @@ function OversightRow({
 
                 {/* Delay indicator */}
                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
-                    {isAwaitingJustification && !hasJustification && (
-                        <button
-                            onClick={() => setShowJustifyInput(true)}
-                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 transition-colors font-semibold animate-pulse"
-                            title="BLOCKED — Submit justification to release to Compliance"
-                        >
-                            ⚠ Justify Now
-                        </button>
+                    {isDelayed && item.delay_justification_lead_approved && (
+                        <span className="text-[10px] text-emerald-400 font-medium" title="Delay justification fully approved">Approved</span>
                     )}
-                    {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status === "reviewed" && (
-                        <span className="text-[10px] text-indigo-400 font-medium" title={`Justified: ${item.justification}`}>Justified</span>
+                    {isDelayed && item.delay_justification_reviewer_approved && !item.delay_justification_lead_approved && (
+                        <span className="text-[10px] text-amber-400 font-semibold animate-pulse" title="Awaiting your approval">Lead Review</span>
                     )}
-                    {!isAwaitingJustification && isDelayed && hasJustification && item.justification_status !== "reviewed" && (
-                        <span className="text-[10px] text-amber-400 font-medium" title={`Pending CO Review: ${item.justification}`}>Pending Review</span>
+                    {isDelayed && item.delay_justification_member_submitted && !item.delay_justification_reviewer_approved && (
+                        <span className="text-[10px] text-amber-400/70 font-medium" title="Awaiting Reviewer approval">Reviewer Pending</span>
                     )}
-                    {!isAwaitingJustification && isDelayed && !hasJustification && (
-                        <button
-                            onClick={() => setShowJustifyInput(true)}
-                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 hover:bg-red-500/25 transition-colors font-medium"
-                            title="Submit justification"
-                        >
-                            Justify
-                        </button>
+                    {isDelayed && !item.delay_justification_member_submitted && (
+                        <span className="text-[10px] text-red-400 font-medium" title="Member must submit justification">No Justification</span>
                     )}
                     {!isDelayed && !isAwaitingJustification && (
                         <span className="text-[10px] text-muted-foreground/30">—</span>
                     )}
                 </div>
             </div>
-
-            {/* Justify input */}
-            {showJustifyInput && (
-                <div className="bg-red-500/5 border-t border-red-500/20 px-6 py-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                    <input
-                        value={justifyText}
-                        onChange={e => setJustifyText(e.target.value)}
-                        placeholder="Reason for delay..."
-                        className="flex-1 bg-background text-xs rounded-md px-3 py-1.5 border border-red-500/30 focus:border-red-500 focus:outline-none text-foreground placeholder:text-muted-foreground/30"
-                        autoFocus
-                        onKeyDown={e => {
-                            if (e.key === "Enter" && justifyText.trim()) {
-                                onJustify(docId, item.id, justifyText.trim())
-                                setShowJustifyInput(false)
-                                setJustifyText("")
-                            }
-                            if (e.key === "Escape") {
-                                setShowJustifyInput(false)
-                                setJustifyText("")
-                            }
-                        }}
-                    />
-                    <button
-                        onClick={() => {
-                            if (justifyText.trim()) {
-                                onJustify(docId, item.id, justifyText.trim())
-                                setShowJustifyInput(false)
-                                setJustifyText("")
-                            }
-                        }}
-                        disabled={!justifyText.trim()}
-                        className="text-xs px-2.5 py-1.5 rounded bg-indigo-500/15 text-indigo-500 hover:bg-indigo-500/25 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        Submit Justification
-                    </button>
-                    <button
-                        onClick={() => { setShowJustifyInput(false); setJustifyText("") }}
-                        className="text-xs px-2 py-1.5 rounded bg-muted/30 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Cancel
-                    </button>
-                </div>
-            )}
 
             {/* Expanded: 2-column layout */}
             {isExpanded && (
@@ -832,15 +753,6 @@ function OversightRow({
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider">Assigned To</span>
                             <span className="text-xs text-foreground/70">{item.assigned_to}</span>
-                        </div>
-                    )}
-                    {hasJustification && (
-                        <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-md p-2.5">
-                            <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Justification</span>
-                            <p className="text-xs text-foreground/70 mt-0.5">{item.justification}</p>
-                            {item.justification_by && (
-                                <p className="text-xs text-muted-foreground/40 mt-1">— {item.justification_by} {item.justification_at ? `on ${formatDate(item.justification_at)}` : ""}</p>
-                            )}
                         </div>
                     )}
                     {/* Circular Source Information */}
@@ -897,41 +809,58 @@ function OversightRow({
                         </div>
                     </div>
 
-                    {/* Justification approval — Lead sees member's justification after Reviewer approved it */}
-                    {item.justification_member_text && item.justification_reviewer_approved && !item.justification_lead_approved && (
+                    {/* Delay Justification — shared field: Lead can edit + approve/reject */}
+                    {(isDelayed || isAwaitingJustification) && item.delay_justification_member_submitted && item.delay_justification_reviewer_approved && !item.delay_justification_lead_approved && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Justification Approval Required (Lead)</p>
-                            <div className="bg-muted/20 rounded p-2 text-xs">
-                                <span className="font-semibold text-foreground/60">Member&apos;s justification: </span>
-                                <span className="text-foreground/80">{item.justification_member_text}</span>
-                                {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification — Lead Approval Required</p>
                             </div>
-                            {item.justification_reviewer_comment && (
-                                <div className="text-xs text-emerald-400/80">Reviewer approved: {item.justification_reviewer_comment}</div>
-                            )}
-                            {!showJustApprove ? (
-                                <button onClick={() => setShowJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review Justification</button>
+                            {!showDelayJustApprove ? (
+                                <div className="space-y-2">
+                                    <div className="bg-muted/20 rounded p-2 text-xs">
+                                        <span className="font-semibold text-foreground/60">Reason for Delay: </span>
+                                        <span className="text-foreground/80">{item.delay_justification}</span>
+                                        {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
+                                    </div>
+                                    <div className="text-xs text-emerald-400/80">Reviewer: Approved</div>
+                                    <button onClick={() => setShowDelayJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review &amp; Approve Justification</button>
+                                </div>
                             ) : (
                                 <div className="space-y-2">
+                                    <p className="text-[10px] text-amber-400/70">You may edit the justification text before approving, or reject to return to the member.</p>
                                     <textarea
-                                        value={justApproveComment}
-                                        onChange={e => setJustApproveComment(e.target.value)}
-                                        rows={2}
-                                        placeholder="Your comment on this justification (required)…"
+                                        value={draftDelayJustification}
+                                        onChange={e => setDraftDelayJustification(e.target.value)}
+                                        rows={3}
+                                        placeholder="Edit or confirm the delay justification…"
                                         className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
                                     />
                                     <div className="flex gap-2">
-                                        <button onClick={handleApproveJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve</button>
-                                        <button onClick={handleRejectJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold disabled:opacity-40">Reject &amp; Return</button>
-                                        <button onClick={() => { setShowJustApprove(false); setJustApproveComment("") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
+                                        <button onClick={handleApproveDelayJustification} disabled={!draftDelayJustification.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve Justification</button>
+                                        <button onClick={handleRejectDelayJustification} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold">Reject &amp; Return to Member</button>
+                                        <button onClick={() => { setShowDelayJustApprove(false); setDraftDelayJustification(item.delay_justification || "") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
-                    {item.justification_lead_approved && (
-                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-400">
-                            Justification approved by Lead{item.justification_lead_comment ? ` — ${item.justification_lead_comment}` : ""}{item.justification_lead_at ? ` on ${formatDate(item.justification_lead_at)}` : ""}
+                    {/* Show fully-approved delay justification */}
+                    {(isDelayed || isAwaitingJustification) && item.delay_justification_lead_approved && (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                <p className="text-xs font-semibold text-emerald-400">Delay Justification — Fully Approved</p>
+                            </div>
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Reason: </span>
+                                <span className="text-foreground/80">{item.delay_justification}</span>
+                            </div>
+                            <div className="flex gap-3">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Member: Submitted</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Reviewer: Approved</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Lead: Approved</span>
+                            </div>
                         </div>
                     )}
 

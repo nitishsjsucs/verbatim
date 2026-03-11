@@ -288,6 +288,12 @@ export interface TeamWorkflow {
     justification_by?: string;
     justification_at?: string;
     justification_status?: string;
+    delay_justification?: string;
+    delay_justification_member_submitted?: boolean;
+    delay_justification_reviewer_approved?: boolean;
+    delay_justification_lead_approved?: boolean;
+    delay_justification_updated_by?: string;
+    delay_justification_updated_at?: string;
     evidence_files?: EvidenceFile[];
     comments?: ActionableComment[];
     completion_date?: string;
@@ -348,6 +354,13 @@ export interface ActionableItem {
     justification_co_comment?: string;         // Stage 4: CO comment
     justification_co_by?: string;              // Stage 4: CO name
     justification_co_at?: string;              // Stage 4: ISO timestamp
+    // NEW: Shared delay justification workflow (Member → Reviewer → Lead)
+    delay_justification?: string;                      // Single shared text field
+    delay_justification_member_submitted?: boolean;    // Member has entered justification
+    delay_justification_reviewer_approved?: boolean;   // Reviewer approved the justification
+    delay_justification_lead_approved?: boolean;       // Lead approved the justification
+    delay_justification_updated_by?: string;           // Last person who edited the text
+    delay_justification_updated_at?: string;           // ISO timestamp of last edit
     audit_trail?: AuditTrailEntry[];           // Full audit trail
     // NEW: Role-specific mandatory comments (separate from chat thread)
     member_comment?: string;           // Mandatory comment from member before submission

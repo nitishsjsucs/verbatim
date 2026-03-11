@@ -185,6 +185,7 @@ export function ActionableExpansion({
 
     // Use team workflow data if available, otherwise use parent item data
     const tw = teamWorkflow
+    // Legacy justification fields (kept for backward compat with old data)
     const justification = tw?.justification || item.justification
     const justificationStatus = tw?.justification_status || item.justification_status
     const justificationBy = tw?.justification_by || item.justification_by
@@ -538,38 +539,38 @@ export function ActionableExpansion({
                     )}
                 </div>
                 <div className="space-y-3">
-                    {/* Justification chain status (CO sees full chain) */}
-                    {item.justification_member_text && userRole === "compliance_officer" && (
-                        <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-1.5">
-                            <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Justification Chain</p>
-                            <div className="text-xs">
-                                <span className="font-semibold text-foreground/60">Member: </span>
-                                <span className="text-foreground/80">{item.justification_member_text}</span>
-                                {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                    {/* Delay Justification — read-only display with approval chain */}
+                    {item.delay_justification_member_submitted && (
+                        <div className={cn("rounded-lg border p-3 space-y-1.5",
+                            item.delay_justification_lead_approved
+                                ? "border-emerald-500/20 bg-emerald-500/5"
+                                : "border-amber-500/30 bg-amber-500/5"
+                        )}>
+                            <div className="flex items-center gap-2">
+                                {item.delay_justification_lead_approved
+                                    ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                    : <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />}
+                                <p className={cn("text-xs font-semibold uppercase tracking-wider", item.delay_justification_lead_approved ? "text-emerald-400" : "text-amber-400")}>
+                                    Delay Justification {item.delay_justification_lead_approved ? "— Fully Approved" : "— Pending"}
+                                </p>
                             </div>
-                            <div className={`text-xs ${item.justification_reviewer_approved ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                Reviewer: {item.justification_reviewer_approved ? '✓ Approved' : '⏳ Pending'}
-                                {item.justification_reviewer_comment && <span className="text-foreground/70 ml-1">— {item.justification_reviewer_comment}</span>}
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Reason: </span>
+                                <span className="text-foreground/80">{item.delay_justification}</span>
+                                {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
+                                {item.delay_justification_updated_by && <span className="text-muted-foreground/40 ml-1">by {item.delay_justification_updated_by}</span>}
                             </div>
-                            {item.justification_reviewer_approved && (
-                                <div className={`text-xs ${item.justification_lead_approved ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                    Lead: {item.justification_lead_approved ? '✓ Approved' : '⏳ Pending'}
-                                    {item.justification_lead_comment && <span className="text-foreground/70 ml-1">— {item.justification_lead_comment}</span>}
-                                </div>
-                            )}
-                            {item.justification_lead_approved && !item.justification_co_approved && (
-                                <div className="pt-1 flex gap-2">
-                                    <button
-                                        onClick={() => onUpdate(docId, item.id, { justification_co_approved: true, justification_co_by: userName, justification_co_at: new Date().toISOString() }, teamName)}
-                                        className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-semibold"
-                                    >
-                                        Acknowledge Justification
-                                    </button>
-                                </div>
-                            )}
-                            {item.justification_co_approved && (
-                                <div className="text-xs text-emerald-400">CO: ✓ Acknowledged{item.justification_co_at ? ` on ${formatDate(item.justification_co_at)}` : ""}</div>
-                            )}
+                            <div className="flex gap-3">
+                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_member_submitted ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                    Member: Submitted
+                                </span>
+                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                    Reviewer: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
+                                </span>
+                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                    Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
+                                </span>
+                            </div>
                         </div>
                     )}
 

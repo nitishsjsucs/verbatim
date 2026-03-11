@@ -106,6 +106,13 @@ class ActionableItem:
     justification_co_comment: str = ""  # Stage 4: CO comment
     justification_co_by: str = ""  # Stage 4: CO name
     justification_co_at: str = ""  # Stage 4: ISO timestamp
+    # ── NEW: Shared delay justification workflow (Member → Reviewer → Lead) ──
+    delay_justification: str = ""  # Single shared text field editable by Member/Reviewer/Lead
+    delay_justification_member_submitted: bool = False  # Member has entered justification
+    delay_justification_reviewer_approved: bool = False  # Reviewer approved the justification
+    delay_justification_lead_approved: bool = False  # Lead approved the justification
+    delay_justification_updated_by: str = ""  # Last person who edited the text
+    delay_justification_updated_at: str = ""  # ISO timestamp of last edit
     audit_trail: list = field(default_factory=list)  # List of {event, actor, role, timestamp, details}
     # ── NEW: Role-specific mandatory comments (separate from chat thread) ──
     member_comment: str = ""  # Mandatory comment from member before submission
@@ -180,6 +187,9 @@ class ActionableItem:
         "reviewer_comments", "rejection_reason",
         "is_delayed", "delay_detected_at",
         "justification", "justification_by", "justification_at", "justification_status",
+        "delay_justification", "delay_justification_member_submitted",
+        "delay_justification_reviewer_approved", "delay_justification_lead_approved",
+        "delay_justification_updated_by", "delay_justification_updated_at",
         "evidence_files", "comments", "completion_date",
         "deadline", "implementation_notes", "evidence_quote",
     ]
@@ -214,6 +224,12 @@ class ActionableItem:
                     "justification_by": "",
                     "justification_at": "",
                     "justification_status": "",
+                    "delay_justification": "",
+                    "delay_justification_member_submitted": False,
+                    "delay_justification_reviewer_approved": False,
+                    "delay_justification_lead_approved": False,
+                    "delay_justification_updated_by": "",
+                    "delay_justification_updated_at": "",
                     "evidence_files": [],
                     "comments": [],
                     "completion_date": "",
@@ -316,6 +332,13 @@ class ActionableItem:
             "justification_co_comment": self.justification_co_comment,
             "justification_co_by": self.justification_co_by,
             "justification_co_at": self.justification_co_at,
+            # Shared delay justification workflow
+            "delay_justification": self.delay_justification,
+            "delay_justification_member_submitted": self.delay_justification_member_submitted,
+            "delay_justification_reviewer_approved": self.delay_justification_reviewer_approved,
+            "delay_justification_lead_approved": self.delay_justification_lead_approved,
+            "delay_justification_updated_by": self.delay_justification_updated_by,
+            "delay_justification_updated_at": self.delay_justification_updated_at,
             # Role-specific mandatory comment fields
             "member_comment": self.member_comment,
             "reviewer_comment": self.reviewer_comment,
@@ -441,6 +464,13 @@ class ActionableItem:
             justification_co_comment=data.get("justification_co_comment", ""),
             justification_co_by=data.get("justification_co_by", ""),
             justification_co_at=data.get("justification_co_at", ""),
+            # Shared delay justification workflow
+            delay_justification=data.get("delay_justification", ""),
+            delay_justification_member_submitted=data.get("delay_justification_member_submitted", False),
+            delay_justification_reviewer_approved=data.get("delay_justification_reviewer_approved", False),
+            delay_justification_lead_approved=data.get("delay_justification_lead_approved", False),
+            delay_justification_updated_by=data.get("delay_justification_updated_by", ""),
+            delay_justification_updated_at=data.get("delay_justification_updated_at", ""),
             # Role-specific mandatory comment fields
             member_comment=data.get("member_comment", ""),
             reviewer_comment=data.get("reviewer_comment", ""),

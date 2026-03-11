@@ -94,15 +94,15 @@ function TeamReviewContent() {
     React.useEffect(() => { if (isTeamReviewer) loadAll() }, [loadAll, isTeamReviewer])
 
     // Team Reviewer approve: team_review → review (sends to compliance officer)
-    // If delayed and no justification, gate at awaiting_justification
+    // If delayed and delay justification not fully approved by lead, gate at awaiting_justification
     const handleApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
         const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && (item.task_status || "assigned") !== "completed")
-        const hasJustification = !!item.justification
+        const delayJustFullyApproved = item.delay_justification_lead_approved
 
-        // Determine next status: gate delayed tasks without justification
-        const nextStatus = (isDelayed && !hasJustification) ? "awaiting_justification" : "review"
+        // Determine next status: gate delayed tasks until lead approves justification
+        const nextStatus = (isDelayed && !delayJustFullyApproved) ? "awaiting_justification" : "review"
         const statusLabel = nextStatus === "awaiting_justification"
-            ? "Approved — awaiting Lead justification before Compliance review"
+            ? "Approved — awaiting delay justification approval chain before Compliance review"
             : "Approved by Team Reviewer — forwarded to Compliance Officer for final review."
 
         const approveComment: ActionableComment = {
@@ -120,7 +120,7 @@ function TeamReviewContent() {
             comments: [...existing, approveComment],
         })
         if (nextStatus === "awaiting_justification") {
-            toast.success("Task approved — blocked until Team Lead submits justification")
+            toast.success("Task approved — blocked until delay justification is fully approved")
         } else {
             toast.success("Task approved — sent to Compliance Officer for review")
         }
@@ -614,9 +614,9 @@ function ReviewRow({
     const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
     const [draftReviewerComment, setDraftReviewerComment] = React.useState(item.reviewer_comment || "")
     const [saving, setSaving] = React.useState(false)
-    // Justification approval state
-    const [justApproveComment, setJustApproveComment] = React.useState("")
-    const [showJustApprove, setShowJustApprove] = React.useState(false)
+    // Delay justification state (shared field)
+    const [draftDelayJustification, setDraftDelayJustification] = React.useState(item.delay_justification || "")
+    const [showDelayJustApprove, setShowDelayJustApprove] = React.useState(false)
 
     React.useEffect(() => {
         setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
@@ -625,6 +625,7 @@ function ReviewRow({
         setDraftCtrlMon(item.control_monitoring || emptyRSD)
         setDraftCtrlEff(item.control_effectiveness || emptyRSD)
         setDraftReviewerComment(item.reviewer_comment || "")
+        setDraftDelayJustification(item.delay_justification || "")
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item.id])
 
@@ -683,36 +684,33 @@ function ReviewRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftReviewerComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate])
 
-    // Approve justification (Stage 2: Reviewer)
-    const handleApproveJustification = React.useCallback(async () => {
-        if (!justApproveComment.trim()) return
+    // Approve delay justification (Reviewer edits shared text + approves)
+    const handleApproveDelayJustification = React.useCallback(async () => {
+        if (!draftDelayJustification.trim()) return
         await onUpdate(docId, item.id, {
-            justification_reviewer_approved: true,
-            justification_reviewer_comment: justApproveComment.trim(),
-            justification_reviewer_by: userName,
-            justification_reviewer_at: new Date().toISOString(),
+            delay_justification: draftDelayJustification.trim(),
+            delay_justification_reviewer_approved: true,
+            delay_justification_updated_by: userName,
+            delay_justification_updated_at: new Date().toISOString(),
         })
-        setShowJustApprove(false)
-        setJustApproveComment("")
-        toast.success("Justification approved — forwarded to Lead")
-    }, [justApproveComment, onUpdate, docId, item.id, userName])
+        setShowDelayJustApprove(false)
+        toast.success("Delay justification approved — forwarded to Lead")
+    }, [draftDelayJustification, onUpdate, docId, item.id, userName])
 
-    // Reject justification — send back to member
-    const handleRejectJustification = React.useCallback(async () => {
-        if (!justApproveComment.trim()) return
+    // Reject delay justification — reset member_submitted so member must re-enter
+    const handleRejectDelayJustification = React.useCallback(async () => {
         await onUpdate(docId, item.id, {
-            justification_reviewer_approved: false,
-            justification_reviewer_comment: justApproveComment.trim(),
-            justification_reviewer_by: userName,
-            justification_reviewer_at: new Date().toISOString(),
-            justification_member_text: "",
-            justification_member_at: "",
-            justification_member_by: "",
+            delay_justification: "",
+            delay_justification_member_submitted: false,
+            delay_justification_reviewer_approved: false,
+            delay_justification_lead_approved: false,
+            delay_justification_updated_by: userName,
+            delay_justification_updated_at: new Date().toISOString(),
         })
-        setShowJustApprove(false)
-        setJustApproveComment("")
-        toast.success("Justification rejected — member must resubmit")
-    }, [justApproveComment, onUpdate, docId, item.id, userName])
+        setShowDelayJustApprove(false)
+        setDraftDelayJustification("")
+        toast.success("Delay justification rejected — member must resubmit")
+    }, [onUpdate, docId, item.id, userName])
 
     const handleUploadClick = () => {
         inputRef.current?.click()
@@ -1155,41 +1153,58 @@ function ReviewRow({
                         )}
                     </div>
 
-                    {/* Justification approval section — reviewer sees member's justification and approves/rejects */}
-                    {item.justification_member_text && !item.justification_reviewer_approved && (isTeamReviewStatus || taskStatus === "awaiting_justification") && (
+                    {/* Delay Justification — shared field: Reviewer can edit + approve/reject */}
+                    {(item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")) && item.delay_justification_member_submitted && !item.delay_justification_reviewer_approved && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Justification Approval Required</p>
-                            <div className="bg-muted/20 rounded p-2 text-xs">
-                                <span className="font-semibold text-foreground/60">Member&apos;s justification: </span>
-                                <span className="text-foreground/80">{item.justification_member_text}</span>
-                                {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
-                                {item.justification_member_by && <span className="text-muted-foreground/40 ml-1">by {item.justification_member_by}</span>}
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification — Reviewer Approval Required</p>
                             </div>
-                            {!showJustApprove ? (
-                                <div className="flex gap-2">
-                                    <button onClick={() => setShowJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review Justification</button>
+                            {!showDelayJustApprove ? (
+                                <div className="space-y-2">
+                                    <div className="bg-muted/20 rounded p-2 text-xs">
+                                        <span className="font-semibold text-foreground/60">Reason for Delay: </span>
+                                        <span className="text-foreground/80">{item.delay_justification}</span>
+                                        {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
+                                    </div>
+                                    <button onClick={() => setShowDelayJustApprove(true)} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 font-medium">Review &amp; Approve Justification</button>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
+                                    <p className="text-[10px] text-amber-400/70">You may edit the justification text before approving, or reject to return to the member.</p>
                                     <textarea
-                                        value={justApproveComment}
-                                        onChange={e => setJustApproveComment(e.target.value)}
-                                        rows={2}
-                                        placeholder="Your comment on this justification (required)…"
+                                        value={draftDelayJustification}
+                                        onChange={e => setDraftDelayJustification(e.target.value)}
+                                        rows={3}
+                                        placeholder="Edit or confirm the delay justification…"
                                         className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
                                     />
                                     <div className="flex gap-2">
-                                        <button onClick={handleApproveJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve</button>
-                                        <button onClick={handleRejectJustification} disabled={!justApproveComment.trim()} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold disabled:opacity-40">Reject &amp; Return</button>
-                                        <button onClick={() => { setShowJustApprove(false); setJustApproveComment("") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
+                                        <button onClick={handleApproveDelayJustification} disabled={!draftDelayJustification.trim()} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold disabled:opacity-40">Approve Justification</button>
+                                        <button onClick={handleRejectDelayJustification} className="text-xs px-2.5 py-1.5 rounded bg-red-500/15 text-red-400 hover:bg-red-500/25 font-semibold">Reject &amp; Return to Member</button>
+                                        <button onClick={() => { setShowDelayJustApprove(false); setDraftDelayJustification(item.delay_justification || "") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">Cancel</button>
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
-                    {item.justification_reviewer_approved && (
-                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-400">
-                            Justification approved by Reviewer{item.justification_reviewer_comment ? ` — ${item.justification_reviewer_comment}` : ""}{item.justification_reviewer_at ? ` on ${formatDate(item.justification_reviewer_at)}` : ""}
+                    {/* Show approved delay justification status when reviewer already approved */}
+                    {(item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")) && item.delay_justification_reviewer_approved && (
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                <p className="text-xs font-semibold text-emerald-400">Delay Justification — Reviewer Approved</p>
+                            </div>
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Reason: </span>
+                                <span className="text-foreground/80">{item.delay_justification}</span>
+                            </div>
+                            <div className="flex gap-3">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">Reviewer: Approved</span>
+                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                    Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
+                                </span>
+                            </div>
                         </div>
                     )}
 

@@ -100,8 +100,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
     const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
     const [draftMemberComment, setDraftMemberComment] = React.useState(item.member_comment || "")
-    const [draftJustification, setDraftJustification] = React.useState(item.justification_member_text || "")
-    const [showJustifyInput, setShowJustifyInput] = React.useState(false)
+    const [draftDelayJustification, setDraftDelayJustification] = React.useState(item.delay_justification || "")
     const [saving, setSaving] = React.useState(false)
 
     // Sync drafts when item changes externally
@@ -112,7 +111,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         setDraftCtrlMon(item.control_monitoring || emptyRSD)
         setDraftCtrlEff(item.control_effectiveness || emptyRSD)
         setDraftMemberComment(item.member_comment || "")
-        setDraftJustification(item.justification_member_text || "")
+        setDraftDelayJustification(item.delay_justification || "")
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item.id])
 
@@ -177,20 +176,19 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftMemberComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate, taskStatus])
 
-    // Submit justification (Member → Reviewer approval)
-    const handleSubmitJustification = React.useCallback(async () => {
-        if (!draftJustification.trim()) return
+    // Submit delay justification (Member writes shared text → awaits Reviewer approval)
+    const handleSubmitDelayJustification = React.useCallback(async () => {
+        if (!draftDelayJustification.trim()) return
         await onUpdate(docId, item.id, {
-            justification_member_text: draftJustification.trim(),
-            justification_member_by: userName,
-            justification_member_at: new Date().toISOString(),
-            justification_reviewer_approved: false,
-            justification_lead_approved: false,
-            justification_co_approved: false,
+            delay_justification: draftDelayJustification.trim(),
+            delay_justification_member_submitted: true,
+            delay_justification_reviewer_approved: false,
+            delay_justification_lead_approved: false,
+            delay_justification_updated_by: userName,
+            delay_justification_updated_at: new Date().toISOString(),
         })
-        setShowJustifyInput(false)
-        toast.success("Justification submitted — awaiting Reviewer approval")
-    }, [draftJustification, onUpdate, docId, item.id, userName])
+        toast.success("Delay justification submitted — awaiting Reviewer approval")
+    }, [draftDelayJustification, onUpdate, docId, item.id, userName])
 
     const statusCfg = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
     const isOverdue = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
@@ -618,55 +616,49 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                         )}
                     </div>
 
-                    {/* Delay Justification — member submits, shows status of reviewer/lead/CO approval */}
+                    {/* Delay Justification — shared field: Member writes, Reviewer/Lead approve */}
                     {(item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")) && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-                            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification Required</p>
-                            {/* Stage 1: Member has NOT submitted yet */}
-                            {!item.justification_member_text && (
-                                <>
-                                    {!showJustifyInput ? (
-                                        <button onClick={() => setShowJustifyInput(true)} className="text-xs px-2.5 py-1.5 rounded bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 font-medium">
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification Required</p>
+                            </div>
+                            {/* Member has NOT submitted yet — editable text box */}
+                            {!item.delay_justification_member_submitted && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] text-amber-400/70">You must provide a reason for delay before the workflow can proceed.</p>
+                                    <textarea
+                                        value={draftDelayJustification}
+                                        onChange={e => setDraftDelayJustification(e.target.value)}
+                                        rows={3}
+                                        placeholder="Explain the reason for delay and corrective steps…"
+                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={handleSubmitDelayJustification} disabled={!draftDelayJustification.trim()} className="text-xs px-2.5 py-1.5 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-semibold disabled:opacity-40">
                                             Submit Justification
                                         </button>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <textarea
-                                                value={draftJustification}
-                                                onChange={e => setDraftJustification(e.target.value)}
-                                                rows={3}
-                                                placeholder="Explain the reason for delay and corrective steps…"
-                                                className="w-full bg-muted/30 text-xs rounded px-2 py-1.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none text-foreground resize-none"
-                                            />
-                                            <div className="flex gap-2">
-                                                <button onClick={handleSubmitJustification} disabled={!draftJustification.trim()} className="text-xs px-2.5 py-1.5 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 font-semibold disabled:opacity-40">
-                                                    Submit
-                                                </button>
-                                                <button onClick={() => { setShowJustifyInput(false); setDraftJustification(item.justification_member_text || "") }} className="text-xs px-2.5 py-1.5 rounded bg-muted/30 text-muted-foreground hover:bg-muted/50">
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
+                                    </div>
+                                </div>
                             )}
-                            {/* Stage 1 submitted — show trail */}
-                            {item.justification_member_text && (
+                            {/* Member has submitted — show read-only text + approval chain */}
+                            {item.delay_justification_member_submitted && (
                                 <div className="space-y-1.5 text-xs">
                                     <div className="bg-muted/20 rounded p-2">
-                                        <span className="font-semibold text-foreground/60">Your justification: </span>
-                                        <span className="text-foreground/80">{item.justification_member_text}</span>
-                                        {item.justification_member_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.justification_member_at)}</span>}
+                                        <span className="font-semibold text-foreground/60">Reason for Delay: </span>
+                                        <span className="text-foreground/80">{item.delay_justification}</span>
+                                        {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
+                                        {item.delay_justification_updated_by && <span className="text-muted-foreground/40 ml-1">by {item.delay_justification_updated_by}</span>}
                                     </div>
                                     <div className="flex gap-3">
-                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                            Reviewer: {item.justification_reviewer_approved ? `Approved${item.justification_reviewer_comment ? ` — ${item.justification_reviewer_comment}` : ""}` : "Pending"}
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_member_submitted ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                            Member: Submitted
                                         </span>
-                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                            Lead: {item.justification_lead_approved ? `Approved${item.justification_lead_comment ? ` — ${item.justification_lead_comment}` : ""}` : "Pending"}
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                            Reviewer: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
                                         </span>
-                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.justification_co_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
-                                            CO: {item.justification_co_approved ? `Approved${item.justification_co_comment ? ` — ${item.justification_co_comment}` : ""}` : "Pending"}
+                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                            Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
                                         </span>
                                     </div>
                                 </div>

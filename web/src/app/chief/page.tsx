@@ -390,6 +390,40 @@ function ChiefContent() {
                             </div>
                         </div>
 
+                        {/* Delay Justification — read-only */}
+                        {(isOverdue || item.is_delayed) && item.delay_justification_member_submitted && (
+                            <div className={cn("rounded-lg border p-3 space-y-1.5",
+                                item.delay_justification_lead_approved
+                                    ? "border-emerald-500/20 bg-emerald-500/5"
+                                    : "border-amber-500/30 bg-amber-500/5"
+                            )}>
+                                <div className="flex items-center gap-2">
+                                    {item.delay_justification_lead_approved
+                                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                        : <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />}
+                                    <p className={cn("text-xs font-semibold", item.delay_justification_lead_approved ? "text-emerald-400" : "text-amber-400")}>
+                                        Delay Justification {item.delay_justification_lead_approved ? "— Fully Approved" : "— Pending Approval"}
+                                    </p>
+                                </div>
+                                <div className="bg-muted/20 rounded p-2 text-xs">
+                                    <span className="font-semibold text-foreground/60">Reason: </span>
+                                    <span className="text-foreground/80">{item.delay_justification}</span>
+                                    {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
+                                </div>
+                                <div className="flex gap-3">
+                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_member_submitted ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                        Member: {item.delay_justification_member_submitted ? "Submitted" : "Pending"}
+                                    </span>
+                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_reviewer_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                        Reviewer: {item.delay_justification_reviewer_approved ? "Approved" : "Pending"}
+                                    </span>
+                                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", item.delay_justification_lead_approved ? "bg-emerald-500/15 text-emerald-400" : "bg-muted/20 text-muted-foreground/50")}>
+                                        Lead: {item.delay_justification_lead_approved ? "Approved" : "Pending"}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* 2-column: left=impl+evidence, right=comments */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-3">
