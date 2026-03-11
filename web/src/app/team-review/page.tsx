@@ -94,7 +94,7 @@ function TeamReviewContent() {
     React.useEffect(() => { if (isTeamReviewer) loadAll() }, [loadAll, isTeamReviewer])
 
     // Team Reviewer approve: team_review → review (sends to compliance officer)
-    // If delayed and delay justification not fully approved by lead, gate at awaiting_justification
+    // GATE: If delay justification exists but not approved by Reviewer, block actionable approval
     const handleApprove = React.useCallback(async (docId: string, item: ActionableItem) => {
         // Validate reviewer_comment is filled before approval
         if (!item.reviewer_comment?.trim()) {
@@ -103,13 +103,20 @@ function TeamReviewContent() {
         }
 
         const isDelayed = item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && (item.task_status || "assigned") !== "completed")
+        
+        // GATE: If delay justification exists but Reviewer hasn't approved it yet, block actionable approval
+        if (isDelayed && item.delay_justification_member_submitted && !item.delay_justification_reviewer_approved) {
+            toast.error("Please approve the delay justification before approving this actionable.")
+            return
+        }
+
         const delayJustFullyApproved = item.delay_justification_lead_approved
 
         // Determine next status: gate delayed tasks until lead approves justification
         const nextStatus = (isDelayed && !delayJustFullyApproved) ? "awaiting_justification" : "review"
         const statusLabel = nextStatus === "awaiting_justification"
-            ? "Approved — awaiting delay justification approval chain before Compliance review"
-            : "Approved by Team Reviewer — forwarded to Compliance Officer for final review."
+            ? "Approved — awaiting Team Head justification approval before Compliance review"
+            : "Approved by Checker — forwarded to Compliance Officer for final review."
 
         const approveComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -697,10 +704,10 @@ function ReviewRow({
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
         })
-        toast.success("Delay justification approved — forwarded to Lead")
+        toast.success("Delay justification approved — forwarded to Team Head")
     }, [onUpdate, docId, item.id, userName])
 
-    // Reject delay justification — reset member_submitted so member must re-enter
+    // Reject delay justification — resets chain, sends back to Member for rework
     const handleRejectDelayJustification = React.useCallback(async () => {
         await onUpdate(docId, item.id, {
             delay_justification: "",
@@ -709,10 +716,12 @@ function ReviewRow({
             delay_justification_lead_approved: false,
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
+            task_status: "reworking",
+            rejection_reason: "Delay justification denied by Checker — please revise and resubmit.",
         })
         setShowDelayJustApprove(false)
         setDraftDelayJustification("")
-        toast.success("Delay justification rejected — member must resubmit")
+        toast.success("Delay justification denied — sent back to Maker for revision")
     }, [onUpdate, docId, item.id, userName])
 
     const handleUploadClick = () => {
