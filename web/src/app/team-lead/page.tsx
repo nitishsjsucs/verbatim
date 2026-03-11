@@ -585,22 +585,16 @@ function OversightRow({
     }, [draftLeadComment, onUpdate, docId, item.id])
 
     // Approve delay justification (Lead only approves — no text editing)
-    // Also transitions status from awaiting_justification → review so actionable proceeds to CO
     const handleApproveDelayJustification = React.useCallback(async () => {
-        const updates: Record<string, unknown> = {
+        await onUpdate(docId, item.id, {
             delay_justification_lead_approved: true,
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
-        }
-        // If currently awaiting_justification, transition to review (send to CO)
-        if (taskStatus === "awaiting_justification") {
-            updates.task_status = "review"
-        }
-        await onUpdate(docId, item.id, updates)
-        toast.success("Delay justification approved — actionable forwarded to CAG for review")
-    }, [onUpdate, docId, item.id, userName, taskStatus])
+        })
+        toast.success("Delay justification approved — fully approved")
+    }, [onUpdate, docId, item.id, userName])
 
-    // Reject delay justification — resets entire chain, sends back to Member for rework
+    // Reject delay justification — resets entire chain, member must re-enter
     const handleRejectDelayJustification = React.useCallback(async () => {
         await onUpdate(docId, item.id, {
             delay_justification: "",
@@ -609,12 +603,10 @@ function OversightRow({
             delay_justification_lead_approved: false,
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
-            task_status: "reworking",
-            rejection_reason: "Delay justification rejected by Team Head — please revise and resubmit.",
         })
         setShowDelayJustApprove(false)
         setDraftDelayJustification("")
-        toast.success("Delay justification rejected — sent back to Maker for revision")
+        toast.success("Delay justification rejected — member must resubmit")
     }, [onUpdate, docId, item.id, userName])
 
     const handleUploadClick = () => {
