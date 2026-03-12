@@ -1101,6 +1101,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
 }
 
 // --- Create Actionable Form ---
+// Mirrors the expanded pending ActionableCard UI exactly.
 
 function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: {
     docId: string
@@ -1109,7 +1110,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     onCreated: () => void
     onCancel: () => void
 }) {
-    const { teamNames, leafTeamNames } = useTeams()
     const { getOptions, getLabel } = useDropdownConfig()
     const getSafeOptions = React.useCallback((key: string): DropdownOption[] => {
         const opts = getOptions(key)
@@ -1119,6 +1119,11 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
         const opt = getSafeOptions(configKey).find(o => o.label === selectedLabel)
         return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
     }
+    const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
+        if (!el) return
+        el.style.height = "auto"
+        el.style.height = `${el.scrollHeight}px`
+    }, [])
 
     const [creating, setCreating] = React.useState(false)
     const [selectedDocId, setSelectedDocId] = React.useState(docId)
@@ -1126,27 +1131,35 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     const [showDocMenu, setShowDocMenu] = React.useState(false)
 
     // Core fields
-    const [action, setAction] = React.useState("")
-    const [actor, setActor] = React.useState("")
-    const [object, setObject] = React.useState("")
+    const [draftAction, setDraftAction] = React.useState("")
+    const [draftEvidence, setDraftEvidence] = React.useState("")
 
-    // Team assignment — multiple teams allowed
-    const [selectedTeams, setSelectedTeams] = React.useState<string[]>([])
+    // Team assignment — uses same HierarchicalTeamMultiSelect as ActionableCard
+    const [draftTeams, setDraftTeams] = React.useState<string[]>([])
+    const draftIsMulti = draftTeams.length > 1
 
-    // Risk assessment (CO fields)
-    const [theme, setTheme] = React.useState("")
-    const [tranche3, setTranche3] = React.useState("")
-    const [impactDD, setImpactDD] = React.useState<RiskSubDropdown>({} as RiskSubDropdown)
+    // Per-team implementation (mirrors ActionableCard draftTeamImpl / draftImpl)
+    const [draftImpl, setDraftImpl] = React.useState("")
+    const [draftTeamImpl, setDraftTeamImpl] = React.useState<Record<string, string>>({})
+    const [teamDeadlineDrafts, setTeamDeadlineDrafts] = React.useState<Record<string, { date: string; time: string }>>({})
+    const [deadlineDate, setDeadlineDate] = React.useState("")
+    const [deadlineTime, setDeadlineTime] = React.useState("23:59")
 
-    // Circular metadata — auto-populated from document's first actionable
+    // Risk assessment — same as ActionableCard
+    const emptyRSD = {} as RiskSubDropdown
+    const [draftTheme, setDraftTheme] = React.useState("")
+    const [draftTranche3, setDraftTranche3] = React.useState("")
+    const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(emptyRSD)
+
+    // Circular metadata — auto-populated from selected document's first actionable
     const selectedDoc = allDocs.find(d => d.doc_id === selectedDocId)
     const selectedDocNameActual = selectedDoc?.doc_name || docName
-    const circulaMeta = React.useMemo(() => {
-        const firstItem = selectedDoc?.actionables[0]
+    const circMeta = React.useMemo(() => {
+        const first = selectedDoc?.actionables[0]
         return {
-            regulation_issue_date: firstItem?.regulation_issue_date || "",
-            circular_effective_date: firstItem?.circular_effective_date || "",
-            regulator: firstItem?.regulator || "",
+            regulation_issue_date: first?.regulation_issue_date || "",
+            circular_effective_date: first?.circular_effective_date || "",
+            regulator: first?.regulator || "",
         }
     }, [selectedDoc])
 
@@ -1156,28 +1169,63 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
         return allDocs.filter(d => d.doc_name.toLowerCase().includes(q))
     }, [allDocs, docSearchQuery])
 
-    const toggleTeam = (team: string) => {
-        setSelectedTeams(prev =>
-            prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team]
-        )
-    }
+    // Validation — mirrors ActionableCard handlePublish guards
+    const teamsForImpl = draftTeams
+    const allTeamImplFilled = teamsForImpl.length > 0 && (
+        draftIsMulti
+            ? teamsForImpl.every(t => (draftTeamImpl[t] || "").trim().length > 0)
+            : draftImpl.trim().length > 0
+    )
+    const isValid = (
+        selectedDocId.trim().length > 0 &&
+        draftAction.trim().length > 0 &&
+        draftTeams.length > 0 &&
+        allTeamImplFilled &&
+        draftTheme.trim().length > 0 &&
+        draftTranche3.trim().length > 0 &&
+        !!draftImpactDD?.label
+    )
 
     const handleSubmit = async () => {
-        if (!action.trim()) { toast.error("Actionable text is required"); return }
-        if (selectedTeams.length === 0) { toast.error("Assign at least one team"); return }
+        if (!isValid) {
+            const missing: string[] = []
+            if (!draftAction.trim()) missing.push("Actionable text")
+            if (draftTeams.length === 0) missing.push("at least one team")
+            if (!allTeamImplFilled) missing.push("implementation for all teams")
+            if (!draftTheme) missing.push("Theme")
+            if (!draftTranche3) missing.push("Tranche 3")
+            if (!draftImpactDD?.label) missing.push("Impact Assessment")
+            toast.error(`Missing: ${missing.join(", ")}`)
+            return
+        }
 
+        const teamWorkflows: Record<string, { implementation_notes: string; deadline?: string }> = {}
+        if (draftIsMulti) {
+            for (const team of draftTeams) {
+                const dl = teamDeadlineDrafts[team]
+                teamWorkflows[team] = {
+                    implementation_notes: draftTeamImpl[team] || "",
+                    ...(dl?.date ? { deadline: `${dl.date}T${dl.time || "23:59"}` } : {}),
+                }
+            }
+        }
+
+        const impactScore = (draftImpactDD.score ?? 0) ** 2
         const payload: Record<string, unknown> = {
-            action: action.trim(),
-            actor: actor.trim(),
-            object: object.trim(),
-            workstream: selectedTeams[0],
-            assigned_teams: selectedTeams.length > 1 ? selectedTeams : [],
-            theme,
-            tranche3,
-            ...(impactDD?.label ? { impact_dropdown: impactDD, overall_impact_score: (impactDD.score ?? 0) ** 2 } : {}),
-            regulation_issue_date: circulaMeta.regulation_issue_date,
-            circular_effective_date: circulaMeta.circular_effective_date,
-            regulator: circulaMeta.regulator,
+            action: draftAction.trim(),
+            evidence_quote: draftEvidence.trim(),
+            workstream: draftTeams[0],
+            assigned_teams: draftIsMulti ? draftTeams : [],
+            implementation_notes: draftIsMulti ? "" : draftImpl.trim(),
+            ...(draftIsMulti ? { team_workflows: teamWorkflows } : {}),
+            ...(!draftIsMulti && deadlineDate ? { deadline: `${deadlineDate}T${deadlineTime || "23:59"}` } : {}),
+            theme: draftTheme,
+            tranche3: draftTranche3,
+            impact_dropdown: draftImpactDD,
+            overall_impact_score: impactScore,
+            regulation_issue_date: circMeta.regulation_issue_date,
+            circular_effective_date: circMeta.circular_effective_date,
+            regulator: circMeta.regulator,
         }
 
         setCreating(true)
@@ -1193,8 +1241,9 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     }
 
     return (
-        <div className="border border-primary/30 rounded-lg p-4 space-y-3 bg-primary/5">
-            <div className="flex items-center justify-between">
+        <div className="border border-primary/30 rounded-lg overflow-hidden bg-background">
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 py-2 bg-primary/5 border-b border-primary/20">
                 <h3 className="text-xs font-semibold flex items-center gap-1.5">
                     <Plus className="h-3.5 w-3.5 text-primary" />
                     New Actionable
@@ -1204,151 +1253,307 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 </button>
             </div>
 
-            {/* Document selector — searchable dropdown */}
-            <div>
-                <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Document *</label>
-                <div className="relative">
-                    <button
-                        type="button"
-                        onClick={() => setShowDocMenu(prev => !prev)}
-                        className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground text-left flex items-center gap-1.5"
-                    >
-                        <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className="truncate flex-1">{selectedDocNameActual}</span>
-                        <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                    </button>
-                    {showDocMenu && (
-                        <>
-                            <div className="fixed inset-0 z-40" onClick={() => { setShowDocMenu(false); setDocSearchQuery("") }} />
-                            <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-lg min-w-full max-h-[200px] flex flex-col">
-                                <div className="p-1.5 border-b border-border/40">
-                                    <div className="relative">
-                                        <Search className="absolute left-2 top-[6px] h-3 w-3 text-muted-foreground/50" />
-                                        <input autoFocus value={docSearchQuery} onChange={e => setDocSearchQuery(e.target.value)} placeholder="Search documents..." className="w-full bg-muted/30 text-xs rounded px-2 py-1 pl-6 border border-border/40 focus:border-primary focus:outline-none" />
+            <div className="px-3 pb-3 space-y-3 pt-2.5">
+
+                {/* Document selector */}
+                <div>
+                    <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Document *</p>
+                    <div className="relative">
+                        <button
+                            type="button"
+                            onClick={() => setShowDocMenu(prev => !prev)}
+                            className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground text-left flex items-center gap-1.5"
+                        >
+                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate flex-1">{selectedDocNameActual}</span>
+                            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                        </button>
+                        {showDocMenu && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => { setShowDocMenu(false); setDocSearchQuery("") }} />
+                                <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-lg min-w-full max-h-[200px] flex flex-col">
+                                    <div className="p-1.5 border-b border-border/40">
+                                        <div className="relative">
+                                            <Search className="absolute left-2 top-[6px] h-3 w-3 text-muted-foreground/50" />
+                                            <input autoFocus value={docSearchQuery} onChange={e => setDocSearchQuery(e.target.value)} placeholder="Search documents..." className="w-full bg-muted/30 text-xs rounded px-2 py-1 pl-6 border border-border/40 focus:border-primary focus:outline-none" />
+                                        </div>
+                                    </div>
+                                    <div className="overflow-y-auto flex-1 py-1">
+                                        {filteredDocs.map(d => (
+                                            <button key={d.doc_id} className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2", selectedDocId === d.doc_id && "bg-primary/10 text-primary")} onClick={() => { setSelectedDocId(d.doc_id); setShowDocMenu(false); setDocSearchQuery("") }}>
+                                                <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                <span className="truncate">{d.doc_name}</span>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                                <div className="overflow-y-auto flex-1 py-1">
-                                    {filteredDocs.map(d => (
-                                        <button key={d.doc_id} className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2", selectedDocId === d.doc_id && "bg-primary/10 text-primary")} onClick={() => { setSelectedDocId(d.doc_id); setShowDocMenu(false); setDocSearchQuery("") }}>
-                                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                                            <span className="truncate">{d.doc_name}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Auto-populated circular metadata */}
-            <div className="rounded-md border border-border/20 p-2.5 bg-muted/10 space-y-1.5">
-                <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wider">Circular Source Information</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <div>
-                        <p className="text-[10px] text-muted-foreground/40">Circular ID</p>
-                        <p className="text-xs text-foreground/70 font-mono">{selectedDocId}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-muted-foreground/40">Circular Title</p>
-                        <p className="text-xs text-foreground/70 truncate">{selectedDocNameActual}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-muted-foreground/40">Issue Date</p>
-                        <p className="text-xs text-foreground/70 font-mono">{circulaMeta.regulation_issue_date ? formatDateDMY(circulaMeta.regulation_issue_date) : <span className="text-muted-foreground/30 italic">—</span>}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-muted-foreground/40">Effective Date</p>
-                        <p className="text-xs text-foreground/70 font-mono">{circulaMeta.circular_effective_date ? formatDateDMY(circulaMeta.circular_effective_date) : <span className="text-muted-foreground/30 italic">—</span>}</p>
-                    </div>
-                    <div className="col-span-2">
-                        <p className="text-[10px] text-muted-foreground/40">Regulator</p>
-                        <p className="text-xs text-foreground/70">{circulaMeta.regulator || <span className="text-muted-foreground/30 italic">—</span>}</p>
+                            </>
+                        )}
                     </div>
                 </div>
-            </div>
 
-            {/* Actionable text */}
-            <div>
-                <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Actionable *</label>
-                <textarea value={action} onChange={e => setAction(e.target.value)} placeholder="Describe the actionable requirement..." rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
-            </div>
-
-            {/* Actor + Object */}
-            <div className="grid grid-cols-2 gap-3">
+                {/* Actionable text — identical to ActionableCard */}
                 <div>
-                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Actor</label>
-                    <input value={actor} onChange={e => setActor(e.target.value)} placeholder="Who is responsible..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                    <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Actionable Text *</p>
+                    <textarea
+                        value={draftAction}
+                        onChange={e => { setDraftAction(e.target.value); autoGrow(e.target) }}
+                        ref={el => autoGrow(el)}
+                        rows={2}
+                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
+                        placeholder="Enter actionable text..."
+                        style={{ minHeight: '36px' }}
+                    />
                 </div>
-                <div>
-                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Object</label>
-                    <input value={object} onChange={e => setObject(e.target.value)} placeholder="What is acted upon..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
-                </div>
-            </div>
 
-            {/* Team assignment — multi-select */}
-            <div>
-                <label className="text-xs font-medium text-muted-foreground/60 block mb-1">
-                    Teams * <span className="text-muted-foreground/40 font-normal">(select one or more)</span>
-                </label>
-                <div className="flex flex-wrap gap-1.5 p-2 border border-border rounded-md bg-background min-h-[36px]">
-                    {leafTeamNames.map(team => (
-                        <button
-                            key={team}
-                            type="button"
-                            onClick={() => toggleTeam(team)}
-                            className={cn(
-                                "px-2 py-0.5 rounded text-[10px] font-medium transition-all border",
-                                selectedTeams.includes(team)
-                                    ? cn(getWorkstreamClass(team), "border-current opacity-100")
-                                    : "border-border/40 text-muted-foreground/50 hover:text-muted-foreground hover:border-border"
-                            )}
-                        >
-                            {team}
-                        </button>
-                    ))}
+                {/* Evidence — identical to ActionableCard */}
+                <div>
+                    <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Evidence</p>
+                    <textarea
+                        value={draftEvidence}
+                        onChange={e => { setDraftEvidence(e.target.value); autoGrow(e.target) }}
+                        ref={el => autoGrow(el)}
+                        rows={2}
+                        className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
+                        placeholder="Add evidence quote..."
+                        style={{ minHeight: '48px' }}
+                    />
                 </div>
-                {selectedTeams.length > 0 && (
-                    <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                        Assigned: {selectedTeams.join(", ")}
+
+                {/* Team multi-select — identical to ActionableCard */}
+                <div>
+                    <p className="text-xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        Assign Teams *
                     </p>
+                    <HierarchicalTeamMultiSelect
+                        selected={draftTeams}
+                        onChange={setDraftTeams}
+                        onTeamAdded={(team) => {
+                            if (!draftTeamImpl[team]) {
+                                setDraftTeamImpl(p => ({ ...p, [team]: "" }))
+                            }
+                            if (!teamDeadlineDrafts[team]) {
+                                setTeamDeadlineDrafts(p => ({ ...p, [team]: { date: "", time: "23:59" } }))
+                            }
+                        }}
+                    />
+                </div>
+
+                {/* Single-team: Consolidated group box — identical to ActionableCard */}
+                {draftTeams.length === 1 && (() => {
+                    const teamColors = WORKSTREAM_COLORS[draftTeams[0]] || DEFAULT_WORKSTREAM_COLORS
+                    return (
+                        <div className={cn("rounded-lg p-3 space-y-3 border-2", teamColors.text.replace('text-', 'border-'))}>
+                            <div className="flex items-center gap-2">
+                                <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", getWorkstreamClass(draftTeams[0]))}>
+                                    {draftTeams[0]}
+                                </span>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation *</p>
+                                <textarea
+                                    value={draftImpl}
+                                    onChange={e => { setDraftImpl(e.target.value); autoGrow(e.target) }}
+                                    ref={autoGrow}
+                                    rows={2}
+                                    className="w-full bg-background text-xs rounded px-2 py-1 border border-border/60 focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
+                                    placeholder="Enter implementation notes..."
+                                    style={{ minHeight: '48px' }}
+                                />
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground/60 mb-1 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    Deadline
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={deadlineDate}
+                                        min={new Date().toISOString().split("T")[0]}
+                                        onChange={e => setDeadlineDate(e.target.value)}
+                                        className="flex-1 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border/60 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                    />
+                                    <input
+                                        type="time"
+                                        value={deadlineTime}
+                                        onChange={e => setDeadlineTime(e.target.value)}
+                                        className="w-20 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border/60 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                    />
+                                </div>
+                                {deadlineDate && <p className="text-xs text-muted-foreground/50 mt-1">{formatDateDMY(deadlineDate)}</p>}
+                            </div>
+                        </div>
+                    )
+                })()}
+
+                {/* Multi-team: Per-team group boxes — identical to ActionableCard */}
+                {draftIsMulti && (
+                    <div className="space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground/60 flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            Per-Team Implementation *
+                        </p>
+                        {draftTeams.map(team => {
+                            const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
+                            const draft = teamDeadlineDrafts[team] || { date: "", time: "23:59" }
+                            return (
+                                <div key={team} className={cn("rounded-lg p-3 space-y-2 border", teamColors.text.replace('text-', 'border-'), teamColors.bg.replace('bg-', 'bg-') + '/5')}>
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", teamColors.bg, teamColors.text)}>
+                                            {team}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation *</p>
+                                        <textarea
+                                            value={draftTeamImpl[team] || ""}
+                                            onChange={e => { setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value })); autoGrow(e.target) }}
+                                            ref={autoGrow}
+                                            rows={2}
+                                            className="w-full bg-background text-xs rounded px-2 py-1 border border-border focus:border-primary focus:outline-none text-foreground resize-none overflow-hidden"
+                                            placeholder="Enter implementation notes..."
+                                            style={{ minHeight: '48px' }}
+                                        />
+                                    </div>
+                                    <div className={cn("rounded-lg p-2.5 border", teamColors.text.replace('text-', 'border-'), teamColors.bg.replace('bg-', 'bg-') + '/10')}>
+                                        <p className="text-xs font-medium text-muted-foreground/60 mb-2 flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            Deadline
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="date"
+                                                value={draft.date}
+                                                min={new Date().toISOString().split("T")[0]}
+                                                onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, date: e.target.value } }))}
+                                                className="flex-1 bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                            />
+                                            <input
+                                                type="time"
+                                                value={draft.time}
+                                                onChange={e => setTeamDeadlineDrafts(prev => ({ ...prev, [team]: { ...draft, time: e.target.value } }))}
+                                                className="w-20 bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                                            />
+                                        </div>
+                                        {draft.date && <p className="text-xs text-muted-foreground/50 mt-1.5">{formatDateDMY(draft.date)}</p>}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
                 )}
-            </div>
 
-            {/* Risk Assessment — Theme, Tranche 3, Impact */}
-            <div className="rounded-md border border-border/20 p-2.5 bg-muted/10 space-y-2">
-                <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wider">Risk Assessment</p>
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label className="text-[10px] font-medium text-muted-foreground/50 block mb-0.5">Theme</label>
-                        <select value={theme} onChange={e => setTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                            <option value="">— Select Theme —</option>
-                            {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                {/* Circular Source Information — same layout as ActionableCard, auto-populated */}
+                <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
+                    <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="col-span-2">
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
+                            <p className="text-xs text-foreground/50 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block italic">Auto-generated on create</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
+                            <p className="text-xs text-foreground/80 font-mono">{selectedDocId || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
+                            <p className="text-xs text-foreground/80">{selectedDocNameActual || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
+                            <p className="text-xs text-foreground/80 font-mono">{circMeta.regulation_issue_date ? formatDateDMY(circMeta.regulation_issue_date) : "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
+                            <p className="text-xs text-foreground/80 font-mono">{circMeta.circular_effective_date ? formatDateDMY(circMeta.circular_effective_date) : "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
+                            <p className="text-xs text-foreground/80">{circMeta.regulator || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
+                            <p className="text-xs text-foreground/50 font-mono italic">Auto-generated on create</p>
+                        </div>
                     </div>
-                    <div>
-                        <label className="text-[10px] font-medium text-muted-foreground/50 block mb-0.5">{getLabel("tranche3") || "Tranche 3"}</label>
-                        <select value={tranche3} onChange={e => setTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                            <option value="">— Select Tranche 3 —</option>
-                            {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                </div>
+
+                {/* Risk Assessment — identical structure to ActionableCard (CO view: Theme+Tranche3+Impact editable) */}
+                <div className="space-y-3 rounded-lg border border-border/30 p-3 bg-muted/5">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-foreground/70">Risk Assessment *</p>
+                        <span className="text-[10px] text-muted-foreground/40 italic">All fields required</span>
+                    </div>
+
+                    {/* Theme + Tranche 3 */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                            <select
+                                value={draftTheme}
+                                onChange={e => setDraftTheme(e.target.value)}
+                                className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground"
+                            >
+                                <option value="">— Select Theme —</option>
+                                {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
+                            <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                <option value="">— Select Tranche 3 —</option>
+                                {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Impact Assessment */}
+                    <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <p className="text-[10px] font-semibold text-pink-400/80 uppercase tracking-wider">Impact Assessment</p>
+                            {draftImpactDD?.label && (
+                                <span className="text-[10px] font-mono text-pink-400/60">
+                                    Score: {draftImpactDD.score} → Squared: {(draftImpactDD.score ?? 0) ** 2}
+                                </span>
+                            )}
+                        </div>
+                        <select
+                            value={draftImpactDD?.label || ""}
+                            onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
+                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
+                        >
+                            <option value="">— Select Impact —</option>
+                            {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                         </select>
                     </div>
                 </div>
-                <div>
-                    <label className="text-[10px] font-medium text-pink-400/70 block mb-0.5">Impact Assessment</label>
-                    <select value={impactDD?.label || ""} onChange={e => setImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground">
-                        <option value="">— Select Impact —</option>
-                        {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                    </select>
-                </div>
-            </div>
 
-            <div className="flex justify-end gap-2 pt-1">
-                <Button variant="ghost" size="sm" onClick={onCancel} className="h-7 text-xs">Cancel</Button>
-                <Button size="sm" onClick={handleSubmit} disabled={creating} className="h-7 text-xs gap-1.5">
-                    {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                    Create
-                </Button>
+                {/* Validation hint */}
+                {!isValid && (
+                    <div className="text-[10px] text-muted-foreground/50 space-y-0.5">
+                        {!draftAction.trim() && <p className="text-red-400/60">· Actionable text required</p>}
+                        {draftTeams.length === 0 && <p className="text-red-400/60">· Assign at least one team</p>}
+                        {draftTeams.length > 0 && !allTeamImplFilled && <p className="text-red-400/60">· Implementation required for all teams</p>}
+                        {(!draftTheme || !draftTranche3 || !draftImpactDD?.label) && <p className="text-red-400/60">· Complete all Risk Assessment fields</p>}
+                    </div>
+                )}
+
+                {/* Create button — disabled until all required fields filled */}
+                <button
+                    onClick={handleSubmit}
+                    disabled={!isValid || creating}
+                    className={cn(
+                        "w-full flex items-center justify-center gap-1.5 text-xs px-4 py-2 rounded-lg font-medium transition-colors",
+                        isValid && !creating
+                            ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
+                            : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
+                    )}
+                >
+                    {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {creating ? "Creating..." : isValid ? "Create Actionable" : "Fill required fields to create"}
+                </button>
             </div>
         </div>
     )
