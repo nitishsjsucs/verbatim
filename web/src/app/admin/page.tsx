@@ -79,10 +79,11 @@ import { LLMExperiment } from "@/components/admin/llm-experiment"
 import { LLMTournament } from "@/components/admin/llm-tournament"
 import { DropdownConfigManager } from "@/components/admin/dropdown-config-manager"
 import { RiskMatrixManager } from "@/components/admin/risk-matrix-manager"
+import { RiskEngineConfigManager } from "@/components/admin/risk-engine-config"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health" | "diagnostics" | "dropdown-config" | "risk-matrix"
+type Tab = "overview" | "queries" | "benchmarks" | "memory" | "storage" | "teams" | "users" | "llm-benchmark" | "health" | "diagnostics" | "dropdown-config" | "risk-matrix" | "risk-engine"
 
 interface AdminData {
   documents?: { total: number; list: Array<{ doc_id: string; doc_name: string; total_pages: number; node_count: number }> }
@@ -531,6 +532,7 @@ function AdminDashboardContent() {
           <TabBtn active={tab === "users"} icon={<Shield className="h-3.5 w-3.5" />} label="Users" onClick={() => setTab("users")} />
           <TabBtn active={tab === "dropdown-config"} icon={<Settings className="h-3.5 w-3.5" />} label="Dropdowns" onClick={() => setTab("dropdown-config")} />
           <TabBtn active={tab === "risk-matrix"} icon={<Gauge className="h-3.5 w-3.5" />} label="Risk Matrix" onClick={() => setTab("risk-matrix")} />
+          <TabBtn active={tab === "risk-engine"} icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Risk Engine" onClick={() => setTab("risk-engine")} />
         </div>
       </div>
 
@@ -565,6 +567,7 @@ function AdminDashboardContent() {
         {tab === "users" && <UsersTab />}
         {tab === "dropdown-config" && <DropdownConfigManager />}
         {tab === "risk-matrix" && <RiskMatrixManager />}
+        {tab === "risk-engine" && <RiskEngineConfigManager />}
       </div>
     </div>
   )

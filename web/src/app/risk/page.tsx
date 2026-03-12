@@ -3,71 +3,177 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
-import { ShieldAlert, TrendingUp, BarChart3, Shield, AlertTriangle } from "lucide-react"
-import { fetchAllActionables, fetchRiskMatrix, type RiskMatrixEntry } from "@/lib/api"
+import {
+  ShieldAlert,
+  BarChart3,
+  Shield,
+  AlertTriangle,
+  TrendingUp,
+  Loader2,
+  Save,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react"
+import {
+  fetchAllActionables,
+  fetchRiskEngineConfig,
+  fetchRiskParameterSelections,
+  updateRiskParameterSelections,
+} from "@/lib/api"
 import type { ActionableItem } from "@/lib/types"
 import { cn } from "@/lib/utils"
-import { RESIDUAL_RISK_INTERPRETATION_STYLES } from "@/lib/status-config"
+import {
+  type RiskEngineConfig,
+  type ThemeRiskRow,
+  type ParameterOption,
+  DEFAULT_RISK_ENGINE_CONFIG,
+  buildThemeAnalysis,
+  computeParam1,
+  computeParam2,
+  resolveDropdownScore,
+  interpretFinalScore,
+} from "@/lib/risk-engine"
 
-function getRiskColor(label: string) {
-  const l = (label || "").toLowerCase()
-  if (l === "high") return "text-red-400 bg-red-500/10 border-red-500/30"
-  if (l === "medium") return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30"
-  if (l === "low") return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-  return "text-muted-foreground bg-muted/20 border-border/30"
+// ─── Color helpers ───────────────────────────────────────────────────────────
+
+function riskBandBg(color: string) {
+  if (color === "emerald") return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+  if (color === "yellow") return "bg-yellow-500/15 text-yellow-400 border-yellow-500/30"
+  if (color === "orange") return "bg-orange-500/15 text-orange-400 border-orange-500/30"
+  if (color === "red") return "bg-red-500/15 text-red-400 border-red-500/30"
+  if (color === "rose") return "bg-rose-500/15 text-rose-400 border-rose-500/30"
+  return "bg-muted/20 text-muted-foreground border-border/30"
 }
 
-export default function RiskPage() {
-  const [items, setItems] = React.useState<ActionableItem[]>([])
-  const [matrix, setMatrix] = React.useState<RiskMatrixEntry[]>([])
-  const [loading, setLoading] = React.useState(true)
+function barColor(color: string) {
+  if (color === "emerald") return "bg-emerald-500"
+  if (color === "yellow") return "bg-yellow-500"
+  if (color === "red") return "bg-red-500"
+  if (color === "orange") return "bg-orange-500"
+  if (color === "rose") return "bg-rose-500"
+  return "bg-muted-foreground"
+}
 
-  React.useEffect(() => {
-    async function load() {
-      try {
-        const [actionablesData, matrixData] = await Promise.all([
-          fetchAllActionables(),
-          fetchRiskMatrix(),
-        ])
-        // Flatten all actionables from all documents
-        const allItems: ActionableItem[] = []
-        if (Array.isArray(actionablesData)) {
-          for (const result of actionablesData) {
-            if (result.actionables) allItems.push(...result.actionables)
+// ─── Main Page Component ─────────────────────────────────────────────────────
+
+export default function RiskPage() {
+  const [allItems, setAllItems] = React.useState<ActionableItem[]>([])
+  const [config, setConfig] = React.useState<RiskEngineConfig>(DEFAULT_RISK_ENGINE_CONFIG)
+  const [selections, setSelections] = React.useState<Record<string, string>>({})
+  const [loading, setLoading] = React.useState(true)
+  const [saving, setSaving] = React.useState(false)
+  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
+    new Set(["final", "themes", "params"])
+  )
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  const loadData = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const [actionablesData, configData, selectionsData] = await Promise.all([
+        fetchAllActionables(),
+        fetchRiskEngineConfig().catch(() => ({})),
+        fetchRiskParameterSelections().catch(() => ({})),
+      ])
+      const items: ActionableItem[] = []
+      if (Array.isArray(actionablesData)) {
+        for (const result of actionablesData) {
+          if (result.actionables) items.push(...result.actionables)
+        }
+      }
+      setAllItems(items)
+
+      // Merge fetched config with defaults (so new fields get defaults)
+      const merged: RiskEngineConfig = { ...DEFAULT_RISK_ENGINE_CONFIG }
+      if (configData && typeof configData === "object") {
+        const cd = configData as Record<string, unknown>
+        for (const k of Object.keys(merged) as (keyof RiskEngineConfig)[]) {
+          if (k in cd && cd[k] !== undefined) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (merged as any)[k] = cd[k]
           }
         }
-        setItems(allItems)
-        setMatrix(matrixData)
-      } catch {
-        // silent
-      } finally {
-        setLoading(false)
       }
+      setConfig(merged)
+
+      // Selections
+      const sel: Record<string, string> = {}
+      if (selectionsData && typeof selectionsData === "object") {
+        for (const [k, v] of Object.entries(selectionsData)) {
+          if (typeof v === "string") sel[k] = v
+        }
+      }
+      setSelections(sel)
+    } catch {
+      // silent
+    } finally {
+      setLoading(false)
     }
-    load()
   }, [])
 
-  // Compute distribution stats — prefer interpretation (new spec) over legacy label
-  const scored = items.filter(i => i.residual_risk_interpretation || i.residual_risk_label)
-  const getInterpretation = (i: ActionableItem) => i.residual_risk_interpretation || i.residual_risk_label || ""
-  const highCount = scored.filter(i => { const v = getInterpretation(i); return v === "Weak (High)" || v === "High" }).length
-  const medCount  = scored.filter(i => { const v = getInterpretation(i); return v === "Improvement Needed (Medium)" || v === "Medium" }).length
-  const lowCount  = scored.filter(i => { const v = getInterpretation(i); return v === "Satisfactory (Low)" || v === "Low" }).length
-  const unscored = items.length - scored.length
+  React.useEffect(() => { loadData() }, [loadData])
 
-  // Theme distribution
-  const themeMap: Record<string, number> = {}
-  for (const i of items) {
-    if (i.theme) themeMap[i.theme] = (themeMap[i.theme] || 0) + 1
+  // ─── Derived data ────────────────────────────────────────────────────────
+
+  // Separate completed & active
+  const completedItems = allItems.filter(i => i.task_status === "completed")
+  const activeItems = allItems.filter(i => i.task_status !== "completed")
+
+  // Theme analysis from completed items
+  const themeRows = buildThemeAnalysis(completedItems, config.theme_thresholds)
+  const highThemes = themeRows.filter(r => r.riskLevel.toLowerCase().includes("high") || r.riskLevel.toLowerCase().includes("weak"))
+  const medThemes = themeRows.filter(r => r.riskLevel.toLowerCase().includes("medium") || r.riskLevel.toLowerCase().includes("improvement"))
+  const lowThemes = themeRows.filter(r => !r.riskLevel.toLowerCase().includes("high") && !r.riskLevel.toLowerCase().includes("weak") && !r.riskLevel.toLowerCase().includes("medium") && !r.riskLevel.toLowerCase().includes("improvement"))
+
+  // Bar chart max for scaling
+  const allAvgs = themeRows.map(r => r.avgResidual)
+  const chartMax = allAvgs.length > 0 ? Math.max(...allAvgs, 1) : 1
+
+  // ─── Parameters ──────────────────────────────────────────────────────────
+
+  const param1 = computeParam1(themeRows, config.explicit_compliance_weights)
+  const param2 = computeParam2(activeItems.length, allItems.length, config.param2_options)
+
+  const p3Score = resolveDropdownScore(selections.param3_selection, config.param3_options)
+  const p4Score = resolveDropdownScore(selections.param4_selection, config.param4_options)
+  const p5Score = resolveDropdownScore(selections.param5_selection, config.param5_options)
+  const p6Score = resolveDropdownScore(selections.param6_selection, config.param6_options)
+  const p7Score = resolveDropdownScore(selections.param7_selection, config.param7_options)
+
+  // Total Parameter Score = P2 + P3 + P4 + P5 + P6  (spec says sum of 2-6)
+  const totalParamScore = param2.score + p3Score + p4Score + p5Score + p6Score
+
+  // Bank Level Risk = P1 + Total Parameter Score
+  const bankLevelScore = param1.score + totalParamScore
+
+  const finalInterp = interpretFinalScore(bankLevelScore, config.final_interpretation)
+
+  // ─── Save selections ────────────────────────────────────────────────────
+
+  const handleSaveSelections = async () => {
+    setSaving(true)
+    try {
+      await updateRiskParameterSelections(selections)
+    } catch {
+      // silent
+    } finally {
+      setSaving(false)
+    }
   }
-  const themeEntries = Object.entries(themeMap).sort((a, b) => b[1] - a[1])
 
-  const avgResidual = scored.length > 0
-    ? scored.reduce((s, i) => s + (i.residual_risk_score || 0), 0) / scored.length
-    : 0
-  const avgInherent = scored.length > 0
-    ? scored.reduce((s, i) => s + (i.inherent_risk_score || 0), 0) / scored.length
-    : 0
+  const setSelection = (key: string, value: string) => {
+    setSelections(prev => ({ ...prev, [key]: value }))
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
     <RoleRedirect>
@@ -75,131 +181,309 @@ export default function RiskPage() {
         <Sidebar />
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
-          <div className="h-11 border-b border-border flex items-center px-5 shrink-0 bg-background">
+          <div className="h-11 border-b border-border flex items-center justify-between px-5 shrink-0 bg-background">
             <h1 className="text-xs font-semibold text-foreground flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-primary" />
-              Risk Overview
+              Compliance Risk Dashboard
             </h1>
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 text-muted-foreground transition-colors"
+            >
+              <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
+              Refresh
+            </button>
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {loading ? (
-              <p className="text-sm text-muted-foreground animate-pulse">Loading risk data...</p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading risk data...
+              </div>
             ) : (
               <>
-                {/* Summary cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  <StatCard icon={<BarChart3 className="h-4 w-4" />} iconClass="text-blue-400" label="Total Actionables" value={items.length} />
-                  <StatCard icon={<Shield className="h-4 w-4" />} iconClass="text-emerald-400" label="Scored" value={scored.length} />
-                  <StatCard icon={<AlertTriangle className="h-4 w-4" />} iconClass="text-red-400" label="High Risk" value={highCount} />
-                  <StatCard icon={<TrendingUp className="h-4 w-4" />} iconClass="text-yellow-400" label="Medium Risk" value={medCount} />
-                  <StatCard icon={<Shield className="h-4 w-4" />} iconClass="text-emerald-400" label="Low Risk" value={lowCount} />
-                  <StatCard icon={<BarChart3 className="h-4 w-4" />} iconClass="text-muted-foreground" label="Unscored" value={unscored} />
+                {/* ════════════════════════════════════════════════════════════
+                    FINAL BANK-LEVEL RISK SCORE BANNER
+                   ════════════════════════════════════════════════════════════ */}
+                <div className={cn(
+                  "rounded-xl border-2 p-6 text-center",
+                  riskBandBg(finalInterp.color)
+                )}>
+                  <p className="text-[10px] uppercase tracking-widest font-semibold opacity-70 mb-1">
+                    Bank-Wide Compliance Risk Score
+                  </p>
+                  <p className="text-4xl font-bold font-mono mb-1">
+                    {bankLevelScore.toFixed(2)}
+                  </p>
+                  <p className="text-sm font-semibold">
+                    {finalInterp.label}
+                  </p>
                 </div>
 
-                {/* Averages */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1">Avg Inherent Risk Score</p>
-                    <p className="text-2xl font-mono font-bold text-foreground">{avgInherent.toFixed(1)}</p>
-                  </div>
-                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-1">Avg Residual Risk Score</p>
-                    <p className="text-2xl font-mono font-bold text-foreground">{avgResidual.toFixed(1)}</p>
-                  </div>
+                {/* Summary stat row */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <StatCard icon={<BarChart3 className="h-3.5 w-3.5" />} iconClass="text-blue-400" label="Total Actionables" value={allItems.length} />
+                  <StatCard icon={<Shield className="h-3.5 w-3.5" />} iconClass="text-emerald-400" label="Completed" value={completedItems.length} />
+                  <StatCard icon={<AlertTriangle className="h-3.5 w-3.5" />} iconClass="text-amber-400" label="Active" value={activeItems.length} />
+                  <StatCard icon={<TrendingUp className="h-3.5 w-3.5" />} iconClass="text-purple-400" label="Themes" value={themeRows.length} />
+                  <StatCard icon={<Shield className="h-3.5 w-3.5" />} iconClass="text-pink-400" label="Param 1 Score" value={param1.score} decimal />
                 </div>
 
-                {/* Risk Distribution Bar */}
-                {scored.length > 0 && (
-                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <p className="text-xs font-semibold text-foreground/70 mb-3">Residual Risk Distribution</p>
-                    <div className="flex h-6 rounded-full overflow-hidden border border-border/20">
-                      {highCount > 0 && (
-                        <div className="bg-red-500/70 flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${(highCount / scored.length) * 100}%` }}>
-                          {highCount}
+                {/* ════════════════════════════════════════════════════════════
+                    PART 1+2: THEME LEVEL RISK ANALYSIS + CHARTS
+                   ════════════════════════════════════════════════════════════ */}
+                <SectionHeader
+                  title="Theme-Level Risk Analysis"
+                  subtitle={`${themeRows.length} theme(s) from ${completedItems.length} completed actionables`}
+                  expanded={expandedSections.has("themes")}
+                  onToggle={() => toggleSection("themes")}
+                />
+
+                {expandedSections.has("themes") && (
+                  <div className="space-y-5">
+                    {/* Risk Distribution Summary (Pie-like visual) */}
+                    <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
+                      <p className="text-xs font-semibold text-foreground/70 mb-3">Theme Risk Distribution</p>
+                      <div className="flex items-center gap-6">
+                        {/* Stacked bar */}
+                        <div className="flex-1">
+                          <div className="flex h-8 rounded-lg overflow-hidden border border-border/20">
+                            {highThemes.length > 0 && themeRows.length > 0 && (
+                              <div
+                                className="bg-red-500/80 flex items-center justify-center text-[10px] font-bold text-white"
+                                style={{ width: `${(highThemes.length / themeRows.length) * 100}%` }}
+                              >
+                                {highThemes.length}
+                              </div>
+                            )}
+                            {medThemes.length > 0 && themeRows.length > 0 && (
+                              <div
+                                className="bg-yellow-500/80 flex items-center justify-center text-[10px] font-bold text-white"
+                                style={{ width: `${(medThemes.length / themeRows.length) * 100}%` }}
+                              >
+                                {medThemes.length}
+                              </div>
+                            )}
+                            {lowThemes.length > 0 && themeRows.length > 0 && (
+                              <div
+                                className="bg-emerald-500/80 flex items-center justify-center text-[10px] font-bold text-white"
+                                style={{ width: `${(lowThemes.length / themeRows.length) * 100}%` }}
+                              >
+                                {lowThemes.length}
+                              </div>
+                            )}
+                            {themeRows.length === 0 && (
+                              <div className="flex-1 bg-muted/30 flex items-center justify-center text-[10px] text-muted-foreground">
+                                No themes
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+                            <span className="text-red-400">High ({highThemes.length})</span>
+                            <span className="text-yellow-400">Medium ({medThemes.length})</span>
+                            <span className="text-emerald-400">Low ({lowThemes.length})</span>
+                          </div>
                         </div>
-                      )}
-                      {medCount > 0 && (
-                        <div className="bg-yellow-500/70 flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${(medCount / scored.length) * 100}%` }}>
-                          {medCount}
+                        {/* Mini donut-like numbers */}
+                        <div className="flex gap-3">
+                          <MiniStat label="High" count={highThemes.length} color="text-red-400" />
+                          <MiniStat label="Medium" count={medThemes.length} color="text-yellow-400" />
+                          <MiniStat label="Low" count={lowThemes.length} color="text-emerald-400" />
                         </div>
-                      )}
-                      {lowCount > 0 && (
-                        <div className="bg-emerald-500/70 flex items-center justify-center text-[10px] font-bold text-white" style={{ width: `${(lowCount / scored.length) * 100}%` }}>
-                          {lowCount}
-                        </div>
-                      )}
+                      </div>
                     </div>
-                    <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
-                      <span>High ({((highCount / scored.length) * 100).toFixed(0)}%)</span>
-                      <span>Medium ({((medCount / scored.length) * 100).toFixed(0)}%)</span>
-                      <span>Low ({((lowCount / scored.length) * 100).toFixed(0)}%)</span>
+
+                    {/* High Risk Themes — table + chart */}
+                    <ThemeSection
+                      title="High Risk Themes"
+                      subtitle="(Weak)"
+                      rows={highThemes}
+                      chartMax={chartMax}
+                      color="red"
+                      emptyMsg="No high-risk themes"
+                    />
+
+                    {/* Medium Risk Themes — table + chart */}
+                    <ThemeSection
+                      title="Medium Risk Themes"
+                      subtitle="(Improvement Needed)"
+                      rows={medThemes}
+                      chartMax={chartMax}
+                      color="yellow"
+                      emptyMsg="No medium-risk themes"
+                    />
+
+                    {/* Low Risk Themes — table + chart */}
+                    <ThemeSection
+                      title="Low Risk Themes"
+                      subtitle="(Satisfactory)"
+                      rows={lowThemes}
+                      chartMax={chartMax}
+                      color="emerald"
+                      emptyMsg="No low-risk themes"
+                    />
+                  </div>
+                )}
+
+                {/* ════════════════════════════════════════════════════════════
+                    PART 3–6: 7-PARAMETER RISK TABLE
+                   ════════════════════════════════════════════════════════════ */}
+                <SectionHeader
+                  title="Bank-Wide Risk Parameters"
+                  subtitle="7 compliance parameters determining overall institutional risk"
+                  expanded={expandedSections.has("params")}
+                  onToggle={() => toggleSection("params")}
+                />
+
+                {expandedSections.has("params") && (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-border/30 bg-muted/5 overflow-hidden">
+                      {/* Table header */}
+                      <div className="grid grid-cols-[40px_1fr_100px_100px_140px_70px] gap-0 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider bg-muted/10 border-b border-border/20">
+                        <div className="py-2 px-2 text-center">#</div>
+                        <div className="py-2 px-3">Parameter</div>
+                        <div className="py-2 px-2 text-center">Form</div>
+                        <div className="py-2 px-2 text-center">Value</div>
+                        <div className="py-2 px-2 text-center">Risk Level</div>
+                        <div className="py-2 px-2 text-center">Score</div>
+                      </div>
+
+                      {/* P1: Explicit Compliance (auto-calculated) */}
+                      <ParamRow
+                        serial={1}
+                        name="Explicit Compliance Against Regulations"
+                        form="Calculated"
+                        value={param1.value.toFixed(2)}
+                        riskLevel="Auto"
+                        score={param1.score}
+                        auto
+                      />
+
+                      {/* P2: Pending Implementation (auto-calculated) */}
+                      <ParamRow
+                        serial={2}
+                        name="Pending Implementation of Regulatory Circulars"
+                        form="Percentage"
+                        value={`${param2.percentage.toFixed(1)}%`}
+                        riskLevel={param2.matchedLabel}
+                        score={param2.score}
+                        auto
+                      />
+
+                      {/* P3–P7: Manual dropdowns */}
+                      <ParamDropdownRow
+                        serial={3}
+                        name="Complaints as % of Total Customers"
+                        form="Percentage"
+                        options={config.param3_options}
+                        selection={selections.param3_selection}
+                        onSelect={(v) => setSelection("param3_selection", v)}
+                      />
+                      <ParamDropdownRow
+                        serial={4}
+                        name="Observations: New Products/Processes"
+                        form="Number"
+                        options={config.param4_options}
+                        selection={selections.param4_selection}
+                        onSelect={(v) => setSelection("param4_selection", v)}
+                      />
+                      <ParamDropdownRow
+                        serial={5}
+                        name="Open Compliance Testing Observations"
+                        form="Number"
+                        options={config.param5_options}
+                        selection={selections.param5_selection}
+                        onSelect={(v) => setSelection("param5_selection", v)}
+                      />
+                      <ParamDropdownRow
+                        serial={6}
+                        name="Repeat RMP / RAR Observations"
+                        form="Number"
+                        options={config.param6_options}
+                        selection={selections.param6_selection}
+                        onSelect={(v) => setSelection("param6_selection", v)}
+                      />
+                      <ParamDropdownRow
+                        serial={7}
+                        name="Material Compliance Violations"
+                        form="Number"
+                        options={config.param7_options}
+                        selection={selections.param7_selection}
+                        onSelect={(v) => setSelection("param7_selection", v)}
+                      />
+
+                      {/* Totals row */}
+                      <div className="grid grid-cols-[40px_1fr_100px_100px_140px_70px] gap-0 border-t-2 border-border/30 bg-muted/15">
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-3 text-xs font-bold text-foreground">
+                          Total Parameter Score (P2–P6)
+                        </div>
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-2 text-center">
+                          <span className="text-sm font-bold font-mono text-foreground">{totalParamScore.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {/* Bank Level row */}
+                      <div className="grid grid-cols-[40px_1fr_100px_100px_140px_70px] gap-0 border-t border-border/20 bg-muted/10">
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-3 text-xs font-bold text-foreground">
+                          Bank-Level Risk Score (P1 + Total)
+                        </div>
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-2" />
+                        <div className="py-2.5 px-2 text-center">
+                          <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", riskBandBg(finalInterp.color))}>
+                            {finalInterp.label}
+                          </span>
+                        </div>
+                        <div className="py-2.5 px-2 text-center">
+                          <span className="text-sm font-bold font-mono text-foreground">{bankLevelScore.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Save button */}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleSaveSelections}
+                        disabled={saving}
+                        className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
+                      >
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        Save Parameter Selections
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {/* Interpretation Matrix */}
-                <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                  <p className="text-xs font-semibold text-foreground/70 mb-3">Residual Risk Interpretation Matrix</p>
-                  {matrix.length > 0 ? (
+                {/* ════════════════════════════════════════════════════════════
+                    FINAL INTERPRETATION LEGEND
+                   ════════════════════════════════════════════════════════════ */}
+                <SectionHeader
+                  title="Final Risk Score Interpretation"
+                  subtitle="Score ranges and their meanings"
+                  expanded={expandedSections.has("final")}
+                  onToggle={() => toggleSection("final")}
+                />
+                {expandedSections.has("final") && (
+                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
                     <div className="space-y-1.5">
-                      {matrix.map(entry => (
-                        <div key={entry.id} className="flex items-center gap-3">
-                          <span className={cn("text-xs font-semibold rounded px-2 py-0.5 border min-w-[70px] text-center", getRiskColor(entry.label))}>
-                            {entry.label}
+                      {config.final_interpretation.map((band, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className={cn("text-xs font-semibold rounded px-2 py-0.5 border min-w-[130px] text-center", riskBandBg(band.color))}>
+                            {band.label}
                           </span>
                           <span className="text-xs text-muted-foreground font-mono">
-                            {entry.min_score} — {entry.max_score}
+                            {band.min} — {band.max === Infinity ? "∞" : band.max}
                           </span>
                         </div>
                       ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No matrix entries configured. Configure in Admin &rarr; Risk Matrix.</p>
-                  )}
-                </div>
-
-                {/* Theme Distribution */}
-                {themeEntries.length > 0 && (
-                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <p className="text-xs font-semibold text-foreground/70 mb-3">Actionables by Theme</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-                      {themeEntries.slice(0, 12).map(([theme, count]) => (
-                        <div key={theme} className="flex items-center justify-between rounded-md border border-border/20 bg-background/40 px-2 py-1">
-                          <span className="text-[10px] text-foreground/70 truncate flex-1 mr-1" title={theme}>{theme}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* High-risk actionables table */}
-                {highCount > 0 && (
-                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <p className="text-xs font-semibold text-foreground/70 mb-3">High / Weak Risk Actionables ({highCount})</p>
-                    <div className="space-y-2">
-                      {scored
-                        .filter(i => { const v = getInterpretation(i); return v === "Weak (High)" || v === "High" })
-                        .slice(0, 20)
-                        .map(item => {
-                          const interp = item.residual_risk_interpretation || item.residual_risk_label || ""
-                          const interpStyle = RESIDUAL_RISK_INTERPRETATION_STYLES[interp]
-                          return (
-                            <div key={item.id} className="flex items-start gap-3 text-xs border-b border-border/10 pb-2">
-                              <span className="font-mono text-muted-foreground/50 shrink-0">{item.actionable_id || item.id.slice(0, 8)}</span>
-                              <span className="flex-1 text-foreground/80 line-clamp-1">{item.action}</span>
-                              {item.theme && <span className="text-[10px] text-muted-foreground/50 shrink-0 hidden md:inline">{item.theme}</span>}
-                              <span className={cn(
-                                "text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0",
-                                interpStyle ? `${interpStyle.bg} ${interpStyle.text}` : "bg-red-500/15 text-red-400"
-                              )}>
-                                {(item.residual_risk_score || 0).toFixed(1)}
-                              </span>
-                            </div>
-                          )
-                        })}
                     </div>
                   </div>
                 )}
@@ -212,14 +496,174 @@ export default function RiskPage() {
   )
 }
 
-function StatCard({ icon, iconClass, label, value }: { icon: React.ReactNode; iconClass: string; label: string; value: number }) {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function StatCard({ icon, iconClass, label, value, decimal }: { icon: React.ReactNode; iconClass: string; label: string; value: number; decimal?: boolean }) {
   return (
     <div className="rounded-lg border border-border/30 p-3 bg-muted/5">
       <div className="flex items-center gap-1.5 mb-1">
         <span className={iconClass}>{icon}</span>
         <span className="text-[10px] font-medium text-muted-foreground/60">{label}</span>
       </div>
-      <p className="text-lg font-bold font-mono text-foreground">{value}</p>
+      <p className="text-lg font-bold font-mono text-foreground">{decimal ? value.toFixed(2) : value}</p>
     </div>
   )
+}
+
+function MiniStat({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div className="text-center">
+      <p className={cn("text-xl font-bold font-mono", color)}>{count}</p>
+      <p className="text-[9px] text-muted-foreground/60 uppercase">{label}</p>
+    </div>
+  )
+}
+
+function SectionHeader({ title, subtitle, expanded, onToggle }: {
+  title: string; subtitle: string; expanded: boolean; onToggle: () => void
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center gap-2 py-2 text-left group"
+    >
+      {expanded
+        ? <ChevronDown className="h-4 w-4 text-muted-foreground/50" />
+        : <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+      }
+      <div>
+        <p className="text-sm font-semibold text-foreground group-hover:text-foreground/80 transition-colors">{title}</p>
+        <p className="text-[10px] text-muted-foreground/50">{subtitle}</p>
+      </div>
+    </button>
+  )
+}
+
+// ─── Theme section with table + bar chart ────────────────────────────────────
+
+function ThemeSection({ title, subtitle, rows, chartMax, color, emptyMsg }: {
+  title: string; subtitle: string; rows: ThemeRiskRow[]; chartMax: number; color: string; emptyMsg: string
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border border-border/20 p-3 bg-muted/5">
+        <p className="text-xs font-semibold text-foreground/60">{title} <span className="text-muted-foreground/40 font-normal">{subtitle}</span></p>
+        <p className="text-[10px] text-muted-foreground/40 mt-1">{emptyMsg}</p>
+      </div>
+    )
+  }
+
+  // Sort ascending by avg score within section
+  const sorted = [...rows].sort((a, b) => a.avgResidual - b.avgResidual)
+
+  return (
+    <div className="rounded-lg border border-border/30 bg-muted/5 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border/20">
+        <p className="text-xs font-semibold text-foreground/80">{title} <span className="text-muted-foreground/50 font-normal">{subtitle}</span> — {rows.length} theme(s)</p>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider border-b border-border/10">
+              <th className="py-1.5 px-3 text-left w-10">#</th>
+              <th className="py-1.5 px-3 text-left">Theme</th>
+              <th className="py-1.5 px-3 text-center">Avg Residual</th>
+              <th className="py-1.5 px-3 text-center">Highest</th>
+              <th className="py-1.5 px-3 text-center">Completed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((row, idx) => (
+              <tr key={row.theme} className="border-b border-border/5 hover:bg-muted/10 transition-colors">
+                <td className="py-1.5 px-3 text-muted-foreground/40 font-mono">{idx + 1}</td>
+                <td className="py-1.5 px-3 text-foreground/80">{row.theme}</td>
+                <td className="py-1.5 px-3 text-center font-mono font-medium">{row.avgResidual.toFixed(2)}</td>
+                <td className="py-1.5 px-3 text-center font-mono text-muted-foreground/60">{row.highestResidual.toFixed(2)}</td>
+                <td className="py-1.5 px-3 text-center font-mono text-muted-foreground/60">{row.completedCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bar chart */}
+      <div className="px-4 py-3 border-t border-border/10">
+        <p className="text-[10px] text-muted-foreground/50 mb-2 uppercase tracking-wider font-semibold">Avg Residual Score by Theme</p>
+        <div className="space-y-1.5">
+          {sorted.map(row => (
+            <div key={row.theme} className="flex items-center gap-2">
+              <span className="text-[10px] text-foreground/60 w-28 truncate shrink-0" title={row.theme}>{row.theme}</span>
+              <div className="flex-1 h-4 bg-muted/20 rounded-sm overflow-hidden">
+                <div
+                  className={cn("h-full rounded-sm transition-all", barColor(color))}
+                  style={{ width: `${Math.min((row.avgResidual / chartMax) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-mono text-muted-foreground/50 w-10 text-right shrink-0">{row.avgResidual.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Parameter table rows ────────────────────────────────────────────────────
+
+function ParamRow({ serial, name, form, value, riskLevel, score, auto }: {
+  serial: number; name: string; form: string; value: string; riskLevel: string; score: number; auto?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-[40px_1fr_100px_100px_140px_70px] gap-0 border-b border-border/10 hover:bg-muted/10 transition-colors">
+      <div className="py-2 px-2 text-center text-xs text-muted-foreground/50 font-mono">{serial}</div>
+      <div className="py-2 px-3 text-xs text-foreground/80">
+        {name}
+        {auto && <span className="ml-1 text-[9px] text-primary/60 bg-primary/10 px-1 rounded">Auto</span>}
+      </div>
+      <div className="py-2 px-2 text-center text-[10px] text-muted-foreground/50">{form}</div>
+      <div className="py-2 px-2 text-center text-xs font-mono text-foreground/80">{value}</div>
+      <div className="py-2 px-2 text-center text-[10px] text-muted-foreground/60">{riskLevel}</div>
+      <div className="py-2 px-2 text-center text-xs font-mono font-semibold text-foreground">{score.toFixed(2)}</div>
+    </div>
+  )
+}
+
+function ParamDropdownRow({ serial, name, form, options, selection, onSelect }: {
+  serial: number; name: string; form: string; options: ParameterOption[]; selection?: string; onSelect: (v: string) => void
+}) {
+  const matched = options.find(o => o.label === selection)
+  const score = matched?.score ?? 0
+  const riskLevel = matched ? getRatingFromScore(matched.score) : "—"
+
+  return (
+    <div className="grid grid-cols-[40px_1fr_100px_100px_140px_70px] gap-0 border-b border-border/10 hover:bg-muted/10 transition-colors">
+      <div className="py-2 px-2 text-center text-xs text-muted-foreground/50 font-mono">{serial}</div>
+      <div className="py-2 px-3 text-xs text-foreground/80">{name}</div>
+      <div className="py-2 px-2 text-center text-[10px] text-muted-foreground/50">{form}</div>
+      <div className="py-2 px-2 flex items-center justify-center">
+        <select
+          value={selection || ""}
+          onChange={e => onSelect(e.target.value)}
+          className="text-[10px] bg-background border border-border/30 rounded px-1.5 py-1 text-foreground/80 max-w-[90px] focus:outline-none focus:ring-1 focus:ring-primary/50"
+        >
+          <option value="">Select…</option>
+          {options.map(o => (
+            <option key={o.label} value={o.label}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="py-2 px-2 text-center text-[10px] text-muted-foreground/60">{riskLevel}</div>
+      <div className="py-2 px-2 text-center text-xs font-mono font-semibold text-foreground">{score.toFixed(2)}</div>
+    </div>
+  )
+}
+
+function getRatingFromScore(score: number): string {
+  if (score >= 3) return "High Severe"
+  if (score >= 2) return "High Medium"
+  if (score >= 1.5) return "High Low"
+  if (score >= 1) return "Medium"
+  return "Low"
 }

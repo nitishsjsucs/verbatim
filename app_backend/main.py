@@ -4663,6 +4663,91 @@ def delete_risk_matrix_entry(entry_id: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Risk Engine Config — admin-configurable thresholds, weights, parameter options
+# Collection: risk_engine_config  (singleton document, key="default")
+# ─────────────────────────────────────────────────────────────────────────────
+
+RISK_ENGINE_CONFIG_COLLECTION = "risk_engine_config"
+
+
+@app.get("/risk-engine-config")
+def get_risk_engine_config():
+    """Return the current risk engine configuration (thresholds, weights, options)."""
+    from utils.mongo import get_db
+    db = get_db()
+    doc = db[RISK_ENGINE_CONFIG_COLLECTION].find_one({"key": "default"})
+    if doc:
+        doc.pop("_id", None)
+        doc.pop("key", None)
+        return doc
+    return {}
+
+
+@app.put("/risk-engine-config")
+def update_risk_engine_config(body: dict = Body(...)):
+    """Admin: upsert the risk engine configuration."""
+    from utils.mongo import get_db
+    db = get_db()
+    col = db[RISK_ENGINE_CONFIG_COLLECTION]
+    # Remove _id if present in body
+    body.pop("_id", None)
+    body.pop("key", None)
+    col.update_one(
+        {"key": "default"},
+        {"$set": {**body, "key": "default"}},
+        upsert=True,
+    )
+    doc = col.find_one({"key": "default"})
+    if doc:
+        doc.pop("_id", None)
+        doc.pop("key", None)
+    return doc or {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Risk Parameter Selections — CO-saved manual dropdown picks
+# Collection: risk_parameter_selections  (singleton, key="current")
+# ─────────────────────────────────────────────────────────────────────────────
+
+RISK_PARAM_SELECTIONS_COLLECTION = "risk_parameter_selections"
+
+
+@app.get("/risk-parameter-selections")
+def get_risk_parameter_selections():
+    """Return the current saved parameter selections."""
+    from utils.mongo import get_db
+    db = get_db()
+    doc = db[RISK_PARAM_SELECTIONS_COLLECTION].find_one({"key": "current"})
+    if doc:
+        doc["_id"] = str(doc["_id"])
+        doc.pop("key", None)
+        return doc
+    return {}
+
+
+@app.put("/risk-parameter-selections")
+def update_risk_parameter_selections(body: dict = Body(...)):
+    """Save/update risk parameter selections."""
+    from utils.mongo import get_db
+    from datetime import datetime, timezone
+    db = get_db()
+    col = db[RISK_PARAM_SELECTIONS_COLLECTION]
+    body.pop("_id", None)
+    body.pop("key", None)
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    col.update_one(
+        {"key": "current"},
+        {"$set": {**body, "key": "current"}},
+        upsert=True,
+    )
+    doc = col.find_one({"key": "current"})
+    if doc:
+        doc["_id"] = str(doc["_id"])
+        doc.pop("key", None)
+    return doc or {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Migration: populate new risk fields for legacy actionables
 # ─────────────────────────────────────────────────────────────────────────────
 

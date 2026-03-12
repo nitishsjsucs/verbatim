@@ -1097,3 +1097,39 @@ export async function migrateRiskFields(): Promise<{ status: string; total_actio
     if (!res.ok) throw new Error('Failed to migrate risk fields');
     return res.json();
 }
+
+// ─── Risk Engine Config API ──────────────────────────────────────────────────
+
+export async function fetchRiskEngineConfig(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/risk-engine-config');
+    if (!res.ok) throw new Error('Failed to fetch risk engine config');
+    return res.json();
+}
+
+export async function updateRiskEngineConfig(config: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/risk-engine-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+    });
+    if (!res.ok) throw new Error('Failed to update risk engine config');
+    return res.json();
+}
+
+// ─── Risk Parameter Selections API ───────────────────────────────────────────
+
+export async function fetchRiskParameterSelections(): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/risk-parameter-selections');
+    if (!res.ok) throw new Error('Failed to fetch risk parameter selections');
+    return res.json();
+}
+
+export async function updateRiskParameterSelections(selections: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const res = await apiFetch('/risk-parameter-selections', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selections),
+    });
+    if (!res.ok) throw new Error('Failed to update risk parameter selections');
+    return res.json();
+}
