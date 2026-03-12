@@ -197,7 +197,7 @@ function formatDateDMY(isoDate: string): string {
     return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, globalDeadline, globalDeadlineTime, callerRole }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, callerRole }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -208,8 +208,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     onSelect: () => void
     isChecked: boolean
     onCheck: () => void
-    globalDeadline: string
-    globalDeadlineTime: string
+    docDefaultDeadline: string
+    docDefaultDeadlineTime: string
     callerRole: string
 }) {
     const isComplianceOfficer = callerRole === "compliance_officer"
@@ -478,11 +478,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             return
         }
         let dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : (item.deadline || "")
-        if (!dl && globalDeadline) {
-            dl = `${globalDeadline}T${globalDeadlineTime || "23:59"}`
+        if (!dl && docDefaultDeadline) {
+            dl = `${docDefaultDeadline}T${docDefaultDeadlineTime || "23:59"}`
         }
         if (!dl) {
-            toast.error("Set a deadline (or a global deadline) before publishing")
+            toast.error("Set a deadline (or a document default deadline) before publishing")
             return
         }
         // Save any pending draft changes first, then publish
@@ -783,9 +783,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 {formatDateDMY(deadlineDate)}
                                             </p>
                                         )}
-                                        {!deadlineDate && globalDeadline && (
+                                        {!deadlineDate && docDefaultDeadline && (
                                             <p className="text-xs text-muted-foreground/40 mt-1">
-                                                No individual deadline — will use global deadline ({formatDateDMY(globalDeadline)}) on publish
+                                                No individual deadline — will use document default ({formatDateDMY(docDefaultDeadline)}) on publish
                                             </p>
                                         )}
                                     </div>
@@ -851,9 +851,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                             {formatDateDMY(draft.date)}
                                                         </p>
                                                     )}
-                                                    {!draft.date && globalDeadline && (
+                                                    {!draft.date && docDefaultDeadline && (
                                                         <p className="text-xs text-muted-foreground/40 mt-1.5">
-                                                            Will use global deadline ({formatDateDMY(globalDeadline)}) on publish
+                                                            Will use document default ({formatDateDMY(docDefaultDeadline)}) on publish
                                                         </p>
                                                     )}
                                                 </div>
@@ -1580,23 +1580,29 @@ export default function ActionablesPage() {
     const [loading, setLoading] = React.useState(true)
     const [viewTab, setViewTab] = React.useState<ViewTab>("by-doc")
 
-    // Global deadline (header bar) — defaults to 1 month from now
-    const [globalDeadline, setGlobalDeadline] = React.useState(() => {
-        const d = new Date(); d.setMonth(d.getMonth() + 1)
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-    })
-    const [globalDeadlineTime, setGlobalDeadlineTime] = React.useState("23:59")
+    // Per-document deadline defaults (frontend-only, persisted in localStorage)
+    const [docDeadlineDefaults, setDocDeadlineDefaults] = React.useState<Record<string, { date: string; time: string }>>({})
 
-    // Load persisted global deadline from localStorage (overrides default)
+    // Load persisted per-document deadlines from localStorage
     React.useEffect(() => {
         try {
-            const saved = localStorage.getItem("actionables_global_deadline")
+            const saved = localStorage.getItem("actionables_doc_deadlines")
             if (saved) {
-                const { date, time } = JSON.parse(saved)
-                if (date) setGlobalDeadline(date)
-                if (time) setGlobalDeadlineTime(time)
+                const parsed = JSON.parse(saved)
+                setDocDeadlineDefaults(parsed)
             }
         } catch { /* ignore */ }
+    }, [])
+
+    // Save per-document deadlines to localStorage whenever they change
+    const updateDocDeadline = React.useCallback((docId: string, date: string, time: string) => {
+        setDocDeadlineDefaults(prev => {
+            const next = { ...prev, [docId]: { date, time } }
+            try {
+                localStorage.setItem("actionables_doc_deadlines", JSON.stringify(next))
+            } catch { /* ignore */ }
+            return next
+        })
     }, [])
 
     // Filters
@@ -1844,15 +1850,19 @@ export default function ActionablesPage() {
             toast.error(`Cannot bulk publish — ${incomplete.length} item(s) missing required fields (e.g. ${ids})`)
             return
         }
-        const globalDl = globalDeadline ? `${globalDeadline}T${globalDeadlineTime || "23:59"}` : ""
-        // Check if any item lacks both individual and global deadline
-        const noDeadline = pending.filter(({ item }) => !item.deadline && !globalDl)
+        // Check if any item lacks both individual and document-level deadline
+        const noDeadline = pending.filter(({ item, docId }) => {
+            const docDefault = docDeadlineDefaults[docId]
+            return !item.deadline && !docDefault?.date
+        })
         if (noDeadline.length > 0) {
-            toast.error("Set a global deadline first — some items have no individual deadline")
+            const missingDocs = [...new Set(noDeadline.map(e => e.docId))]
+            toast.error(`Set document default deadlines first — ${missingDocs.length} document(s) have actionables without deadlines`)
             return
         }
         await Promise.all(pending.map(({ item, docId }) => {
-            const dl = item.deadline || globalDl
+            const docDefault = docDeadlineDefaults[docId]
+            const dl = item.deadline || (docDefault?.date ? `${docDefault.date}T${docDefault.time || "23:59"}` : "")
             return handleUpdate(docId, item.id, {
                 approval_status: "approved",
                 published_at: new Date().toISOString(),
@@ -1861,7 +1871,7 @@ export default function ActionablesPage() {
             })
         }))
         toast.success(`Published ${pending.length} actionables to tracker`)
-    }, [handleUpdate, globalDeadline, globalDeadlineTime])
+    }, [handleUpdate, docDeadlineDefaults])
 
     const toggleTeam = (team: string) => {
         setCollapsedTeams(prev => {
@@ -2140,6 +2150,21 @@ export default function ActionablesPage() {
                                                                 <FileText className="h-3 w-3" /> {docName}
                                                                 <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
                                                             </button>
+                                                            <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
+                                                                <span className="text-[9px] text-muted-foreground/50">Doc Default:</span>
+                                                                <input
+                                                                    type="date"
+                                                                    value={docDeadlineDefaults[docId]?.date || ""}
+                                                                    onChange={e => updateDocDeadline(docId, e.target.value, docDeadlineDefaults[docId]?.time || "23:59")}
+                                                                    className="w-[100px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
+                                                                />
+                                                                <input
+                                                                    type="time"
+                                                                    value={docDeadlineDefaults[docId]?.time || "23:59"}
+                                                                    onChange={e => updateDocDeadline(docId, docDeadlineDefaults[docId]?.date || "", e.target.value)}
+                                                                    className="w-[65px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
+                                                                />
+                                                            </div>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -2159,8 +2184,8 @@ export default function ActionablesPage() {
                                                                     }}
                                                                     isChecked={checkedItems.has(`${docId}-${item.id}`)}
                                                                     onCheck={() => toggleChecked(`${docId}-${item.id}`)}
-                                                                    globalDeadline={globalDeadline}
-                                                                    globalDeadlineTime={globalDeadlineTime}
+                                                                    docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""}
+                                                                    docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"}
                                                                     callerRole={callerRole}
                                                                 />
                                                             ))}
@@ -2182,7 +2207,7 @@ export default function ActionablesPage() {
                                                             {!collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) && (
                                                                 <div className="p-2 space-y-2">
                                                                     {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "pending").map(({ item, docId, docName }) => (
-                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -2198,7 +2223,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status === "pending"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                             )}
                                                         />
                                                     ))}
@@ -2240,7 +2265,7 @@ export default function ActionablesPage() {
                                                         {!isCollapsed && (
                                                             <div className="p-2 space-y-2">
                                                                 {approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                                 ))}
                                                             </div>
                                                         )}
@@ -2260,7 +2285,7 @@ export default function ActionablesPage() {
                                                             {!collapsedTeams.has(`approved-${MIXED_TEAM_CLASSIFICATION}`) && (
                                                                 <div className="p-2 space-y-2">
                                                                     {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "approved").map(({ item, docId, docName }) => (
-                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -2276,7 +2301,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status === "approved"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                             )}
                                                         />
                                                     ))}
@@ -2354,7 +2379,7 @@ export default function ActionablesPage() {
                                                                 {!isCollapsed && (
                                                                     <div className="p-2 space-y-2">
                                                                         {rejEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} callerRole={callerRole} />
                                                                         ))}
                                                                     </div>
                                                                 )}
@@ -2382,7 +2407,7 @@ export default function ActionablesPage() {
                                                                         {!isCollapsed && (
                                                                             <div className="p-2 space-y-2">
                                                                                 {rejTeamEntries.map(({ item, docId, docName }) => (
-                                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                                                 ))}
                                                                             </div>
                                                                         )}
@@ -2399,7 +2424,7 @@ export default function ActionablesPage() {
                                                                     depth={0}
                                                                     filterFn={(e) => e.item.approval_status === "rejected"}
                                                                     renderCard={({ item, docId, docName }) => (
-                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                                     )}
                                                                 />
                                                             ))}
@@ -2437,7 +2462,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} callerRole={callerRole} />
                                                                 ))}
                                                             </div>
                                                         )
@@ -2453,7 +2478,7 @@ export default function ActionablesPage() {
                                                             depth={0}
                                                             filterFn={(e) => e.item.approval_status === "approved"}
                                                             renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
                                                             )}
                                                         />
                                                     ))}
