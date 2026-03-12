@@ -8,8 +8,6 @@ import {
     updateActionable,
     createManualActionable,
     deleteActionable as deleteActionableApi,
-    getCsvTemplateUrl,
-    bulkCreateActionables,
     API_BASE_URL,
 } from "@/lib/api"
 import {
@@ -30,7 +28,7 @@ import {
     Shield,
     Check, X, Loader2, Plus, FileText, Search,
     ChevronDown, ChevronRight, Pencil,
-    Trash2, Users, Save, Undo2, Calendar, Send, Upload, Download,
+    Trash2, Users, Save, Undo2, Calendar, Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -1112,18 +1110,45 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     onCancel: () => void
 }) {
     const { teamNames, leafTeamNames } = useTeams()
+    const { getOptions, getLabel } = useDropdownConfig()
+    const getSafeOptions = React.useCallback((key: string): DropdownOption[] => {
+        const opts = getOptions(key)
+        return opts.length ? opts : (FALLBACK_DROPDOWN_OPTIONS[key] || [])
+    }, [getOptions])
+    const pickSubDropdown = (configKey: string, selectedLabel: string): RiskSubDropdown => {
+        const opt = getSafeOptions(configKey).find(o => o.label === selectedLabel)
+        return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
+    }
+
     const [creating, setCreating] = React.useState(false)
     const [selectedDocId, setSelectedDocId] = React.useState(docId)
     const [docSearchQuery, setDocSearchQuery] = React.useState("")
-    const [form, setForm] = React.useState({
-        action: "",
-        actor: "",
-        object: "",
-        workstream: "Other" as ActionableWorkstream,
-        implementation_notes: "",
-        evidence_quote: "",
-        theme: "",
-    })
+    const [showDocMenu, setShowDocMenu] = React.useState(false)
+
+    // Core fields
+    const [action, setAction] = React.useState("")
+    const [actor, setActor] = React.useState("")
+    const [object, setObject] = React.useState("")
+
+    // Team assignment — multiple teams allowed
+    const [selectedTeams, setSelectedTeams] = React.useState<string[]>([])
+
+    // Risk assessment (CO fields)
+    const [theme, setTheme] = React.useState("")
+    const [tranche3, setTranche3] = React.useState("")
+    const [impactDD, setImpactDD] = React.useState<RiskSubDropdown>({} as RiskSubDropdown)
+
+    // Circular metadata — auto-populated from document's first actionable
+    const selectedDoc = allDocs.find(d => d.doc_id === selectedDocId)
+    const selectedDocNameActual = selectedDoc?.doc_name || docName
+    const circulaMeta = React.useMemo(() => {
+        const firstItem = selectedDoc?.actionables[0]
+        return {
+            regulation_issue_date: firstItem?.regulation_issue_date || "",
+            circular_effective_date: firstItem?.circular_effective_date || "",
+            regulator: firstItem?.regulator || "",
+        }
+    }, [selectedDoc])
 
     const filteredDocs = React.useMemo(() => {
         if (!docSearchQuery.trim()) return allDocs
@@ -1131,16 +1156,33 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
         return allDocs.filter(d => d.doc_name.toLowerCase().includes(q))
     }, [allDocs, docSearchQuery])
 
-    const selectedDocName = allDocs.find(d => d.doc_id === selectedDocId)?.doc_name || docName
+    const toggleTeam = (team: string) => {
+        setSelectedTeams(prev =>
+            prev.includes(team) ? prev.filter(t => t !== team) : [...prev, team]
+        )
+    }
 
     const handleSubmit = async () => {
-        if (!form.action) {
-            toast.error("Actionable text is required")
-            return
+        if (!action.trim()) { toast.error("Actionable text is required"); return }
+        if (selectedTeams.length === 0) { toast.error("Assign at least one team"); return }
+
+        const payload: Record<string, unknown> = {
+            action: action.trim(),
+            actor: actor.trim(),
+            object: object.trim(),
+            workstream: selectedTeams[0],
+            assigned_teams: selectedTeams.length > 1 ? selectedTeams : [],
+            theme,
+            tranche3,
+            ...(impactDD?.label ? { impact_dropdown: impactDD, overall_impact_score: (impactDD.score ?? 0) ** 2 } : {}),
+            regulation_issue_date: circulaMeta.regulation_issue_date,
+            circular_effective_date: circulaMeta.circular_effective_date,
+            regulator: circulaMeta.regulator,
         }
+
         setCreating(true)
         try {
-            await createManualActionable(selectedDocId, form)
+            await createManualActionable(selectedDocId, payload)
             toast.success("Actionable created")
             onCreated()
         } catch (err) {
@@ -1162,74 +1204,143 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 </button>
             </div>
 
-            {/* Document selector with search */}
+            {/* Document selector — searchable dropdown */}
             <div>
                 <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Document *</label>
-                <div className="relative mb-1">
-                    <Search className="absolute left-2 top-[7px] h-3 w-3 text-muted-foreground/50" />
-                    <input
-                        value={docSearchQuery}
-                        onChange={e => setDocSearchQuery(e.target.value)}
-                        placeholder="Search documents..."
-                        className="w-full bg-background text-xs rounded px-2 py-1.5 pl-6 border border-border focus:border-primary focus:outline-none"
-                    />
+                <div className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setShowDocMenu(prev => !prev)}
+                        className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground text-left flex items-center gap-1.5"
+                    >
+                        <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate flex-1">{selectedDocNameActual}</span>
+                        <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                    </button>
+                    {showDocMenu && (
+                        <>
+                            <div className="fixed inset-0 z-40" onClick={() => { setShowDocMenu(false); setDocSearchQuery("") }} />
+                            <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-lg min-w-full max-h-[200px] flex flex-col">
+                                <div className="p-1.5 border-b border-border/40">
+                                    <div className="relative">
+                                        <Search className="absolute left-2 top-[6px] h-3 w-3 text-muted-foreground/50" />
+                                        <input autoFocus value={docSearchQuery} onChange={e => setDocSearchQuery(e.target.value)} placeholder="Search documents..." className="w-full bg-muted/30 text-xs rounded px-2 py-1 pl-6 border border-border/40 focus:border-primary focus:outline-none" />
+                                    </div>
+                                </div>
+                                <div className="overflow-y-auto flex-1 py-1">
+                                    {filteredDocs.map(d => (
+                                        <button key={d.doc_id} className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2", selectedDocId === d.doc_id && "bg-primary/10 text-primary")} onClick={() => { setSelectedDocId(d.doc_id); setShowDocMenu(false); setDocSearchQuery("") }}>
+                                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                                            <span className="truncate">{d.doc_name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
-                <select
-                    value={selectedDocId}
-                    onChange={e => setSelectedDocId(e.target.value)}
-                    className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
-                >
-                    {filteredDocs.map(d => (
-                        <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>
-                    ))}
-                </select>
             </div>
 
+            {/* Auto-populated circular metadata */}
+            <div className="rounded-md border border-border/20 p-2.5 bg-muted/10 space-y-1.5">
+                <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wider">Circular Source Information</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div>
+                        <p className="text-[10px] text-muted-foreground/40">Circular ID</p>
+                        <p className="text-xs text-foreground/70 font-mono">{selectedDocId}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground/40">Circular Title</p>
+                        <p className="text-xs text-foreground/70 truncate">{selectedDocNameActual}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground/40">Issue Date</p>
+                        <p className="text-xs text-foreground/70 font-mono">{circulaMeta.regulation_issue_date ? formatDateDMY(circulaMeta.regulation_issue_date) : <span className="text-muted-foreground/30 italic">—</span>}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground/40">Effective Date</p>
+                        <p className="text-xs text-foreground/70 font-mono">{circulaMeta.circular_effective_date ? formatDateDMY(circulaMeta.circular_effective_date) : <span className="text-muted-foreground/30 italic">—</span>}</p>
+                    </div>
+                    <div className="col-span-2">
+                        <p className="text-[10px] text-muted-foreground/40">Regulator</p>
+                        <p className="text-xs text-foreground/70">{circulaMeta.regulator || <span className="text-muted-foreground/30 italic">—</span>}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Actionable text */}
             <div>
                 <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Actionable *</label>
-                <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="Describe the actionable..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                <textarea value={action} onChange={e => setAction(e.target.value)} placeholder="Describe the actionable requirement..." rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
             </div>
 
+            {/* Actor + Object */}
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Actor</label>
-                    <input value={form.actor} onChange={e => setForm(f => ({ ...f, actor: e.target.value }))} placeholder="Who is responsible..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                    <input value={actor} onChange={e => setActor(e.target.value)} placeholder="Who is responsible..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
                 </div>
                 <div>
                     <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Object</label>
-                    <input value={form.object} onChange={e => setForm(f => ({ ...f, object: e.target.value }))} placeholder="What is acted upon..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                    <input value={object} onChange={e => setObject(e.target.value)} placeholder="What is acted upon..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
-                    <HierarchicalTeamSelect
-                        value={form.workstream}
-                        onChange={(team) => setForm(f => ({ ...f, workstream: team as ActionableWorkstream }))}
-                    />
+            {/* Team assignment — multi-select */}
+            <div>
+                <label className="text-xs font-medium text-muted-foreground/60 block mb-1">
+                    Teams * <span className="text-muted-foreground/40 font-normal">(select one or more)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 p-2 border border-border rounded-md bg-background min-h-[36px]">
+                    {leafTeamNames.map(team => (
+                        <button
+                            key={team}
+                            type="button"
+                            onClick={() => toggleTeam(team)}
+                            className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-medium transition-all border",
+                                selectedTeams.includes(team)
+                                    ? cn(getWorkstreamClass(team), "border-current opacity-100")
+                                    : "border-border/40 text-muted-foreground/50 hover:text-muted-foreground hover:border-border"
+                            )}
+                        >
+                            {team}
+                        </button>
+                    ))}
+                </div>
+                {selectedTeams.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                        Assigned: {selectedTeams.join(", ")}
+                    </p>
+                )}
+            </div>
+
+            {/* Risk Assessment — Theme, Tranche 3, Impact */}
+            <div className="rounded-md border border-border/20 p-2.5 bg-muted/10 space-y-2">
+                <p className="text-[10px] font-semibold text-foreground/50 uppercase tracking-wider">Risk Assessment</p>
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="text-[10px] font-medium text-muted-foreground/50 block mb-0.5">Theme</label>
+                        <select value={theme} onChange={e => setTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                            <option value="">— Select Theme —</option>
+                            {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-medium text-muted-foreground/50 block mb-0.5">{getLabel("tranche3") || "Tranche 3"}</label>
+                        <select value={tranche3} onChange={e => setTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                            <option value="">— Select Tranche 3 —</option>
+                            {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                        </select>
+                    </div>
                 </div>
                 <div>
-                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Theme</label>
-                    <select
-                        value={form.theme}
-                        onChange={e => setForm(f => ({ ...f, theme: e.target.value }))}
-                        className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
-                    >
-                        <option value="">Select theme...</option>
-                        {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    <label className="text-[10px] font-medium text-pink-400/70 block mb-0.5">Impact Assessment</label>
+                    <select value={impactDD?.label || ""} onChange={e => setImpactDD(pickSubDropdown("impact_dropdown", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground">
+                        <option value="">— Select Impact —</option>
+                        {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                     </select>
                 </div>
-            </div>
-
-            <div>
-                <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Implementation Details</label>
-                <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
-            </div>
-
-            <div>
-                <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Evidence</label>
-                <textarea value={form.evidence_quote} onChange={e => setForm(f => ({ ...f, evidence_quote: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
             </div>
 
             <div className="flex justify-end gap-2 pt-1">
@@ -1374,7 +1485,7 @@ export default function ActionablesPage() {
     // Selection (PDF navigation)
     const [selectedItemKey, setSelectedItemKey] = React.useState<string | null>(null)
 
-    // Multi-select for bulk publish
+    // Multi-select for bulk publish (pending items)
     const [checkedItems, setCheckedItems] = React.useState<Set<string>>(new Set())
     const toggleChecked = React.useCallback((key: string) => {
         setCheckedItems(prev => {
@@ -1384,13 +1495,18 @@ export default function ActionablesPage() {
         })
     }, [])
 
+    // Multi-select for bulk revert (rejected items)
+    const [rejCheckedItems, setRejCheckedItems] = React.useState<Set<string>>(new Set())
+    const toggleRejChecked = React.useCallback((key: string) => {
+        setRejCheckedItems(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) next.delete(key); else next.add(key)
+            return next
+        })
+    }, [])
+
     // Create form
     const [showCreateForm, setShowCreateForm] = React.useState(false)
-
-    // CSV upload
-    const csvInputRef = React.useRef<HTMLInputElement>(null)
-    const [csvUploading, setCsvUploading] = React.useState(false)
-    const [showCsvMenu, setShowCsvMenu] = React.useState(false)
 
     // Resizable splitter
     const [actionSplit, setActionSplit] = React.useState(() => {
@@ -1467,61 +1583,6 @@ export default function ActionablesPage() {
     }, [pdfDocId])
 
     React.useEffect(() => { loadAll() }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-    const handleCsvUpload = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-        e.target.value = ""
-
-        const targetDocId = docFilter !== "all" ? docFilter : allDocs[0]?.doc_id
-        if (!targetDocId) { toast.error("No document selected"); return }
-
-        setCsvUploading(true)
-        try {
-            const text = await file.text()
-            const lines = text.split(/\r?\n/).filter(l => l.trim())
-            if (lines.length < 2) { toast.error("CSV file must have a header row and at least one data row"); return }
-
-            const parseLine = (line: string): string[] => {
-                const result: string[] = []
-                let current = ""
-                let inQuotes = false
-                for (let i = 0; i < line.length; i++) {
-                    const ch = line[i]
-                    if (ch === '"') {
-                        if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
-                        else inQuotes = !inQuotes
-                    } else if (ch === ',' && !inQuotes) {
-                        result.push(current.trim()); current = ""
-                    } else {
-                        current += ch
-                    }
-                }
-                result.push(current.trim())
-                return result
-            }
-
-            const headers = parseLine(lines[0])
-            const rows: Record<string, unknown>[] = []
-            for (let i = 1; i < lines.length; i++) {
-                const vals = parseLine(lines[i])
-                const row: Record<string, unknown> = {}
-                headers.forEach((h, idx) => { row[h] = vals[idx] || "" })
-                if (row.action) rows.push(row)
-            }
-
-            if (rows.length === 0) { toast.error("No valid rows found in CSV"); return }
-
-            const result = await bulkCreateActionables(targetDocId, rows)
-            toast.success(`Created ${result.created} actionables from CSV`)
-            loadAll()
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "CSV upload failed")
-        } finally {
-            setCsvUploading(false)
-            setShowCsvMenu(false)
-        }
-    }, [docFilter, allDocs, loadAll])
 
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
@@ -1894,56 +1955,6 @@ export default function ActionablesPage() {
                                 <Plus className="h-3.5 w-3.5" />
                                 Add
                             </Button>
-                            {/* CSV dropdown */}
-                            <div className="relative">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 gap-1.5 px-2.5 text-xs"
-                                    onClick={() => setShowCsvMenu(prev => !prev)}
-                                    disabled={allDocs.length === 0 || csvUploading}
-                                >
-                                    {csvUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                                    CSV
-                                    <ChevronDown className="h-3 w-3" />
-                                </Button>
-                                {showCsvMenu && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowCsvMenu(false)} />
-                                        <div className="absolute right-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-lg py-1 min-w-[180px]">
-                                            <button
-                                                className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2"
-                                                onClick={() => {
-                                                    const targetDocId = docFilter !== "all" ? docFilter : allDocs[0]?.doc_id
-                                                    if (targetDocId) {
-                                                        window.open(getCsvTemplateUrl(targetDocId), "_blank")
-                                                    }
-                                                    setShowCsvMenu(false)
-                                                }}
-                                            >
-                                                <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                                                Download Template
-                                            </button>
-                                            <button
-                                                className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2"
-                                                onClick={() => {
-                                                    csvInputRef.current?.click()
-                                                }}
-                                            >
-                                                <Upload className="h-3.5 w-3.5 text-muted-foreground" />
-                                                Upload CSV
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                                <input
-                                    ref={csvInputRef}
-                                    type="file"
-                                    accept=".csv"
-                                    className="hidden"
-                                    onChange={handleCsvUpload}
-                                />
-                            </div>
                         </div>
 
                         {/* Content */}
@@ -1984,12 +1995,31 @@ export default function ActionablesPage() {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status === "pending")
                                                 if (pendingEntries.length === 0) return null
                                                 const isCollapsed = collapsedDocs.has(docId)
+                                                const docKeys = pendingEntries.map(e => `${docId}-${e.item.id}`)
+                                                const allDocChecked = docKeys.length > 0 && docKeys.every(k => checkedItems.has(k))
                                                 return (
                                                     <div key={docId} className="border border-border/30 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleDoc(docId)}>
-                                                            {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                                            <FileText className="h-3 w-3" /> {docName}
-                                                            <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 hover:bg-muted/50 transition-colors">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={allDocChecked}
+                                                                onChange={() => {
+                                                                    setCheckedItems(prev => {
+                                                                        const next = new Set(prev)
+                                                                        if (allDocChecked) { docKeys.forEach(k => next.delete(k)) }
+                                                                        else { docKeys.forEach(k => next.add(k)) }
+                                                                        return next
+                                                                    })
+                                                                }}
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="h-3 w-3 rounded border-border accent-primary shrink-0 cursor-pointer"
+                                                                title="Select all in this document"
+                                                            />
+                                                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => toggleDoc(docId)}>
+                                                                {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                                                <FileText className="h-3 w-3" /> {docName}
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{pendingEntries.length} pending</span>
+                                                            </button>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -2057,15 +2087,36 @@ export default function ActionablesPage() {
                                         </div>
                                     )}
 
-                                    {/* ---- REJECTED section with Republish button ---- */}
+                                    {/* ---- REJECTED section ---- */}
                                     {rejectedItems.length > 0 && (
                                         <div className="space-y-2">
-                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
-                                                {rejectedCollapsed
-                                                    ? <ChevronRight className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                                                    : <ChevronDown className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                                                }
-                                                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider">Rejected ({rejectedItems.length})</p>
+                                            <div className="flex items-center gap-2">
+                                                <button className="flex items-center gap-2" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
+                                                    {rejectedCollapsed
+                                                        ? <ChevronRight className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                                                        : <ChevronDown className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                                                    }
+                                                    <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider">Rejected ({rejectedItems.length})</p>
+                                                </button>
+                                                {rejCheckedItems.size > 0 && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-6 gap-1 px-2 text-xs text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
+                                                        onClick={async () => {
+                                                            const keys = Array.from(rejCheckedItems)
+                                                            const toRevert = rejectedItems.filter(e => keys.includes(`${e.docId}-${e.item.id}`))
+                                                            await Promise.all(toRevert.map(({ item, docId }) =>
+                                                                handleUpdate(docId, item.id, { approval_status: "pending", published_at: "", task_status: "", deadline: "" })
+                                                            ))
+                                                            toast.success(`Reverted ${toRevert.length} actionable${toRevert.length > 1 ? "s" : ""} to pending`)
+                                                            setRejCheckedItems(new Set())
+                                                        }}
+                                                    >
+                                                        <Undo2 className="h-3 w-3" />
+                                                        Revert Selected ({rejCheckedItems.size})
+                                                    </Button>
+                                                )}
                                                 <div className="h-px bg-red-400/20 flex-1" />
                                             </div>
                                             {!rejectedCollapsed && (
@@ -2074,36 +2125,86 @@ export default function ActionablesPage() {
                                                         const rejEntries = entries.filter(e => e.item.approval_status === "rejected")
                                                         if (rejEntries.length === 0) return null
                                                         const isCollapsed = collapsedDocs.has(`rejected-${docId}`)
+                                                        const rejDocKeys = rejEntries.map(e => `${docId}-${e.item.id}`)
+                                                        const allRejDocChecked = rejDocKeys.length > 0 && rejDocKeys.every(k => rejCheckedItems.has(k))
                                                         return (
-                                                            <div key={docId} className="space-y-1.5">
-                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(`rejected-${docId}`)}>
-                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                                                    <FileText className="h-3.5 w-3.5 text-red-400/60 shrink-0" />
-                                                                    <span className="text-[10px] font-semibold text-foreground/70 truncate">{docName}</span>
-                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{rejEntries.length}</span>
-                                                                    <div className="h-px bg-border/30 flex-1" />
+                                                            <div key={docId} className="border border-red-400/15 rounded-lg">
+                                                                <div className="px-3 py-1.5 bg-red-400/5 border-b border-red-400/15 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 hover:bg-red-400/10 transition-colors">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={allRejDocChecked}
+                                                                        onChange={() => {
+                                                                            setRejCheckedItems(prev => {
+                                                                                const next = new Set(prev)
+                                                                                if (allRejDocChecked) { rejDocKeys.forEach(k => next.delete(k)) }
+                                                                                else { rejDocKeys.forEach(k => next.add(k)) }
+                                                                                return next
+                                                                            })
+                                                                        }}
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        className="h-3 w-3 rounded border-border accent-primary shrink-0 cursor-pointer"
+                                                                        title="Select all rejected in this document"
+                                                                    />
+                                                                    <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => toggleDoc(`rejected-${docId}`)}>
+                                                                        {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                                                        <FileText className="h-3 w-3 text-red-400/60" /> {docName}
+                                                                        <span className="ml-auto text-[10px] text-muted-foreground/60">{rejEntries.length} rejected</span>
+                                                                    </button>
                                                                 </div>
-                                                                {!isCollapsed && rejEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
-                                                                ))}
+                                                                {!isCollapsed && (
+                                                                    <div className="p-2 space-y-2">
+                                                                        {rejEntries.map(({ item, docId: dId, docName: dName }) => (
+                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )
                                                     })}
 
-                                                    {viewTab === "by-team" && teamTree.map(rootNode => (
-                                                        <ByTeamTreeNode
-                                                            key={rootNode.name}
-                                                            node={rootNode}
-                                                            byTeam={byTeam}
-                                                            collapsedTeams={collapsedTeams}
-                                                            toggleTeam={(t) => toggleTeam(`rejected-${t}`)}
-                                                            depth={0}
-                                                            filterFn={(e) => e.item.approval_status === "rejected"}
-                                                            renderCard={({ item, docId, docName }) => (
-                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
-                                                            )}
-                                                        />
-                                                    ))}
+                                                    {viewTab === "by-team" && (
+                                                        <>
+                                                            {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status === "rejected") && (() => {
+                                                                const rejTeamEntries = byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "rejected")
+                                                                const rejTeamKeys = rejTeamEntries.map(e => `${e.docId}-${e.item.id}`)
+                                                                const allRejTeamChecked = rejTeamKeys.length > 0 && rejTeamKeys.every(k => rejCheckedItems.has(k))
+                                                                const isCollapsed = collapsedTeams.has(`rejected-${MIXED_TEAM_CLASSIFICATION}`)
+                                                                return (
+                                                                    <div key={MIXED_TEAM_CLASSIFICATION} className="border border-red-400/15 rounded-lg">
+                                                                        <div className="px-3 py-1.5 bg-red-400/5 border-b border-red-400/15 text-[10px] font-semibold flex items-center gap-2 hover:bg-red-400/10 transition-colors">
+                                                                            <input type="checkbox" checked={allRejTeamChecked} onChange={() => { setRejCheckedItems(prev => { const next = new Set(prev); if (allRejTeamChecked) { rejTeamKeys.forEach(k => next.delete(k)) } else { rejTeamKeys.forEach(k => next.add(k)) } return next }) }} onClick={e => e.stopPropagation()} className="h-3 w-3 rounded border-border accent-primary shrink-0 cursor-pointer" title="Select all rejected in this team" />
+                                                                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => toggleTeam(`rejected-${MIXED_TEAM_CLASSIFICATION}`)}>
+                                                                                {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
+                                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{rejTeamEntries.length} rejected</span>
+                                                                            </button>
+                                                                        </div>
+                                                                        {!isCollapsed && (
+                                                                            <div className="p-2 space-y-2">
+                                                                                {rejTeamEntries.map(({ item, docId, docName }) => (
+                                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })()}
+                                                            {teamTree.map(rootNode => (
+                                                                <ByTeamTreeNode
+                                                                    key={rootNode.name}
+                                                                    node={rootNode}
+                                                                    byTeam={byTeam}
+                                                                    collapsedTeams={collapsedTeams}
+                                                                    toggleTeam={(t) => toggleTeam(`rejected-${t}`)}
+                                                                    depth={0}
+                                                                    filterFn={(e) => e.item.approval_status === "rejected"}
+                                                                    renderCard={({ item, docId, docName }) => (
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                    )}
+                                                                />
+                                                            ))}
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
