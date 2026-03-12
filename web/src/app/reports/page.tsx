@@ -14,9 +14,16 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
-    safeStr, normalizeRisk,
-    STATUS_LABELS, STATUS_COLORS_HEX, RISK_COLORS_HEX,
+    safeStr,
+    STATUS_LABELS, STATUS_COLORS_HEX,
 } from "@/lib/status-config"
+import {
+    computeResidualScore,
+    DEFAULT_THEME_THRESHOLDS,
+    classifyTheme,
+    buildThemeAnalysis,
+    type ThemeRiskThreshold,
+} from "@/lib/risk-engine"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -283,12 +290,18 @@ function ReportsContent() {
         const openTasks = total - byStatus.completed
         const completionRate = total > 0 ? ((byStatus.completed / total) * 100).toFixed(1) : "0"
 
-        // By risk
+        // By residual risk (using new risk engine scores)
+        const classifyResidualRisk = (item: ActionableItem): string => {
+            const score = computeResidualScore(item) ?? item.residual_risk_score ?? 0
+            if (score >= 28) return "High Risk"
+            if (score >= 13) return "Medium Risk"
+            return "Low Risk"
+        }
         const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
         const openByRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
         const overdueByRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
         for (const a of items) {
-            const risk = normalizeRisk(a.modality)
+            const risk = classifyResidualRisk(a)
             byRisk[risk] = (byRisk[risk] || 0) + 1
             if (a.task_status !== "completed") {
                 openByRisk[risk] = (openByRisk[risk] || 0) + 1
@@ -297,6 +310,13 @@ function ReportsContent() {
                 }
             }
         }
+
+        // Theme risk analysis from completed items
+        const completedForThemes = items.filter(a => a.task_status === "completed")
+        const themeAnalysis = buildThemeAnalysis(completedForThemes, DEFAULT_THEME_THRESHOLDS)
+        const themeHighCount = themeAnalysis.filter(r => r.riskLevel.toLowerCase().includes("high") || r.riskLevel.toLowerCase().includes("weak")).length
+        const themeMedCount = themeAnalysis.filter(r => r.riskLevel.toLowerCase().includes("medium") || r.riskLevel.toLowerCase().includes("improvement")).length
+        const themeLowCount = themeAnalysis.length - themeHighCount - themeMedCount
 
         // By workstream
         const byWorkstream: Record<string, { total: number; done: number }> = {}
@@ -372,6 +392,7 @@ function ReportsContent() {
             avgCompletionDays, avgReviewDays, highRiskOpen,
             workload, teamPerf,
             withEvidence, evidenceRate, pendingEvidence,
+            themeAnalysis, themeHighCount, themeMedCount, themeLowCount,
         }
     }, [allItems, allActionables, dlCategory])
 
@@ -424,15 +445,21 @@ function ReportsContent() {
         const total = teamItems.length
         const byStatus: Record<TaskStatus, number> = { assigned: 0, in_progress: 0, team_review: 0, review: 0, completed: 0, reworking: 0, reviewer_rejected: 0, awaiting_justification: 0, pending_all_teams: 0, tagged_incorrectly: 0, bypass_approved: 0 }
         for (const a of teamItems) { const s = (a.task_status || "assigned") as TaskStatus; byStatus[s]++ }
+        const classifyItemRisk = (item: ActionableItem): string => {
+            const score = computeResidualScore(item) ?? item.residual_risk_score ?? 0
+            if (score >= 28) return "High Risk"
+            if (score >= 13) return "Medium Risk"
+            return "Low Risk"
+        }
         const byRisk: Record<string, number> = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
-        for (const a of teamItems) { byRisk[normalizeRisk(a.modality)]++ }
+        for (const a of teamItems) { byRisk[classifyItemRisk(a)]++ }
         const completionRate = total > 0 ? ((byStatus.completed / total) * 100).toFixed(1) : "0"
         const overdue = teamItems.filter(a => a.task_status !== "completed" && a.deadline && new Date(a.deadline).getTime() < Date.now()).length
         const due7 = upcomingIn(teamItems, 7).length
         const due30 = upcomingIn(teamItems, 30).length
-        const highRisk = teamItems.filter(a => normalizeRisk(a.modality) === "High Risk" && a.task_status !== "completed").length
-        const highRiskDue7 = upcomingIn(teamItems.filter(a => normalizeRisk(a.modality) === "High Risk"), 7).length
-        const highRiskOverdue = teamItems.filter(a => normalizeRisk(a.modality) === "High Risk" && a.task_status !== "completed" && a.deadline && new Date(a.deadline).getTime() < Date.now()).length
+        const highRisk = teamItems.filter(a => classifyItemRisk(a) === "High Risk" && a.task_status !== "completed").length
+        const highRiskDue7 = upcomingIn(teamItems.filter(a => classifyItemRisk(a) === "High Risk"), 7).length
+        const highRiskOverdue = teamItems.filter(a => classifyItemRisk(a) === "High Risk" && a.task_status !== "completed" && a.deadline && new Date(a.deadline).getTime() < Date.now()).length
         const completedItems = teamItems.filter(a => a.task_status === "completed" && a.published_at && a.completion_date)
         const avgDays = completedItems.length > 0
             ? (completedItems.reduce((s, a) => s + daysBetween(a.published_at!, a.completion_date!), 0) / completedItems.length).toFixed(1) : "—"
@@ -526,6 +553,55 @@ function ReportsContent() {
                                     <BarChart data={overdueRiskBarData} />
                                 </div>
                             </div>
+                        </Section>
+
+                        {/* S3b: Theme Risk Indicators */}
+                        <Section title="Section 3b — Theme Risk Indicators" icon={<Shield className="h-3.5 w-3.5 text-purple-500" />}>
+                            <div className="flex gap-3 flex-wrap mb-3">
+                                <Stat label="Themes Analyzed" value={stats.themeAnalysis.length} />
+                                <Stat label="High Risk" value={stats.themeHighCount} color={stats.themeHighCount > 0 ? "#ef4444" : "#22c55e"} />
+                                <Stat label="Medium Risk" value={stats.themeMedCount} color={stats.themeMedCount > 0 ? "#f59e0b" : "#22c55e"} />
+                                <Stat label="Low Risk" value={stats.themeLowCount} color="#22c55e" />
+                            </div>
+                            {stats.themeAnalysis.length > 0 && (
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Theme Risk Classification (from completed tracker items)</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="text-muted-foreground/60">
+                                                    <th className="text-left py-1.5 px-2 font-medium">Theme</th>
+                                                    <th className="text-right py-1.5 px-2 font-medium">Avg Residual</th>
+                                                    <th className="text-right py-1.5 px-2 font-medium">Highest</th>
+                                                    <th className="text-right py-1.5 px-2 font-medium">Completed</th>
+                                                    <th className="text-center py-1.5 px-2 font-medium">Risk Level</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {stats.themeAnalysis.sort((a, b) => b.avgResidual - a.avgResidual).map(row => (
+                                                    <tr key={row.theme} className="hover:bg-muted/10">
+                                                        <td className="py-1.5 px-2 font-medium text-foreground truncate max-w-[200px]">{row.theme}</td>
+                                                        <td className="py-1.5 px-2 text-right font-mono">{row.avgResidual.toFixed(2)}</td>
+                                                        <td className="py-1.5 px-2 text-right font-mono text-muted-foreground/60">{row.highestResidual.toFixed(2)}</td>
+                                                        <td className="py-1.5 px-2 text-right font-mono">{row.completedCount}</td>
+                                                        <td className="py-1.5 px-2 text-center">
+                                                            <span className={cn(
+                                                                "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                                                                row.color === "red" ? "text-red-400 bg-red-400/10" :
+                                                                row.color === "yellow" ? "text-yellow-400 bg-yellow-400/10" :
+                                                                "text-emerald-400 bg-emerald-400/10"
+                                                            )}>{row.riskLevel}</span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                            {stats.themeAnalysis.length === 0 && (
+                                <p className="text-xs text-muted-foreground/40 text-center py-4">No completed tracker items with theme data</p>
+                            )}
                         </Section>
 
                         {/* S4: Team Performance */}
@@ -632,10 +708,17 @@ function ReportsContent() {
                                     <h3 className="text-xs font-medium text-foreground mb-3">Risk Distribution by Team</h3>
                                     <div className="space-y-2">
                                         {(() => {
+                                            const riskColorMap: Record<string, string> = { "High Risk": "#ef4444", "Medium Risk": "#eab308", "Low Risk": "#22c55e" }
+                                            const classifyRR = (item: ActionableItem): string => {
+                                                const score = computeResidualScore(item) ?? item.residual_risk_score ?? 0
+                                                if (score >= 28) return "High Risk"
+                                                if (score >= 13) return "Medium Risk"
+                                                return "Low Risk"
+                                            }
                                             const teamRisk: Record<string, Record<string, number>> = {}
                                             for (const a of allItems) {
                                                 const team = safeStr(a.workstream) || "Other"
-                                                const risk = normalizeRisk(a.modality)
+                                                const risk = classifyRR(a)
                                                 if (!teamRisk[team]) teamRisk[team] = { "High Risk": 0, "Medium Risk": 0, "Low Risk": 0 }
                                                 teamRisk[team][risk]++
                                             }
@@ -652,7 +735,7 @@ function ReportsContent() {
                                                             {["High Risk", "Medium Risk", "Low Risk"].map(r => {
                                                                 const pct = total > 0 ? (risks[r] / total) * 100 : 0
                                                                 if (pct === 0) return null
-                                                                return <div key={r} className="h-full" style={{ width: `${pct}%`, backgroundColor: RISK_COLORS_HEX[r] }} title={`${r}: ${risks[r]}`} />
+                                                                return <div key={r} className="h-full" style={{ width: `${pct}%`, backgroundColor: riskColorMap[r] }} title={`${r}: ${risks[r]}`} />
                                                             })}
                                                         </div>
                                                         <div className="flex gap-1 shrink-0 text-xs font-mono">

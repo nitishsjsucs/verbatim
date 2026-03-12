@@ -14,6 +14,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  Calendar,
+  Clock,
 } from "lucide-react"
 import {
   fetchAllActionables,
@@ -27,7 +29,11 @@ import {
   type RiskEngineConfig,
   type ThemeRiskRow,
   type ParameterOption,
+  type TimeFilterOption,
   DEFAULT_RISK_ENGINE_CONFIG,
+  TIME_FILTER_LABELS,
+  getTrackerItems,
+  filterByTime,
   buildThemeAnalysis,
   computeParam1,
   computeParam2,
@@ -58,11 +64,12 @@ function barColor(color: string) {
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
 export default function RiskPage() {
-  const [allItems, setAllItems] = React.useState<ActionableItem[]>([])
+  const [allRawItems, setAllRawItems] = React.useState<ActionableItem[]>([])
   const [config, setConfig] = React.useState<RiskEngineConfig>(DEFAULT_RISK_ENGINE_CONFIG)
   const [selections, setSelections] = React.useState<Record<string, string>>({})
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
+  const [timeFilter, setTimeFilter] = React.useState<TimeFilterOption>("overall")
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
     new Set(["final", "themes", "params"])
   )
@@ -89,9 +96,9 @@ export default function RiskPage() {
           if (result.actionables) items.push(...result.actionables)
         }
       }
-      setAllItems(items)
+      setAllRawItems(items)
 
-      // Merge fetched config with defaults (so new fields get defaults)
+      // Merge fetched config with defaults
       const merged: RiskEngineConfig = { ...DEFAULT_RISK_ENGINE_CONFIG }
       if (configData && typeof configData === "object") {
         const cd = configData as Record<string, unknown>
@@ -121,26 +128,34 @@ export default function RiskPage() {
 
   React.useEffect(() => { loadData() }, [loadData])
 
-  // ─── Derived data ────────────────────────────────────────────────────────
+  // ─── Derived data: Tracker only → time filtered ────────────────────────
 
-  // Separate completed & active
-  const completedItems = allItems.filter(i => i.task_status === "completed")
-  const activeItems = allItems.filter(i => i.task_status !== "completed")
+  // Step 1: Only tracker items (published)
+  const trackerItems = React.useMemo(() => getTrackerItems(allRawItems), [allRawItems])
 
-  // Theme analysis from completed items
-  const themeRows = buildThemeAnalysis(completedItems, config.theme_thresholds)
-  const highThemes = themeRows.filter(r => r.riskLevel.toLowerCase().includes("high") || r.riskLevel.toLowerCase().includes("weak"))
-  const medThemes = themeRows.filter(r => r.riskLevel.toLowerCase().includes("medium") || r.riskLevel.toLowerCase().includes("improvement"))
-  const lowThemes = themeRows.filter(r => !r.riskLevel.toLowerCase().includes("high") && !r.riskLevel.toLowerCase().includes("weak") && !r.riskLevel.toLowerCase().includes("medium") && !r.riskLevel.toLowerCase().includes("improvement"))
+  // Step 2: Apply time filter
+  const filteredItems = React.useMemo(() => filterByTime(trackerItems, timeFilter), [trackerItems, timeFilter])
+
+  // Separate completed & active from filtered tracker data
+  const completedItems = React.useMemo(() => filteredItems.filter(i => i.task_status === "completed"), [filteredItems])
+  const activeItems = React.useMemo(() => filteredItems.filter(i => i.task_status !== "completed"), [filteredItems])
+
+  // Theme analysis from completed items only (per spec: avg uses completed only)
+  const themeRows = React.useMemo(() => buildThemeAnalysis(completedItems, config.theme_thresholds), [completedItems, config.theme_thresholds])
+  const highThemes = React.useMemo(() => themeRows.filter(r => r.riskLevel.toLowerCase().includes("high") || r.riskLevel.toLowerCase().includes("weak")), [themeRows])
+  const medThemes = React.useMemo(() => themeRows.filter(r => r.riskLevel.toLowerCase().includes("medium") || r.riskLevel.toLowerCase().includes("improvement")), [themeRows])
+  const lowThemes = React.useMemo(() => themeRows.filter(r => !r.riskLevel.toLowerCase().includes("high") && !r.riskLevel.toLowerCase().includes("weak") && !r.riskLevel.toLowerCase().includes("medium") && !r.riskLevel.toLowerCase().includes("improvement")), [themeRows])
 
   // Bar chart max for scaling
-  const allAvgs = themeRows.map(r => r.avgResidual)
-  const chartMax = allAvgs.length > 0 ? Math.max(...allAvgs, 1) : 1
+  const chartMax = React.useMemo(() => {
+    const allAvgs = themeRows.map(r => r.avgResidual)
+    return allAvgs.length > 0 ? Math.max(...allAvgs, 1) : 1
+  }, [themeRows])
 
   // ─── Parameters ──────────────────────────────────────────────────────────
 
-  const param1 = computeParam1(themeRows, config.explicit_compliance_weights)
-  const param2 = computeParam2(activeItems.length, allItems.length, config.param2_options)
+  const param1 = React.useMemo(() => computeParam1(themeRows, config.explicit_compliance_weights), [themeRows, config.explicit_compliance_weights])
+  const param2 = React.useMemo(() => computeParam2(activeItems.length, filteredItems.length, config.param2_options), [activeItems.length, filteredItems.length, config.param2_options])
 
   const p3Score = resolveDropdownScore(selections.param3_selection, config.param3_options)
   const p4Score = resolveDropdownScore(selections.param4_selection, config.param4_options)
@@ -148,7 +163,7 @@ export default function RiskPage() {
   const p6Score = resolveDropdownScore(selections.param6_selection, config.param6_options)
   const p7Score = resolveDropdownScore(selections.param7_selection, config.param7_options)
 
-  // Total Parameter Score = P2 + P3 + P4 + P5 + P6  (spec says sum of 2-6)
+  // Total Parameter Score = P2 + P3 + P4 + P5 + P6 (spec says sum of 2-6)
   const totalParamScore = param2.score + p3Score + p4Score + p5Score + p6Score
 
   // Bank Level Risk = P1 + Total Parameter Score
@@ -186,14 +201,29 @@ export default function RiskPage() {
               <ShieldAlert className="h-4 w-4 text-primary" />
               Compliance Risk Dashboard
             </h1>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 text-muted-foreground transition-colors"
-            >
-              <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Time Filter */}
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3 w-3 text-muted-foreground/50" />
+                <select
+                  value={timeFilter}
+                  onChange={e => setTimeFilter(e.target.value as TimeFilterOption)}
+                  className="text-[10px] bg-muted/30 border border-border/40 rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                >
+                  {(Object.keys(TIME_FILTER_LABELS) as TimeFilterOption[]).map(k => (
+                    <option key={k} value={k}>{TIME_FILTER_LABELS[k]}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 text-muted-foreground transition-colors"
+              >
+                <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -221,34 +251,38 @@ export default function RiskPage() {
                   <p className="text-sm font-semibold">
                     {finalInterp.label}
                   </p>
+                  <p className="text-[10px] text-inherit/60 mt-1 opacity-50">
+                    <Clock className="inline h-3 w-3 mr-0.5 -mt-0.5" />
+                    {TIME_FILTER_LABELS[timeFilter]} · {filteredItems.length} tracker entries
+                  </p>
                 </div>
 
                 {/* Summary stat row */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  <StatCard icon={<BarChart3 className="h-3.5 w-3.5" />} iconClass="text-blue-400" label="Total Actionables" value={allItems.length} />
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                  <StatCard icon={<BarChart3 className="h-3.5 w-3.5" />} iconClass="text-blue-400" label="Tracker Total" value={filteredItems.length} />
                   <StatCard icon={<Shield className="h-3.5 w-3.5" />} iconClass="text-emerald-400" label="Completed" value={completedItems.length} />
                   <StatCard icon={<AlertTriangle className="h-3.5 w-3.5" />} iconClass="text-amber-400" label="Active" value={activeItems.length} />
                   <StatCard icon={<TrendingUp className="h-3.5 w-3.5" />} iconClass="text-purple-400" label="Themes" value={themeRows.length} />
-                  <StatCard icon={<Shield className="h-3.5 w-3.5" />} iconClass="text-pink-400" label="Param 1 Score" value={param1.score} decimal />
+                  <StatCard icon={<Shield className="h-3.5 w-3.5" />} iconClass="text-pink-400" label="P1 Score" value={param1.score} decimal />
+                  <StatCard icon={<ShieldAlert className="h-3.5 w-3.5" />} iconClass="text-cyan-400" label="Bank Score" value={bankLevelScore} decimal />
                 </div>
 
                 {/* ════════════════════════════════════════════════════════════
-                    PART 1+2: THEME LEVEL RISK ANALYSIS + CHARTS
+                    THEME LEVEL RISK ANALYSIS + CHARTS
                    ════════════════════════════════════════════════════════════ */}
                 <SectionHeader
                   title="Theme-Level Risk Analysis"
-                  subtitle={`${themeRows.length} theme(s) from ${completedItems.length} completed actionables`}
+                  subtitle={`${themeRows.length} theme(s) from ${completedItems.length} completed tracker entries · ${TIME_FILTER_LABELS[timeFilter]}`}
                   expanded={expandedSections.has("themes")}
                   onToggle={() => toggleSection("themes")}
                 />
 
                 {expandedSections.has("themes") && (
                   <div className="space-y-5">
-                    {/* Risk Distribution Summary (Pie-like visual) */}
+                    {/* Risk Distribution Summary */}
                     <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
                       <p className="text-xs font-semibold text-foreground/70 mb-3">Theme Risk Distribution</p>
                       <div className="flex items-center gap-6">
-                        {/* Stacked bar */}
                         <div className="flex-1">
                           <div className="flex h-8 rounded-lg overflow-hidden border border-border/20">
                             {highThemes.length > 0 && themeRows.length > 0 && (
@@ -287,7 +321,6 @@ export default function RiskPage() {
                             <span className="text-emerald-400">Low ({lowThemes.length})</span>
                           </div>
                         </div>
-                        {/* Mini donut-like numbers */}
                         <div className="flex gap-3">
                           <MiniStat label="High" count={highThemes.length} color="text-red-400" />
                           <MiniStat label="Medium" count={medThemes.length} color="text-yellow-400" />
@@ -296,40 +329,15 @@ export default function RiskPage() {
                       </div>
                     </div>
 
-                    {/* High Risk Themes — table + chart */}
-                    <ThemeSection
-                      title="High Risk Themes"
-                      subtitle="(Weak)"
-                      rows={highThemes}
-                      chartMax={chartMax}
-                      color="red"
-                      emptyMsg="No high-risk themes"
-                    />
-
-                    {/* Medium Risk Themes — table + chart */}
-                    <ThemeSection
-                      title="Medium Risk Themes"
-                      subtitle="(Improvement Needed)"
-                      rows={medThemes}
-                      chartMax={chartMax}
-                      color="yellow"
-                      emptyMsg="No medium-risk themes"
-                    />
-
-                    {/* Low Risk Themes — table + chart */}
-                    <ThemeSection
-                      title="Low Risk Themes"
-                      subtitle="(Satisfactory)"
-                      rows={lowThemes}
-                      chartMax={chartMax}
-                      color="emerald"
-                      emptyMsg="No low-risk themes"
-                    />
+                    {/* High / Medium / Low Risk Themes — tables + charts */}
+                    <ThemeSection title="High Risk Themes" subtitle="(Weak)" rows={highThemes} chartMax={chartMax} color="red" emptyMsg="No high-risk themes" />
+                    <ThemeSection title="Medium Risk Themes" subtitle="(Improvement Needed)" rows={medThemes} chartMax={chartMax} color="yellow" emptyMsg="No medium-risk themes" />
+                    <ThemeSection title="Low Risk Themes" subtitle="(Satisfactory)" rows={lowThemes} chartMax={chartMax} color="emerald" emptyMsg="No low-risk themes" />
                   </div>
                 )}
 
                 {/* ════════════════════════════════════════════════════════════
-                    PART 3–6: 7-PARAMETER RISK TABLE
+                    7-PARAMETER RISK TABLE
                    ════════════════════════════════════════════════════════════ */}
                 <SectionHeader
                   title="Bank-Wide Risk Parameters"
@@ -352,68 +360,17 @@ export default function RiskPage() {
                       </div>
 
                       {/* P1: Explicit Compliance (auto-calculated) */}
-                      <ParamRow
-                        serial={1}
-                        name="Explicit Compliance Against Regulations"
-                        form="Calculated"
-                        value={param1.value.toFixed(2)}
-                        riskLevel="Auto"
-                        score={param1.score}
-                        auto
-                      />
+                      <ParamRow serial={1} name="Explicit Compliance Against Regulations" form="Calculated" value={param1.value.toFixed(2)} riskLevel="Auto" score={param1.score} auto />
 
                       {/* P2: Pending Implementation (auto-calculated) */}
-                      <ParamRow
-                        serial={2}
-                        name="Pending Implementation of Regulatory Circulars"
-                        form="Percentage"
-                        value={`${param2.percentage.toFixed(1)}%`}
-                        riskLevel={param2.matchedLabel}
-                        score={param2.score}
-                        auto
-                      />
+                      <ParamRow serial={2} name="Pending Implementation of Regulatory Circulars" form="Percentage" value={`${param2.percentage.toFixed(1)}%`} riskLevel={param2.matchedLabel} score={param2.score} auto />
 
                       {/* P3–P7: Manual dropdowns */}
-                      <ParamDropdownRow
-                        serial={3}
-                        name="Complaints as % of Total Customers"
-                        form="Percentage"
-                        options={config.param3_options}
-                        selection={selections.param3_selection}
-                        onSelect={(v) => setSelection("param3_selection", v)}
-                      />
-                      <ParamDropdownRow
-                        serial={4}
-                        name="Observations: New Products/Processes"
-                        form="Number"
-                        options={config.param4_options}
-                        selection={selections.param4_selection}
-                        onSelect={(v) => setSelection("param4_selection", v)}
-                      />
-                      <ParamDropdownRow
-                        serial={5}
-                        name="Open Compliance Testing Observations"
-                        form="Number"
-                        options={config.param5_options}
-                        selection={selections.param5_selection}
-                        onSelect={(v) => setSelection("param5_selection", v)}
-                      />
-                      <ParamDropdownRow
-                        serial={6}
-                        name="Repeat RMP / RAR Observations"
-                        form="Number"
-                        options={config.param6_options}
-                        selection={selections.param6_selection}
-                        onSelect={(v) => setSelection("param6_selection", v)}
-                      />
-                      <ParamDropdownRow
-                        serial={7}
-                        name="Material Compliance Violations"
-                        form="Number"
-                        options={config.param7_options}
-                        selection={selections.param7_selection}
-                        onSelect={(v) => setSelection("param7_selection", v)}
-                      />
+                      <ParamDropdownRow serial={3} name="Complaints as % of Total Customers" form="Percentage" options={config.param3_options} selection={selections.param3_selection} onSelect={(v) => setSelection("param3_selection", v)} />
+                      <ParamDropdownRow serial={4} name="Observations: New Products/Processes" form="Number" options={config.param4_options} selection={selections.param4_selection} onSelect={(v) => setSelection("param4_selection", v)} />
+                      <ParamDropdownRow serial={5} name="Open Compliance Testing Observations" form="Number" options={config.param5_options} selection={selections.param5_selection} onSelect={(v) => setSelection("param5_selection", v)} />
+                      <ParamDropdownRow serial={6} name="Repeat RMP / RAR Observations" form="Number" options={config.param6_options} selection={selections.param6_selection} onSelect={(v) => setSelection("param6_selection", v)} />
+                      <ParamDropdownRow serial={7} name="Material Compliance Violations" form="Number" options={config.param7_options} selection={selections.param7_selection} onSelect={(v) => setSelection("param7_selection", v)} />
 
                       {/* Totals row */}
                       <div className="grid grid-cols-[40px_1fr_100px_100px_140px_70px] gap-0 border-t-2 border-border/30 bg-muted/15">
@@ -553,7 +510,6 @@ function ThemeSection({ title, subtitle, rows, chartMax, color, emptyMsg }: {
     )
   }
 
-  // Sort ascending by avg score within section
   const sorted = [...rows].sort((a, b) => a.avgResidual - b.avgResidual)
 
   return (

@@ -2021,17 +2021,6 @@ export default function ActionablesPage() {
                                                                     onChange={e => updateDocDeadline(docId, docDeadlineDefaults[docId]?.date || "", e.target.value)}
                                                                     className="w-[65px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 />
-                                                                <span className="text-[9px] text-muted-foreground/50">Theme:</span>
-                                                                <select
-                                                                    value={docThemeDefaults[docId] || ""}
-                                                                    onChange={e => updateDocTheme(docId, e.target.value)}
-                                                                    className="w-[120px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
-                                                                >
-                                                                    <option value="">Select theme...</option>
-                                                                    {THEME_OPTIONS.map(opt => (
-                                                                        <option key={opt} value={opt}>{opt}</option>
-                                                                    ))}
-                                                                </select>
                                                             </div>
                                                         </div>
                                                         {!isCollapsed && (

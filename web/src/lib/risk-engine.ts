@@ -326,3 +326,68 @@ export function interpretFinalScore(
     if (last && score >= last.min) return { label: last.label, color: last.color }
     return { label: "Unclassified", color: "gray" }
 }
+
+// ─── Time filtering ─────────────────────────────────────────────────────────
+
+export type TimeFilterOption = "1y" | "2y" | "3y" | "overall"
+
+export const TIME_FILTER_LABELS: Record<TimeFilterOption, string> = {
+    "1y": "Last 1 Year",
+    "2y": "Last 2 Years",
+    "3y": "Last 3 Years",
+    "overall": "Overall (All Time)",
+}
+
+export interface TimeBucket {
+    label: string
+    start: Date
+    end: Date
+}
+
+/** Build time buckets for a given filter option. */
+export function buildTimeBuckets(filter: TimeFilterOption): TimeBucket[] {
+    if (filter === "overall") return [] // no bucketing for overall
+    const now = new Date()
+    const currentYearStart = new Date(now.getFullYear(), 0, 1)
+    const buckets: TimeBucket[] = []
+
+    // Bucket 1: Current year
+    buckets.push({ label: "Current Year", start: currentYearStart, end: now })
+
+    const years = filter === "1y" ? 1 : filter === "2y" ? 2 : 3
+    for (let i = 1; i < years; i++) {
+        const start = new Date(now.getFullYear() - i, 0, 1)
+        const end = new Date(now.getFullYear() - i + 1, 0, 1)
+        buckets.push({ label: `${i} Year${i > 1 ? "s" : ""} Ago`, start, end })
+    }
+    return buckets
+}
+
+/** Get the cutoff date for a time filter. */
+export function getTimeCutoff(filter: TimeFilterOption): Date | null {
+    if (filter === "overall") return null
+    const now = new Date()
+    const years = filter === "1y" ? 1 : filter === "2y" ? 2 : 3
+    return new Date(now.getFullYear() - years, now.getMonth(), now.getDate())
+}
+
+/** Filter tracker items by time. Uses published_at or completion_date. */
+export function filterByTime(
+    items: ActionableItem[],
+    filter: TimeFilterOption,
+): ActionableItem[] {
+    const cutoff = getTimeCutoff(filter)
+    if (!cutoff) return items // overall — no filtering
+    const cutoffMs = cutoff.getTime()
+    return items.filter(item => {
+        // Use published_at as the primary date, fall back to completion_date
+        const dateStr = item.published_at || item.completion_date || ""
+        if (!dateStr) return false
+        return new Date(dateStr).getTime() >= cutoffMs
+    })
+}
+
+/** Filter to tracker-only items (published to tracker). */
+export function getTrackerItems(allItems: ActionableItem[]): ActionableItem[] {
+    return allItems.filter(item => !!item.published_at)
+}
