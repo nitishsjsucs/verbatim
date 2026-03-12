@@ -338,6 +338,26 @@ export async function createManualActionable(
     return res.json();
 }
 
+export function getCsvTemplateUrl(docId: string): string {
+    return `${API_BASE_URL}/documents/${docId}/actionables/csv-template`;
+}
+
+export async function bulkCreateActionables(
+    docId: string,
+    items: Record<string, unknown>[],
+): Promise<{ created: number; items: ActionableItem[] }> {
+    const res = await apiFetch(`/documents/${docId}/actionables/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(items),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Failed to bulk create actionables');
+    }
+    return res.json();
+}
+
 export async function deleteActionable(docId: string, itemId: string): Promise<void> {
     const res = await apiFetch(`/documents/${docId}/actionables/${itemId}`, {
         method: 'DELETE',

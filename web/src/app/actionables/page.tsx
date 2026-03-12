@@ -8,6 +8,8 @@ import {
     updateActionable,
     createManualActionable,
     deleteActionable as deleteActionableApi,
+    getCsvTemplateUrl,
+    bulkCreateActionables,
     API_BASE_URL,
 } from "@/lib/api"
 import {
@@ -28,7 +30,7 @@ import {
     Shield,
     Check, X, Loader2, Plus, FileText, Search,
     ChevronDown, ChevronRight, Pencil,
-    Trash2, Users, Save, Undo2, Calendar, Send,
+    Trash2, Users, Save, Undo2, Calendar, Send, Upload, Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -94,7 +96,7 @@ interface DocActionables {
     actionables: ActionableItem[]
 }
 
-type ViewTab = "all" | "by-doc" | "by-team"
+type ViewTab = "by-doc" | "by-team"
 
 // --- Editable Field Component ---
 
@@ -464,6 +466,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (!draftTheme) missing.push("Theme")
         if (!draftTranche3) missing.push("Tranche 3")
         if (!draftImpactDD?.label) missing.push("Impact")
+        if (draftTeams.length === 0 || (draftTeams.length === 1 && !draftTeams[0])) missing.push("At least one Team")
         
         // Check implementation evidence for all assigned teams
         const teamsToCheck = draftTeams.length > 0 ? draftTeams : [item.workstream]
@@ -688,30 +691,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     style={{ minHeight: '36px' }}
                                 />
                             </div>
-
-                            {/* Parent document metadata */}
-                            {(item.regulation_issue_date || item.circular_effective_date || item.regulator) && (
-                                <div className="grid grid-cols-3 gap-2 bg-muted/20 rounded-lg p-2.5 border border-border/20">
-                                    {item.regulator && (
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
-                                            <p className="text-xs text-foreground/80">{item.regulator}</p>
-                                        </div>
-                                    )}
-                                    {item.regulation_issue_date && (
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulation Issue Date</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{formatDateDMY(item.regulation_issue_date)}</p>
-                                        </div>
-                                    )}
-                                    {item.circular_effective_date && (
-                                        <div>
-                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
-                                            <p className="text-xs text-foreground/80 font-mono">{formatDateDMY(item.circular_effective_date)}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
 
                             {/* Evidence + source link side by side at top */}
                             <div className="flex items-start gap-3">
@@ -1138,9 +1117,12 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     const [docSearchQuery, setDocSearchQuery] = React.useState("")
     const [form, setForm] = React.useState({
         action: "",
+        actor: "",
+        object: "",
         workstream: "Other" as ActionableWorkstream,
         implementation_notes: "",
         evidence_quote: "",
+        theme: "",
     })
 
     const filteredDocs = React.useMemo(() => {
@@ -1208,17 +1190,41 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                 <input value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))} placeholder="Describe the actionable..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
             </div>
 
-            <div>
-                <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
-                <HierarchicalTeamSelect
-                    value={form.workstream}
-                    onChange={(team) => setForm(f => ({ ...f, workstream: team as ActionableWorkstream }))}
-                />
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Actor</label>
+                    <input value={form.actor} onChange={e => setForm(f => ({ ...f, actor: e.target.value }))} placeholder="Who is responsible..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                </div>
+                <div>
+                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Object</label>
+                    <input value={form.object} onChange={e => setForm(f => ({ ...f, object: e.target.value }))} placeholder="What is acted upon..." className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none" />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Team</label>
+                    <HierarchicalTeamSelect
+                        value={form.workstream}
+                        onChange={(team) => setForm(f => ({ ...f, workstream: team as ActionableWorkstream }))}
+                    />
+                </div>
+                <div>
+                    <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Theme</label>
+                    <select
+                        value={form.theme}
+                        onChange={e => setForm(f => ({ ...f, theme: e.target.value }))}
+                        className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                    >
+                        <option value="">Select theme...</option>
+                        {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                </div>
             </div>
 
             <div>
                 <label className="text-xs font-medium text-muted-foreground/60 block mb-0.5">Implementation Details</label>
-                <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={3} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
+                <textarea value={form.implementation_notes} onChange={e => setForm(f => ({ ...f, implementation_notes: e.target.value }))} rows={2} className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border focus:border-primary focus:outline-none resize-none" />
             </div>
 
             <div>
@@ -1332,7 +1338,7 @@ export default function ActionablesPage() {
     const { teamNames, teamTree, getTeamByName } = useTeams()
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
-    const [viewTab, setViewTab] = React.useState<ViewTab>("all")
+    const [viewTab, setViewTab] = React.useState<ViewTab>("by-doc")
 
     // Global deadline (header bar) — defaults to 1 month from now
     const [globalDeadline, setGlobalDeadline] = React.useState(() => {
@@ -1340,7 +1346,6 @@ export default function ActionablesPage() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
     })
     const [globalDeadlineTime, setGlobalDeadlineTime] = React.useState("23:59")
-    const [globalDeadlineSaved, setGlobalDeadlineSaved] = React.useState(false)
 
     // Load persisted global deadline from localStorage (overrides default)
     React.useEffect(() => {
@@ -1354,20 +1359,10 @@ export default function ActionablesPage() {
         } catch { /* ignore */ }
     }, [])
 
-    const handleSaveGlobalDeadline = () => {
-        if (!globalDeadline) { toast.error("Set a date first"); return }
-        const today = new Date().toISOString().split("T")[0]
-        if (globalDeadline < today) { toast.error("Deadline cannot be in the past"); return }
-        localStorage.setItem("actionables_global_deadline", JSON.stringify({ date: globalDeadline, time: globalDeadlineTime }))
-        setGlobalDeadlineSaved(true)
-        toast.success("Global deadline saved")
-        setTimeout(() => setGlobalDeadlineSaved(false), 2000)
-    }
-
-    const todayStr = React.useMemo(() => new Date().toISOString().split("T")[0], [])
-
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")
+    const [showDocFilterMenu, setShowDocFilterMenu] = React.useState(false)
+    const [docFilterSearch, setDocFilterSearch] = React.useState("")
     const [searchQuery, setSearchQuery] = React.useState("")
 
     // PDF state
@@ -1391,6 +1386,11 @@ export default function ActionablesPage() {
 
     // Create form
     const [showCreateForm, setShowCreateForm] = React.useState(false)
+
+    // CSV upload
+    const csvInputRef = React.useRef<HTMLInputElement>(null)
+    const [csvUploading, setCsvUploading] = React.useState(false)
+    const [showCsvMenu, setShowCsvMenu] = React.useState(false)
 
     // Resizable splitter
     const [actionSplit, setActionSplit] = React.useState(() => {
@@ -1467,6 +1467,61 @@ export default function ActionablesPage() {
     }, [pdfDocId])
 
     React.useEffect(() => { loadAll() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleCsvUpload = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        e.target.value = ""
+
+        const targetDocId = docFilter !== "all" ? docFilter : allDocs[0]?.doc_id
+        if (!targetDocId) { toast.error("No document selected"); return }
+
+        setCsvUploading(true)
+        try {
+            const text = await file.text()
+            const lines = text.split(/\r?\n/).filter(l => l.trim())
+            if (lines.length < 2) { toast.error("CSV file must have a header row and at least one data row"); return }
+
+            const parseLine = (line: string): string[] => {
+                const result: string[] = []
+                let current = ""
+                let inQuotes = false
+                for (let i = 0; i < line.length; i++) {
+                    const ch = line[i]
+                    if (ch === '"') {
+                        if (inQuotes && line[i + 1] === '"') { current += '"'; i++ }
+                        else inQuotes = !inQuotes
+                    } else if (ch === ',' && !inQuotes) {
+                        result.push(current.trim()); current = ""
+                    } else {
+                        current += ch
+                    }
+                }
+                result.push(current.trim())
+                return result
+            }
+
+            const headers = parseLine(lines[0])
+            const rows: Record<string, unknown>[] = []
+            for (let i = 1; i < lines.length; i++) {
+                const vals = parseLine(lines[i])
+                const row: Record<string, unknown> = {}
+                headers.forEach((h, idx) => { row[h] = vals[idx] || "" })
+                if (row.action) rows.push(row)
+            }
+
+            if (rows.length === 0) { toast.error("No valid rows found in CSV"); return }
+
+            const result = await bulkCreateActionables(targetDocId, rows)
+            toast.success(`Created ${result.created} actionables from CSV`)
+            loadAll()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "CSV upload failed")
+        } finally {
+            setCsvUploading(false)
+            setShowCsvMenu(false)
+        }
+    }, [docFilter, allDocs, loadAll])
 
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
@@ -1585,8 +1640,9 @@ export default function ActionablesPage() {
         // Note: likelihood/control fields are filled by member during submission, not by CO
         const incomplete = pending.filter(({ item }) => {
             if (!item.theme || !item.tranche3 || !item.impact_dropdown?.label) return true
-            // Check implementation evidence for all assigned teams
+            // Must have at least one team
             const teamsToCheck = (item.assigned_teams && item.assigned_teams.length > 0) ? item.assigned_teams : [item.workstream]
+            if (!teamsToCheck[0]) return true
             for (const team of teamsToCheck) {
                 const teamImpl = item.team_workflows?.[team]?.implementation_notes || item.implementation_notes
                 if (!teamImpl) return true
@@ -1652,13 +1708,14 @@ export default function ActionablesPage() {
         })
     }
 
-    // Pending vs Approved splits
+    // Pending / Rejected / Approved splits
     const [approvedCollapsed, setApprovedCollapsed] = React.useState(true)
+    const [rejectedCollapsed, setRejectedCollapsed] = React.useState(false)
 
-    const pendingItems = React.useMemo(() => filtered.filter(e => e.item.approval_status !== "approved"), [filtered])
+    const pendingItems = React.useMemo(() => filtered.filter(e => e.item.approval_status === "pending"), [filtered])
+    const rejectedItems = React.useMemo(() => filtered.filter(e => e.item.approval_status === "rejected"), [filtered])
     const approvedItems = React.useMemo(() => {
         const items = filtered.filter(e => e.item.approval_status === "approved")
-        // Sort by approval date descending so recently approved appear at top
         return items.sort((a, b) => {
             const aDate = (a.item as any).approved_at || a.item.published_at || ""
             const bDate = (b.item as any).approved_at || b.item.published_at || ""
@@ -1680,15 +1737,6 @@ export default function ActionablesPage() {
                             Actionables
                         </h1>
                         <div className="flex items-center gap-1 ml-2">
-                            <button
-                                onClick={() => setViewTab("all")}
-                                className={cn(
-                                    "px-2.5 py-1 rounded text-xs font-medium transition-colors",
-                                    viewTab === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                All
-                            </button>
                             <button
                                 onClick={() => setViewTab("by-doc")}
                                 className={cn(
@@ -1734,93 +1782,167 @@ export default function ActionablesPage() {
                                     className="w-full bg-muted/30 text-xs rounded-md pl-7 pr-3 py-1.5 border border-border/40 focus:border-border focus:outline-none"
                                 />
                             </div>
-                            <select
-                                value={docFilter}
-                                onChange={e => setDocFilter(e.target.value)}
-                                className="bg-muted/30 text-[10px] rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[140px]"
-                            >
-                                <option value="all">All documents</option>
-                                {allDocs.map(d => (
-                                    <option key={d.doc_id} value={d.doc_id}>{d.doc_name}</option>
-                                ))}
-                            </select>
-                            {/* Publish Selected / Publish All buttons */}
-                            {viewTab === "all" && checkedItems.size > 0 && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 gap-1 px-2 text-xs text-primary border-primary/30 hover:bg-primary/10"
-                                    onClick={() => {
-                                        const selected = filtered.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
-                                        handlePublishAll(selected)
-                                        setCheckedItems(new Set())
-                                    }}
-                                >
-                                    <Send className="h-3 w-3" />
-                                    Publish Selected ({checkedItems.size})
-                                </Button>
-                            )}
-                            {viewTab === "all" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 gap-1 px-2 text-xs text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-                                    onClick={() => handlePublishAll(filtered)}
-                                >
-                                    <Send className="h-3 w-3" />
-                                    Publish All
-                                </Button>
-                            )}
-                        </div>
-
-                        {/* Global Deadline bar - full width layout */}
-                        <div className="shrink-0 border-b border-border/40 px-4 py-3">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <span className="text-xs font-semibold text-foreground">Set Global Deadline</span>
-                                <span className="text-xs text-muted-foreground/50">
-                                    Applies to items without individual deadlines
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-3 w-full">
-                                <input
-                                    type="date"
-                                    value={globalDeadline}
-                                    min={todayStr}
-                                    onChange={e => setGlobalDeadline(e.target.value)}
-                                    className="flex-1 bg-muted/30 text-xs rounded-md px-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                                />
-                                <input
-                                    type="time"
-                                    value={globalDeadlineTime}
-                                    onChange={e => setGlobalDeadlineTime(e.target.value)}
-                                    className="w-28 bg-muted/30 text-xs rounded-md px-3 py-2 border border-border/40 focus:border-primary focus:outline-none text-foreground [color-scheme:light] dark:[color-scheme:dark]"
-                                />
+                            {/* Searchable document filter */}
+                            <div className="relative">
                                 <button
-                                    onClick={handleSaveGlobalDeadline}
-                                    disabled={!globalDeadline}
-                                    className={cn(
-                                        "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md font-medium transition-colors shrink-0",
-                                        globalDeadlineSaved
-                                            ? "bg-emerald-500/15 text-emerald-500"
-                                            : globalDeadline
-                                                ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25"
-                                                : "bg-muted/40 text-muted-foreground/30 cursor-not-allowed"
-                                    )}
+                                    onClick={() => setShowDocFilterMenu(prev => !prev)}
+                                    className="bg-muted/30 text-[10px] rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[180px] flex items-center gap-1 truncate"
                                 >
-                                    <Save className="h-3.5 w-3.5" />
-                                    {globalDeadlineSaved ? "Saved" : "Save"}
+                                    <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                                    <span className="truncate">{docFilter === "all" ? "All documents" : (allDocs.find(d => d.doc_id === docFilter)?.doc_name || "All")}</span>
+                                    <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-auto" />
                                 </button>
+                                {showDocFilterMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => { setShowDocFilterMenu(false); setDocFilterSearch("") }} />
+                                        <div className="absolute left-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-lg min-w-[240px] max-h-[280px] flex flex-col">
+                                            <div className="p-1.5 border-b border-border/40">
+                                                <div className="relative">
+                                                    <Search className="absolute left-2 top-[6px] h-3 w-3 text-muted-foreground/50" />
+                                                    <input
+                                                        value={docFilterSearch}
+                                                        onChange={e => setDocFilterSearch(e.target.value)}
+                                                        placeholder="Search documents..."
+                                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1 pl-6 border border-border/40 focus:border-primary focus:outline-none"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="overflow-y-auto flex-1 py-1">
+                                                <button
+                                                    className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2", docFilter === "all" && "bg-primary/10 text-primary")}
+                                                    onClick={() => { setDocFilter("all"); setShowDocFilterMenu(false); setDocFilterSearch("") }}
+                                                >
+                                                    All documents
+                                                </button>
+                                                {allDocs
+                                                    .filter(d => !docFilterSearch.trim() || d.doc_name.toLowerCase().includes(docFilterSearch.toLowerCase()))
+                                                    .map(d => (
+                                                    <button
+                                                        key={d.doc_id}
+                                                        className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2 truncate", docFilter === d.doc_id && "bg-primary/10 text-primary")}
+                                                        onClick={() => { setDocFilter(d.doc_id); setShowDocFilterMenu(false); setDocFilterSearch("") }}
+                                                    >
+                                                        <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                                                        <span className="truncate">{d.doc_name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            {/* Bulk actions */}
+                            {/* Select All checkbox for pending items */}
+                            {pendingItems.length > 0 && (
+                                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        checked={pendingItems.length > 0 && pendingItems.every(e => checkedItems.has(`${e.docId}-${e.item.id}`))}
+                                        onChange={() => {
+                                            const allChecked = pendingItems.every(e => checkedItems.has(`${e.docId}-${e.item.id}`))
+                                            if (allChecked) {
+                                                setCheckedItems(new Set())
+                                            } else {
+                                                setCheckedItems(new Set(pendingItems.map(e => `${e.docId}-${e.item.id}`)))
+                                            }
+                                        }}
+                                        className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                    />
+                                    Select All
+                                </label>
+                            )}
+                            {checkedItems.size > 0 && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 gap-1 px-2 text-xs text-primary border-primary/30 hover:bg-primary/10"
+                                        onClick={() => {
+                                            const selected = filtered.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
+                                            handlePublishAll(selected)
+                                            setCheckedItems(new Set())
+                                        }}
+                                    >
+                                        <Send className="h-3 w-3" />
+                                        Publish Selected ({checkedItems.size})
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 gap-1 px-2 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
+                                        onClick={async () => {
+                                            const selected = filtered.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`) && e.item.approval_status === "pending")
+                                            if (selected.length === 0) { toast.info("No pending items selected"); return }
+                                            await Promise.all(selected.map(({ item, docId }) => handleUpdate(docId, item.id, { approval_status: "rejected" })))
+                                            toast.success(`Rejected ${selected.length} actionables`)
+                                            setCheckedItems(new Set())
+                                        }}
+                                    >
+                                        <X className="h-3 w-3" />
+                                        Reject Selected ({checkedItems.size})
+                                    </Button>
+                                </>
+                            )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1.5 px-2.5 text-xs"
+                                onClick={() => setShowCreateForm(true)}
+                                disabled={allDocs.length === 0}
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add
+                            </Button>
+                            {/* CSV dropdown */}
+                            <div className="relative">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 gap-1.5 px-3 text-xs"
-                                    onClick={() => setShowCreateForm(true)}
-                                    disabled={allDocs.length === 0}
+                                    className="h-7 gap-1.5 px-2.5 text-xs"
+                                    onClick={() => setShowCsvMenu(prev => !prev)}
+                                    disabled={allDocs.length === 0 || csvUploading}
                                 >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Add
+                                    {csvUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                    CSV
+                                    <ChevronDown className="h-3 w-3" />
                                 </Button>
+                                {showCsvMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowCsvMenu(false)} />
+                                        <div className="absolute right-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-lg py-1 min-w-[180px]">
+                                            <button
+                                                className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2"
+                                                onClick={() => {
+                                                    const targetDocId = docFilter !== "all" ? docFilter : allDocs[0]?.doc_id
+                                                    if (targetDocId) {
+                                                        window.open(getCsvTemplateUrl(targetDocId), "_blank")
+                                                    }
+                                                    setShowCsvMenu(false)
+                                                }}
+                                            >
+                                                <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                                                Download Template
+                                            </button>
+                                            <button
+                                                className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2"
+                                                onClick={() => {
+                                                    csvInputRef.current?.click()
+                                                }}
+                                            >
+                                                <Upload className="h-3.5 w-3.5 text-muted-foreground" />
+                                                Upload CSV
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                                <input
+                                    ref={csvInputRef}
+                                    type="file"
+                                    accept=".csv"
+                                    className="hidden"
+                                    onChange={handleCsvUpload}
+                                />
                             </div>
                         </div>
 
@@ -1852,36 +1974,14 @@ export default function ActionablesPage() {
                                 />
                             )}
 
-                            {/* ========== ALL THREE TABS wrapped in Pending / Approved sections ========== */}
-                            {!loading && (viewTab === "all" || viewTab === "by-doc" || viewTab === "by-team") && (
+                            {/* ========== BY-DOC / BY-TEAM TABS: Pending / Rejected / Published sections ========== */}
+                            {!loading && (viewTab === "by-doc" || viewTab === "by-team") && (
                                 <>
-                                    {/* ---- Pending entries (no collapsible pill) ---- */}
+                                    {/* ---- Pending entries ---- */}
                                     {pendingItems.length > 0 && (
                                         <div className="space-y-2">
-                                            {viewTab === "all" && pendingItems.map(({ item, docId, docName }) => (
-                                                <ActionableCard
-                                                    key={`${docId}-${item.id}`}
-                                                    item={item}
-                                                    docId={docId}
-                                                    docName={docName}
-                                                    onUpdate={handleUpdate}
-                                                    onDelete={handleDelete}
-                                                    onSourceClick={handleSourceClick}
-                                                    isSelected={selectedItemKey === `${docId}-${item.id}`}
-                                                    onSelect={() => {
-                                                        setSelectedItemKey(`${docId}-${item.id}`)
-                                                        if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
-                                                    }}
-                                                    isChecked={checkedItems.has(`${docId}-${item.id}`)}
-                                                    onCheck={() => toggleChecked(`${docId}-${item.id}`)}
-                                                    globalDeadline={globalDeadline}
-                                                    globalDeadlineTime={globalDeadlineTime}
-                                                    callerRole={callerRole}
-                                                />
-                                            ))}
-
                                             {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
-                                                const pendingEntries = entries.filter(e => e.item.approval_status !== "approved")
+                                                const pendingEntries = entries.filter(e => e.item.approval_status === "pending")
                                                 if (pendingEntries.length === 0) return null
                                                 const isCollapsed = collapsedDocs.has(docId)
                                                 return (
@@ -1922,24 +2022,22 @@ export default function ActionablesPage() {
 
                                             {viewTab === "by-team" && (
                                                 <>
-                                                    {/* Mixed Team first if it has pending items */}
-                                                    {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status !== "approved") && (
+                                                    {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status === "pending") && (
                                                         <div className="border border-border/30 rounded-lg">
                                                             <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(MIXED_TEAM_CLASSIFICATION)}>
                                                                 {collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                                                                 <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
-                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status !== "approved").length} pending</span>
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "pending").length} pending</span>
                                                             </div>
                                                             {!collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) && (
                                                                 <div className="p-2 space-y-2">
-                                                                    {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status !== "approved").map(({ item, docId, docName }) => (
+                                                                    {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "pending").map(({ item, docId, docName }) => (
                                                                         <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
                                                                     ))}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     )}
-                                                    {/* Hierarchical tree rendering for all other teams */}
                                                     {teamTree.map(rootNode => (
                                                         <ByTeamTreeNode
                                                             key={rootNode.name}
@@ -1948,7 +2046,7 @@ export default function ActionablesPage() {
                                                             collapsedTeams={collapsedTeams}
                                                             toggleTeam={toggleTeam}
                                                             depth={0}
-                                                            filterFn={(e) => e.item.approval_status !== "approved"}
+                                                            filterFn={(e) => e.item.approval_status === "pending"}
                                                             renderCard={({ item, docId, docName }) => (
                                                                 <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
                                                             )}
@@ -1959,7 +2057,59 @@ export default function ActionablesPage() {
                                         </div>
                                     )}
 
-                                    {/* ---- APPROVED section ---- */}
+                                    {/* ---- REJECTED section with Republish button ---- */}
+                                    {rejectedItems.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
+                                                {rejectedCollapsed
+                                                    ? <ChevronRight className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                                                    : <ChevronDown className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                                                }
+                                                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider">Rejected ({rejectedItems.length})</p>
+                                                <div className="h-px bg-red-400/20 flex-1" />
+                                            </div>
+                                            {!rejectedCollapsed && (
+                                                <div className="space-y-2">
+                                                    {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                                        const rejEntries = entries.filter(e => e.item.approval_status === "rejected")
+                                                        if (rejEntries.length === 0) return null
+                                                        const isCollapsed = collapsedDocs.has(`rejected-${docId}`)
+                                                        return (
+                                                            <div key={docId} className="space-y-1.5">
+                                                                <div className="flex items-center gap-2 pt-2 pb-1 cursor-pointer" onClick={() => toggleDoc(`rejected-${docId}`)}>
+                                                                    {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                                                    <FileText className="h-3.5 w-3.5 text-red-400/60 shrink-0" />
+                                                                    <span className="text-[10px] font-semibold text-foreground/70 truncate">{docName}</span>
+                                                                    <span className="text-[10px] text-muted-foreground/40 font-mono">{rejEntries.length}</span>
+                                                                    <div className="h-px bg-border/30 flex-1" />
+                                                                </div>
+                                                                {!isCollapsed && rejEntries.map(({ item, docId: dId, docName: dName }) => (
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                ))}
+                                                            </div>
+                                                        )
+                                                    })}
+
+                                                    {viewTab === "by-team" && teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={(t) => toggleTeam(`rejected-${t}`)}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status === "rejected"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ---- PUBLISHED section ---- */}
                                     {approvedItems.length > 0 && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setApprovedCollapsed(!approvedCollapsed)}>
@@ -1972,30 +2122,6 @@ export default function ActionablesPage() {
                                             </div>
                                             {!approvedCollapsed && (
                                                 <div className="space-y-2">
-                                                    {/* All tab — approved */}
-                                                    {viewTab === "all" && approvedItems.map(({ item, docId, docName }) => (
-                                                        <ActionableCard
-                                                            key={`${docId}-${item.id}`}
-                                                            item={item}
-                                                            docId={docId}
-                                                            docName={docName}
-                                                            onUpdate={handleUpdate}
-                                                            onDelete={handleDelete}
-                                                            onSourceClick={handleSourceClick}
-                                                            isSelected={selectedItemKey === `${docId}-${item.id}`}
-                                                            onSelect={() => {
-                                                                setSelectedItemKey(`${docId}-${item.id}`)
-                                                                if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) }
-                                                            }}
-                                                            isChecked={false}
-                                                            onCheck={() => {}}
-                                                            globalDeadline={globalDeadline}
-                                                            globalDeadlineTime={globalDeadlineTime}
-                                                            callerRole={callerRole}
-                                                        />
-                                                    ))}
-
-                                                    {/* By Document tab — approved */}
                                                     {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                         const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
                                                         if (approvedEntries.length === 0) return null
@@ -2016,7 +2142,6 @@ export default function ActionablesPage() {
                                                         )
                                                     })}
 
-                                                    {/* By Team tab — approved (hierarchical tree) */}
                                                     {viewTab === "by-team" && teamTree.map(rootNode => (
                                                         <ByTeamTreeNode
                                                             key={rootNode.name}

@@ -1826,6 +1826,116 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
     return item.to_dict()
 
 
+@app.get("/documents/{doc_id}/actionables/csv-template")
+def get_csv_template(doc_id: str):
+    """Return a CSV template for bulk-uploading actionables to a document."""
+    import csv
+    import io
+
+    headers = [
+        "action", "actor", "object", "trigger_or_condition", "thresholds",
+        "deadline_or_frequency", "effective_date", "reporting_or_notification_to",
+        "evidence_quote", "source_location", "implementation_notes",
+        "workstream", "theme",
+    ]
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(headers)
+    # Write one example row
+    writer.writerow([
+        "Example: Submit quarterly report",
+        "Compliance Team",
+        "Quarterly compliance report",
+        "At end of each quarter",
+        "",
+        "Within 15 days of quarter end",
+        "",
+        "Board of Directors",
+        "As per Section 4.2 of the circular",
+        "p. 3, Section 4",
+        "Generate report from system and submit via portal",
+        "Technology",
+        "",
+    ])
+
+    content = buf.getvalue()
+    return StreamingResponse(
+        iter([content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="actionables_template_{doc_id}.csv"'},
+    )
+
+
+@app.post("/documents/{doc_id}/actionables/bulk")
+def bulk_create_actionables(doc_id: str, items: list = Body(...)):
+    """Bulk-create actionables for a document from a list of dicts (parsed CSV rows)."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+
+    if not result:
+        tree_store = get_tree_store()
+        tree = tree_store.load(doc_id)
+        doc_name = tree.doc_name if tree else doc_id
+        from models.actionable import ActionablesResult as AR
+        result = AR(doc_id=doc_id, doc_name=doc_name)
+
+    from models.actionable import ActionableItem as AI, Modality
+
+    created = []
+    existing_ids = [a.id for a in result.actionables]
+    max_num = 0
+    for aid in existing_ids:
+        try:
+            num = int(aid.replace("ACT-", "").replace("MAN-", ""))
+            max_num = max(max_num, num)
+        except ValueError:
+            pass
+
+    for row in items:
+        if not row.get("action"):
+            continue  # skip rows without action text
+        max_num += 1
+        new_id = f"MAN-{max_num:03d}"
+
+        modality_str = row.get("modality", "Mandatory")
+        try:
+            modality = Modality(modality_str)
+        except ValueError:
+            modality = Modality.MANDATORY
+
+        workstream_str = str(row.get("workstream", "Other"))
+
+        item = AI(
+            id=new_id,
+            modality=modality,
+            actor=row.get("actor", ""),
+            action=row.get("action", ""),
+            object=row.get("object", ""),
+            trigger_or_condition=row.get("trigger_or_condition", ""),
+            thresholds=row.get("thresholds", ""),
+            deadline_or_frequency=row.get("deadline_or_frequency", ""),
+            effective_date=row.get("effective_date", ""),
+            reporting_or_notification_to=row.get("reporting_or_notification_to", ""),
+            evidence_quote=row.get("evidence_quote", ""),
+            source_location=row.get("source_location", ""),
+            implementation_notes=row.get("implementation_notes", ""),
+            workstream=workstream_str,
+            theme=row.get("theme", ""),
+            validation_status="manual",
+            approval_status="pending",
+            is_manual=True,
+            created_at=datetime.now(timezone.utc).isoformat(),
+            actionable_id=_generate_actionable_id(),
+        )
+        result.actionables.append(item)
+        created.append(item.to_dict())
+
+    result.compute_stats()
+    store.save(result)
+    return {"created": len(created), "items": created}
+
+
 @app.get("/actionables/approved-by-team")
 def get_approved_by_team():
     """Get all approved actionables grouped by workstream (team).
