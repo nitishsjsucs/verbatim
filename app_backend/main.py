@@ -1818,7 +1818,28 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
         is_manual=True,
         created_at=datetime.now(timezone.utc).isoformat(),
         actionable_id=_generate_actionable_id(),
+        # Risk assessment fields
+        theme=body.get("theme", ""),
+        tranche3=body.get("tranche3", ""),
+        impact_dropdown=body.get("impact_dropdown"),
+        overall_impact_score=body.get("overall_impact_score"),
+        # Circular metadata
+        regulation_issue_date=body.get("regulation_issue_date", ""),
+        circular_effective_date=body.get("circular_effective_date", ""),
+        regulator=body.get("regulator", ""),
+        # Multi-team support
+        assigned_teams=body.get("assigned_teams", []),
+        team_workflows=body.get("team_workflows", {}),
     )
+
+    # If assigned_teams was provided, initialize team_workflows for any missing teams
+    if item.assigned_teams:
+        item.init_team_workflows()
+        # Merge in any provided team_workflows data
+        if body.get("team_workflows"):
+            for team, workflow_data in body.get("team_workflows", {}).items():
+                if team in item.team_workflows:
+                    item.team_workflows[team].update(workflow_data)
 
     result.actionables.append(item)
     result.compute_stats()
