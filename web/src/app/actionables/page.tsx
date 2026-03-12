@@ -13,12 +13,7 @@ import {
 import {
     ActionableItem,
     ActionablesResult,
-    ActionableWorkstream,
-    DropdownOption,
-    Team,
     RiskSubDropdown,
-    getClassification,
-    isMultiTeam
 } from "@/lib/types"
 import { useSession } from "@/lib/auth-client"
 import { getUserRole } from "@/components/auth/auth-guard"
@@ -36,7 +31,7 @@ import {
     safeStr,
     THEME_OPTIONS,
 } from "@/lib/status-config"
-import { useDropdownConfig } from "@/lib/use-dropdown-config"
+import { useDropdownConfig, DropdownOption } from "@/lib/use-dropdown-config"
 import { EmptyState } from "@/components/shared/status-components"
 
 const PdfViewer = dynamic(
@@ -413,7 +408,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                 <div>
                                     <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
-                                    <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
+                                    <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline || "")}</span>
                                 </div>
                             </div>
                             {/* Circular Source Information */}
