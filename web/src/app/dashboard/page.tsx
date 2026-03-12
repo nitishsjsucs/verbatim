@@ -1372,9 +1372,18 @@ export default function DashboardPage() {
                                             const rowKey = `completed-${docId}-${item.id}`
                                             const isExpanded = expandedRows.has(rowKey)
                                             const commentCount = (item.comments || []).length
+                                            const multi = isMultiTeam(item)
+                                            const assignedTeams = item.assigned_teams || []
+                                            const teamCompletedCount = multi ? assignedTeams.filter(t => (item.team_workflows?.[t]?.task_status || "") === "completed").length : 0
+                                            const parentDeadline = multi
+                                                ? assignedTeams.reduce((latest, t) => {
+                                                    const d = item.team_workflows?.[t]?.deadline || ""
+                                                    return d > latest ? d : latest
+                                                }, item.deadline || "")
+                                                : (item.deadline || "")
 
                                             return (
-                                                <div key={rowKey} className="border-b border-border/5 opacity-70">
+                                                <div key={rowKey} className={cn("border-b border-border/5 opacity-70")}>
                                                     <div
                                                         className="grid gap-0 items-center hover:bg-muted/10 transition-colors px-3 cursor-pointer"
                                                         style={{ gridTemplateColumns: gridCols }}
@@ -1389,74 +1398,164 @@ export default function DashboardPage() {
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                             {commentCount > 0 && <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60"><MessageSquare className="h-2.5 w-2.5" />{commentCount}</span>}
+                                                            {multi && (
+                                                                <span className="shrink-0 flex items-center gap-1 text-[10px] font-medium text-purple-400/70 bg-purple-500/10 px-1 py-0.5 rounded">
+                                                                    <span className="inline-block w-8 h-1 rounded-full bg-purple-500/20 overflow-hidden"><span className="block h-full bg-purple-400/70 rounded-full" style={{ width: `${assignedTeams.length ? (teamCompletedCount / assignedTeams.length) * 100 : 0}%` }} /></span>
+                                                                    {teamCompletedCount}/{assignedTeams.length}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center">
                                                             <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
                                                                 {TASK_STATUS_STYLES.completed.label}
                                                             </span>
                                                         </div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.deadline)}</span></div>
-                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatTime(item.deadline)}</span></div>
+                                                        <div className="py-1.5 px-1 text-center relative" onClick={e => e.stopPropagation()}>
+                                                            {!multi ? (
+                                                                <span className="text-[10px] text-muted-foreground/50">{formatDate(item.deadline)}</span>
+                                                            ) : (
+                                                                <span className={cn(
+                                                                    "text-[10px] px-1.5 py-0.5 rounded border border-dashed flex items-center justify-center gap-1",
+                                                                    parentDeadline && new Date(parentDeadline).getTime() < Date.now()
+                                                                        ? "text-red-400 border-red-400/30"
+                                                                        : "text-muted-foreground/70 border-muted-foreground/20"
+                                                                )} title="Latest child deadline">
+                                                                    <Calendar className="h-2.5 w-2.5" />
+                                                                    {parentDeadline ? formatDateShort(parentDeadline) : "—"}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{!multi ? formatTime(item.deadline) : (parentDeadline ? formatTime(parentDeadline) : "—")}</span></div>
                                                         <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
-                                                            <EvidencePopover files={item.evidence_files || []} taskStatus="completed" />
+                                                            {!multi ? (
+                                                                <EvidencePopover files={item.evidence_files || []} taskStatus="completed" />
+                                                            ) : (
+                                                                <span className="text-xs text-muted-foreground/40">—</span>
+                                                            )}
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400">Approved</span></div>
                                                     </div>
-                                                    {isExpanded && (
-                                                        <div className="border border-border/30 rounded-lg mx-3 my-2 px-6 py-4 space-y-3">
-                                                            {/* Circular Source Information */}
-                                                            <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
-                                                                <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    <div className="col-span-2">
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable ID</p>
-                                                                        <p className="text-xs text-foreground/80 font-mono bg-muted/30 px-2 py-1 rounded border border-border/20 inline-block">{item.actionable_id || "—"}</p>
+
+                                                    {/* ── Multi-team: Cascading per-team rows (read-only) ── */}
+                                                    {multi && isExpanded && assignedTeams.map(team => {
+                                                        const tw = item.team_workflows?.[team]
+                                                        const twStatus = (tw?.task_status || "assigned") as TaskStatus
+                                                        const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
+                                                        const teamRowKey = `${rowKey}-team-${team}`
+                                                        const isTeamExpanded = expandedRows.has(teamRowKey)
+                                                        const teamCommentCount = (tw?.comments || []).length
+
+                                                        return (
+                                                            <div key={teamRowKey} className="border-t border-border/5 bg-muted/5">
+                                                                {/* Team child row — same grid as parent */}
+                                                                <div
+                                                                    className="grid gap-0 items-center hover:bg-muted/15 transition-colors px-3 cursor-pointer pl-8"
+                                                                    style={{ gridTemplateColumns: gridCols }}
+                                                                    onClick={() => toggleRow(teamRowKey)}
+                                                                >
+                                                                    {/* Team tag */}
+                                                                    <div className="py-1.5 px-1">
+                                                                        <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", teamColors.bg, teamColors.text)}>
+                                                                            {team}
+                                                                        </span>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                                                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                                                    {/* Implementation text */}
+                                                                    <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
+                                                                        {isTeamExpanded
+                                                                            ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
+                                                                            : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                                                                        <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
+                                                                        {teamCommentCount > 0 && (
+                                                                            <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60">
+                                                                                <MessageSquare className="h-2.5 w-2.5" />{teamCommentCount}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                                                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                                                    {/* Status */}
+                                                                    <div className="py-1.5 px-1 text-center">
+                                                                        <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium", TASK_STATUS_STYLES.completed.bg, TASK_STATUS_STYLES.completed.text)}>
+                                                                            {TASK_STATUS_STYLES.completed.label}
+                                                                        </span>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
-                                                                        <p className="text-xs text-foreground/80 font-mono">{item.regulation_issue_date ? formatDate(item.regulation_issue_date) : "—"}</p>
+                                                                    {/* Deadline date */}
+                                                                    <div className="py-1.5 px-1 text-center relative" onClick={e => e.stopPropagation()}>
+                                                                        <span className="text-[10px] text-muted-foreground/50">{formatDate(tw?.deadline || item.deadline)}</span>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Effective Date</p>
-                                                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_effective_date ? formatDate(item.circular_effective_date) : "—"}</p>
+                                                                    {/* Deadline time */}
+                                                                    <div className="py-1.5 px-1 text-center">
+                                                                        <span className="text-[10px] text-muted-foreground/60">
+                                                                            {formatTime(tw?.deadline || item.deadline)}
+                                                                        </span>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Regulator</p>
-                                                                        <p className="text-xs text-foreground/80">{item.regulator || "—"}</p>
+                                                                    {/* Evidence */}
+                                                                    <div className="py-1.5 px-1 flex justify-center" onClick={e => e.stopPropagation()}>
+                                                                        <EvidencePopover files={tw?.evidence_files || []} taskStatus="completed" />
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Actionable Created</p>
-                                                                        <p className="text-xs text-foreground/80 font-mono">{item.created_at ? formatDate(item.created_at) : "—"}</p>
+                                                                    {/* Published date */}
+                                                                    <div className="py-1.5 px-1 text-center">
+                                                                        <span className="text-[10px] text-muted-foreground/60">
+                                                                            {formatDate(item.published_at)}
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* Completion date */}
+                                                                    <div className="py-1.5 px-1 text-center">
+                                                                        <span className="text-[10px] text-emerald-400/70">{twStatus === "completed" ? formatDate(tw?.completion_date) : "—"}</span>
+                                                                    </div>
+                                                                    {/* Actions */}
+                                                                    <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                                                                        {twStatus === "completed" && <span className="text-[10px] text-emerald-400">Approved</span>}
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="space-y-3">
-                                                                    <div>
-                                                                        <p className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-wider mb-1">Implementation</p>
-                                                                        <p className="text-xs text-foreground/80 whitespace-pre-wrap">{safeStr(item.implementation_notes) || <span className="italic text-muted-foreground/30">No implementation notes</span>}</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                                                                    <CommentThread
-                                                                        comments={item.comments || []}
-                                                                        currentUser={userName}
-                                                                        currentRole="compliance_officer"
-                                                                        onAddComment={async (text) => handleAddComment(docId, item, text)}
+
+                                                                {/* Per-team expanded */}
+                                                                {isTeamExpanded && (
+                                                                    <ActionableExpansion
+                                                                        item={item}
+                                                                        docId={docId}
+                                                                        docName={docName}
+                                                                        teamWorkflow={tw}
+                                                                        teamName={team}
+                                                                        userName={userName}
+                                                                        userRole="compliance_officer"
+                                                                        taskStatus={twStatus}
+                                                                        onUpdate={handleUpdate}
+                                                                        onAddComment={async (text) => {
+                                                                            const newComment: ActionableComment = {
+                                                                                id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                                                                                author: userName,
+                                                                                role: "compliance_officer",
+                                                                                text,
+                                                                                timestamp: new Date().toISOString(),
+                                                                            }
+                                                                            const existing = tw?.comments || []
+                                                                            await handleUpdate(docId, item.id, { comments: [...existing, newComment] }, team)
+                                                                        }}
+                                                                        formatDate={formatDate}
+                                                                        readOnly={true}
                                                                     />
-                                                                </div>
+                                                                )}
                                                             </div>
-                                                        </div>
+                                                        )
+                                                    })}
+
+                                                    {/* Single-team expanded */}
+                                                    {!multi && isExpanded && (
+                                                        <ActionableExpansion
+                                                            item={item}
+                                                            docId={docId}
+                                                            docName={docName}
+                                                            userName={userName}
+                                                            userRole="compliance_officer"
+                                                            taskStatus="completed"
+                                                            onUpdate={handleUpdate}
+                                                            onAddComment={async (text) => handleAddComment(docId, item, text)}
+                                                            onBypassApprove={handleBypassApprove}
+                                                            onBypassDisapprove={handleBypassDisapprove}
+                                                            formatDate={formatDate}
+                                                            readOnly={true}
+                                                        />
                                                     )}
                                                 </div>
                                             )

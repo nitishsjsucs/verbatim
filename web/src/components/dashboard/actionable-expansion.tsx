@@ -27,6 +27,7 @@ interface ActionableExpansionProps {
     // Status and state
     taskStatus: string
     bgClassName?: string
+    readOnly?: boolean
     
     // Handlers
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>, team?: string) => Promise<void>
@@ -143,6 +144,7 @@ export function ActionableExpansion({
     userRole,
     taskStatus,
     bgClassName,
+    readOnly = false,
     onUpdate,
     onAddComment,
     onBypassApprove,
@@ -236,7 +238,7 @@ export function ActionableExpansion({
             )}
             
             {/* Bypass tag banner (only for single-team items, when item is awaiting CO decision) */}
-            {!teamName && (item.bypass_tag || taskStatus === "bypass_approved") && userRole === "compliance_officer" && (
+            {!teamName && (item.bypass_tag || taskStatus === "bypass_approved") && userRole === "compliance_officer" && !readOnly && (
                 <BypassBannerCOInline
                     item={item}
                     docId={docId}
@@ -249,7 +251,7 @@ export function ActionableExpansion({
             )}
             
             {/* Approve/Reject buttons for items under review */}
-            {taskStatus === "review" && (
+            {taskStatus === "review" && !readOnly && (
                 <div className="flex items-center gap-3 mb-3">
                     <button
                         onClick={() => {
@@ -599,8 +601,8 @@ export function ActionableExpansion({
                         </div>
                     )}
 
-                    {/* CO mandatory comment box — only during review */}
-                    {userRole === "compliance_officer" && taskStatus === "review" && (
+                    {/* CO mandatory comment box — only during review and not read-only */}
+                    {userRole === "compliance_officer" && taskStatus === "review" && !readOnly && (
                         <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-1.5">
@@ -640,7 +642,8 @@ export function ActionableExpansion({
                             comments={comments}
                             currentUser={userName}
                             currentRole={userRole}
-                            onAddComment={onAddComment}
+                            onAddComment={readOnly ? undefined : onAddComment}
+                            readOnly={readOnly}
                         />
                     </div>
                 </div>
