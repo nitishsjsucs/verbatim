@@ -1110,15 +1110,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     onCreated: () => void
     onCancel: () => void
 }) {
-    const { getOptions, getLabel } = useDropdownConfig()
-    const getSafeOptions = React.useCallback((key: string): DropdownOption[] => {
-        const opts = getOptions(key)
-        return opts.length ? opts : (FALLBACK_DROPDOWN_OPTIONS[key] || [])
-    }, [getOptions])
-    const pickSubDropdown = (configKey: string, selectedLabel: string): RiskSubDropdown => {
-        const opt = getSafeOptions(configKey).find(o => o.label === selectedLabel)
-        return opt ? { label: opt.label, score: opt.value } : ({} as RiskSubDropdown)
-    }
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
         if (!el) return
         el.style.height = "auto"
@@ -1145,11 +1136,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     const [deadlineDate, setDeadlineDate] = React.useState("")
     const [deadlineTime, setDeadlineTime] = React.useState("23:59")
 
-    // Risk assessment — same as ActionableCard
-    const emptyRSD = {} as RiskSubDropdown
-    const [draftTheme, setDraftTheme] = React.useState("")
-    const [draftTranche3, setDraftTranche3] = React.useState("")
-    const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(emptyRSD)
 
     // Circular metadata — auto-populated from selected document's first actionable
     const selectedDoc = allDocs.find(d => d.doc_id === selectedDocId)
@@ -1169,7 +1155,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
         return allDocs.filter(d => d.doc_name.toLowerCase().includes(q))
     }, [allDocs, docSearchQuery])
 
-    // Validation — mirrors ActionableCard handlePublish guards
+    // Validation
     const teamsForImpl = draftTeams
     const allTeamImplFilled = teamsForImpl.length > 0 && (
         draftIsMulti
@@ -1180,10 +1166,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
         selectedDocId.trim().length > 0 &&
         draftAction.trim().length > 0 &&
         draftTeams.length > 0 &&
-        allTeamImplFilled &&
-        draftTheme.trim().length > 0 &&
-        draftTranche3.trim().length > 0 &&
-        !!draftImpactDD?.label
+        allTeamImplFilled
     )
 
     const handleSubmit = async () => {
@@ -1192,9 +1175,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
             if (!draftAction.trim()) missing.push("Actionable text")
             if (draftTeams.length === 0) missing.push("at least one team")
             if (!allTeamImplFilled) missing.push("implementation for all teams")
-            if (!draftTheme) missing.push("Theme")
-            if (!draftTranche3) missing.push("Tranche 3")
-            if (!draftImpactDD?.label) missing.push("Impact Assessment")
             toast.error(`Missing: ${missing.join(", ")}`)
             return
         }
@@ -1210,7 +1190,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
             }
         }
 
-        const impactScore = (draftImpactDD.score ?? 0) ** 2
         const payload: Record<string, unknown> = {
             action: draftAction.trim(),
             evidence_quote: draftEvidence.trim(),
@@ -1219,10 +1198,6 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
             implementation_notes: draftIsMulti ? "" : draftImpl.trim(),
             ...(draftIsMulti ? { team_workflows: teamWorkflows } : {}),
             ...(!draftIsMulti && deadlineDate ? { deadline: `${deadlineDate}T${deadlineTime || "23:59"}` } : {}),
-            theme: draftTheme,
-            tranche3: draftTranche3,
-            impact_dropdown: draftImpactDD,
-            overall_impact_score: impactScore,
             regulation_issue_date: circMeta.regulation_issue_date,
             circular_effective_date: circMeta.circular_effective_date,
             regulator: circMeta.regulator,
@@ -1480,63 +1455,12 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                     </div>
                 </div>
 
-                {/* Risk Assessment — identical structure to ActionableCard (CO view: Theme+Tranche3+Impact editable) */}
-                <div className="space-y-3 rounded-lg border border-border/30 p-3 bg-muted/5">
-                    <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-foreground/70">Risk Assessment *</p>
-                        <span className="text-[10px] text-muted-foreground/40 italic">All fields required</span>
-                    </div>
-
-                    {/* Theme + Tranche 3 */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
-                            <select
-                                value={draftTheme}
-                                onChange={e => setDraftTheme(e.target.value)}
-                                className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground"
-                            >
-                                <option value="">— Select Theme —</option>
-                                {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
-                            <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                <option value="">— Select Tranche 3 —</option>
-                                {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Impact Assessment */}
-                    <div className="rounded-md border border-border/20 p-2 bg-muted/10">
-                        <div className="flex items-center justify-between mb-1.5">
-                            <p className="text-[10px] font-semibold text-pink-400/80 uppercase tracking-wider">Impact Assessment</p>
-                            {draftImpactDD?.label && (
-                                <span className="text-[10px] font-mono text-pink-400/60">
-                                    Score: {draftImpactDD.score} → Squared: {(draftImpactDD.score ?? 0) ** 2}
-                                </span>
-                            )}
-                        </div>
-                        <select
-                            value={draftImpactDD?.label || ""}
-                            onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
-                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
-                        >
-                            <option value="">— Select Impact —</option>
-                            {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                        </select>
-                    </div>
-                </div>
-
                 {/* Validation hint */}
                 {!isValid && (
                     <div className="text-[10px] text-muted-foreground/50 space-y-0.5">
                         {!draftAction.trim() && <p className="text-red-400/60">· Actionable text required</p>}
                         {draftTeams.length === 0 && <p className="text-red-400/60">· Assign at least one team</p>}
                         {draftTeams.length > 0 && !allTeamImplFilled && <p className="text-red-400/60">· Implementation required for all teams</p>}
-                        {(!draftTheme || !draftTranche3 || !draftImpactDD?.label) && <p className="text-red-400/60">· Complete all Risk Assessment fields</p>}
                     </div>
                 )}
 
