@@ -1500,6 +1500,20 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
             if not co_comment:
                 raise HTTPException(status_code=400, detail="CO Comment is required before approval. Please fill the CO Comment field.")
 
+    # Publish validation: Theme, Tranche 3, Impact must be present before approval/publish
+    publish_intent = body.get("approval_status") == "approved" or body.get("published_at")
+    if publish_intent:
+        next_theme = body.get("theme", target.theme or "")
+        next_tranche3 = body.get("tranche3", target.tranche3 or "")
+        next_impact = body.get("impact_dropdown") or target.impact_dropdown
+        impact_label = ""
+        if isinstance(next_impact, dict):
+            impact_label = (next_impact.get("label") or "").strip()
+        elif isinstance(next_impact, str):
+            impact_label = next_impact.strip()
+        if not next_theme or not next_tranche3 or not impact_label:
+            raise HTTPException(status_code=400, detail="Cannot publish without Theme, Tranche 3, and Impact Assessment.")
+
     # Update allowed fields
     editable_fields = [
         "actor", "action", "object", "trigger_or_condition",
