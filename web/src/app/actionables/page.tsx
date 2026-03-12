@@ -2022,58 +2022,6 @@ export default function ActionablesPage() {
                                     </>
                                 )}
                             </div>
-                            {/* Bulk actions */}
-                            {/* Select All checkbox for pending items */}
-                            {pendingItems.length > 0 && (
-                                <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer shrink-0">
-                                    <input
-                                        type="checkbox"
-                                        checked={pendingItems.length > 0 && pendingItems.every(e => checkedItems.has(`${e.docId}-${e.item.id}`))}
-                                        onChange={() => {
-                                            const allChecked = pendingItems.every(e => checkedItems.has(`${e.docId}-${e.item.id}`))
-                                            if (allChecked) {
-                                                setCheckedItems(new Set())
-                                            } else {
-                                                setCheckedItems(new Set(pendingItems.map(e => `${e.docId}-${e.item.id}`)))
-                                            }
-                                        }}
-                                        className="h-3.5 w-3.5 rounded border-border accent-primary"
-                                    />
-                                    Select All
-                                </label>
-                            )}
-                            {checkedItems.size > 0 && (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 gap-1 px-2 text-xs text-primary border-primary/30 hover:bg-primary/10"
-                                        onClick={() => {
-                                            const selected = filtered.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
-                                            handlePublishAll(selected)
-                                            setCheckedItems(new Set())
-                                        }}
-                                    >
-                                        <Send className="h-3 w-3" />
-                                        Publish Selected ({checkedItems.size})
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 gap-1 px-2 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
-                                        onClick={async () => {
-                                            const selected = filtered.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`) && e.item.approval_status === "pending")
-                                            if (selected.length === 0) { toast.info("No pending items selected"); return }
-                                            await Promise.all(selected.map(({ item, docId }) => handleUpdate(docId, item.id, { approval_status: "rejected" })))
-                                            toast.success(`Rejected ${selected.length} actionables`)
-                                            setCheckedItems(new Set())
-                                        }}
-                                    >
-                                        <X className="h-3 w-3" />
-                                        Reject Selected ({checkedItems.size})
-                                    </Button>
-                                </>
-                            )}
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -2114,11 +2062,54 @@ export default function ActionablesPage() {
                                 />
                             )}
 
-                            {/* ========== BY-DOC / BY-TEAM TABS: Pending / Rejected / Published sections ========== */}
+                            {/* ========== BY-DOC / BY-TEAM TABS: Unpublished / Active / Rejected sections ========== */}
                             {!loading && (viewTab === "by-doc" || viewTab === "by-team") && (
                                 <>
-                                    {/* ---- Pending entries ---- */}
+                                    {/* ---- UNPUBLISHED section ---- */}
                                     {pendingItems.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <button className="flex items-center gap-2" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
+                                                    {rejectedCollapsed
+                                                        ? <ChevronRight className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
+                                                        : <ChevronDown className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
+                                                    }
+                                                    <p className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider">Unpublished ({pendingItems.length})</p>
+                                                </button>
+                                                {checkedItems.size > 0 && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-6 gap-1 px-2 text-xs text-primary border-primary/30 hover:bg-primary/10"
+                                                            onClick={() => {
+                                                                const selected = pendingItems.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
+                                                                handlePublishAll(selected)
+                                                                setCheckedItems(new Set())
+                                                            }}
+                                                        >
+                                                            <Send className="h-3 w-3" />
+                                                            Publish Selected ({checkedItems.size})
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-6 gap-1 px-2 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
+                                                            onClick={async () => {
+                                                                const selected = pendingItems.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
+                                                                await Promise.all(selected.map(({ item, docId }) => handleUpdate(docId, item.id, { approval_status: "rejected" })))
+                                                                toast.success(`Rejected ${selected.length} actionables`)
+                                                                setCheckedItems(new Set())
+                                                            }}
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                            Reject Selected ({checkedItems.size})
+                                                        </Button>
+                                                    </>
+                                                )}
+                                                <div className="h-px bg-yellow-400/20 flex-1" />
+                                            </div>
+                                            {!rejectedCollapsed && (
                                         <div className="space-y-2">
                                             {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status === "pending")
@@ -2214,6 +2205,86 @@ export default function ActionablesPage() {
                                                 </>
                                             )}
                                         </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ---- ACTIVE section ---- */}
+                                    {approvedItems.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <button className="flex items-center gap-2" onClick={() => setApprovedCollapsed(!approvedCollapsed)}>
+                                                    {approvedCollapsed
+                                                        ? <ChevronRight className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                                                        : <ChevronDown className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                                                    }
+                                                    <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider">Active ({approvedItems.length})</p>
+                                                </button>
+                                                <div className="h-px bg-green-400/20 flex-1" />
+                                            </div>
+                                            {!approvedCollapsed && (
+                                        <div className="space-y-2">
+                                            {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                                const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
+                                                if (approvedEntries.length === 0) return null
+                                                const isCollapsed = collapsedDocs.has(`approved-${docId}`)
+                                                return (
+                                                    <div key={`approved-${docId}`} className="border border-green-400/15 rounded-lg">
+                                                        <div className="px-3 py-1.5 bg-green-400/5 border-b border-green-400/15 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 hover:bg-green-400/10 transition-colors">
+                                                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => toggleDoc(`approved-${docId}`)}>
+                                                                {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                                                <FileText className="h-3 w-3 text-green-400/60" /> {docName}
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{approvedEntries.length} active</span>
+                                                            </button>
+                                                        </div>
+                                                        {!isCollapsed && (
+                                                            <div className="p-2 space-y-2">
+                                                                {approvedEntries.map(({ item, docId: dId, docName: dName }) => (
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+
+                                            {viewTab === "by-team" && (
+                                                <>
+                                                    {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status === "approved") && (
+                                                        <div className="border border-green-400/15 rounded-lg">
+                                                            <div className="px-3 py-1.5 bg-green-400/5 border-b border-green-400/15 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-green-400/10 transition-colors" onClick={() => toggleTeam(`approved-${MIXED_TEAM_CLASSIFICATION}`)}>
+                                                                {collapsedTeams.has(`approved-${MIXED_TEAM_CLASSIFICATION}`) ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "approved").length} active</span>
+                                                            </div>
+                                                            {!collapsedTeams.has(`approved-${MIXED_TEAM_CLASSIFICATION}`) && (
+                                                                <div className="p-2 space-y-2">
+                                                                    {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "approved").map(({ item, docId, docName }) => (
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={(t) => toggleTeam(`approved-${t}`)}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status === "approved"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} globalDeadline={globalDeadline} globalDeadlineTime={globalDeadlineTime} callerRole={callerRole} />
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
+                                        </div>
+                                            )}
+                                        </div>
                                     )}
 
                                     {/* ---- REJECTED section ---- */}
@@ -2234,16 +2305,16 @@ export default function ActionablesPage() {
                                                         className="h-6 gap-1 px-2 text-xs text-amber-400 border-amber-400/30 hover:bg-amber-400/10"
                                                         onClick={async () => {
                                                             const keys = Array.from(rejCheckedItems)
-                                                            const toRevert = rejectedItems.filter(e => keys.includes(`${e.docId}-${e.item.id}`))
-                                                            await Promise.all(toRevert.map(({ item, docId }) =>
+                                                            const toRepublish = rejectedItems.filter(e => keys.includes(`${e.docId}-${e.item.id}`))
+                                                            await Promise.all(toRepublish.map(({ item, docId }) =>
                                                                 handleUpdate(docId, item.id, { approval_status: "pending", published_at: "", task_status: "", deadline: "" })
                                                             ))
-                                                            toast.success(`Reverted ${toRevert.length} actionable${toRevert.length > 1 ? "s" : ""} to pending`)
+                                                            toast.success(`Republished ${toRepublish.length} actionable${toRepublish.length > 1 ? "s" : ""} to unpublished`)
                                                             setRejCheckedItems(new Set())
                                                         }}
                                                     >
-                                                        <Undo2 className="h-3 w-3" />
-                                                        Revert Selected ({rejCheckedItems.size})
+                                                        <Send className="h-3 w-3" />
+                                                        Republish Selected ({rejCheckedItems.size})
                                                     </Button>
                                                 )}
                                                 <div className="h-px bg-red-400/20 flex-1" />
