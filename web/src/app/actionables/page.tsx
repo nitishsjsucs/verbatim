@@ -55,6 +55,8 @@ interface DocActionables {
     actionables: ActionableItem[]
 }
 
+type ViewTab = "by-doc"
+
 // --- Editable Field Component ---
 
 function EditableField({ label, value: rawValue, onSave, type = "text", options }: {
@@ -1074,6 +1076,17 @@ export default function ActionablesPage() {
         return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp) }
     }, [])
 
+    // Collapsed teams for by-team view - initialize all teams as collapsed
+    const [collapsedTeams, setCollapsedTeams] = React.useState<Set<string>>(() => {
+        const allTeams = new Set<string>()
+        teamNames.forEach(team => {
+            allTeams.add(team)
+            allTeams.add(`approved-${team}`)
+        })
+        allTeams.add(MIXED_TEAM_CLASSIFICATION)
+        allTeams.add(`approved-${MIXED_TEAM_CLASSIFICATION}`)
+        return allTeams
+    })
 
     const loadAll = React.useCallback(async () => {
         try {
@@ -1158,7 +1171,9 @@ export default function ActionablesPage() {
             if (docFilter !== "all" && docId !== docFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)} ${safeStr(item.actionable_id)}`.toLowerCase()
+                // Include classification in search so "Mixed Team" is searchable
+                const classification = getClassification(item)
+                const searchable = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.evidence_quote)} ${safeStr(item.workstream)} ${classification} ${safeStr(item.actionable_id)}`.toLowerCase()
                 if (!searchable.includes(q)) return false
             }
             return true
@@ -1166,6 +1181,30 @@ export default function ActionablesPage() {
         // Keep actionables in creation order - no sorting by risk
     }, [allItems, docFilter, searchQuery])
 
+    // Group by team/classification for the "by-team" view
+    // Multi-team items are grouped under "Mixed Team" (system-generated classification)
+    const byTeam = React.useMemo(() => {
+        const teams: Record<string, { item: ActionableItem; docId: string; docName: string }[]> = {}
+        for (const entry of filtered) {
+            // Use getClassification to determine grouping - multi-team items go to "Mixed Team"
+            const classification = getClassification(entry.item)
+            if (!teams[classification]) teams[classification] = []
+            teams[classification].push(entry)
+        }
+        return teams
+    }, [filtered])
+
+    // Ordered team keys: Mixed Team first (if exists), then regular teams
+    const orderedTeamKeys = React.useMemo(() => {
+        const keys = Object.keys(byTeam)
+        const mixedIndex = keys.indexOf(MIXED_TEAM_CLASSIFICATION)
+        if (mixedIndex > -1) {
+            // Move Mixed Team to the front
+            keys.splice(mixedIndex, 1)
+            return [MIXED_TEAM_CLASSIFICATION, ...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k) && k !== MIXED_TEAM_CLASSIFICATION)]
+        }
+        return [...teamNames.filter(ws => keys.includes(ws)), ...keys.filter(k => !teamNames.includes(k))]
+    }, [byTeam, teamNames])
 
     // Stats (published count comes from allDocs since allItems excludes published)
     const stats = React.useMemo(() => {
@@ -1229,6 +1268,13 @@ export default function ActionablesPage() {
         toast.success(`Published ${pending.length} actionables to tracker`)
     }, [handleUpdate, docDeadlineDefaults])
 
+    const toggleTeam = (team: string) => {
+        setCollapsedTeams(prev => {
+            const next = new Set(prev)
+            if (next.has(team)) next.delete(team); else next.add(team)
+            return next
+        })
+    }
 
     // Group by document
     const byDocument = React.useMemo(() => {
@@ -1399,8 +1445,8 @@ export default function ActionablesPage() {
                                 />
                             )}
 
-                            {/* ========== BY-DOCUMENT VIEW: Unpublished / Active / Rejected sections ========== */}
-                            {!loading && (
+                            {/* ========== BY-DOC / BY-TEAM TABS: Unpublished / Active / Rejected sections ========== */}
+                            {!loading && (viewTab === "by-doc" || viewTab === "by-team") && (
                                 <>
                                     {/* ---- UNPUBLISHED section ---- */}
                                     {pendingItems.length > 0 && (
@@ -1448,7 +1494,7 @@ export default function ActionablesPage() {
                                             </div>
                                             {!rejectedCollapsed && (
                                         <div className="space-y-2">
-                                            {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                            {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status === "pending")
                                                 if (pendingEntries.length === 0) return null
                                                 const isCollapsed = collapsedDocs.has(docId)
@@ -1522,6 +1568,40 @@ export default function ActionablesPage() {
                                                 )
                                             })}
 
+                                            {viewTab === "by-team" && (
+                                                <>
+                                                    {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status === "pending") && (
+                                                        <div className="border border-border/30 rounded-lg">
+                                                            <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleTeam(MIXED_TEAM_CLASSIFICATION)}>
+                                                                {collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "pending").length} pending</span>
+                                                            </div>
+                                                            {!collapsedTeams.has(MIXED_TEAM_CLASSIFICATION) && (
+                                                                <div className="p-2 space-y-2">
+                                                                    {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "pending").map(({ item, docId, docName }) => (
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={toggleTeam}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status === "pending"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={checkedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
                                         </div>
                                             )}
                                         </div>
@@ -1542,7 +1622,7 @@ export default function ActionablesPage() {
                                             </div>
                                             {!approvedCollapsed && (
                                         <div className="space-y-2">
-                                            {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                            {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                 const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
                                                 if (approvedEntries.length === 0) return null
                                                 const isCollapsed = collapsedDocs.has(`approved-${docId}`)
@@ -1566,6 +1646,40 @@ export default function ActionablesPage() {
                                                 )
                                             })}
 
+                                            {viewTab === "by-team" && (
+                                                <>
+                                                    {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status === "approved") && (
+                                                        <div className="border border-green-400/15 rounded-lg">
+                                                            <div className="px-3 py-1.5 bg-green-400/5 border-b border-green-400/15 text-[10px] font-semibold flex items-center gap-2 cursor-pointer hover:bg-green-400/10 transition-colors" onClick={() => toggleTeam(`approved-${MIXED_TEAM_CLASSIFICATION}`)}>
+                                                                {collapsedTeams.has(`approved-${MIXED_TEAM_CLASSIFICATION}`) ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
+                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "approved").length} active</span>
+                                                            </div>
+                                                            {!collapsedTeams.has(`approved-${MIXED_TEAM_CLASSIFICATION}`) && (
+                                                                <div className="p-2 space-y-2">
+                                                                    {byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "approved").map(({ item, docId, docName }) => (
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={(t) => toggleTeam(`approved-${t}`)}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status === "approved"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                            )}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
                                         </div>
                                             )}
                                         </div>
@@ -1605,7 +1719,7 @@ export default function ActionablesPage() {
                                             </div>
                                             {!rejectedCollapsed && (
                                                 <div className="space-y-2">
-                                                    {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                                    {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                         const rejEntries = entries.filter(e => e.item.approval_status === "rejected")
                                                         if (rejEntries.length === 0) return null
                                                         const isCollapsed = collapsedDocs.has(`rejected-${docId}`)
@@ -1646,6 +1760,49 @@ export default function ActionablesPage() {
                                                         )
                                                     })}
 
+                                                    {viewTab === "by-team" && (
+                                                        <>
+                                                            {byTeam[MIXED_TEAM_CLASSIFICATION] && byTeam[MIXED_TEAM_CLASSIFICATION].some(e => e.item.approval_status === "rejected") && (() => {
+                                                                const rejTeamEntries = byTeam[MIXED_TEAM_CLASSIFICATION].filter(e => e.item.approval_status === "rejected")
+                                                                const rejTeamKeys = rejTeamEntries.map(e => `${e.docId}-${e.item.id}`)
+                                                                const allRejTeamChecked = rejTeamKeys.length > 0 && rejTeamKeys.every(k => rejCheckedItems.has(k))
+                                                                const isCollapsed = collapsedTeams.has(`rejected-${MIXED_TEAM_CLASSIFICATION}`)
+                                                                return (
+                                                                    <div key={MIXED_TEAM_CLASSIFICATION} className="border border-red-400/15 rounded-lg">
+                                                                        <div className="px-3 py-1.5 bg-red-400/5 border-b border-red-400/15 text-[10px] font-semibold flex items-center gap-2 hover:bg-red-400/10 transition-colors">
+                                                                            <input type="checkbox" checked={allRejTeamChecked} onChange={() => { setRejCheckedItems(prev => { const next = new Set(prev); if (allRejTeamChecked) { rejTeamKeys.forEach(k => next.delete(k)) } else { rejTeamKeys.forEach(k => next.add(k)) } return next }) }} onClick={e => e.stopPropagation()} className="h-3 w-3 rounded border-border accent-primary shrink-0 cursor-pointer" title="Select all rejected in this team" />
+                                                                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => toggleTeam(`rejected-${MIXED_TEAM_CLASSIFICATION}`)}>
+                                                                                {isCollapsed ? <ChevronRight className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+                                                                                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold", getWorkstreamClass(MIXED_TEAM_CLASSIFICATION))}>{MIXED_TEAM_CLASSIFICATION}</span>
+                                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{rejTeamEntries.length} rejected</span>
+                                                                            </button>
+                                                                        </div>
+                                                                        {!isCollapsed && (
+                                                                            <div className="p-2 space-y-2">
+                                                                                {rejTeamEntries.map(({ item, docId, docName }) => (
+                                                                                    <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })()}
+                                                            {teamTree.map(rootNode => (
+                                                                <ByTeamTreeNode
+                                                                    key={rootNode.name}
+                                                                    node={rootNode}
+                                                                    byTeam={byTeam}
+                                                                    collapsedTeams={collapsedTeams}
+                                                                    toggleTeam={(t) => toggleTeam(`rejected-${t}`)}
+                                                                    depth={0}
+                                                                    filterFn={(e) => e.item.approval_status === "rejected"}
+                                                                    renderCard={({ item, docId, docName }) => (
+                                                                        <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={rejCheckedItems.has(`${docId}-${item.id}`)} onCheck={() => toggleRejChecked(`${docId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                                    )}
+                                                                />
+                                                            ))}
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1664,7 +1821,7 @@ export default function ActionablesPage() {
                                             </div>
                                             {!approvedCollapsed && (
                                                 <div className="space-y-2">
-                                                    {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
+                                                    {viewTab === "by-doc" && Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                         const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
                                                         if (approvedEntries.length === 0) return null
                                                         const isCollapsed = collapsedDocs.has(`approved-${docId}`)
@@ -1684,6 +1841,20 @@ export default function ActionablesPage() {
                                                         )
                                                     })}
 
+                                                    {viewTab === "by-team" && teamTree.map(rootNode => (
+                                                        <ByTeamTreeNode
+                                                            key={rootNode.name}
+                                                            node={rootNode}
+                                                            byTeam={byTeam}
+                                                            collapsedTeams={collapsedTeams}
+                                                            toggleTeam={(t) => toggleTeam(`approved-${t}`)}
+                                                            depth={0}
+                                                            filterFn={(e) => e.item.approval_status === "approved"}
+                                                            renderCard={({ item, docId, docName }) => (
+                                                                <ActionableCard key={`${docId}-${item.id}`} item={item} docId={docId} docName={docName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${docId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${docId}-${item.id}`); if (pdfDocId !== docId) { setPdfDocId(docId); setPdfDocName(docName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} callerRole={callerRole} />
+                                                            )}
+                                                        />
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
