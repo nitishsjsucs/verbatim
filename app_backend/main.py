@@ -4951,6 +4951,7 @@ def create_delegation_request(body: dict = Body(...)):
         "user_id": body.get("to_account_id", ""),
         "actionable_id": body.get("actionable_id", ""),
         "doc_id": body.get("doc_id", ""),
+        "delegation_request_id": doc["id"],
         "type": "delegation_request",
         "message": f"Delegation request from {body.get('from_name', 'a colleague')} for actionable {body.get('actionable_id', '')}",
         "is_read": False,
@@ -4990,6 +4991,7 @@ def accept_delegation(request_id: str):
                 if a.id == actionable_id or a.actionable_id == actionable_id:
                     a.delegated_from_account_id = req.get("from_account_id", "")
                     a.published_by_account_id = req.get("to_account_id", "")
+                    a.delegation_request_id = ""  # Clear pending delegation
                     break
             store.save(result)
 
@@ -5025,6 +5027,19 @@ def reject_delegation(request_id: str):
         "status": "rejected",
         "resolved_at": datetime.now(timezone.utc).isoformat(),
     }})
+
+    # Clear delegation_request_id from actionable
+    doc_id = req.get("doc_id", "")
+    actionable_id = req.get("actionable_id", "")
+    if doc_id and actionable_id:
+        store = get_actionable_store()
+        result = store.load(doc_id)
+        if result:
+            for a in result.actionables:
+                if a.id == actionable_id or a.actionable_id == actionable_id:
+                    a.delegation_request_id = ""  # Clear pending delegation
+                    break
+            store.save(result)
 
     # Notify delegator
     notif = {

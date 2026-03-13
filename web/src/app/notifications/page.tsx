@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useSession } from "@/lib/auth-client"
-import { fetchNotifications, markNotificationRead, markAllNotificationsRead, acceptDelegationRequest, rejectDelegationRequest, updateActionable, type Notification } from "@/lib/api"
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, acceptDelegationRequest, rejectDelegationRequest, type Notification } from "@/lib/api"
 import { Bell, CheckCheck, Loader2, ExternalLink, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/status-config"
@@ -58,17 +58,10 @@ export default function NotificationsPage() {
         if (!notif.delegation_request_id) return
         setProcessingId(notif.id)
         try {
-            // Accept delegation request
+            // Accept delegation request (backend handles ownership transfer)
             await acceptDelegationRequest(notif.delegation_request_id)
             
-            // Transfer actionable to recipient (change published_by_account_id)
-            if (notif.actionable_id) {
-                await updateActionable(notif.doc_id || "", notif.actionable_id, {
-                    published_by_account_id: userId,
-                })
-            }
-            
-            // Mark notification as read
+            // Mark notification as read and remove from list
             await markNotificationRead(notif.id)
             setNotifications(prev => prev.filter(n => n.id !== notif.id))
             toast.success("Delegation approved — actionable transferred to you")
