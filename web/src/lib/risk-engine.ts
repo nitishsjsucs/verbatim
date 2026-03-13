@@ -259,7 +259,7 @@ export function buildThemeAnalysis(
     return rows.sort((a, b) => a.avgResidual - b.avgResidual)
 }
 
-/** Compute Parameter 1 — Explicit Compliance Against Regulations. */
+/** Compute Parameter 1 — Explicit Compliance Against Regulations (OLD: category-average method). */
 export function computeParam1(
     themeRows: ThemeRiskRow[],
     weights: ExplicitComplianceWeights,
@@ -276,6 +276,38 @@ export function computeParam1(
 
     const weighted = lowCount * weights.low + medCount * weights.medium + highCount * weights.high
     const value = weighted / themeRows.length
+    return { value: Math.round(value * 100) / 100, score: Math.round(value * 100) / 100 }
+}
+
+/** Compute Parameter 1 — True Weighted Average (NEW: per-theme weighting method).
+ *  Applies weights to individual theme scores, not category averages.
+ *  Correct formula: SUM(theme_score × weight) / SUM(weight)
+ */
+export function computeParam1Weighted(
+    themeRows: ThemeRiskRow[],
+    weights: ExplicitComplianceWeights,
+): { value: number; score: number } {
+    if (themeRows.length === 0) return { value: 0, score: 0 }
+
+    let weightedSum = 0
+    let weightedCount = 0
+
+    for (const row of themeRows) {
+        // Determine weight based on risk level classification
+        const l = row.riskLevel.toLowerCase()
+        let weight = weights.low // default
+        if (l.includes("high") || l.includes("weak")) {
+            weight = weights.high
+        } else if (l.includes("medium") || l.includes("improvement")) {
+            weight = weights.medium
+        }
+
+        // Apply weight to the theme's average residual score
+        weightedSum += row.avgResidual * weight
+        weightedCount += weight
+    }
+
+    const value = weightedCount > 0 ? weightedSum / weightedCount : 0
     return { value: Math.round(value * 100) / 100, score: Math.round(value * 100) / 100 }
 }
 

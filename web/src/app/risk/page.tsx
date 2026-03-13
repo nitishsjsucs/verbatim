@@ -35,7 +35,7 @@ import {
   getTrackerItems,
   filterByTime,
   buildThemeAnalysis,
-  computeParam1,
+  computeParam1Weighted,
   computeParam2,
   resolveDropdownScore,
   interpretFinalScore,
@@ -154,7 +154,7 @@ export default function RiskPage() {
 
   // ─── Parameters ──────────────────────────────────────────────────────────
 
-  const param1 = React.useMemo(() => computeParam1(themeRows, config.explicit_compliance_weights), [themeRows, config.explicit_compliance_weights])
+  const param1 = React.useMemo(() => computeParam1Weighted(themeRows, config.explicit_compliance_weights), [themeRows, config.explicit_compliance_weights])
   const param2 = React.useMemo(() => computeParam2(activeItems.length, filteredItems.length, config.param2_options), [activeItems.length, filteredItems.length, config.param2_options])
 
   const p3Score = resolveDropdownScore(selections.param3_selection, config.param3_options)
