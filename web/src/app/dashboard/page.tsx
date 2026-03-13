@@ -544,7 +544,7 @@ export default function DashboardPage() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0, highRisk: 0, medRisk: 0, lowRisk: 0 }
+        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
         for (const r of allRows) {
             const st = r.item.task_status || "assigned"
             if (st === "completed") s.completed++
@@ -561,11 +561,6 @@ export default function DashboardPage() {
                 else if (dc === "d60") s.delayed60++
                 else if (dc === "d90") s.delayed90++
             }
-            // Residual risk classification
-            const rScore = computeResidualScore(r.item) ?? r.item.residual_risk_score ?? 0
-            if (rScore >= 28) s.highRisk++
-            else if (rScore >= 13) s.medRisk++
-            else s.lowRisk++
         }
         return s
     }, [allRows])
@@ -615,9 +610,6 @@ export default function DashboardPage() {
                         <StatCell value={stats.delayed60} label="Delayed 60d" colorClass="text-orange-500" />
                         <StatCell value={stats.delayed90} label="Delayed 90d" colorClass="text-red-500" />
                         <StatDivider />
-                        <StatCell value={stats.highRisk} label="High Risk" colorClass="text-red-400" />
-                        <StatCell value={stats.medRisk} label="Med Risk" colorClass="text-yellow-400" />
-                        <StatCell value={stats.lowRisk} label="Low Risk" colorClass="text-emerald-400" />
                     </div>
 
                     <div className="flex-1" />
