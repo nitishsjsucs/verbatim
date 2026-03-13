@@ -8,7 +8,6 @@ import {
     updateActionable,
     createManualActionable,
     deleteActionable as deleteActionableApi,
-    updateDocumentMetadata,
     API_BASE_URL,
 } from "@/lib/api"
 import {
@@ -1527,7 +1526,7 @@ export default function ActionablesPage() {
         })
     }, [])
 
-    // Save per-document theme defaults to localStorage + backend
+    // Save per-document theme defaults to localStorage (per user)
     const updateDocTheme = React.useCallback((docId: string, theme: string) => {
         setDocThemeDefaults(prev => {
             const next = { ...prev, [docId]: theme }
@@ -1536,8 +1535,6 @@ export default function ActionablesPage() {
             } catch { /* ignore */ }
             return next
         })
-        // Persist to backend
-        updateDocumentMetadata(docId, { global_theme: theme }).catch(() => {})
     }, [])
 
     // Filters
@@ -1628,15 +1625,6 @@ export default function ActionablesPage() {
                     actionables: r.actionables,
                 }))
             setAllDocs(docs)
-
-            // Hydrate global theme defaults from backend
-            const backendThemes: Record<string, string> = {}
-            for (const r of results) {
-                if (r.global_theme) backendThemes[r.doc_id] = r.global_theme
-            }
-            if (Object.keys(backendThemes).length > 0) {
-                setDocThemeDefaults(prev => ({ ...prev, ...backendThemes }))
-            }
 
             setDocDeadlineDefaults(prev => {
                 const next = { ...prev }
