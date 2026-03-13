@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils"
 import { RISK_STYLES, normalizeRisk } from "@/lib/status-config"
 import { getEvidenceFileUrl } from "@/lib/api"
+import { formatNumber } from "@/lib/format-number"
 
 // ─── RiskIcon ────────────────────────────────────────────────────────────────
 
@@ -264,9 +265,10 @@ export function StatCell({ value, label, colorClass }: {
     label: string
     colorClass: string
 }) {
+    const displayValue = typeof value === 'number' ? formatNumber(value) : value
     return (
         <div className="text-center">
-            <p className={cn("text-[10px] font-bold", colorClass)}>{value}</p>
+            <p className={cn("text-[10px] font-bold", colorClass)}>{displayValue}</p>
             <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{label}</p>
         </div>
     )

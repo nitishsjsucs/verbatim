@@ -348,7 +348,84 @@ export default function RiskPage() {
                       </div>
                     </div>
 
-                    {/* High / Medium / Low Risk Themes — tables + charts */}
+                    {/* ═══════════════════════════════════════════════════════════
+                        GROUPED RISK GRAPHS (All Three Together)
+                       ═══════════════════════════════════════════════════════════ */}
+                    <div className="rounded-lg border border-border/30 bg-muted/5 p-4">
+                      <p className="text-xs font-semibold text-foreground/70 mb-3">Risk Level Comparison (Avg Residual Score by Theme)</p>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        {/* High Risk Graph */}
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                          <p className="text-[10px] font-semibold text-red-400 mb-2 uppercase tracking-wider">High Risk Themes</p>
+                          {highThemes.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground/40">No high-risk themes</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {[...highThemes].sort((a, b) => a.avgResidual - b.avgResidual).map(row => (
+                                <div key={row.theme} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-foreground/60 w-20 truncate shrink-0" title={row.theme}>{row.theme}</span>
+                                  <div className="flex-1 h-3 bg-muted/20 rounded-sm overflow-hidden">
+                                    <div
+                                      className="h-full bg-red-500 rounded-sm transition-all"
+                                      style={{ width: `${Math.min((row.avgResidual / chartMax) * 100, 100)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground/50 w-8 text-right shrink-0">{row.avgResidual.toFixed(1)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Medium Risk Graph */}
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                          <p className="text-[10px] font-semibold text-yellow-400 mb-2 uppercase tracking-wider">Medium Risk Themes</p>
+                          {medThemes.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground/40">No medium-risk themes</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {[...medThemes].sort((a, b) => a.avgResidual - b.avgResidual).map(row => (
+                                <div key={row.theme} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-foreground/60 w-20 truncate shrink-0" title={row.theme}>{row.theme}</span>
+                                  <div className="flex-1 h-3 bg-muted/20 rounded-sm overflow-hidden">
+                                    <div
+                                      className="h-full bg-yellow-500 rounded-sm transition-all"
+                                      style={{ width: `${Math.min((row.avgResidual / chartMax) * 100, 100)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground/50 w-8 text-right shrink-0">{row.avgResidual.toFixed(1)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Low Risk Graph */}
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                          <p className="text-[10px] font-semibold text-emerald-400 mb-2 uppercase tracking-wider">Low Risk Themes</p>
+                          {lowThemes.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground/40">No low-risk themes</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {[...lowThemes].sort((a, b) => a.avgResidual - b.avgResidual).map(row => (
+                                <div key={row.theme} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-foreground/60 w-20 truncate shrink-0" title={row.theme}>{row.theme}</span>
+                                  <div className="flex-1 h-3 bg-muted/20 rounded-sm overflow-hidden">
+                                    <div
+                                      className="h-full bg-emerald-500 rounded-sm transition-all"
+                                      style={{ width: `${Math.min((row.avgResidual / chartMax) * 100, 100)}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground/50 w-8 text-right shrink-0">{row.avgResidual.toFixed(1)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* High / Medium / Low Risk Themes — tables only (charts now above) */}
                     <ThemeSection title="High Risk Themes" subtitle="(Weak)" rows={highThemes} chartMax={chartMax} color="red" emptyMsg="No high-risk themes" />
                     <ThemeSection title="Medium Risk Themes" subtitle="(Improvement Needed)" rows={medThemes} chartMax={chartMax} color="yellow" emptyMsg="No medium-risk themes" />
                     <ThemeSection title="Low Risk Themes" subtitle="(Satisfactory)" rows={lowThemes} chartMax={chartMax} color="emerald" emptyMsg="No low-risk themes" />
@@ -438,31 +515,6 @@ export default function RiskPage() {
                   </div>
                 )}
 
-                {/* ════════════════════════════════════════════════════════════
-                    FINAL INTERPRETATION LEGEND
-                   ════════════════════════════════════════════════════════════ */}
-                <SectionHeader
-                  title="Final Risk Score Interpretation"
-                  subtitle="Score ranges and their meanings"
-                  expanded={expandedSections.has("final")}
-                  onToggle={() => toggleSection("final")}
-                />
-                {expandedSections.has("final") && (
-                  <div className="rounded-lg border border-border/30 p-4 bg-muted/5">
-                    <div className="space-y-1.5">
-                      {config.final_interpretation.map((band, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span className={cn("text-xs font-semibold rounded px-2 py-0.5 border min-w-[130px] text-center", riskBandBg(band.color))}>
-                            {band.label}
-                          </span>
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {band.min} — {band.max === Infinity ? "∞" : band.max}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>

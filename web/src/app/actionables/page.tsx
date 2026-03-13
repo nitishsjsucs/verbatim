@@ -28,6 +28,7 @@ import {
     Trash2, Users, Save, Undo2, Calendar, Send,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatNumber } from "@/lib/format-number"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { RoleRedirect } from "@/components/auth/role-redirect"
@@ -1818,8 +1819,10 @@ export default function ActionablesPage() {
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 text-xs">
-                            <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{stats.pending} pending</span>
-                            <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{stats.published} in tracker</span>
+                            <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{formatNumber(stats.pending)} pending</span>
+                            <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{formatNumber(stats.published)} in tracker</span>
+                            <span className="px-2 py-0.5 rounded bg-red-400/10 text-red-400 font-mono">{formatNumber(stats.rejected)} rejected</span>
+                            <span className="px-2 py-0.5 rounded bg-purple-400/10 text-purple-400 font-mono">{formatNumber(stats.total)} total</span>
                         </div>
                     </div>
                 </div>
