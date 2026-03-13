@@ -3,6 +3,8 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { RoleRedirect } from "@/components/auth/role-redirect"
+import { useSession } from "@/lib/auth-client"
+import { getUserRole } from "@/components/auth/auth-guard"
 import {
   ShieldAlert,
   BarChart3,
@@ -35,6 +37,7 @@ import {
   getTrackerItems,
   filterByTime,
   buildThemeAnalysis,
+  applyThemeWeights,
   computeParam1Weighted,
   computeParam2,
   resolveDropdownScore,
@@ -64,9 +67,15 @@ function barColor(color: string) {
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
 export default function RiskPage() {
+  // Role detection for theme weight scope restriction
+  const { data: session } = useSession()
+  const role = getUserRole(session)
+  const isCagOfficer = role === "compliance_officer" || role === "admin"
+
   const [allRawItems, setAllRawItems] = React.useState<ActionableItem[]>([])
   const [config, setConfig] = React.useState<RiskEngineConfig>(DEFAULT_RISK_ENGINE_CONFIG)
   const [selections, setSelections] = React.useState<Record<string, string>>({})
+  const [themeWeights, setThemeWeights] = React.useState<Record<string, number>>({}) // CAG officer only
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [timeFilter, setTimeFilter] = React.useState<TimeFilterOption>("overall")
@@ -142,19 +151,29 @@ export default function RiskPage() {
 
   // Theme analysis from completed items only (per spec: avg uses completed only)
   const themeRows = React.useMemo(() => buildThemeAnalysis(completedItems, config.theme_thresholds), [completedItems, config.theme_thresholds])
-  const highThemes = React.useMemo(() => themeRows.filter(r => r.riskLevel.toLowerCase().includes("high") || r.riskLevel.toLowerCase().includes("weak")), [themeRows])
-  const medThemes = React.useMemo(() => themeRows.filter(r => r.riskLevel.toLowerCase().includes("medium") || r.riskLevel.toLowerCase().includes("improvement")), [themeRows])
-  const lowThemes = React.useMemo(() => themeRows.filter(r => !r.riskLevel.toLowerCase().includes("high") && !r.riskLevel.toLowerCase().includes("weak") && !r.riskLevel.toLowerCase().includes("medium") && !r.riskLevel.toLowerCase().includes("improvement")), [themeRows])
+  
+  // Apply per-theme weights (CAG officer only feature)
+  // If isCagOfficer, weights from themeWeights state are applied; otherwise defaults to 1
+  const weightedThemeRows = React.useMemo(() => {
+    if (isCagOfficer && Object.keys(themeWeights).length > 0) {
+      return applyThemeWeights(themeRows, themeWeights)
+    }
+    return themeRows
+  }, [themeRows, themeWeights, isCagOfficer])
+
+  const highThemes = React.useMemo(() => weightedThemeRows.filter(r => r.riskLevel.toLowerCase().includes("high") || r.riskLevel.toLowerCase().includes("weak")), [weightedThemeRows])
+  const medThemes = React.useMemo(() => weightedThemeRows.filter(r => r.riskLevel.toLowerCase().includes("medium") || r.riskLevel.toLowerCase().includes("improvement")), [weightedThemeRows])
+  const lowThemes = React.useMemo(() => weightedThemeRows.filter(r => !r.riskLevel.toLowerCase().includes("high") && !r.riskLevel.toLowerCase().includes("weak") && !r.riskLevel.toLowerCase().includes("medium") && !r.riskLevel.toLowerCase().includes("improvement")), [weightedThemeRows])
 
   // Bar chart max for scaling
   const chartMax = React.useMemo(() => {
-    const allAvgs = themeRows.map(r => r.avgResidual)
+    const allAvgs = weightedThemeRows.map(r => r.avgResidual)
     return allAvgs.length > 0 ? Math.max(...allAvgs, 1) : 1
-  }, [themeRows])
+  }, [weightedThemeRows])
 
   // ─── Parameters ──────────────────────────────────────────────────────────
 
-  const param1 = React.useMemo(() => computeParam1Weighted(themeRows, config.explicit_compliance_weights), [themeRows, config.explicit_compliance_weights])
+  const param1 = React.useMemo(() => computeParam1Weighted(weightedThemeRows, config.explicit_compliance_weights), [weightedThemeRows, config.explicit_compliance_weights])
   const param2 = React.useMemo(() => computeParam2(activeItems.length, filteredItems.length, config.param2_options), [activeItems.length, filteredItems.length, config.param2_options])
 
   const p3Score = resolveDropdownScore(selections.param3_selection, config.param3_options)

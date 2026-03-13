@@ -157,6 +157,11 @@ export interface RiskParameterSelections {
 
 // ─── Computed types ──────────────────────────────────────────────────────────
 
+export interface ThemeWeight {
+    theme: string
+    weight: number  // default: 1
+}
+
 export interface ThemeRiskRow {
     theme: string
     avgResidual: number
@@ -164,6 +169,7 @@ export interface ThemeRiskRow {
     completedCount: number
     riskLevel: string  // label from threshold
     color: string
+    weight?: number  // optional: theme-specific weight (CAG officer only)
 }
 
 export interface ParameterRow {
@@ -279,9 +285,26 @@ export function computeParam1(
     return { value: Math.round(value * 100) / 100, score: Math.round(value * 100) / 100 }
 }
 
+/** Apply per-theme weights to theme rows (CAG officer only feature).
+ *  If a theme has a custom weight, use it; otherwise default to 1.
+ *  This is applied BEFORE category-based weighting in computeParam1Weighted.
+ */
+export function applyThemeWeights(
+    themeRows: ThemeRiskRow[],
+    themeWeights: Record<string, number>,
+): ThemeRiskRow[] {
+    return themeRows.map(row => ({
+        ...row,
+        weight: themeWeights[row.theme] ?? 1,
+    }))
+}
+
 /** Compute Parameter 1 — True Weighted Average (NEW: per-theme weighting method).
  *  Applies weights to individual theme scores, not category averages.
  *  Correct formula: SUM(theme_score × weight) / SUM(weight)
+ *  
+ *  If themeRows have a weight property (from applyThemeWeights), that is used first.
+ *  Otherwise, weights are determined by risk category classification.
  */
 export function computeParam1Weighted(
     themeRows: ThemeRiskRow[],
@@ -293,13 +316,19 @@ export function computeParam1Weighted(
     let weightedCount = 0
 
     for (const row of themeRows) {
-        // Determine weight based on risk level classification
-        const l = row.riskLevel.toLowerCase()
-        let weight = weights.low // default
-        if (l.includes("high") || l.includes("weak")) {
-            weight = weights.high
-        } else if (l.includes("medium") || l.includes("improvement")) {
-            weight = weights.medium
+        // If theme has explicit weight (from CAG officer), use it
+        // Otherwise, determine weight based on risk level classification
+        let weight: number
+        if (row.weight !== undefined) {
+            weight = row.weight
+        } else {
+            const l = row.riskLevel.toLowerCase()
+            weight = weights.low // default
+            if (l.includes("high") || l.includes("weak")) {
+                weight = weights.high
+            } else if (l.includes("medium") || l.includes("improvement")) {
+                weight = weights.medium
+            }
         }
 
         // Apply weight to the theme's average residual score
