@@ -1773,17 +1773,18 @@ export default function ActionablesPage() {
             toast.error(`Set document default deadlines first — ${missingDocs.length} document(s) have actionables without deadlines`)
             return
         }
-        await Promise.all(pending.map(({ item, docId }) => {
+        for (const { item, docId } of pending) {
             const docDefault = docDeadlineDefaults[docId]
             const dl = item.deadline || (docDefault?.date ? `${docDefault.date}T${docDefault.time || "23:59"}` : "")
-            return handleUpdate(docId, item.id, {
+            // Process sequentially to prevent document-level race conditions when saving
+            await handleUpdate(docId, item.id, {
                 approval_status: "approved",
                 published_at: new Date().toISOString(),
                 deadline: dl,
                 task_status: "assigned",
                 published_by_account_id: callerAccountId,
             })
-        }))
+        }
         toast.success(`Published ${pending.length} actionables to tracker`)
     }, [handleUpdate, docDeadlineDefaults, callerAccountId])
 
@@ -1993,7 +1994,9 @@ export default function ActionablesPage() {
                                                             className="h-6 gap-1 px-2 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
                                                             onClick={async () => {
                                                                 const selected = pendingItems.filter(e => checkedItems.has(`${e.docId}-${e.item.id}`))
-                                                                await Promise.all(selected.map(({ item, docId }) => handleUpdate(docId, item.id, { approval_status: "rejected" })))
+                                                                for (const { item, docId } of selected) {
+                                                                    await handleUpdate(docId, item.id, { approval_status: "rejected" })
+                                                                }
                                                                 toast.success(`Rejected ${selected.length} actionables`)
                                                                 setCheckedItems(new Set())
                                                             }}
@@ -2162,9 +2165,9 @@ export default function ActionablesPage() {
                                                         onClick={async () => {
                                                             const keys = Array.from(rejCheckedItems)
                                                             const toRepublish = rejectedItems.filter(e => keys.includes(`${e.docId}-${e.item.id}`))
-                                                            await Promise.all(toRepublish.map(({ item, docId }) =>
-                                                                handleUpdate(docId, item.id, { approval_status: "pending", published_at: "", task_status: "", deadline: "" })
-                                                            ))
+                                                            for (const { item, docId } of toRepublish) {
+                                                                await handleUpdate(docId, item.id, { approval_status: "pending", published_at: "", task_status: "", deadline: "" })
+                                                            }
                                                             toast.success(`Republished ${toRepublish.length} actionable${toRepublish.length > 1 ? "s" : ""} to unpublished`)
                                                             setRejCheckedItems(new Set())
                                                         }}
