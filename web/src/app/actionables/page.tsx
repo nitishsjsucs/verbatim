@@ -8,6 +8,7 @@ import {
     updateActionable,
     createManualActionable,
     deleteActionable as deleteActionableApi,
+    updateDocumentMetadata,
     API_BASE_URL,
 } from "@/lib/api"
 import {
@@ -193,7 +194,7 @@ function formatDateDMY(isoDate: string): string {
     return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, docDefaultTheme, callerRole }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, docDefaultTheme, callerRole, callerAccountId }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -208,6 +209,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     docDefaultDeadlineTime: string
     docDefaultTheme: string
     callerRole: string
+    callerAccountId: string
 }) {
     const isComplianceOfficer = callerRole === "compliance_officer"
     const { teamNames, leafTeamNames } = useTeams()
@@ -488,6 +490,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             published_at: new Date().toISOString(),
             deadline: dl,
             task_status: "assigned",
+            published_by_account_id: callerAccountId,
         }
         if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
         if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
@@ -1485,6 +1488,7 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
 export default function ActionablesPage() {
     const { data: session } = useSession()
     const callerRole = getUserRole(session) || "compliance_officer"
+    const callerAccountId = (session?.user as Record<string, unknown>)?.id as string || ""
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
     
@@ -1521,7 +1525,7 @@ export default function ActionablesPage() {
         })
     }, [])
 
-    // Save per-document theme defaults to localStorage whenever they change
+    // Save per-document theme defaults to localStorage + backend
     const updateDocTheme = React.useCallback((docId: string, theme: string) => {
         setDocThemeDefaults(prev => {
             const next = { ...prev, [docId]: theme }
@@ -1530,6 +1534,8 @@ export default function ActionablesPage() {
             } catch { /* ignore */ }
             return next
         })
+        // Persist to backend
+        updateDocumentMetadata(docId, { global_theme: theme }).catch(() => {})
     }, [])
 
     // Filters
@@ -1620,6 +1626,15 @@ export default function ActionablesPage() {
                     actionables: r.actionables,
                 }))
             setAllDocs(docs)
+
+            // Hydrate global theme defaults from backend
+            const backendThemes: Record<string, string> = {}
+            for (const r of results) {
+                if (r.global_theme) backendThemes[r.doc_id] = r.global_theme
+            }
+            if (Object.keys(backendThemes).length > 0) {
+                setDocThemeDefaults(prev => ({ ...prev, ...backendThemes }))
+            }
 
             setDocDeadlineDefaults(prev => {
                 const next = { ...prev }
@@ -1772,10 +1787,11 @@ export default function ActionablesPage() {
                 published_at: new Date().toISOString(),
                 deadline: dl,
                 task_status: "assigned",
+                published_by_account_id: callerAccountId,
             })
         }))
         toast.success(`Published ${pending.length} actionables to tracker`)
-    }, [handleUpdate, docDeadlineDefaults])
+    }, [handleUpdate, docDeadlineDefaults, callerAccountId])
 
     // Group by document
     const byDocument = React.useMemo(() => {
@@ -2041,6 +2057,17 @@ export default function ActionablesPage() {
                                                                     className="w-[65px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 />
                                                             </div>
+                                                            <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
+                                                                <span className="text-[9px] text-muted-foreground/50">Theme:</span>
+                                                                <select
+                                                                    value={docThemeDefaults[docId] || ""}
+                                                                    onChange={e => updateDocTheme(docId, e.target.value)}
+                                                                    className="w-[120px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
+                                                                >
+                                                                    <option value="">No default</option>
+                                                                    {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                                                </select>
+                                                            </div>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -2064,6 +2091,7 @@ export default function ActionablesPage() {
                                                                     docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"}
                                                                     docDefaultTheme={docThemeDefaults[docId] || ""}
                                                                     callerRole={callerRole}
+                                                                    callerAccountId={callerAccountId}
                                                                 />
                                                             ))}
                                                         </div>
@@ -2108,7 +2136,7 @@ export default function ActionablesPage() {
                                                         {!isCollapsed && (
                                                             <div className="p-2 space-y-2">
                                                                 {approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[docId] || ""} callerRole={callerRole} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[docId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
                                                                 ))}
                                                             </div>
                                                         )}
@@ -2188,7 +2216,7 @@ export default function ActionablesPage() {
                                                                 {!isCollapsed && (
                                                                     <div className="p-2 space-y-2">
                                                                         {rejEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} callerRole={callerRole} />
+                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
                                                                         ))}
                                                                     </div>
                                                                 )}
@@ -2228,7 +2256,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} callerRole={callerRole} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
                                                                 ))}
                                                             </div>
                                                         )

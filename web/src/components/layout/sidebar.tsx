@@ -18,6 +18,7 @@ import {
   Lock,
   Eye,
   MessageSquare,
+  Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -25,6 +26,7 @@ import { usePathname } from "next/navigation"
 import { UploadModal } from "@/components/dashboard/upload-modal"
 import { fetchConfig } from "@/lib/api"
 import { fetchChatUnreadTotal } from "@/lib/api"
+import { fetchUnreadNotificationCount } from "@/lib/api"
 import { AppConfig } from "@/lib/types"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useSession, signOut } from "@/lib/auth-client"
@@ -50,6 +52,8 @@ export function Sidebar({ className }: SidebarProps) {
   const isTeamLead = role === "team_lead"
   const userTeam = getUserTeam(session)
   const [chatUnread, setChatUnread] = React.useState(0)
+  const [notifUnread, setNotifUnread] = React.useState(0)
+  const userId = (session?.user as Record<string, unknown>)?.id as string | undefined
 
   React.useEffect(() => {
     setMounted(true)
@@ -68,6 +72,19 @@ export function Sidebar({ className }: SidebarProps) {
     const interval = setInterval(poll, 5000)
     return () => clearInterval(interval)
   }, [session, role, userTeam])
+
+  // Poll notification unread count every 8 seconds
+  React.useEffect(() => {
+    if (!userId) return
+    const poll = () => {
+      fetchUnreadNotificationCount(userId)
+        .then(setNotifUnread)
+        .catch(() => {})
+    }
+    poll()
+    const interval = setInterval(poll, 8000)
+    return () => clearInterval(interval)
+  }, [userId])
 
   return (
     <div
@@ -361,6 +378,19 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>
+          <Link
+            href="/notifications"
+            className="group flex items-center gap-2 rounded px-2 h-8 font-medium transition-colors hover:bg-sidebar-accent/70 relative"
+            title={collapsed ? "Notifications" : undefined}
+          >
+            <Bell className="h-4 w-4 text-sidebar-foreground/50" />
+            {notifUnread > 0 && (
+              <span className="absolute top-1 left-5 bg-red-500 text-white text-[9px] font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">
+                {notifUnread > 99 ? "99+" : notifUnread}
+              </span>
+            )}
+            {!collapsed && <span className="text-xs text-sidebar-foreground/60">Notifications</span>}
+          </Link>
           <button
             onClick={() => setSettingsOpen(true)}
             className="group flex items-center gap-2 rounded px-2 h-8 font-medium transition-colors hover:bg-sidebar-accent/70"

@@ -444,6 +444,10 @@ export interface ActionableItem {
     due_date?: string;
     notes?: string;
     assigned_to?: string;
+    // Feature 2: Tracker isolation by account
+    published_by_account_id?: string;
+    // Feature 3: Delegation
+    delegated_from_account_id?: string;
 }
 
 export interface ActionableComment {
@@ -469,6 +473,7 @@ export interface ActionablesResult {
     regulation_issue_date?: string;     // ISO date — document-level
     circular_effective_date?: string;   // ISO date — document-level
     regulator?: string;                 // Regulator — document-level
+    global_theme?: string;              // Document-level default theme (Feature 1)
     actionables: ActionableItem[];
     total_extracted: number;
     total_validated: number;

@@ -180,6 +180,10 @@ class ActionableItem:
     # ── Multi-team assignment ──
     assigned_teams: list = field(default_factory=list)  # e.g. ["Policy", "Technology"] — empty = single-team via workstream
     team_workflows: dict = field(default_factory=dict)  # Per-team workflow state, keyed by team name
+    # ── Feature 2: Tracker isolation by account ──
+    published_by_account_id: str = ""  # Account ID of the CO who published this actionable
+    # ── Feature 3: Delegation ──
+    delegated_from_account_id: str = ""  # If delegated, the original CO's account ID
 
     # ── Multi-team helpers ──
     TEAM_WORKFLOW_FIELDS = [
@@ -395,6 +399,8 @@ class ActionableItem:
             "bypass_reviewer_rejection_reason": self.bypass_reviewer_rejection_reason,
             "assigned_teams": self.assigned_teams,
             "team_workflows": self.team_workflows,
+            "published_by_account_id": self.published_by_account_id,
+            "delegated_from_account_id": self.delegated_from_account_id,
         }
 
     @classmethod
@@ -528,6 +534,8 @@ class ActionableItem:
             bypass_reviewer_rejection_reason=data.get("bypass_reviewer_rejection_reason", ""),
             assigned_teams=data.get("assigned_teams", []),
             team_workflows=data.get("team_workflows", {}),
+            published_by_account_id=data.get("published_by_account_id", ""),
+            delegated_from_account_id=data.get("delegated_from_account_id", ""),
         )
 
 
@@ -540,6 +548,7 @@ class ActionablesResult:
     regulation_issue_date: str = ""  # ISO date — regulation issued date
     circular_effective_date: str = ""  # ISO date — circular effective date
     regulator: str = ""  # Regulator name
+    global_theme: str = ""  # Document-level default theme (Feature 1)
     actionables: list[ActionableItem] = field(default_factory=list)
     total_extracted: int = 0
     total_validated: int = 0
@@ -584,6 +593,7 @@ class ActionablesResult:
             "regulation_issue_date": self.regulation_issue_date,
             "circular_effective_date": self.circular_effective_date,
             "regulator": self.regulator,
+            "global_theme": self.global_theme,
             "actionables": [a.to_dict() for a in self.actionables],
             "total_extracted": self.total_extracted,
             "total_validated": self.total_validated,
@@ -606,6 +616,7 @@ class ActionablesResult:
             regulation_issue_date=data.get("regulation_issue_date", ""),
             circular_effective_date=data.get("circular_effective_date", ""),
             regulator=data.get("regulator", ""),
+            global_theme=data.get("global_theme", ""),
             actionables=[
                 ActionableItem.from_dict(a) for a in data.get("actionables", [])
             ],

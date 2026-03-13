@@ -1151,12 +1151,17 @@ def update_document_metadata(doc_id: str, body: dict = Body(...)):
             for a in result.actionables:
                 setattr(a, field_name, body[field_name])
 
+    # Global theme (document-level, not propagated to actionables — inheritance is frontend)
+    if "global_theme" in body:
+        result.global_theme = body["global_theme"]
+
     store.save(result)
     return {
         "doc_id": result.doc_id,
         "regulation_issue_date": result.regulation_issue_date,
         "circular_effective_date": result.circular_effective_date,
         "regulator": result.regulator,
+        "global_theme": result.global_theme,
     }
 
 
@@ -1574,6 +1579,8 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "bypass_approved_by", "bypass_approved_at",
         "bypass_disapproved_by", "bypass_disapproved_at", "bypass_disapproval_reason",
         "bypass_reviewer_rejected_by", "bypass_reviewer_rejected_at", "bypass_reviewer_rejection_reason",
+        # Tracker isolation & delegation (Feature 2 & 3)
+        "published_by_account_id", "delegated_from_account_id",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -4826,6 +4833,237 @@ def migrate_risk_fields():
         "migrated": migrated,
         "message": f"Migrated {migrated} actionables with safe defaults. {total - migrated} already had impact_dropdown populated.",
     }
+
+
+# ---------------------------------------------------------------------------
+# Feature 4: Notifications API
+# ---------------------------------------------------------------------------
+
+@app.get("/notifications")
+def get_notifications(user_id: str = Query(...), limit: int = Query(50)):
+    """Fetch notifications for a user, newest first."""
+    from utils.mongo import get_db
+    db = get_db()
+    coll = db["notifications"]
+    docs = list(coll.find({"user_id": user_id}).sort("created_at", -1).limit(limit))
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return {"notifications": docs}
+
+
+@app.post("/notifications")
+def create_notification(body: dict = Body(...)):
+    """Create a notification. Body: {user_id, actionable_id?, type, message}"""
+    from utils.mongo import get_db
+    db = get_db()
+    coll = db["notifications"]
+    doc = {
+        "user_id": body.get("user_id", ""),
+        "actionable_id": body.get("actionable_id", ""),
+        "doc_id": body.get("doc_id", ""),
+        "type": body.get("type", "info"),
+        "message": body.get("message", ""),
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = coll.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+
+@app.post("/notifications/{notification_id}/read")
+def mark_notification_read(notification_id: str):
+    """Mark a single notification as read."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    db["notifications"].update_one({"_id": ObjectId(notification_id)}, {"$set": {"is_read": True}})
+    return {"ok": True}
+
+
+@app.post("/notifications/read-all")
+def mark_all_notifications_read(body: dict = Body(...)):
+    """Mark all notifications for a user as read."""
+    from utils.mongo import get_db
+    db = get_db()
+    user_id = body.get("user_id", "")
+    if user_id:
+        db["notifications"].update_many({"user_id": user_id, "is_read": False}, {"$set": {"is_read": True}})
+    return {"ok": True}
+
+
+@app.get("/notifications/unread-count")
+def get_unread_count(user_id: str = Query(...)):
+    """Get unread notification count for a user."""
+    from utils.mongo import get_db
+    db = get_db()
+    count = db["notifications"].count_documents({"user_id": user_id, "is_read": False})
+    return {"unread": count}
+
+
+# ---------------------------------------------------------------------------
+# Feature 3: Delegation API
+# ---------------------------------------------------------------------------
+
+@app.get("/delegation-requests")
+def get_delegation_requests(account_id: str = Query(...), direction: str = Query("incoming")):
+    """Fetch delegation requests. direction=incoming|outgoing|all"""
+    from utils.mongo import get_db
+    db = get_db()
+    coll = db["delegation_requests"]
+    query: dict = {}
+    if direction == "incoming":
+        query["to_account_id"] = account_id
+    elif direction == "outgoing":
+        query["from_account_id"] = account_id
+    else:
+        query["$or"] = [{"from_account_id": account_id}, {"to_account_id": account_id}]
+    docs = list(coll.find(query).sort("created_at", -1))
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return {"requests": docs}
+
+
+@app.post("/delegation-requests")
+def create_delegation_request(body: dict = Body(...)):
+    """Create a delegation request. Body: {actionable_id, doc_id, from_account_id, to_account_id, from_name, to_name}"""
+    from utils.mongo import get_db
+    db = get_db()
+    coll = db["delegation_requests"]
+    doc = {
+        "actionable_id": body.get("actionable_id", ""),
+        "doc_id": body.get("doc_id", ""),
+        "from_account_id": body.get("from_account_id", ""),
+        "to_account_id": body.get("to_account_id", ""),
+        "from_name": body.get("from_name", ""),
+        "to_name": body.get("to_name", ""),
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "resolved_at": "",
+    }
+    result = coll.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+
+    # Create notification for delegatee
+    notif = {
+        "user_id": body.get("to_account_id", ""),
+        "actionable_id": body.get("actionable_id", ""),
+        "doc_id": body.get("doc_id", ""),
+        "type": "delegation_request",
+        "message": f"Delegation request from {body.get('from_name', 'a colleague')} for actionable {body.get('actionable_id', '')}",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db["notifications"].insert_one(notif)
+
+    return doc
+
+
+@app.post("/delegation-requests/{request_id}/accept")
+def accept_delegation(request_id: str):
+    """Accept a delegation request — transfers actionable ownership."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    coll = db["delegation_requests"]
+    req = coll.find_one({"_id": ObjectId(request_id)})
+    if not req:
+        raise HTTPException(status_code=404, detail="Delegation request not found")
+    if req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Request already resolved")
+
+    coll.update_one({"_id": ObjectId(request_id)}, {"$set": {
+        "status": "accepted",
+        "resolved_at": datetime.now(timezone.utc).isoformat(),
+    }})
+
+    # Update actionable ownership
+    doc_id = req.get("doc_id", "")
+    actionable_id = req.get("actionable_id", "")
+    if doc_id and actionable_id:
+        store = get_actionable_store()
+        result = store.load(doc_id)
+        if result:
+            for a in result.actionables:
+                if a.id == actionable_id or a.actionable_id == actionable_id:
+                    a.delegated_from_account_id = req.get("from_account_id", "")
+                    a.published_by_account_id = req.get("to_account_id", "")
+                    break
+            store.save(result)
+
+    # Notify delegator
+    notif = {
+        "user_id": req.get("from_account_id", ""),
+        "actionable_id": actionable_id,
+        "doc_id": doc_id,
+        "type": "delegation_accepted",
+        "message": f"Your delegation request for {actionable_id} was accepted by {req.get('to_name', 'colleague')}",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db["notifications"].insert_one(notif)
+
+    return {"ok": True, "status": "accepted"}
+
+
+@app.post("/delegation-requests/{request_id}/reject")
+def reject_delegation(request_id: str):
+    """Reject a delegation request — no changes to actionable."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    coll = db["delegation_requests"]
+    req = coll.find_one({"_id": ObjectId(request_id)})
+    if not req:
+        raise HTTPException(status_code=404, detail="Delegation request not found")
+    if req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Request already resolved")
+
+    coll.update_one({"_id": ObjectId(request_id)}, {"$set": {
+        "status": "rejected",
+        "resolved_at": datetime.now(timezone.utc).isoformat(),
+    }})
+
+    # Notify delegator
+    notif = {
+        "user_id": req.get("from_account_id", ""),
+        "actionable_id": req.get("actionable_id", ""),
+        "doc_id": req.get("doc_id", ""),
+        "type": "delegation_rejected",
+        "message": f"Your delegation request for {req.get('actionable_id', '')} was rejected by {req.get('to_name', 'colleague')}",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db["notifications"].insert_one(notif)
+
+    return {"ok": True, "status": "rejected"}
+
+
+# ---------------------------------------------------------------------------
+# Feature 2: Fetch compliance officers list (for delegation dropdown)
+# ---------------------------------------------------------------------------
+
+@app.get("/compliance-officers")
+def get_compliance_officers():
+    """Return list of compliance officer accounts for delegation dropdown."""
+    from utils.mongo import get_db
+    import os
+    auth_db_name = os.getenv("AUTH_DB_NAME", "govinda_auth")
+    from pymongo import MongoClient
+    mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    client = MongoClient(mongo_uri)
+    auth_db = client[auth_db_name]
+    users = list(auth_db["user"].find({"role": "compliance_officer"}, {"_id": 1, "name": 1, "email": 1}))
+    result = []
+    for u in users:
+        result.append({
+            "id": str(u["_id"]),
+            "name": u.get("name", u.get("email", "")),
+            "email": u.get("email", ""),
+        })
+    return {"officers": result}
 
 
 if __name__ == "__main__":

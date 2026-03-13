@@ -19,7 +19,7 @@ import {
     Paperclip, Calendar, Save,
     CheckCircle2,
     XCircle, MessageSquare, SortAsc, SortDesc, Users,
-    Undo2, FileText, ExternalLink, Download, Flag, RotateCcw,
+    Undo2, FileText, ExternalLink, Download, Flag, RotateCcw, UserPlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -33,6 +33,7 @@ import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { ActionableExpansion } from "@/components/dashboard/actionable-expansion"
+import { DelegateModal } from "@/components/dashboard/delegate-modal"
 import { computeResidualScore } from "@/lib/risk-engine"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -82,6 +83,10 @@ export default function DashboardPage() {
 
     // Unpublish confirmation state
     const [unpublishingItem, setUnpublishingItem] = React.useState<{ docId: string; itemId: string } | null>(null)
+
+    // Delegation modal state
+    const [delegatingItem, setDelegatingItem] = React.useState<{ docId: string; actionableId: string } | null>(null)
+    const callerAccountId = (session?.user as Record<string, unknown>)?.id as string || ""
 
     // Bypass disapprove state (CO disapproves wrongly-tagged flag)
     const [disapprovingBypass, setDisapprovingBypass] = React.useState<{ docId: string; item: ActionableItem } | null>(null)
@@ -988,6 +993,14 @@ export default function DashboardPage() {
                                                             <Flag className="h-2.5 w-2.5" /> Flagged
                                                         </span>
                                                     )}
+                                                    {/* Delegate button */}
+                                                    <button
+                                                        onClick={() => setDelegatingItem({ docId, actionableId: item.actionable_id || item.id })}
+                                                        className="inline-flex items-center gap-0.5 text-xs px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
+                                                        title="Delegate to another CO"
+                                                    >
+                                                        <UserPlus className="h-2.5 w-2.5" /> Delegate
+                                                    </button>
                                                     {/* Unpublish button */}
                                                     <button
                                                         onClick={() => setUnpublishingItem({ docId, itemId: item.id })}
@@ -1580,6 +1593,14 @@ export default function DashboardPage() {
                 </div>
             </main>
         </div>
+        <DelegateModal
+            open={!!delegatingItem}
+            onClose={() => setDelegatingItem(null)}
+            actionableId={delegatingItem?.actionableId || ""}
+            docId={delegatingItem?.docId || ""}
+            fromAccountId={callerAccountId}
+            fromName={userName}
+        />
         </RoleRedirect>
     )
 }

@@ -943,8 +943,8 @@ export async function fetchRegulators(): Promise<string[]> {
 
 export async function updateDocumentMetadata(
     docId: string,
-    metadata: { regulation_issue_date?: string; circular_effective_date?: string; regulator?: string },
-): Promise<{ doc_id: string; regulation_issue_date: string; circular_effective_date: string; regulator: string }> {
+    metadata: { regulation_issue_date?: string; circular_effective_date?: string; regulator?: string; global_theme?: string },
+): Promise<{ doc_id: string; regulation_issue_date: string; circular_effective_date: string; regulator: string; global_theme: string }> {
     const res = await apiFetch(`/documents/${docId}/metadata`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -1132,4 +1132,116 @@ export async function updateRiskParameterSelections(selections: Record<string, u
     });
     if (!res.ok) throw new Error('Failed to update risk parameter selections');
     return res.json();
+}
+
+// ─── Notifications API ──────────────────────────────────────────────────────
+
+export async function fetchNotifications(userId: string, limit = 50): Promise<{ notifications: Notification[] }> {
+    const res = await apiFetch(`/notifications?user_id=${encodeURIComponent(userId)}&limit=${limit}`);
+    if (!res.ok) throw new Error('Failed to fetch notifications');
+    return res.json();
+}
+
+export async function createNotification(data: { user_id: string; actionable_id?: string; doc_id?: string; type: string; message: string }): Promise<Notification> {
+    const res = await apiFetch('/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create notification');
+    return res.json();
+}
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+    await apiFetch(`/notifications/${notificationId}/read`, { method: 'POST' });
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+    await apiFetch('/notifications/read-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+    });
+}
+
+export async function fetchUnreadNotificationCount(userId: string): Promise<number> {
+    const res = await apiFetch(`/notifications/unread-count?user_id=${encodeURIComponent(userId)}`);
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return data.unread ?? 0;
+}
+
+// ─── Delegation API ─────────────────────────────────────────────────────────
+
+export interface DelegationRequest {
+    id: string;
+    actionable_id: string;
+    doc_id: string;
+    from_account_id: string;
+    to_account_id: string;
+    from_name: string;
+    to_name: string;
+    status: "pending" | "accepted" | "rejected";
+    created_at: string;
+    resolved_at: string;
+}
+
+export async function fetchDelegationRequests(accountId: string, direction: "incoming" | "outgoing" | "all" = "incoming"): Promise<{ requests: DelegationRequest[] }> {
+    const res = await apiFetch(`/delegation-requests?account_id=${encodeURIComponent(accountId)}&direction=${direction}`);
+    if (!res.ok) throw new Error('Failed to fetch delegation requests');
+    return res.json();
+}
+
+export async function createDelegationRequest(data: {
+    actionable_id: string;
+    doc_id: string;
+    from_account_id: string;
+    to_account_id: string;
+    from_name: string;
+    to_name: string;
+}): Promise<DelegationRequest> {
+    const res = await apiFetch('/delegation-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create delegation request');
+    return res.json();
+}
+
+export async function acceptDelegationRequest(requestId: string): Promise<void> {
+    const res = await apiFetch(`/delegation-requests/${requestId}/accept`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to accept delegation');
+}
+
+export async function rejectDelegationRequest(requestId: string): Promise<void> {
+    const res = await apiFetch(`/delegation-requests/${requestId}/reject`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to reject delegation');
+}
+
+// ─── Compliance Officers API ────────────────────────────────────────────────
+
+export interface ComplianceOfficer {
+    id: string;
+    name: string;
+    email: string;
+}
+
+export async function fetchComplianceOfficers(): Promise<{ officers: ComplianceOfficer[] }> {
+    const res = await apiFetch('/compliance-officers');
+    if (!res.ok) throw new Error('Failed to fetch compliance officers');
+    return res.json();
+}
+
+// ─── Notification type ──────────────────────────────────────────────────────
+
+export interface Notification {
+    id: string;
+    user_id: string;
+    actionable_id?: string;
+    doc_id?: string;
+    type: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
 }
