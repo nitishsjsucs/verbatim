@@ -184,6 +184,7 @@ class ActionableItem:
     published_by_account_id: str = ""  # Account ID of the CO who published this actionable
     # ── Feature 3: Delegation ──
     delegated_from_account_id: str = ""  # If delegated, the original CO's account ID
+    delegation_request_id: str = ""  # Pending delegation request ID (blank when none)
 
     # ── Multi-team helpers ──
     TEAM_WORKFLOW_FIELDS = [
@@ -401,6 +402,7 @@ class ActionableItem:
             "team_workflows": self.team_workflows,
             "published_by_account_id": self.published_by_account_id,
             "delegated_from_account_id": self.delegated_from_account_id,
+            "delegation_request_id": self.delegation_request_id,
         }
 
     @classmethod
