@@ -4961,6 +4961,51 @@ def get_delegation_requests(account_id: str = Query(...), direction: str = Query
     return {"requests": docs}
 
 
+@app.post("/delegation-requests/regenerate-notifications")
+def regenerate_delegation_notifications(account_id: str = Query(...)):
+    """Regenerate notifications for pending delegation requests if they were cleared prematurely."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    
+    # Find all pending delegation requests where this user is the recipient
+    pending_requests = list(db["delegation_requests"].find({
+        "to_account_id": account_id,
+        "status": "pending"
+    }))
+    
+    regenerated_count = 0
+    for req in pending_requests:
+        request_id = str(req["_id"])
+        
+        # Check if notification already exists for this request
+        existing_notif = db["notifications"].find_one({
+            "delegation_request_id": request_id,
+            "user_id": account_id
+        })
+        
+        if not existing_notif:
+            # Regenerate notification
+            actionable_title = req.get("actionable_title", "")
+            actionable_id = req.get("actionable_id", "")
+            title_display = f"{actionable_title} (ID: {actionable_id})" if actionable_title else f"Actionable {actionable_id}"
+            
+            notif = {
+                "user_id": account_id,
+                "actionable_id": actionable_id,
+                "doc_id": req.get("doc_id", ""),
+                "delegation_request_id": request_id,
+                "type": "delegation_request",
+                "message": f"Delegation request from {req.get('from_name', 'a colleague')} for {title_display}",
+                "is_read": False,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            db["notifications"].insert_one(notif)
+            regenerated_count += 1
+    
+    return {"ok": True, "regenerated": regenerated_count}
+
+
 @app.post("/delegation-requests")
 def create_delegation_request(body: dict = Body(...)):
     """Create a delegation request. Body: {actionable_id, doc_id, from_account_id, to_account_id, from_name, to_name}"""
@@ -4969,6 +5014,7 @@ def create_delegation_request(body: dict = Body(...)):
     coll = db["delegation_requests"]
     doc = {
         "actionable_id": body.get("actionable_id", ""),
+        "actionable_title": body.get("actionable_title", ""),
         "doc_id": body.get("doc_id", ""),
         "from_account_id": body.get("from_account_id", ""),
         "to_account_id": body.get("to_account_id", ""),
@@ -4981,6 +5027,19 @@ def create_delegation_request(body: dict = Body(...)):
     result = coll.insert_one(doc)
     doc["id"] = str(result.inserted_id)
     doc.pop("_id", None)
+
+    # Store delegation_request_id on the actionable
+    doc_id = body.get("doc_id", "")
+    actionable_id = body.get("actionable_id", "")
+    if doc_id and actionable_id:
+        store = get_actionable_store()
+        result_doc = store.load(doc_id)
+        if result_doc:
+            for a in result_doc.actionables:
+                if a.id == actionable_id or a.actionable_id == actionable_id:
+                    a.delegation_request_id = doc["id"]
+                    break
+            store.save(result_doc)
 
     # Create notification for delegatee
     actionable_title = body.get("actionable_title", "")
@@ -5034,6 +5093,9 @@ def accept_delegation(request_id: str):
                     break
             store.save(result)
 
+    # Delete the original delegation notification from receiver's list
+    db["notifications"].delete_many({"delegation_request_id": request_id})
+
     # Notify delegator
     notif = {
         "user_id": req.get("from_account_id", ""),
@@ -5079,6 +5141,9 @@ def reject_delegation(request_id: str):
                     a.delegation_request_id = ""  # Clear pending delegation
                     break
             store.save(result)
+
+    # Delete the original delegation notification from receiver's list
+    db["notifications"].delete_many({"delegation_request_id": request_id})
 
     # Notify delegator
     notif = {

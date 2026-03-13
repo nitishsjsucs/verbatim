@@ -1239,6 +1239,12 @@ export async function rejectDelegationRequest(requestId: string): Promise<void> 
     if (!res.ok) throw new Error('Failed to reject delegation');
 }
 
+export async function regenerateDelegationNotifications(accountId: string): Promise<{ regenerated: number }> {
+    const res = await apiFetch(`/delegation-requests/regenerate-notifications?account_id=${accountId}`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to regenerate notifications');
+    return res.json();
+}
+
 // ─── Compliance Officers API ────────────────────────────────────────────────
 
 export interface ComplianceOfficer {

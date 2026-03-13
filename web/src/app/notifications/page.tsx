@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useSession } from "@/lib/auth-client"
-import { fetchNotifications, markNotificationRead, markAllNotificationsRead, clearAllNotifications, acceptDelegationRequest, rejectDelegationRequest, type Notification } from "@/lib/api"
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, clearAllNotifications, acceptDelegationRequest, rejectDelegationRequest, regenerateDelegationNotifications, type Notification } from "@/lib/api"
 import { Bell, CheckCheck, Loader2, ExternalLink, Check, X, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/status-config"
@@ -32,6 +32,8 @@ export default function NotificationsPage() {
         if (!userId) return
         try {
             setLoading(true)
+            // Regenerate any missing notifications for pending delegation requests
+            await regenerateDelegationNotifications(userId).catch(() => {})
             const data = await fetchNotifications(userId, 100)
             setNotifications(data.notifications)
         } catch {

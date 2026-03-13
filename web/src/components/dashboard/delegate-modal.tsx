@@ -64,7 +64,8 @@ export function DelegateModal({ open, onClose, actionableId, actionableTitle, do
         if (!target) return
         setSubmitting(true)
         try {
-            const delegationReq = await createDelegationRequest({
+            // Create delegation request (backend stores delegation_request_id on actionable)
+            await createDelegationRequest({
                 actionable_id: actionableId,
                 actionable_title: actionableTitle || "",
                 doc_id: docId,
@@ -74,17 +75,12 @@ export function DelegateModal({ open, onClose, actionableId, actionableTitle, do
                 to_name: target.name,
             })
             
-            // Store delegation_request_id on the actionable
-            await updateActionable(docId, actionableId, {
-                delegation_request_id: delegationReq.id,
-            })
-            
             setDelegationSent(true)
-            toast.success(`Delegation request sent to ${target.name}`)
+            toast.success("Delegation request sent successfully")
             onSuccess?.()
+            // Keep modal open with "✓ Sent" button visible, auto-close after delay
             setTimeout(() => {
                 onClose()
-                setDelegationSent(false)
             }, 1500)
         } catch (err) {
             console.error("Delegation error:", err)
