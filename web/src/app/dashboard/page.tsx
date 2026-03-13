@@ -368,6 +368,21 @@ export default function DashboardPage() {
         toast.success("Task rejected — returned for rework")
     }, [userName, handleUpdate])
 
+    // Only show PUBLISHED actionables, scoped to this publisher (legacy items without publisher remain visible)
+    const allRows: FlatRow[] = React.useMemo(() => {
+        const rows: FlatRow[] = []
+        for (const doc of allDocs) {
+            for (const item of doc.actionables) {
+                if (!item.published_at) continue
+                rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
+            }
+        }
+        return rows.filter(({ item }) => {
+            if (!item.published_by_account_id) return true
+            return item.published_by_account_id === callerAccountId
+        })
+    }, [allDocs, callerAccountId])
+
     // Unique doc names for filter dropdown
     const docOptions = React.useMemo(() => {
         const map = new Map<string, string>()
