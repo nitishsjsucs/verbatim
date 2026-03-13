@@ -311,7 +311,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
         setDraftTranche3(safeStr(item.tranche3))
-        setDraftTheme(safeStr(item.theme))
+        setDraftTheme(safeStr(item.theme) || docDefaultTheme)
         // Structured risk sub-dropdowns
         setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
         setDraftLikePP(item.likelihood_products_processes || emptyRSD)
@@ -337,19 +337,21 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         }
         setDraftTeamImpl(d)
         setTeamDeadlineDrafts(dlDrafts)
-    }, [item])
+    }, [item, docDefaultTheme])
 
     // Determine if any draft differs from saved
     const subDiffers = (a: RiskSubDropdown | undefined, b: RiskSubDropdown | undefined) => {
         const la = a?.label || "", lb = b?.label || ""
         return la !== lb
     }
+    const resolvedTheme = draftTheme || docDefaultTheme || ""
+
     const isDirty = React.useMemo(() => {
         if (draftAction !== safeStr(item.action)) return true
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
         if (draftTranche3 !== safeStr(item.tranche3)) return true
-        if (draftTheme !== safeStr(item.theme)) return true
+        if (resolvedTheme !== safeStr(item.theme)) return true
         // Structured risk sub-dropdowns
         if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
         if (subDiffers(draftLikePP, item.likelihood_products_processes)) return true
@@ -388,7 +390,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
             // Risk assessment — structured sub-dropdowns
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
-            if (draftTheme !== safeStr(item.theme)) updates.theme = draftTheme
+            if (resolvedTheme !== safeStr(item.theme)) updates.theme = resolvedTheme
             // CO only sets impact_dropdown; members set likelihood + control
             if (isComplianceOfficer) {
                 if (subDiffers(draftImpactDD, item.impact_dropdown)) {
@@ -460,7 +462,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         // Validate required fields before publish (CO publishes to tracker)
         // Note: likelihood/control fields are filled by member during submission, not by CO
         const missing: string[] = []
-        if (!draftTheme) missing.push("Theme")
+        if (!resolvedTheme) missing.push("Theme")
         if (!draftTranche3) missing.push("Tranche 3")
         if (!draftImpactDD?.label) missing.push("Impact")
         if (draftTeams.length === 0 || (draftTeams.length === 1 && !draftTeams[0])) missing.push("At least one Team")
