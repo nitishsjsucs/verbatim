@@ -1171,6 +1171,25 @@ export async function fetchUnreadNotificationCount(userId: string): Promise<numb
     return data.unread ?? 0;
 }
 
+export async function clearAllNotifications(userId: string): Promise<{ deleted: number }> {
+    const res = await apiFetch(`/notifications/clear?user_id=${encodeURIComponent(userId)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to clear notifications');
+    return res.json();
+}
+
+// ─── Delegation Stats API ────────────────────────────────────────────────────
+
+export interface DelegationStats {
+    sent: { total: number; accepted: number; rejected: number; pending: number };
+    received: { total: number; accepted: number; rejected: number; pending: number };
+}
+
+export async function fetchDelegationStats(accountId: string): Promise<DelegationStats> {
+    const res = await apiFetch(`/delegation-stats?account_id=${encodeURIComponent(accountId)}`);
+    if (!res.ok) throw new Error('Failed to fetch delegation stats');
+    return res.json();
+}
+
 // ─── Delegation API ─────────────────────────────────────────────────────────
 
 export interface DelegationRequest {

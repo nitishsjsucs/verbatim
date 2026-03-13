@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useSession } from "@/lib/auth-client"
-import { fetchNotifications, markNotificationRead, markAllNotificationsRead, acceptDelegationRequest, rejectDelegationRequest, type Notification } from "@/lib/api"
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, clearAllNotifications, acceptDelegationRequest, rejectDelegationRequest, type Notification } from "@/lib/api"
 import { Bell, CheckCheck, Loader2, ExternalLink, Check, X, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/status-config"
@@ -58,8 +58,8 @@ export default function NotificationsPage() {
         if (!userId) return
         if (!confirm("Clear all notifications? This cannot be undone.")) return
         try {
-            // Mark all as read then clear from state
-            await markAllNotificationsRead(userId)
+            // Permanently delete all notifications for this user from the database
+            await clearAllNotifications(userId)
             setNotifications([])
             toast.success("All notifications cleared")
         } catch (err) {

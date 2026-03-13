@@ -4902,6 +4902,42 @@ def get_unread_count(user_id: str = Query(...)):
     return {"unread": count}
 
 
+@app.delete("/notifications/clear")
+def clear_user_notifications(user_id: str = Query(...)):
+    """Permanently delete all notifications for the given user."""
+    from utils.mongo import get_db
+    db = get_db()
+    result = db["notifications"].delete_many({"user_id": user_id})
+    return {"ok": True, "deleted": result.deleted_count}
+
+
+# ---------------------------------------------------------------------------
+# Feature 5: Delegation Stats API
+# ---------------------------------------------------------------------------
+
+@app.get("/delegation-stats")
+def get_delegation_stats(account_id: str = Query(...)):
+    """Return delegation metrics for a given account (as sender and receiver)."""
+    from utils.mongo import get_db
+    db = get_db()
+    coll = db["delegation_requests"]
+
+    sent_total = coll.count_documents({"from_account_id": account_id})
+    sent_accepted = coll.count_documents({"from_account_id": account_id, "status": "accepted"})
+    sent_rejected = coll.count_documents({"from_account_id": account_id, "status": "rejected"})
+    sent_pending = coll.count_documents({"from_account_id": account_id, "status": "pending"})
+
+    received_total = coll.count_documents({"to_account_id": account_id})
+    received_accepted = coll.count_documents({"to_account_id": account_id, "status": "accepted"})
+    received_rejected = coll.count_documents({"to_account_id": account_id, "status": "rejected"})
+    received_pending = coll.count_documents({"to_account_id": account_id, "status": "pending"})
+
+    return {
+        "sent": {"total": sent_total, "accepted": sent_accepted, "rejected": sent_rejected, "pending": sent_pending},
+        "received": {"total": received_total, "accepted": received_accepted, "rejected": received_rejected, "pending": received_pending},
+    }
+
+
 # ---------------------------------------------------------------------------
 # Feature 3: Delegation API
 # ---------------------------------------------------------------------------

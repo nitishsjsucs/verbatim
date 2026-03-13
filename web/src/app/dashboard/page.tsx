@@ -551,7 +551,7 @@ export default function DashboardPage() {
 
     // Stats
     const stats = React.useMemo(() => {
-        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
+        const s = { total: allRows.length, completed: 0, inProgress: 0, teamReview: 0, reworking: 0, review: 0, assigned: 0, pendingAllTeams: 0, waitingDelegation: 0, yetToDeadline: 0, delayed30: 0, delayed60: 0, delayed90: 0 }
         for (const r of allRows) {
             const st = r.item.task_status || "assigned"
             if (st === "completed") s.completed++
@@ -561,6 +561,7 @@ export default function DashboardPage() {
             else if (st === "reworking") s.reworking++
             else if (st === "pending_all_teams") s.pendingAllTeams++
             else s.assigned++
+            if (r.item.delegation_request_id) s.waitingDelegation++
             if (st !== "completed") {
                 const dc = deadlineCategory(r.item.deadline)
                 if (dc === "yet") s.yetToDeadline++
@@ -617,6 +618,7 @@ export default function DashboardPage() {
                         <StatCell value={stats.delayed60} label="Delayed 60d" colorClass="text-orange-500" />
                         <StatCell value={stats.delayed90} label="Delayed 90d" colorClass="text-red-500" />
                         <StatDivider />
+                        <StatCell value={stats.waitingDelegation} label="Delegation" colorClass="text-amber-400" />
                     </div>
 
                     <div className="flex-1" />

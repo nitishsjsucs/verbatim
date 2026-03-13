@@ -4,12 +4,12 @@ import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { AuthGuard, getUserRole, getUserTeam } from "@/components/auth/auth-guard"
 import { useSession } from "@/lib/auth-client"
-import { fetchAllActionables } from "@/lib/api"
+import { fetchAllActionables, fetchDelegationStats, type DelegationStats } from "@/lib/api"
 import { ActionableItem, TaskStatus } from "@/lib/types"
 import {
     LayoutDashboard, Loader2, Download, AlertTriangle, Shield,
     Users, ChevronDown, ChevronRight, Clock, CheckCircle2,
-    TrendingUp, BarChart3, FileText, Activity,
+    TrendingUp, BarChart3, FileText, Activity, UserPlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -234,6 +234,8 @@ function ReportsContent() {
     const [allItems, setAllItems] = React.useState<ActionableItem[]>([])
     const [allActionables, setAllActionables] = React.useState<ActionableItem[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [delegationStats, setDelegationStats] = React.useState<DelegationStats | null>(null)
+    const accountId = (session?.user as Record<string, unknown>)?.id as string || ""
 
     const loadData = React.useCallback(async () => {
         try {
@@ -250,12 +252,19 @@ function ReportsContent() {
             }
             setAllItems(published)
             setAllActionables(all)
+            // Fetch delegation stats for the current user
+            if (accountId) {
+                try {
+                    const ds = await fetchDelegationStats(accountId)
+                    setDelegationStats(ds)
+                } catch { /* ignore if delegation stats fail */ }
+            }
         } catch {
             toast.error("Failed to load data")
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [accountId])
 
     React.useEffect(() => { loadData() }, [loadData])
 
@@ -384,6 +393,10 @@ function ReportsContent() {
         const evidenceRate = total > 0 ? ((withEvidence / total) * 100).toFixed(1) : "0"
         const pendingEvidence = items.filter(a => a.task_status !== "completed" && (!a.evidence_files || a.evidence_files.length === 0)).length
 
+        // Delegation-related counts
+        const waitingDelegation = items.filter(a => !!a.delegation_request_id).length
+        const delegatedFrom = items.filter(a => !!a.delegated_from_account_id).length
+
         return {
             total, totalActionables, approved, pending, openTasks,
             byStatus, byRisk, openByRisk, overdueByRisk, byWorkstream, completionRate,
@@ -393,6 +406,7 @@ function ReportsContent() {
             workload, teamPerf,
             withEvidence, evidenceRate, pendingEvidence,
             themeAnalysis, themeHighCount, themeMedCount, themeLowCount,
+            waitingDelegation, delegatedFrom,
         }
     }, [allItems, allActionables, dlCategory])
 
@@ -511,6 +525,7 @@ function ReportsContent() {
                                 <Stat label="Total Overdue" value={stats.totalOverdue} color={stats.totalOverdue > 0 ? "#ef4444" : "#22c55e"} />
                                 <Stat label="High Risk Open" value={stats.highRiskOpen} color={stats.highRiskOpen > 0 ? "#ef4444" : "#22c55e"} />
                                 <Stat label="Under Review" value={stats.byStatus.review} color="#3b82f6" />
+                                <Stat label="Awaiting Delegation" value={stats.waitingDelegation} color={stats.waitingDelegation > 0 ? "#f59e0b" : "#22c55e"} />
                                 <Stat label="Avg Completion (d)" value={stats.avgCompletionDays} />
                                 <Stat label="Avg Review (d)" value={stats.avgReviewDays} />
                             </div>
@@ -773,6 +788,57 @@ function ReportsContent() {
                                     <span className="text-xs font-mono">{((stats.approved / stats.totalActionables) * 100).toFixed(1)}%</span>
                                 </div>
                             )}
+                        </Section>
+
+                        {/* S9: Delegation Metrics */}
+                        <Section title="Section 9 — Delegation Metrics" icon={<UserPlus className="h-3.5 w-3.5 text-amber-500" />}>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* Actionable-level delegation counts */}
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Actionable Delegation Status</h3>
+                                    <div className="flex gap-3 flex-wrap">
+                                        <Stat label="Waiting for Delegation Approval" value={stats.waitingDelegation} color={stats.waitingDelegation > 0 ? "#f59e0b" : "#22c55e"} />
+                                        <Stat label="Ownership Changed (Delegated)" value={stats.delegatedFrom} color={stats.delegatedFrom > 0 ? "#3b82f6" : "#71717a"} />
+                                    </div>
+                                </div>
+                                {/* Per-user delegation request metrics */}
+                                <div className="bg-card border border-border/30 rounded-lg p-4">
+                                    <h3 className="text-xs font-medium text-foreground mb-3">Your Delegation Requests</h3>
+                                    {delegationStats ? (
+                                        <div className="space-y-3">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Sent</p>
+                                                <div className="flex gap-3 flex-wrap">
+                                                    <Stat label="Total Sent" value={delegationStats.sent.total} />
+                                                    <Stat label="Approved" value={delegationStats.sent.accepted} color="#22c55e" />
+                                                    <Stat label="Rejected" value={delegationStats.sent.rejected} color="#ef4444" />
+                                                    <Stat label="Pending" value={delegationStats.sent.pending} color="#f59e0b" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Received</p>
+                                                <div className="flex gap-3 flex-wrap">
+                                                    <Stat label="Total Received" value={delegationStats.received.total} />
+                                                    <Stat label="Approved" value={delegationStats.received.accepted} color="#22c55e" />
+                                                    <Stat label="Rejected" value={delegationStats.received.rejected} color="#ef4444" />
+                                                    <Stat label="Pending" value={delegationStats.received.pending} color="#f59e0b" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground/40 text-center py-4">No delegation data available</p>
+                                    )}
+                                </div>
+                            </div>
+                            {/* Status breakdown pie: Active / Completed / Waiting for Delegation */}
+                            <div className="bg-card border border-border/30 rounded-lg p-4">
+                                <h3 className="text-xs font-medium text-foreground mb-3">Actionables by Status (incl. Delegation)</h3>
+                                <PieChart data={[
+                                    { label: "Active", value: stats.openTasks - stats.waitingDelegation, color: "#3b82f6" },
+                                    { label: "Completed", value: stats.byStatus.completed, color: "#22c55e" },
+                                    { label: "Waiting for Delegation Approval", value: stats.waitingDelegation, color: "#f59e0b" },
+                                ]} />
+                            </div>
                         </Section>
 
                     </>)}
