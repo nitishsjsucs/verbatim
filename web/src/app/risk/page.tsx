@@ -615,24 +615,6 @@ function ThemeSection({ title, subtitle, rows, chartMax, color, emptyMsg }: {
         </table>
       </div>
 
-      {/* Bar chart */}
-      <div className="px-4 py-3 border-t border-border/10">
-        <p className="text-[10px] text-muted-foreground/50 mb-2 uppercase tracking-wider font-semibold">Avg Residual Score by Theme</p>
-        <div className="space-y-1.5">
-          {sorted.map(row => (
-            <div key={row.theme} className="flex items-center gap-2">
-              <span className="text-[10px] text-foreground/60 w-28 truncate shrink-0" title={row.theme}>{row.theme}</span>
-              <div className="flex-1 h-4 bg-muted/20 rounded-sm overflow-hidden">
-                <div
-                  className={cn("h-full rounded-sm transition-all", barColor(color))}
-                  style={{ width: `${Math.min((row.avgResidual / chartMax) * 100, 100)}%` }}
-                />
-              </div>
-              <span className="text-[10px] font-mono text-muted-foreground/50 w-10 text-right shrink-0">{row.avgResidual.toFixed(1)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
