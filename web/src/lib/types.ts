@@ -448,6 +448,7 @@ export interface ActionableItem {
     published_by_account_id?: string;
     // Feature 3: Delegation
     delegated_from_account_id?: string;
+    delegation_request_id?: string;  // ID of pending delegation request
 }
 
 export interface ActionableComment {

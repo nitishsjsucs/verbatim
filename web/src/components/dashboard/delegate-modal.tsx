@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import {
     fetchComplianceOfficers,
     createDelegationRequest,
+    updateActionable,
     type ComplianceOfficer,
 } from "@/lib/api"
 import { toast } from "sonner"
@@ -17,9 +18,10 @@ interface DelegateModalProps {
     docId: string
     fromAccountId: string
     fromName: string
+    onSuccess?: () => void
 }
 
-export function DelegateModal({ open, onClose, actionableId, docId, fromAccountId, fromName }: DelegateModalProps) {
+export function DelegateModal({ open, onClose, actionableId, docId, fromAccountId, fromName, onSuccess }: DelegateModalProps) {
     const [officers, setOfficers] = React.useState<ComplianceOfficer[]>([])
     const [loading, setLoading] = React.useState(false)
     const [submitting, setSubmitting] = React.useState(false)
@@ -59,7 +61,7 @@ export function DelegateModal({ open, onClose, actionableId, docId, fromAccountI
         if (!target) return
         setSubmitting(true)
         try {
-            await createDelegationRequest({
+            const delegationReq = await createDelegationRequest({
                 actionable_id: actionableId,
                 doc_id: docId,
                 from_account_id: fromAccountId,
@@ -67,7 +69,14 @@ export function DelegateModal({ open, onClose, actionableId, docId, fromAccountI
                 from_name: fromName,
                 to_name: target.name,
             })
+            
+            // Store delegation_request_id on the actionable
+            await updateActionable(docId, actionableId, {
+                delegation_request_id: delegationReq.id,
+            })
+            
             toast.success(`Delegation request sent to ${target.name}`)
+            onSuccess?.()
             onClose()
         } catch {
             toast.error("Failed to send delegation request")

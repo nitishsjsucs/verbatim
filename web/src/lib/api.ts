@@ -1240,6 +1240,7 @@ export interface Notification {
     user_id: string;
     actionable_id?: string;
     doc_id?: string;
+    delegation_request_id?: string;
     type: string;
     message: string;
     is_read: boolean;

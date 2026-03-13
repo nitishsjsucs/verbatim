@@ -3,11 +3,12 @@
 import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useSession } from "@/lib/auth-client"
-import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type Notification } from "@/lib/api"
-import { Bell, CheckCheck, Loader2, ExternalLink } from "lucide-react"
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, acceptDelegationRequest, rejectDelegationRequest, updateActionable, type Notification } from "@/lib/api"
+import { Bell, CheckCheck, Loader2, ExternalLink, Check, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/status-config"
 import Link from "next/link"
+import { toast } from "sonner"
 
 const NOTIF_TYPE_STYLES: Record<string, { bg: string; text: string }> = {
     delegation_request:  { bg: "bg-amber-500/15", text: "text-amber-400" },
@@ -25,6 +26,7 @@ export default function NotificationsPage() {
     const userId = (session?.user as Record<string, unknown>)?.id as string | undefined
     const [notifications, setNotifications] = React.useState<Notification[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [processingId, setProcessingId] = React.useState<string | null>(null)
 
     const load = React.useCallback(async () => {
         if (!userId) return
@@ -50,6 +52,49 @@ export default function NotificationsPage() {
         if (!userId) return
         await markAllNotificationsRead(userId)
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    }
+
+    const handleApproveDelegation = async (notif: Notification) => {
+        if (!notif.delegation_request_id) return
+        setProcessingId(notif.id)
+        try {
+            // Accept delegation request
+            await acceptDelegationRequest(notif.delegation_request_id)
+            
+            // Transfer actionable to recipient (change published_by_account_id)
+            if (notif.actionable_id) {
+                await updateActionable(notif.doc_id || "", notif.actionable_id, {
+                    published_by_account_id: userId,
+                })
+            }
+            
+            // Mark notification as read
+            await markNotificationRead(notif.id)
+            setNotifications(prev => prev.filter(n => n.id !== notif.id))
+            toast.success("Delegation approved — actionable transferred to you")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to approve delegation")
+        } finally {
+            setProcessingId(null)
+        }
+    }
+
+    const handleRejectDelegation = async (notif: Notification) => {
+        if (!notif.delegation_request_id) return
+        setProcessingId(notif.id)
+        try {
+            // Reject delegation request
+            await rejectDelegationRequest(notif.delegation_request_id)
+            
+            // Mark notification as read
+            await markNotificationRead(notif.id)
+            setNotifications(prev => prev.filter(n => n.id !== notif.id))
+            toast.success("Delegation rejected — actionable remains with sender")
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to reject delegation")
+        } finally {
+            setProcessingId(null)
+        }
     }
 
     const unreadCount = notifications.filter(n => !n.is_read).length
@@ -95,14 +140,16 @@ export default function NotificationsPage() {
                         <div className="divide-y divide-border/30">
                             {notifications.map(n => {
                                 const style = NOTIF_TYPE_STYLES[n.type] || NOTIF_TYPE_STYLES.info
+                                const isDelegationRequest = n.type === "delegation_request"
                                 return (
                                     <div
                                         key={n.id}
                                         className={cn(
-                                            "px-6 py-3 flex items-start gap-3 transition-colors cursor-pointer hover:bg-muted/30",
+                                            "px-6 py-3 flex items-start gap-3 transition-colors",
+                                            !isDelegationRequest && "cursor-pointer hover:bg-muted/30",
                                             !n.is_read && "bg-muted/20"
                                         )}
-                                        onClick={() => !n.is_read && handleMarkRead(n.id)}
+                                        onClick={() => !n.is_read && !isDelegationRequest && handleMarkRead(n.id)}
                                     >
                                         <div className={cn("mt-0.5 h-2 w-2 rounded-full flex-shrink-0", n.is_read ? "bg-transparent" : "bg-blue-500")} />
                                         <div className="flex-1 min-w-0">
@@ -113,14 +160,35 @@ export default function NotificationsPage() {
                                                 <span className="text-[10px] text-muted-foreground">{formatDateTime(n.created_at)}</span>
                                             </div>
                                             <p className="text-xs text-foreground">{n.message}</p>
-                                            {n.actionable_id && (
-                                                <Link
-                                                    href="/dashboard"
-                                                    className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:underline mt-1"
-                                                >
-                                                    <ExternalLink className="h-3 w-3" />
-                                                    View in Tracker
-                                                </Link>
+                                            {isDelegationRequest ? (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <button
+                                                        onClick={() => handleApproveDelegation(n)}
+                                                        disabled={processingId === n.id}
+                                                        className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors font-medium"
+                                                    >
+                                                        {processingId === n.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRejectDelegation(n)}
+                                                        disabled={processingId === n.id}
+                                                        className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 disabled:opacity-50 transition-colors font-medium"
+                                                    >
+                                                        {processingId === n.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                                                        Decline
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                n.actionable_id && (
+                                                    <Link
+                                                        href="/dashboard"
+                                                        className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:underline mt-1"
+                                                    >
+                                                        <ExternalLink className="h-3 w-3" />
+                                                        View in Tracker
+                                                    </Link>
+                                                )
                                             )}
                                         </div>
                                     </div>

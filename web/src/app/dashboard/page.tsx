@@ -995,6 +995,12 @@ export default function DashboardPage() {
                                                             <Flag className="h-2.5 w-2.5" /> Flagged
                                                         </span>
                                                     )}
+                                                    {/* Out for Delegation status */}
+                                                    {item.delegation_request_id && (
+                                                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium" title="Awaiting recipient approval">
+                                                            <UserPlus className="h-2.5 w-2.5" /> Out for Delegation
+                                                        </span>
+                                                    )}
                                                     {/* Delegate button */}
                                                     <button
                                                         onClick={() => setDelegatingItem({ docId, actionableId: item.actionable_id || item.id })}
@@ -1602,6 +1608,7 @@ export default function DashboardPage() {
             docId={delegatingItem?.docId || ""}
             fromAccountId={callerAccountId}
             fromName={userName}
+            onSuccess={() => loadAll()}
         />
         </RoleRedirect>
     )
