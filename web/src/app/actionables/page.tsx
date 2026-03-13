@@ -1621,6 +1621,22 @@ export default function ActionablesPage() {
                 }))
             setAllDocs(docs)
 
+            setDocDeadlineDefaults(prev => {
+                const next = { ...prev }
+                const today = new Date()
+                const oneMonthLater = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate())
+                const dateStr = oneMonthLater.toISOString().split('T')[0]
+                for (const doc of docs) {
+                    if (!next[doc.doc_id]) {
+                        next[doc.doc_id] = { date: dateStr, time: "23:59" }
+                    }
+                }
+                try {
+                    localStorage.setItem("actionables_doc_deadlines", JSON.stringify(next))
+                } catch { /* ignore */ }
+                return next
+            })
+
             if (!pdfDocId && docs.length > 0) {
                 setPdfDocId(docs[0].doc_id)
                 setPdfDocName(docs[0].doc_name)
