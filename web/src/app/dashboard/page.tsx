@@ -85,7 +85,7 @@ export default function DashboardPage() {
     const [unpublishingItem, setUnpublishingItem] = React.useState<{ docId: string; itemId: string } | null>(null)
 
     // Delegation modal state
-    const [delegatingItem, setDelegatingItem] = React.useState<{ docId: string; actionableId: string } | null>(null)
+    const [delegatingItem, setDelegatingItem] = React.useState<{ docId: string; actionableId: string; actionableTitle: string } | null>(null)
     const callerAccountId = (session?.user as Record<string, unknown>)?.id as string || ""
 
     // Bypass disapprove state (CO disapproves wrongly-tagged flag)
@@ -1003,7 +1003,7 @@ export default function DashboardPage() {
                                                     )}
                                                     {/* Delegate button */}
                                                     <button
-                                                        onClick={() => setDelegatingItem({ docId, actionableId: item.actionable_id || item.id })}
+                                                        onClick={() => setDelegatingItem({ docId, actionableId: item.actionable_id || item.id, actionableTitle: item.action || "" })}
                                                         className="inline-flex items-center gap-0.5 text-xs px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
                                                         title="Delegate to another CO"
                                                     >
@@ -1605,6 +1605,7 @@ export default function DashboardPage() {
             open={!!delegatingItem}
             onClose={() => setDelegatingItem(null)}
             actionableId={delegatingItem?.actionableId || ""}
+            actionableTitle={delegatingItem?.actionableTitle}
             docId={delegatingItem?.docId || ""}
             fromAccountId={callerAccountId}
             fromName={userName}

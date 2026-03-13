@@ -15,18 +15,20 @@ interface DelegateModalProps {
     open: boolean
     onClose: () => void
     actionableId: string
+    actionableTitle?: string
     docId: string
     fromAccountId: string
     fromName: string
     onSuccess?: () => void
 }
 
-export function DelegateModal({ open, onClose, actionableId, docId, fromAccountId, fromName, onSuccess }: DelegateModalProps) {
+export function DelegateModal({ open, onClose, actionableId, actionableTitle, docId, fromAccountId, fromName, onSuccess }: DelegateModalProps) {
     const [officers, setOfficers] = React.useState<ComplianceOfficer[]>([])
     const [loading, setLoading] = React.useState(false)
     const [submitting, setSubmitting] = React.useState(false)
     const [selectedId, setSelectedId] = React.useState("")
     const [searchQuery, setSearchQuery] = React.useState("")
+    const [delegationSent, setDelegationSent] = React.useState(false)
 
     React.useEffect(() => {
         if (!open) return
@@ -63,6 +65,7 @@ export function DelegateModal({ open, onClose, actionableId, docId, fromAccountI
         try {
             const delegationReq = await createDelegationRequest({
                 actionable_id: actionableId,
+                actionable_title: actionableTitle || "",
                 doc_id: docId,
                 from_account_id: fromAccountId,
                 to_account_id: selectedId,
@@ -75,11 +78,16 @@ export function DelegateModal({ open, onClose, actionableId, docId, fromAccountI
                 delegation_request_id: delegationReq.id,
             })
             
+            setDelegationSent(true)
             toast.success(`Delegation request sent to ${target.name}`)
             onSuccess?.()
-            onClose()
-        } catch {
-            toast.error("Failed to send delegation request")
+            setTimeout(() => {
+                onClose()
+                setDelegationSent(false)
+            }, 1500)
+        } catch (err) {
+            console.error("Delegation error:", err)
+            toast.error(err instanceof Error ? err.message : "Failed to send delegation request")
         } finally {
             setSubmitting(false)
         }

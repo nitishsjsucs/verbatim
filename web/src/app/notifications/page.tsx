@@ -4,7 +4,7 @@ import * as React from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useSession } from "@/lib/auth-client"
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, acceptDelegationRequest, rejectDelegationRequest, type Notification } from "@/lib/api"
-import { Bell, CheckCheck, Loader2, ExternalLink, Check, X } from "lucide-react"
+import { Bell, CheckCheck, Loader2, ExternalLink, Check, X, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/status-config"
 import Link from "next/link"
@@ -52,6 +52,19 @@ export default function NotificationsPage() {
         if (!userId) return
         await markAllNotificationsRead(userId)
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    }
+
+    const handleClearAll = async () => {
+        if (!userId) return
+        if (!confirm("Clear all notifications? This cannot be undone.")) return
+        try {
+            // Mark all as read then clear from state
+            await markAllNotificationsRead(userId)
+            setNotifications([])
+            toast.success("All notifications cleared")
+        } catch (err) {
+            toast.error("Failed to clear notifications")
+        }
     }
 
     const handleApproveDelegation = async (notif: Notification) => {
@@ -107,15 +120,26 @@ export default function NotificationsPage() {
                             </span>
                         )}
                     </div>
-                    {unreadCount > 0 && (
-                        <button
-                            onClick={handleMarkAllRead}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <CheckCheck className="h-3.5 w-3.5" />
-                            Mark all read
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                            <button
+                                onClick={handleMarkAllRead}
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <CheckCheck className="h-3.5 w-3.5" />
+                                Mark all read
+                            </button>
+                        )}
+                        {notifications.length > 0 && (
+                            <button
+                                onClick={handleClearAll}
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-400 transition-colors"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Clear all
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* List */}

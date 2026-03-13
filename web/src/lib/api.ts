@@ -1194,6 +1194,7 @@ export async function fetchDelegationRequests(accountId: string, direction: "inc
 
 export async function createDelegationRequest(data: {
     actionable_id: string;
+    actionable_title?: string;
     doc_id: string;
     from_account_id: string;
     to_account_id: string;

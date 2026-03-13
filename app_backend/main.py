@@ -4947,13 +4947,16 @@ def create_delegation_request(body: dict = Body(...)):
     doc.pop("_id", None)
 
     # Create notification for delegatee
+    actionable_title = body.get("actionable_title", "")
+    actionable_id = body.get("actionable_id", "")
+    title_display = f"{actionable_title} (ID: {actionable_id})" if actionable_title else f"Actionable {actionable_id}"
     notif = {
         "user_id": body.get("to_account_id", ""),
-        "actionable_id": body.get("actionable_id", ""),
+        "actionable_id": actionable_id,
         "doc_id": body.get("doc_id", ""),
         "delegation_request_id": doc["id"],
         "type": "delegation_request",
-        "message": f"Delegation request from {body.get('from_name', 'a colleague')} for actionable {body.get('actionable_id', '')}",
+        "message": f"Delegation request from {body.get('from_name', 'a colleague')} for {title_display}",
         "is_read": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
