@@ -34,6 +34,7 @@ import { useActionables } from "@/lib/use-actionables"
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { ActionableExpansion } from "@/components/dashboard/actionable-expansion"
 import { DelegateModal } from "@/components/dashboard/delegate-modal"
+import { revertDelegationRequest } from "@/lib/api"
 import { computeResidualScore } from "@/lib/risk-engine"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -997,20 +998,38 @@ export default function DashboardPage() {
                                                             <Flag className="h-2.5 w-2.5" /> Flagged
                                                         </span>
                                                     )}
-                                                    {/* Out for Delegation status */}
-                                                    {item.delegation_request_id && (
-                                                        <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium" title="Awaiting recipient approval">
-                                                            <UserPlus className="h-2.5 w-2.5" /> Out for Delegation
-                                                        </span>
+                                                    {/* Delegation: pending → show status + revert; otherwise → show delegate button */}
+                                                    {item.delegation_request_id ? (
+                                                        <>
+                                                            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium" title="Awaiting recipient approval">
+                                                                <UserPlus className="h-2.5 w-2.5" /> Waiting for Delegation
+                                                            </span>
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!confirm("Revert this delegation request? The actionable will return to you.")) return
+                                                                    try {
+                                                                        await revertDelegationRequest(item.delegation_request_id!)
+                                                                        toast.success("Delegation reverted")
+                                                                        loadAll()
+                                                                    } catch (err) {
+                                                                        toast.error(err instanceof Error ? err.message : "Failed to revert delegation")
+                                                                    }
+                                                                }}
+                                                                className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors font-medium"
+                                                                title="Cancel delegation and take back actionable"
+                                                            >
+                                                                <RotateCcw className="h-2.5 w-2.5" /> Revert
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => setDelegatingItem({ docId, actionableId: item.actionable_id || item.id, actionableTitle: item.action || "" })}
+                                                            className="inline-flex items-center gap-0.5 text-xs px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
+                                                            title="Delegate to another CO"
+                                                        >
+                                                            <UserPlus className="h-2.5 w-2.5" /> Delegate
+                                                        </button>
                                                     )}
-                                                    {/* Delegate button */}
-                                                    <button
-                                                        onClick={() => setDelegatingItem({ docId, actionableId: item.actionable_id || item.id, actionableTitle: item.action || "" })}
-                                                        className="inline-flex items-center gap-0.5 text-xs px-1 py-0.5 rounded text-muted-foreground/40 hover:bg-blue-500/10 hover:text-blue-500 transition-colors"
-                                                        title="Delegate to another CO"
-                                                    >
-                                                        <UserPlus className="h-2.5 w-2.5" /> Delegate
-                                                    </button>
                                                     {/* Unpublish button */}
                                                     <button
                                                         onClick={() => setUnpublishingItem({ docId, itemId: item.id })}

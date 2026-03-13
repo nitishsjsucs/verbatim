@@ -4904,11 +4904,37 @@ def get_unread_count(user_id: str = Query(...)):
 
 @app.delete("/notifications/clear")
 def clear_user_notifications(user_id: str = Query(...)):
-    """Permanently delete all notifications for the given user."""
+    """Delete all notifications for the given user, then regenerate any for still-pending delegation requests."""
     from utils.mongo import get_db
     db = get_db()
     result = db["notifications"].delete_many({"user_id": user_id})
-    return {"ok": True, "deleted": result.deleted_count}
+    deleted = result.deleted_count
+
+    # Regenerate notifications for any still-pending delegation requests
+    pending_requests = list(db["delegation_requests"].find({
+        "to_account_id": user_id,
+        "status": "pending"
+    }))
+    regenerated = 0
+    for req in pending_requests:
+        request_id = str(req["_id"])
+        actionable_title = req.get("actionable_title", "")
+        actionable_id = req.get("actionable_id", "")
+        title_display = f"{actionable_title} (ID: {actionable_id})" if actionable_title else f"Actionable {actionable_id}"
+        notif = {
+            "user_id": user_id,
+            "actionable_id": actionable_id,
+            "doc_id": req.get("doc_id", ""),
+            "delegation_request_id": request_id,
+            "type": "delegation_request",
+            "message": f"Delegation request from {req.get('from_name', 'a colleague')} for {title_display}",
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        db["notifications"].insert_one(notif)
+        regenerated += 1
+
+    return {"ok": True, "deleted": deleted, "regenerated": regenerated}
 
 
 # ---------------------------------------------------------------------------
@@ -5012,10 +5038,22 @@ def create_delegation_request(body: dict = Body(...)):
     from utils.mongo import get_db
     db = get_db()
     coll = db["delegation_requests"]
+
+    # Guard: prevent multiple pending delegations for the same actionable
+    actionable_id = body.get("actionable_id", "")
+    doc_id = body.get("doc_id", "")
+    existing_pending = coll.find_one({
+        "actionable_id": actionable_id,
+        "doc_id": doc_id,
+        "status": "pending",
+    })
+    if existing_pending:
+        raise HTTPException(status_code=409, detail="A pending delegation request already exists for this actionable")
+
     doc = {
-        "actionable_id": body.get("actionable_id", ""),
+        "actionable_id": actionable_id,
         "actionable_title": body.get("actionable_title", ""),
-        "doc_id": body.get("doc_id", ""),
+        "doc_id": doc_id,
         "from_account_id": body.get("from_account_id", ""),
         "to_account_id": body.get("to_account_id", ""),
         "from_name": body.get("from_name", ""),
@@ -5158,6 +5196,44 @@ def reject_delegation(request_id: str):
     db["notifications"].insert_one(notif)
 
     return {"ok": True, "status": "rejected"}
+
+
+@app.post("/delegation-requests/{request_id}/revert")
+def revert_delegation(request_id: str):
+    """Revert (cancel) a pending delegation request — sender takes back the actionable."""
+    from utils.mongo import get_db
+    from bson import ObjectId
+    db = get_db()
+    coll = db["delegation_requests"]
+    req = coll.find_one({"_id": ObjectId(request_id)})
+    if not req:
+        raise HTTPException(status_code=404, detail="Delegation request not found")
+    if req.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Only pending requests can be reverted")
+
+    # Mark delegation request as reverted
+    coll.update_one({"_id": ObjectId(request_id)}, {"$set": {
+        "status": "reverted",
+        "resolved_at": datetime.now(timezone.utc).isoformat(),
+    }})
+
+    # Clear delegation_request_id from actionable
+    doc_id = req.get("doc_id", "")
+    actionable_id = req.get("actionable_id", "")
+    if doc_id and actionable_id:
+        store = get_actionable_store()
+        result = store.load(doc_id)
+        if result:
+            for a in result.actionables:
+                if a.id == actionable_id or a.actionable_id == actionable_id:
+                    a.delegation_request_id = ""
+                    break
+            store.save(result)
+
+    # Delete the delegation notification from receiver's list
+    db["notifications"].delete_many({"delegation_request_id": request_id})
+
+    return {"ok": True, "status": "reverted"}
 
 
 # ---------------------------------------------------------------------------

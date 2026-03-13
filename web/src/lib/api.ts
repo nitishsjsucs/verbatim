@@ -1225,7 +1225,10 @@ export async function createDelegationRequest(data: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create delegation request');
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to create delegation request' }));
+        throw new Error(err.detail || 'Failed to create delegation request');
+    }
     return res.json();
 }
 
@@ -1237,6 +1240,14 @@ export async function acceptDelegationRequest(requestId: string): Promise<void> 
 export async function rejectDelegationRequest(requestId: string): Promise<void> {
     const res = await apiFetch(`/delegation-requests/${requestId}/reject`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to reject delegation');
+}
+
+export async function revertDelegationRequest(requestId: string): Promise<void> {
+    const res = await apiFetch(`/delegation-requests/${requestId}/revert`, { method: 'POST' });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to revert delegation' }));
+        throw new Error(err.detail || 'Failed to revert delegation');
+    }
 }
 
 export async function regenerateDelegationNotifications(accountId: string): Promise<{ regenerated: number }> {

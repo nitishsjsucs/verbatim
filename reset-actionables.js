@@ -287,4 +287,8 @@ async function resetActionables() {
     }
 }
 
-resetActionables();
+if (require.main === module) {
+    resetActionables();
+}
+
+module.exports = { resetActionables };

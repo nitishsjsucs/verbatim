@@ -277,4 +277,8 @@ async function generateSyntheticActionables() {
     }
 }
 
-generateSyntheticActionables();
+if (require.main === module) {
+    generateSyntheticActionables();
+}
+
+module.exports = { generateSyntheticActionables };

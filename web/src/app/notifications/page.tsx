@@ -58,13 +58,13 @@ export default function NotificationsPage() {
 
     const handleClearAll = async () => {
         if (!userId) return
-        if (!confirm("Clear all notifications? This cannot be undone.")) return
+        if (!confirm("Clear all notifications? Pending delegation requests will reappear.")) return
         try {
-            // Permanently delete all notifications for this user from the database
             await clearAllNotifications(userId)
-            setNotifications([])
-            toast.success("All notifications cleared")
-        } catch (err) {
+            // Reload: backend regenerates notifications for pending delegation requests
+            await load()
+            toast.success("Notifications cleared")
+        } catch {
             toast.error("Failed to clear notifications")
         }
     }
