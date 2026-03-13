@@ -1128,7 +1128,11 @@ function TeamBoardContent() {
 
                     <div className="w-48">
                         <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-1">Overall Progress</p>
-                        <ProgressBar completed={stats.completed} total={stats.total} />
+                        {activeItems.length > 0 ? (
+                            <ProgressBar completed={activeItems.filter(e => e.item.task_status === "completed").length} total={activeItems.length} />
+                        ) : (
+                            <ProgressBar completed={completedItems.length} total={completedItems.length} />
+                        )}
                     </div>
                 </div>
 

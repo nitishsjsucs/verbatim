@@ -331,7 +331,11 @@ function TeamReviewContent() {
 
                     <div className="w-48">
                         <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mb-1">Review Progress</p>
-                        <ProgressBar completed={stats.review + stats.completed} total={stats.total} />
+                        {activeRows.length > 0 ? (
+                            <ProgressBar completed={activeRows.filter(r => r.item.task_status === "completed").length} total={activeRows.length} />
+                        ) : (
+                            <ProgressBar completed={completedRows.length} total={completedRows.length} />
+                        )}
                     </div>
                 </div>
 
