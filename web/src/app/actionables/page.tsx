@@ -1493,49 +1493,53 @@ export default function ActionablesPage() {
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
     
-    // Document-level theme defaults (frontend-only, persisted in localStorage)
+    // Document-level theme defaults (frontend-only, persisted in localStorage per user)
     const [docThemeDefaults, setDocThemeDefaults] = React.useState<Record<string, string>>({})
 
-    // Per-document deadline defaults (frontend-only, persisted in localStorage)
+    // Per-document deadline defaults (frontend-only, persisted in localStorage per user)
     const [docDeadlineDefaults, setDocDeadlineDefaults] = React.useState<Record<string, { date: string; time: string }>>({})
 
-    // Load persisted per-document defaults from localStorage
+    const deadlinesStorageKey = React.useMemo(() => (
+        callerAccountId ? `actionables_doc_deadlines_${callerAccountId}` : "actionables_doc_deadlines"
+    ), [callerAccountId])
+    const themesStorageKey = React.useMemo(() => (
+        callerAccountId ? `actionables_doc_themes_${callerAccountId}` : "actionables_doc_themes"
+    ), [callerAccountId])
+
+    // Load persisted per-document defaults from localStorage whenever user changes
     React.useEffect(() => {
         try {
-            const savedDeadlines = localStorage.getItem("actionables_doc_deadlines")
-            if (savedDeadlines) {
-                const parsed = JSON.parse(savedDeadlines)
-                setDocDeadlineDefaults(parsed)
-            }
-            const savedThemes = localStorage.getItem("actionables_doc_themes")
-            if (savedThemes) {
-                const parsed = JSON.parse(savedThemes)
-                setDocThemeDefaults(parsed)
-            }
-        } catch { /* ignore */ }
-    }, [])
+            const savedDeadlines = localStorage.getItem(deadlinesStorageKey) ?? localStorage.getItem("actionables_doc_deadlines")
+            setDocDeadlineDefaults(savedDeadlines ? JSON.parse(savedDeadlines) : {})
+            const savedThemes = localStorage.getItem(themesStorageKey) ?? localStorage.getItem("actionables_doc_themes")
+            setDocThemeDefaults(savedThemes ? JSON.parse(savedThemes) : {})
+        } catch {
+            setDocDeadlineDefaults({})
+            setDocThemeDefaults({})
+        }
+    }, [deadlinesStorageKey, themesStorageKey])
 
     // Save per-document deadlines to localStorage whenever they change
     const updateDocDeadline = React.useCallback((docId: string, date: string, time: string) => {
         setDocDeadlineDefaults(prev => {
             const next = { ...prev, [docId]: { date, time } }
             try {
-                localStorage.setItem("actionables_doc_deadlines", JSON.stringify(next))
+                localStorage.setItem(deadlinesStorageKey, JSON.stringify(next))
             } catch { /* ignore */ }
             return next
         })
-    }, [])
+    }, [deadlinesStorageKey])
 
     // Save per-document theme defaults to localStorage (per user)
     const updateDocTheme = React.useCallback((docId: string, theme: string) => {
         setDocThemeDefaults(prev => {
             const next = { ...prev, [docId]: theme }
             try {
-                localStorage.setItem("actionables_doc_themes", JSON.stringify(next))
+                localStorage.setItem(themesStorageKey, JSON.stringify(next))
             } catch { /* ignore */ }
             return next
         })
-    }, [])
+    }, [themesStorageKey])
 
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")

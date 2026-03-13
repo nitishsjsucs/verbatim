@@ -368,23 +368,6 @@ export default function DashboardPage() {
         toast.success("Task rejected — returned for rework")
     }, [userName, handleUpdate])
 
-    // Only show PUBLISHED actionables
-    const allRows: FlatRow[] = React.useMemo(() => {
-        const rows: FlatRow[] = []
-        for (const doc of allDocs) {
-            for (const item of doc.actionables) {
-                if (item.published_at) {
-                    rows.push({ item, docId: doc.doc_id, docName: doc.doc_name })
-                }
-            }
-        }
-        return rows
-    }, [allDocs])
-
-    // Unique doc names for filter dropdown
-    const docOptions = React.useMemo(() => {
-        const map = new Map<string, string>()
-        for (const r of allRows) {
             if (!map.has(r.docId)) map.set(r.docId, r.docName)
         }
         return Array.from(map.entries())
