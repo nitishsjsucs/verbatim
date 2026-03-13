@@ -46,6 +46,7 @@ export function DelegateModal({ open, onClose, actionableId, actionableTitle, do
         if (!open) {
             setSelectedId("")
             setSearchQuery("")
+            setDelegationSent(false)
         }
     }, [open])
 
@@ -87,7 +88,9 @@ export function DelegateModal({ open, onClose, actionableId, actionableTitle, do
             }, 1500)
         } catch (err) {
             console.error("Delegation error:", err)
-            toast.error(err instanceof Error ? err.message : "Failed to send delegation request")
+            const errorMsg = err instanceof Error ? err.message : "Failed to send delegation request"
+            toast.error(errorMsg)
+            setDelegationSent(false)
         } finally {
             setSubmitting(false)
         }
@@ -168,15 +171,17 @@ export function DelegateModal({ open, onClose, actionableId, actionableTitle, do
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={!selectedId || submitting}
+                        disabled={!selectedId || submitting || delegationSent}
                         className={cn(
                             "px-3 py-1.5 text-xs rounded font-medium transition-colors",
-                            selectedId && !submitting
+                            delegationSent
+                                ? "bg-emerald-500/20 text-emerald-400 cursor-not-allowed"
+                                : selectedId && !submitting
                                 ? "bg-primary text-primary-foreground hover:bg-primary/90"
                                 : "bg-muted text-muted-foreground cursor-not-allowed"
                         )}
                     >
-                        {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Send Request"}
+                        {delegationSent ? "✓ Sent" : submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Send Request"}
                     </button>
                 </div>
             </div>
