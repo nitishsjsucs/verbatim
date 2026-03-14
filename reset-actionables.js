@@ -243,6 +243,10 @@ async function resetActionables() {
                 impact_sub1:                  null,
                 impact_sub2:                  null,
                 impact_sub3:                  null,
+                // Clear delegation and publishing metadata
+                delegation_request_id:        "",
+                published_by_account_id:      "",
+                delegated_from_account_id:    "",
                 team_workflows:               resetTeamWorkflows(item.team_workflows),
             }));
 
@@ -278,6 +282,18 @@ async function resetActionables() {
         Object.entries(statusCounts)
             .sort((a, b) => b[1] - a[1])
             .forEach(([status, count]) => console.log(`  ${status}: ${count}`));
+
+        // Clean up delegation_requests collection
+        console.log('\n🧹 Cleaning up delegation system...');
+        const delegationCol = db.collection('delegation_requests');
+        const delegationResult = await delegationCol.deleteMany({});
+        console.log(`   • Deleted ${delegationResult.deletedCount} delegation requests`);
+
+        // Clean up notifications collection
+        console.log('\n🧹 Cleaning up notifications...');
+        const notificationsCol = db.collection('notifications');
+        const notificationsResult = await notificationsCol.deleteMany({});
+        console.log(`   • Deleted ${notificationsResult.deletedCount} notifications`);
 
     } catch (error) {
         console.error('Error:', error);

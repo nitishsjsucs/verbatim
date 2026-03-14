@@ -34,7 +34,7 @@ import { useActionables } from "@/lib/use-actionables"
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
 import { ActionableExpansion } from "@/components/dashboard/actionable-expansion"
 import { DelegateModal } from "@/components/dashboard/delegate-modal"
-import { revertDelegationRequest } from "@/lib/api"
+import { revertDelegationRequest, cleanupActionableState } from "@/lib/api"
 import { computeResidualScore } from "@/lib/risk-engine"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ export default function DashboardPage() {
     const handleUnpublish = React.useCallback(async (docId: string, item: ActionableItem) => {
         // Reset actionable back to default state in Actionables section
         // Preserve: deadline, theme, tranche3, impact (impact_dropdown), implementation_notes, team assignments (workstream, assigned_teams)
-        // Clear: all role data, risk inputs, evidence, comments, bypass flags
+        // Clear: all role data, risk inputs, evidence, comments, bypass flags, delegation state
         const resetUpdates: Record<string, unknown> = {
             published_at: "",
             task_status: "",
@@ -144,6 +144,10 @@ export default function DashboardPage() {
             bypass_reviewer_rejected_by: "",
             bypass_reviewer_rejected_at: "",
             bypass_reviewer_rejection_reason: "",
+            // Clear delegation and publishing metadata
+            delegation_request_id: "",
+            published_by_account_id: "",
+            delegated_from_account_id: "",
         }
         // For multi-team items, also reset each team workflow's submission fields
         if (isMultiTeam(item) && item.team_workflows) {
@@ -174,6 +178,14 @@ export default function DashboardPage() {
             }
             resetUpdates.team_workflows = resetWorkflows
         }
+        // Clean up delegation requests and notifications from database
+        try {
+            await cleanupActionableState(docId, item.actionable_id || item.id)
+        } catch (err) {
+            console.error("Cleanup error:", err)
+            // Continue with unpublish even if cleanup fails
+        }
+        
         await handleUpdate(docId, item.id, resetUpdates)
         setUnpublishingItem(null)
         toast.success("Actionable unpublished — returned to Actionables")
@@ -232,7 +244,20 @@ export default function DashboardPage() {
             bypass_reviewer_rejected_by: "",
             bypass_reviewer_rejected_at: "",
             bypass_reviewer_rejection_reason: "",
+            // Clear delegation and publishing metadata
+            delegation_request_id: "",
+            published_by_account_id: "",
+            delegated_from_account_id: "",
         }
+        
+        // Clean up delegation requests and notifications from database
+        try {
+            await cleanupActionableState(docId, item.actionable_id || item.id)
+        } catch (err) {
+            console.error("Cleanup error:", err)
+            // Continue with bypass approve even if cleanup fails
+        }
+        
         // For multi-team items, also reset each team's workflow
         if (isMultiTeam(item) && item.team_workflows) {
             const resetWorkflows: Record<string, unknown> = {}

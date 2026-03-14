@@ -5236,6 +5236,31 @@ def revert_delegation(request_id: str):
     return {"ok": True, "status": "reverted"}
 
 
+@app.post("/actionables/{doc_id}/{actionable_id}/cleanup-state")
+def cleanup_actionable_state(doc_id: str, actionable_id: str):
+    """Clean up all delegation and notification state for an actionable (used during unpublish/reset)."""
+    from utils.mongo import get_db
+    db = get_db()
+    
+    # Delete all delegation requests for this actionable
+    delegation_result = db["delegation_requests"].delete_many({
+        "doc_id": doc_id,
+        "actionable_id": actionable_id
+    })
+    
+    # Delete all notifications for this actionable
+    notification_result = db["notifications"].delete_many({
+        "doc_id": doc_id,
+        "actionable_id": actionable_id
+    })
+    
+    return {
+        "ok": True,
+        "delegation_requests_deleted": delegation_result.deleted_count,
+        "notifications_deleted": notification_result.deleted_count
+    }
+
+
 # ---------------------------------------------------------------------------
 # Feature 2: Fetch compliance officers list (for delegation dropdown)
 # ---------------------------------------------------------------------------

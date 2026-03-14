@@ -1256,6 +1256,12 @@ export async function regenerateDelegationNotifications(accountId: string): Prom
     return res.json();
 }
 
+export async function cleanupActionableState(docId: string, actionableId: string): Promise<{ delegation_requests_deleted: number; notifications_deleted: number }> {
+    const res = await apiFetch(`/actionables/${docId}/${actionableId}/cleanup-state`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to cleanup actionable state');
+    return res.json();
+}
+
 // ─── Compliance Officers API ────────────────────────────────────────────────
 
 export interface ComplianceOfficer {
