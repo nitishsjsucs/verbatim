@@ -507,11 +507,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const handleReject = async (e: React.MouseEvent) => {
         e.stopPropagation()
         await onUpdate(docId, item.id, { approval_status: "rejected" })
+        toast.success("Rejected")
     }
 
     const handleRevert = async (e: React.MouseEvent) => {
         e.stopPropagation()
         await onUpdate(docId, item.id, { approval_status: "pending", published_at: "", task_status: "", deadline: "" })
+        toast.success("Reverted to pending")
     }
 
     const handleSourceClick = () => {

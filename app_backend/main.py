@@ -1455,9 +1455,10 @@ def list_all_actionables():
                 item = ActionableItem.from_dict(item_data)
                 serialized_actionables.append(item.to_dict())
             except Exception as e:
-                # If serialization fails, log and skip this item
+                # If serialization fails, log warning but include raw data to prevent items from disappearing
                 print(f"Warning: Failed to serialize actionable {item_data.get('id', 'unknown')}: {e}")
-                continue
+                # Return the raw item data as-is instead of skipping
+                serialized_actionables.append(item_data)
         raw["actionables"] = serialized_actionables
         results.append(raw)
     return results
