@@ -156,37 +156,34 @@ export function ActionableExpansion({
     // Dropdown config for editable risk fields
     const { getOptions } = useDropdownConfig()
     const impactOptions = getOptions("impact_dropdown")
-    const fallbackImpactLabel = item.impact_dropdown?.label || impactOptions[0]?.label || ""
-    const fallbackTranche3 = item.tranche3 || "No"
-    const fallbackNewProduct = item.new_product || "No"
 
     // ── Active section: editable theme / tranche3 / impact / new_product ──
     const [draftTheme, setDraftTheme] = React.useState(item.theme || "")
-    const [draftTranche3, setDraftTranche3] = React.useState(fallbackTranche3)
-    const [draftNewProduct, setDraftNewProduct] = React.useState(fallbackNewProduct)
-    const [draftImpactLabel, setDraftImpactLabel] = React.useState(fallbackImpactLabel)
+    const [draftTranche3, setDraftTranche3] = React.useState(item.tranche3 || "")
+    const [draftNewProduct, setDraftNewProduct] = React.useState(item.new_product || "")
+    const [draftImpactLabel, setDraftImpactLabel] = React.useState(item.impact_dropdown?.label || "")
     const [savingFields, setSavingFields] = React.useState(false)
 
     React.useEffect(() => {
         setDraftTheme(item.theme || "")
-        setDraftTranche3(item.tranche3 || "No")
-        setDraftNewProduct(item.new_product || "No")
-        setDraftImpactLabel(item.impact_dropdown?.label || impactOptions[0]?.label || "")
-    }, [item.id, item.theme, item.tranche3, item.new_product, item.impact_dropdown?.label, impactOptions])
+        setDraftTranche3(item.tranche3 || "")
+        setDraftNewProduct(item.new_product || "")
+        setDraftImpactLabel(item.impact_dropdown?.label || "")
+    }, [item.id, item.theme, item.tranche3, item.new_product, item.impact_dropdown?.label])
 
     const activeFieldsDirty = draftTheme !== (item.theme || "") ||
-        draftTranche3 !== (item.tranche3 || "No") ||
-        draftNewProduct !== (item.new_product || "No") ||
-        draftImpactLabel !== (item.impact_dropdown?.label || impactOptions[0]?.label || "")
+        draftTranche3 !== (item.tranche3 || "") ||
+        draftNewProduct !== (item.new_product || "") ||
+        draftImpactLabel !== (item.impact_dropdown?.label || "")
 
     const handleSaveActiveFields = React.useCallback(async () => {
         setSavingFields(true)
         try {
             const updates: Record<string, unknown> = {}
             if (draftTheme !== (item.theme || "")) updates.theme = draftTheme
-            if (draftTranche3 !== (item.tranche3 || "No")) updates.tranche3 = draftTranche3
-            if (draftNewProduct !== (item.new_product || "No")) updates.new_product = draftNewProduct
-            if (draftImpactLabel !== (item.impact_dropdown?.label || impactOptions[0]?.label || "")) {
+            if (draftTranche3 !== (item.tranche3 || "")) updates.tranche3 = draftTranche3
+            if (draftNewProduct !== (item.new_product || "")) updates.new_product = draftNewProduct
+            if (draftImpactLabel !== (item.impact_dropdown?.label || "")) {
                 const opt = impactOptions.find(o => o.label === draftImpactLabel)
                 if (opt) {
                     updates.impact_dropdown = { label: opt.label, score: opt.value }
@@ -202,21 +199,16 @@ export function ActionableExpansion({
 
     // ── Completed section: edit mode for tranche3 + new_product only ──
     const [completedEditMode, setCompletedEditMode] = React.useState(false)
-    const [completedTranche3, setCompletedTranche3] = React.useState(item.tranche3 || "No")
-    const [completedNewProduct, setCompletedNewProduct] = React.useState(item.new_product || "No")
+    const [completedTranche3, setCompletedTranche3] = React.useState(item.tranche3 || "")
+    const [completedNewProduct, setCompletedNewProduct] = React.useState(item.new_product || "")
     const [savingCompleted, setSavingCompleted] = React.useState(false)
-
-    React.useEffect(() => {
-        setCompletedTranche3(item.tranche3 || "No")
-        setCompletedNewProduct(item.new_product || "No")
-    }, [item.id, item.tranche3, item.new_product])
 
     const handleSaveCompletedFields = React.useCallback(async () => {
         setSavingCompleted(true)
         try {
             const updates: Record<string, unknown> = {}
-            if (completedTranche3 !== (item.tranche3 || "No")) updates.tranche3 = completedTranche3
-            if (completedNewProduct !== (item.new_product || "No")) updates.new_product = completedNewProduct
+            if (completedTranche3 !== (item.tranche3 || "")) updates.tranche3 = completedTranche3
+            if (completedNewProduct !== (item.new_product || "")) updates.new_product = completedNewProduct
             if (Object.keys(updates).length > 0) {
                 await onUpdate(docId, item.id, updates, teamName)
                 toast.success("Updated successfully")
