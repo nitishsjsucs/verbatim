@@ -216,7 +216,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
     const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
-    const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3))
+    const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3) || "No")
     const [draftNewProduct, setDraftNewProduct] = React.useState(safeStr(item.new_product) || "No")
     const [draftTheme, setDraftTheme] = React.useState(safeStr(item.theme) || docDefaultTheme)
     // Structured risk sub-dropdowns — each stores {label, score} or empty {}
@@ -310,7 +310,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftAction(safeStr(item.action))
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
-        setDraftTranche3(safeStr(item.tranche3))
+        setDraftTranche3(safeStr(item.tranche3) || "No")
         setDraftNewProduct(safeStr(item.new_product) || "No")
         setDraftTheme(safeStr(item.theme) || docDefaultTheme)
         // Structured risk sub-dropdowns
@@ -351,7 +351,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (draftAction !== safeStr(item.action)) return true
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
-        if (draftTranche3 !== safeStr(item.tranche3)) return true
+        if (draftTranche3 !== (safeStr(item.tranche3) || "No")) return true
         if (draftNewProduct !== (safeStr(item.new_product) || "No")) return true
         if (resolvedTheme !== safeStr(item.theme)) return true
         // Structured risk sub-dropdowns
@@ -391,7 +391,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
             // Risk assessment — structured sub-dropdowns
-            if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
+            if (draftTranche3 !== (safeStr(item.tranche3) || "No")) updates.tranche3 = draftTranche3
             if (draftNewProduct !== (safeStr(item.new_product) || "No")) updates.new_product = draftNewProduct
             if (resolvedTheme !== safeStr(item.theme)) updates.theme = resolvedTheme
             // CO only sets impact_dropdown; members set likelihood + control
@@ -501,6 +501,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         // Set original_publish_date only on first publish — never overwrite
         if (!item.original_publish_date) {
             updates.original_publish_date = now
+        }
+        // Default tranche3 to "No" if not set
+        if (!item.tranche3) {
+            updates.tranche3 = "No"
         }
         // Default new_product to "No" if not set
         if (!item.new_product) {
@@ -1807,6 +1811,10 @@ export default function ActionablesPage() {
             // Set original_publish_date only on first publish — never overwrite
             if (!item.original_publish_date) {
                 updates.original_publish_date = now
+            }
+            // Default tranche3 to "No" if not set
+            if (!item.tranche3) {
+                updates.tranche3 = "No"
             }
             // Default new_product to "No" if not set
             if (!item.new_product) {
