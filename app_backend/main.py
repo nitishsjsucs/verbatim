@@ -1446,6 +1446,19 @@ def list_all_actionables():
         doc_id = raw.get("doc_id", raw.get("_id", ""))
         raw.pop("_id", None)
         raw["doc_id"] = doc_id
+        # Properly serialize actionables using ActionableItem.from_dict() -> to_dict()
+        actionables = raw.get("actionables", [])
+        serialized_actionables = []
+        for item_data in actionables:
+            try:
+                from models.actionable import ActionableItem
+                item = ActionableItem.from_dict(item_data)
+                serialized_actionables.append(item.to_dict())
+            except Exception as e:
+                # If serialization fails, log and skip this item
+                print(f"Warning: Failed to serialize actionable {item_data.get('id', 'unknown')}: {e}")
+                continue
+        raw["actionables"] = serialized_actionables
         results.append(raw)
     return results
 

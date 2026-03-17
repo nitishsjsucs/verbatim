@@ -1650,8 +1650,9 @@ export default function ActionablesPage() {
                 setPdfDocId(docs[0].doc_id)
                 setPdfDocName(docs[0].doc_name)
             }
-        } catch {
-            toast.error("Failed to load actionables")
+        } catch (err) {
+            console.error("Failed to load actionables:", err)
+            toast.error(err instanceof Error ? err.message : "Failed to load actionables")
         } finally {
             setLoading(false)
         }
