@@ -1608,11 +1608,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         target.init_team_workflows()
 
     # ── Recompute risk scores whenever sub-dropdowns change ──
-    if target.is_multi_team and is_team_update:
-        # For multi-team items, aggregate risk across all teams
-        _aggregate_mixed_team_risk(target)
-    else:
-        _recompute_risk_scores(target)
+    _recompute_risk_scores(target)
 
     # Recompute aggregate status for multi-team items
     if target.is_multi_team:
@@ -1678,67 +1674,6 @@ def _recompute_risk_scores(target) -> None:
     target.residual_risk_score = rr
     target.residual_risk_label = _resolve_residual_risk_label(rr)
     target.residual_risk_interpretation = _interpret_residual_risk(rr)
-
-
-def _aggregate_mixed_team_risk(target) -> None:
-    """For multi-team items, aggregate risk across all teams:
-    - Likelihood: MAX of each team's MAX(bv, pp, cv)
-    - Control: AVG of each team's AVG(mon, eff)
-    Impact is set by CO at top level and is NOT aggregated per-team.
-    Writes aggregated scores to top-level fields.
-    """
-    teams = target.assigned_teams or []
-    tw_dict = target.team_workflows or {}
-
-    max_likelihood = 0
-    control_scores = []
-    all_filled = True
-
-    for team in teams:
-        tw = tw_dict.get(team, {})
-        if not isinstance(tw, dict):
-            tw = {}
-        bv = _safe_score(tw.get("likelihood_business_volume"))
-        pp = _safe_score(tw.get("likelihood_products_processes"))
-        cv = _safe_score(tw.get("likelihood_compliance_violations"))
-        team_lik = max(bv, pp, cv)
-        if team_lik > max_likelihood:
-            max_likelihood = team_lik
-
-        mon = _safe_score(tw.get("control_monitoring"))
-        eff = _safe_score(tw.get("control_effectiveness"))
-        if mon or eff:
-            control_scores.append((mon + eff) / 2)
-
-        # Check if all 5 per-team risk fields are filled
-        for field in ("likelihood_business_volume", "likelihood_products_processes",
-                      "likelihood_compliance_violations", "control_monitoring", "control_effectiveness"):
-            val = tw.get(field)
-            if not val or not isinstance(val, dict) or not val.get("label"):
-                all_filled = False
-
-    # Also check impact (set by CO at top level)
-    imp_dd = getattr(target, "impact_dropdown", None)
-    if not imp_dd or not isinstance(imp_dd, dict) or not imp_dd.get("label"):
-        all_filled = False
-
-    avg_control = sum(control_scores) / len(control_scores) if control_scores else 0
-    raw_impact = _safe_score(getattr(target, "impact_dropdown", None))
-    impact_sq = raw_impact ** 2
-    inherent = max_likelihood * impact_sq
-    residual = inherent * avg_control if all_filled else 0
-
-    target.likelihood_score = max_likelihood
-    target.overall_likelihood_score = int(max_likelihood)
-    target.impact_score = impact_sq
-    target.overall_impact_score = int(impact_sq)
-    target.inherent_risk_score = inherent
-    target.inherent_risk_label = _classify_inherent_risk(inherent)
-    target.control_score = avg_control
-    target.overall_control_score = avg_control
-    target.residual_risk_score = residual
-    target.residual_risk_label = _resolve_residual_risk_label(residual) if all_filled else ""
-    target.residual_risk_interpretation = _interpret_residual_risk(residual) if all_filled else ""
 
 
 def _classify_inherent_risk(score: int) -> str:

@@ -701,19 +701,15 @@ function ReviewRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftReviewerComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate])
 
-    // Approve delay justification (Reviewer can edit text before approving)
+    // Approve delay justification (Reviewer only approves — no text editing)
     const handleApproveDelayJustification = React.useCallback(async () => {
-        const updates: Record<string, unknown> = {
+        await onUpdate(docId, item.id, {
             delay_justification_reviewer_approved: true,
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
-        }
-        if (draftDelayJustification !== (item.delay_justification || "")) {
-            updates.delay_justification = draftDelayJustification
-        }
-        await onUpdate(docId, item.id, updates)
+        })
         toast.success("Delay justification approved — forwarded to Team Head")
-    }, [onUpdate, docId, item.id, userName, draftDelayJustification, item.delay_justification])
+    }, [onUpdate, docId, item.id, userName])
 
     // Reject delay justification — resets chain, sends back to Member for rework
     const handleRejectDelayJustification = React.useCallback(async () => {
@@ -1068,8 +1064,8 @@ function ReviewRow({
                             <span className="text-[10px] text-muted-foreground/40 italic">Reviewer can override Likelihood &amp; Control · Theme, Tranche, Impact set by Compliance</span>
                         </div>
 
-                        {/* Row 1: Theme + Tranche3 + Impact + New Product (read-only from CO) */}
-                        <div className="grid grid-cols-4 gap-2">
+                        {/* Row 1: Theme + Tranche3 + Impact (read-only from CO) */}
+                        <div className="grid grid-cols-3 gap-2">
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
@@ -1081,10 +1077,6 @@ function ReviewRow({
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product || <span className="text-muted-foreground/40 italic">—</span>}</p>
                             </div>
                         </div>
 
@@ -1177,22 +1169,17 @@ function ReviewRow({
                         )}
                     </div>
 
-                    {/* Delay Justification — Reviewer can edit text and approve or deny */}
+                    {/* Delay Justification — Reviewer can only approve or deny (no text editing) */}
                     {(item.is_delayed || (item.deadline && new Date(item.deadline).getTime() < Date.now() && taskStatus !== "completed")) && item.delay_justification_member_submitted && !item.delay_justification_reviewer_approved && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
                                 <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification — Reviewer Approval Required</p>
                             </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Reason for Delay (editable)</p>
-                                <textarea
-                                    value={draftDelayJustification}
-                                    onChange={e => setDraftDelayJustification(e.target.value)}
-                                    rows={3}
-                                    className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-amber-500/30 focus:border-amber-500 focus:outline-none text-foreground resize-none"
-                                />
-                                {item.delay_justification_updated_at && <p className="text-[10px] text-muted-foreground/40 mt-0.5">Last updated: {formatDate(item.delay_justification_updated_at)}</p>}
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Reason for Delay: </span>
+                                <span className="text-foreground/80">{item.delay_justification}</span>
+                                {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={handleApproveDelayJustification} className="text-xs px-2.5 py-1.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-semibold">Approve Justification</button>
@@ -1316,8 +1303,7 @@ function ReviewRow({
                                     comments={item.comments || []}
                                     currentUser={userName}
                                     currentRole="team_reviewer"
-                                    onAddComment={taskStatus !== "completed" ? async (text) => onAddComment(docId, item, text) : undefined}
-                                    readOnly={taskStatus === "completed"}
+                                    onAddComment={async (text) => onAddComment(docId, item, text)}
                                 />
                             </div>
                         </div>

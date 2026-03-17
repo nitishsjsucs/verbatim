@@ -206,7 +206,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 function daysOpen(item: ActionableItem): number {
-    const start = item.original_publish_date || item.published_at || ""
+    const start = item.published_at || ""
     if (!start) return 0
     const end = item.completion_date || new Date().toISOString()
     return daysBetween(start, end)
@@ -350,9 +350,9 @@ function ReportsContent() {
         const upcoming30 = upcomingIn(items, 30).length
 
         // Average completion time (days)
-        const completedItems = items.filter(a => a.task_status === "completed" && (a.original_publish_date || a.published_at) && a.completion_date)
+        const completedItems = items.filter(a => a.task_status === "completed" && a.published_at && a.completion_date)
         const avgCompletionDays = completedItems.length > 0
-            ? (completedItems.reduce((sum, a) => sum + daysBetween((a.original_publish_date || a.published_at)!, a.completion_date!), 0) / completedItems.length).toFixed(1)
+            ? (completedItems.reduce((sum, a) => sum + daysBetween(a.published_at!, a.completion_date!), 0) / completedItems.length).toFixed(1)
             : "—"
 
         // Average time in review
@@ -377,10 +377,10 @@ function ReportsContent() {
         const teamPerf: Record<string, { completionRate: string; avgDays: string; reworkRate: string; stuckAssigned: number }> = {}
         for (const [team, w] of Object.entries(workload)) {
             const teamItems = items.filter(a => (safeStr(a.workstream) || "Other") === team)
-            const teamCompleted = teamItems.filter(a => a.task_status === "completed" && (a.original_publish_date || a.published_at) && a.completion_date)
+            const teamCompleted = teamItems.filter(a => a.task_status === "completed" && a.published_at && a.completion_date)
             const rate = w.total > 0 ? ((w.completed / w.total) * 100).toFixed(1) : "0"
             const avg = teamCompleted.length > 0
-                ? (teamCompleted.reduce((s, a) => s + daysBetween((a.original_publish_date || a.published_at)!, a.completion_date!), 0) / teamCompleted.length).toFixed(1)
+                ? (teamCompleted.reduce((s, a) => s + daysBetween(a.published_at!, a.completion_date!), 0) / teamCompleted.length).toFixed(1)
                 : "—"
             const reworking = teamItems.filter(a => a.task_status === "reworking").length
             const reworkRate = w.total > 0 ? ((reworking / w.total) * 100).toFixed(1) : "0"
@@ -474,9 +474,9 @@ function ReportsContent() {
         const highRisk = teamItems.filter(a => classifyItemRisk(a) === "High Risk" && a.task_status !== "completed").length
         const highRiskDue7 = upcomingIn(teamItems.filter(a => classifyItemRisk(a) === "High Risk"), 7).length
         const highRiskOverdue = teamItems.filter(a => classifyItemRisk(a) === "High Risk" && a.task_status !== "completed" && a.deadline && new Date(a.deadline).getTime() < Date.now()).length
-        const completedItems = teamItems.filter(a => a.task_status === "completed" && (a.original_publish_date || a.published_at) && a.completion_date)
+        const completedItems = teamItems.filter(a => a.task_status === "completed" && a.published_at && a.completion_date)
         const avgDays = completedItems.length > 0
-            ? (completedItems.reduce((s, a) => s + daysBetween((a.original_publish_date || a.published_at)!, a.completion_date!), 0) / completedItems.length).toFixed(1) : "—"
+            ? (completedItems.reduce((s, a) => s + daysBetween(a.published_at!, a.completion_date!), 0) / completedItems.length).toFixed(1) : "—"
         const reworking = byStatus.reworking
         const stuckAssigned = teamItems.filter(a => a.task_status === "assigned" && daysOpen(a) > 7).length
         const stuckRework = teamItems.filter(a => a.task_status === "reworking" && daysOpen(a) > 7).length
