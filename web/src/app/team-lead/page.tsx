@@ -588,7 +588,7 @@ function OversightRow({
         }
     }, [draftLeadComment, onUpdate, docId, item.id])
 
-    // Approve delay justification (Lead can edit text before approving)
+    // Approve delay justification (Lead only approves — no text editing)
     // Also transitions status from awaiting_justification → review so actionable proceeds to CO
     const handleApproveDelayJustification = React.useCallback(async () => {
         const updates: Record<string, unknown> = {
@@ -596,16 +596,13 @@ function OversightRow({
             delay_justification_updated_by: userName,
             delay_justification_updated_at: new Date().toISOString(),
         }
-        if (draftDelayJustification !== (item.delay_justification || "")) {
-            updates.delay_justification = draftDelayJustification
-        }
         // If currently awaiting_justification, transition to review (send to CO)
         if (taskStatus === "awaiting_justification") {
             updates.task_status = "review"
         }
         await onUpdate(docId, item.id, updates)
         toast.success("Delay justification approved — actionable forwarded to CAG for review")
-    }, [onUpdate, docId, item.id, userName, taskStatus, draftDelayJustification, item.delay_justification])
+    }, [onUpdate, docId, item.id, userName, taskStatus])
 
     // Reject delay justification — resets entire chain, sends back to Member for rework
     const handleRejectDelayJustification = React.useCallback(async () => {
@@ -861,7 +858,7 @@ function OversightRow({
                     {/* Theme / Tranche / Impact — read-only from Compliance */}
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                         <p className="text-xs font-semibold text-foreground/70">Compliance Parameters</p>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
@@ -874,29 +871,20 @@ function OversightRow({
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
                             </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                            </div>
                         </div>
                     </div>
 
-                    {/* Delay Justification — Lead can edit text and approve or reject */}
+                    {/* Delay Justification — Lead can only approve or reject (no text editing) */}
                     {(isDelayed || isAwaitingJustification) && item.delay_justification_member_submitted && item.delay_justification_reviewer_approved && !item.delay_justification_lead_approved && (
                         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
                                 <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Delay Justification — Team Head Approval Required</p>
                             </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Reason for Delay (editable)</p>
-                                <textarea
-                                    value={draftDelayJustification}
-                                    onChange={e => setDraftDelayJustification(e.target.value)}
-                                    rows={3}
-                                    className="w-full bg-muted/20 text-xs rounded px-2 py-1.5 border border-amber-500/30 focus:border-amber-500 focus:outline-none text-foreground resize-none"
-                                />
-                                {item.delay_justification_updated_at && <p className="text-[10px] text-muted-foreground/40 mt-0.5">Last updated: {formatDate(item.delay_justification_updated_at)}</p>}
+                            <div className="bg-muted/20 rounded p-2 text-xs">
+                                <span className="font-semibold text-foreground/60">Reason for Delay: </span>
+                                <span className="text-foreground/80">{item.delay_justification}</span>
+                                {item.delay_justification_updated_at && <span className="text-muted-foreground/40 ml-1">· {formatDate(item.delay_justification_updated_at)}</span>}
                             </div>
                             <div className="text-xs text-emerald-400/80">Checker: Approved</div>
                             <div className="flex gap-2">

@@ -11,7 +11,7 @@ import {
     uploadEvidence,
     deleteEvidence,
 } from "@/lib/api"
-import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, RiskSubDropdown, getTeamView, isMultiTeam, getClassification, MIXED_TEAM_CLASSIFICATION, aggregateMixedTeamRisk } from "@/lib/types"
+import { ActionableItem, ActionablesResult, TaskStatus, ActionableComment, RiskSubDropdown, getTeamView, isMultiTeam, getClassification, MIXED_TEAM_CLASSIFICATION } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import {
     ChevronDown, ChevronRight, Loader2, Search,
@@ -524,8 +524,8 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             <span className="text-[10px] text-muted-foreground/40 italic">Likelihood &amp; Control editable · Theme, Tranche, Impact set by Compliance</span>
                         </div>
 
-                        {/* Row 1: Theme + Tranche3 + Impact + New Product (read-only from CO) */}
-                        <div className="grid grid-cols-4 gap-2">
+                        {/* Row 1: Theme + Tranche3 + Impact (read-only from CO) */}
+                        <div className="grid grid-cols-3 gap-2">
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
@@ -537,10 +537,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product || <span className="text-muted-foreground/40 italic">—</span>}</p>
                             </div>
                         </div>
 
@@ -784,8 +780,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     comments={item.comments || []}
                                     currentUser={userName}
                                     currentRole="team_member"
-                                    onAddComment={taskStatus !== "completed" ? handleAddComment : undefined}
-                                    readOnly={taskStatus === "completed"}
+                                    onAddComment={!isReadOnly ? handleAddComment : undefined}
                                 />
                             </div>
                         </div>
@@ -905,6 +900,9 @@ function TeamBoardContent() {
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
             if (!item.member_comment?.trim()) missing.push("Maker Comment (required — save it first)")
+            // Evidence file requirement
+            const files = item.evidence_files || []
+            if (files.length === 0) missing.push("Evidence File (at least one required)")
             // Delay justification requirement (only if delayed)
             const isDelayed = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
             if (isDelayed && !item.delay_justification_member_submitted) {
@@ -930,6 +928,9 @@ function TeamBoardContent() {
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
             if (!item.member_comment?.trim()) missing.push("Rework Comment (required — save it first)")
+            // Evidence file requirement
+            const files = item.evidence_files || []
+            if (files.length === 0) missing.push("Evidence File (at least one required)")
             // Delay justification requirement (only if delayed)
             const isDelayed = item.deadline ? new Date(item.deadline).getTime() < Date.now() : false
             if (isDelayed && !item.delay_justification_member_submitted) {

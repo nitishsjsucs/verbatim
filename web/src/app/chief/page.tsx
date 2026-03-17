@@ -64,7 +64,7 @@ function ChiefContent() {
         }
     }, [role, router])
 
-    const { allDocs, loading, load: loadAll, handleAddComment } = useActionables({
+    const { allDocs, loading, load: loadAll } = useActionables({
         commentRole: "chief",
         commentAuthor: userName,
         autoLoad: false,
@@ -410,7 +410,7 @@ function ChiefContent() {
                         {/* Theme / Tranche / Impact — read-only from Compliance */}
                         <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                             <p className="text-xs font-semibold text-foreground/70">Compliance Parameters</p>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                     <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
@@ -422,10 +422,6 @@ function ChiefContent() {
                                 <div>
                                     <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
                                     <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                    <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product || <span className="text-muted-foreground/40 italic">—</span>}</p>
                                 </div>
                             </div>
                         </div>
@@ -525,8 +521,6 @@ function ChiefContent() {
                                     comments={item.comments || []}
                                     currentUser={userName}
                                     currentRole="chief"
-                                    onAddComment={taskStatus !== "completed" ? async (text) => handleAddComment(docId, item, text) : undefined}
-                                    readOnly={taskStatus === "completed"}
                                 />
                             </div>
                         </div>
