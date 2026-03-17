@@ -165,6 +165,7 @@ class ActionableItem:
     impact_sub3: dict = field(default_factory=dict)  # Deprecated
     # ── Theme dropdown ──
     theme: str = ""  # Configurable theme category
+    new_product: str = ""  # "Yes" / "No" — whether actionable relates to a new product
     # ── Tagged Incorrectly bypass flow ──
     bypass_tag: bool = False  # True if team member tagged this as incorrectly assigned
     bypass_tagged_at: str = ""  # ISO timestamp when bypass was tagged
@@ -198,6 +199,9 @@ class ActionableItem:
         "delay_justification_updated_by", "delay_justification_updated_at",
         "evidence_files", "comments", "completion_date",
         "deadline", "implementation_notes", "evidence_quote",
+        # Per-team risk fields (for mixed team aggregation)
+        "likelihood_business_volume", "likelihood_products_processes",
+        "likelihood_compliance_violations", "control_monitoring", "control_effectiveness",
     ]
 
     @property

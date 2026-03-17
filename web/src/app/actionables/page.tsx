@@ -217,6 +217,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [saving, setSaving] = React.useState(false)
     const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
     const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3))
+    const [draftNewProduct, setDraftNewProduct] = React.useState(safeStr(item.new_product) || "No")
     const [draftTheme, setDraftTheme] = React.useState(safeStr(item.theme) || docDefaultTheme)
     // Structured risk sub-dropdowns — each stores {label, score} or empty {}
     const emptyRSD = {} as RiskSubDropdown
@@ -310,6 +311,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
         setDraftTranche3(safeStr(item.tranche3))
+        setDraftNewProduct(safeStr(item.new_product) || "No")
         setDraftTheme(safeStr(item.theme) || docDefaultTheme)
         // Structured risk sub-dropdowns
         setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
@@ -350,6 +352,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
         if (draftTranche3 !== safeStr(item.tranche3)) return true
+        if (draftNewProduct !== (safeStr(item.new_product) || "No")) return true
         if (resolvedTheme !== safeStr(item.theme)) return true
         // Structured risk sub-dropdowns
         if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
@@ -375,7 +378,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             }
         }
         return false
-    }, [draftAction, draftImpl, draftEvidence, draftTranche3, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
+    }, [draftAction, draftImpl, draftEvidence, draftTranche3, draftNewProduct, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
     // --- Unified Save: sends all draft changes at once ---
     const handleSaveAll = async () => {
@@ -389,6 +392,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
             // Risk assessment — structured sub-dropdowns
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
+            if (draftNewProduct !== (safeStr(item.new_product) || "No")) updates.new_product = draftNewProduct
             if (resolvedTheme !== safeStr(item.theme)) updates.theme = resolvedTheme
             // CO only sets impact_dropdown; members set likelihood + control
             if (isComplianceOfficer) {
@@ -486,12 +490,21 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             return
         }
         // Save any pending draft changes first, then publish
+        const now = new Date().toISOString()
         const updates: Record<string, unknown> = {
             approval_status: "approved",
-            published_at: new Date().toISOString(),
+            published_at: now,
             deadline: dl,
             task_status: "assigned",
             published_by_account_id: callerAccountId,
+        }
+        // Set original_publish_date only on first publish — never overwrite
+        if (!item.original_publish_date) {
+            updates.original_publish_date = now
+        }
+        // Default new_product to "No" if not set
+        if (!item.new_product) {
+            updates.new_product = "No"
         }
         if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
         if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
@@ -535,7 +548,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             {/* Header row: Checkbox → Team → Risk → Text → Buttons */}
             <div className="flex items-center gap-1.5 px-3 py-2 hover:bg-muted/20 transition-colors">
                 {/* Multi-select checkbox for bulk publish */}
-                {item.approval_status === "pending" && (
+                {(item.approval_status === "pending" || item.approval_status === "rejected") && (
                     <input
                         type="checkbox"
                         checked={isChecked}
@@ -909,8 +922,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </div>
                                 </div>
 
-                                {/* Theme — both roles can edit */}
-                                <div className="grid grid-cols-2 gap-2">
+                                {/* Theme + Tranche3 + New Product — CO editable */}
+                                <div className="grid grid-cols-3 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                         <select
@@ -927,6 +940,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                             <option value="">— Select Tranche 3 —</option>
                                             {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
+                                        <select value={draftNewProduct} onChange={e => setDraftNewProduct(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
                                         </select>
                                     </div>
                                 </div>
@@ -1776,14 +1796,24 @@ export default function ActionablesPage() {
         for (const { item, docId } of pending) {
             const docDefault = docDeadlineDefaults[docId]
             const dl = item.deadline || (docDefault?.date ? `${docDefault.date}T${docDefault.time || "23:59"}` : "")
-            // Process sequentially to prevent document-level race conditions when saving
-            await handleUpdate(docId, item.id, {
+            const now = new Date().toISOString()
+            const updates: Record<string, unknown> = {
                 approval_status: "approved",
-                published_at: new Date().toISOString(),
+                published_at: now,
                 deadline: dl,
                 task_status: "assigned",
                 published_by_account_id: callerAccountId,
-            })
+            }
+            // Set original_publish_date only on first publish — never overwrite
+            if (!item.original_publish_date) {
+                updates.original_publish_date = now
+            }
+            // Default new_product to "No" if not set
+            if (!item.new_product) {
+                updates.new_product = "No"
+            }
+            // Process sequentially to prevent document-level race conditions when saving
+            await handleUpdate(docId, item.id, updates)
         }
         toast.success(`Published ${pending.length} actionables to tracker`)
     }, [handleUpdate, docDeadlineDefaults, callerAccountId])
@@ -1818,6 +1848,7 @@ export default function ActionablesPage() {
     // Pending / Rejected / Approved splits
     const [approvedCollapsed, setApprovedCollapsed] = React.useState(true)
     const [rejectedCollapsed, setRejectedCollapsed] = React.useState(false)
+    const [unpublishedCollapsed, setUnpublishedCollapsed] = React.useState(false)
 
     const pendingItems = React.useMemo(() => filtered.filter(e => e.item.approval_status === "pending"), [filtered])
     const rejectedItems = React.useMemo(() => filtered.filter(e => e.item.approval_status === "rejected"), [filtered])
@@ -1966,8 +1997,8 @@ export default function ActionablesPage() {
                                     {pendingItems.length > 0 && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <button className="flex items-center gap-2" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
-                                                    {rejectedCollapsed
+                                                <button className="flex items-center gap-2" onClick={() => setUnpublishedCollapsed(!unpublishedCollapsed)}>
+                                                    {unpublishedCollapsed
                                                         ? <ChevronRight className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                                                         : <ChevronDown className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                                                     }
@@ -2008,7 +2039,7 @@ export default function ActionablesPage() {
                                                 )}
                                                 <div className="h-px bg-yellow-400/20 flex-1" />
                                             </div>
-                                            {!rejectedCollapsed && (
+                                            {!unpublishedCollapsed && (
                                         <div className="space-y-2">
                                             {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status === "pending")

@@ -298,6 +298,12 @@ export interface TeamWorkflow {
     comments?: ActionableComment[];
     completion_date?: string;
     deadline?: string;  // Per-team deadline for mixed group projects
+    // Per-team risk fields (for mixed team aggregation)
+    likelihood_business_volume?: RiskSubDropdown;
+    likelihood_products_processes?: RiskSubDropdown;
+    likelihood_compliance_violations?: RiskSubDropdown;
+    control_monitoring?: RiskSubDropdown;
+    control_effectiveness?: RiskSubDropdown;
 }
 
 export interface RiskSubDropdown {
@@ -318,6 +324,7 @@ export interface ActionableItem {
     is_manual: boolean;
     // Publish fields (set when compliance officer approves from Actionables page)
     published_at?: string;
+    original_publish_date?: string; // ISO datetime of first publish — never overwritten, used for TAT
     deadline?: string;           // ISO datetime for deadline
     // Task lifecycle fields (populated after approval)
     task_status?: TaskStatus;
@@ -417,6 +424,7 @@ export interface ActionableItem {
     impact_sub2?: RiskSubDropdown;
     impact_sub3?: RiskSubDropdown;
     theme?: string;                   // Configurable theme category
+    new_product?: string;             // "Yes" / "No" — whether actionable relates to a new product
     // Tagged Incorrectly bypass flow
     bypass_tag?: boolean;             // True if tagged as incorrectly assigned
     bypass_tagged_at?: string;
@@ -722,5 +730,79 @@ export function getTeamView(item: ActionableItem, team: string): ActionableItem 
         deadline: tw.deadline || item.deadline,
         implementation_notes: tw.implementation_notes ?? item.implementation_notes,
         evidence_quote: tw.evidence_quote ?? item.evidence_quote,
+        // Per-team risk fields (projected from team workflow)
+        likelihood_business_volume: tw.likelihood_business_volume ?? item.likelihood_business_volume,
+        likelihood_products_processes: tw.likelihood_products_processes ?? item.likelihood_products_processes,
+        likelihood_compliance_violations: tw.likelihood_compliance_violations ?? item.likelihood_compliance_violations,
+        control_monitoring: tw.control_monitoring ?? item.control_monitoring,
+        control_effectiveness: tw.control_effectiveness ?? item.control_effectiveness,
+    };
+}
+
+/**
+ * For mixed-team actionables, aggregate risk across all teams:
+ * - Likelihood: MAX of each team's MAX(bv, pp, cv)
+ * - Control: AVG of each team's AVG(mon, eff)
+ * Returns updates to set on the parent ActionableItem top-level fields.
+ * Impact is set by CO at top level and is NOT aggregated.
+ */
+export function aggregateMixedTeamRisk(item: ActionableItem): Record<string, unknown> {
+    if (!isMultiTeam(item) || !item.team_workflows) return {};
+    const teams = item.assigned_teams || [];
+    const safeScore = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0);
+
+    let maxLikelihood = 0;
+    const controlScores: number[] = [];
+
+    for (const team of teams) {
+        const tw = item.team_workflows[team];
+        if (!tw) continue;
+        // Likelihood: MAX of 3 sub-dropdowns per team, then MAX across teams
+        const teamLik = Math.max(
+            safeScore(tw.likelihood_business_volume),
+            safeScore(tw.likelihood_products_processes),
+            safeScore(tw.likelihood_compliance_violations),
+        );
+        if (teamLik > maxLikelihood) maxLikelihood = teamLik;
+        // Control: AVG of 2 sub-dropdowns per team, collect for cross-team AVG
+        const monS = safeScore(tw.control_monitoring);
+        const effS = safeScore(tw.control_effectiveness);
+        if (monS || effS) {
+            controlScores.push((monS + effS) / 2);
+        }
+    }
+
+    const avgControl = controlScores.length > 0
+        ? controlScores.reduce((s, v) => s + v, 0) / controlScores.length
+        : 0;
+
+    const impactScore = safeScore(item.impact_dropdown) ** 2;
+    const inherent = maxLikelihood * impactScore;
+    const residual = inherent * avgControl;
+
+    // Check if all teams have all risk fields filled
+    const allFilled = teams.every(team => {
+        const tw = item.team_workflows?.[team];
+        return !!(tw?.likelihood_business_volume?.label &&
+            tw?.likelihood_products_processes?.label &&
+            tw?.likelihood_compliance_violations?.label &&
+            tw?.control_monitoring?.label &&
+            tw?.control_effectiveness?.label);
+    }) && !!item.impact_dropdown?.label;
+
+    const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High";
+    const interp = !allFilled ? "" : residual < 13 ? "Satisfactory (Low)" : residual < 28 ? "Improvement Needed (Medium)" : "Weak (High)";
+
+    return {
+        likelihood_score: maxLikelihood,
+        overall_likelihood_score: Math.round(maxLikelihood),
+        control_score: avgControl,
+        overall_control_score: avgControl,
+        overall_impact_score: Math.round(impactScore),
+        inherent_risk_score: inherent,
+        inherent_risk_label: classifyRisk(inherent),
+        residual_risk_score: allFilled ? residual : 0,
+        residual_risk_label: allFilled ? classifyRisk(residual) : "",
+        residual_risk_interpretation: interp,
     };
 }
