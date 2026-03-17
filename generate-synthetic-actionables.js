@@ -106,10 +106,29 @@ function generateActionable(id, theme, residualScore) {
     return {
         id: id,
         actionable_id: id,
-        title: `Synthetic Action: ${theme} - ${id}`,
-        description: `This is a synthetic completed actionable for theme "${theme}". Generated for risk engine testing.`,
+        // REQUIRED fields from ActionableItem dataclass
+        modality: "Mandatory",
+        actor: "Bank",
+        action: `Implement ${theme} compliance requirements`,
+        object: `${theme} regulatory obligations`,
+        // Optional structured fields
+        trigger_or_condition: "",
+        thresholds: "",
+        deadline_or_frequency: "",
+        effective_date: "",
+        reporting_or_notification_to: "",
+        evidence_quote: "",
+        source_location: "",
+        source_node_id: "",
+        implementation_notes: `Synthetic completed actionable for ${theme} theme`,
+        needs_legal_review: false,
+        validation_status: "validated",
+        validation_notes: "",
+        is_manual: false,
+        // Theme and workstream
         theme: theme,
-        workstream: "Mixed Team Projects", // Default workstream
+        workstream: "Mixed Team Projects",
+        // Status fields
         task_status: "completed",
         approval_status: "approved",
         published_at: createdDate,
@@ -117,37 +136,57 @@ function generateActionable(id, theme, residualScore) {
         deadline: deadline,
         created_at: createdDate,
         updated_at: completedDate,
-
+        submitted_at: createdDate,
+        team_reviewer_name: "synthetic_reviewer",
+        team_reviewer_approved_at: completedDate,
+        team_reviewer_rejected_at: "",
+        rejection_reason: "",
+        reviewer_comments: "",
         // Risk assessment fields
         residual_risk_score: residualScore,
         residual_risk_label: residualScore >= 28 ? "High" : residualScore >= 13 ? "Medium" : "Low",
         residual_risk_interpretation: residualScore >= 28 ? "Weak (High)" : residualScore >= 13 ? "Improvement Needed (Medium)" : "Satisfactory (Low)",
-
-        // Inherent risk (synthetic)
         inherent_risk_score: Math.round(residualScore * 1.3 * 100) / 100,
         inherent_risk_label: residualScore >= 28 ? "High" : residualScore >= 13 ? "Medium" : "Low",
-
-        // Control score (synthetic, inverse relationship)
         control_score: Math.max(0.2, Math.min(1.0, 1.0 - (residualScore / 50))),
-
-        // Likelihood and impact (synthetic)
         likelihood_score: Math.round(residualScore * 0.7 * 100) / 100,
         impact_score: Math.round(residualScore * 0.6 * 100) / 100,
-
-        // Evidence and comments (empty for synthetic)
+        overall_likelihood_score: Math.round(residualScore * 0.7),
+        overall_impact_score: Math.round(residualScore * 0.6),
+        overall_control_score: Math.max(0.2, Math.min(1.0, 1.0 - (residualScore / 50))),
+        // Structured risk dropdowns (empty objects for synthetic)
+        likelihood_business_volume: {},
+        likelihood_products_processes: {},
+        likelihood_compliance_violations: {},
+        impact_dropdown: {},
+        control_monitoring: {},
+        control_effectiveness: {},
+        // Legacy fields
+        impact: "",
+        tranche3: "",
+        control: "",
+        likelihood: "",
+        residual_risk: "",
+        inherent_risk: "",
+        impact_sub1: {},
+        impact_sub2: {},
+        impact_sub3: {},
+        // Evidence and comments
         evidence_files: [],
         comments: [],
-
-        // Metadata
-        synthetic: true,
-        generated_at: new Date().toISOString(),
-
-        // Status fields
-        submitted_at: createdDate,
-        team_reviewer_approved_at: completedDate,
+        member_comment: "",
+        member_comment_history: [],
+        reviewer_comment: "",
+        lead_comment: "",
+        co_comment: "",
+        // Delay monitoring
         is_delayed: false,
-
-        // Approval chain (all completed)
+        delay_detected_at: "",
+        justification: "",
+        justification_by: "",
+        justification_at: "",
+        justification_status: "",
+        // 4-stage justification approval chain
         justification_member_text: "Synthetic data",
         justification_member_at: createdDate,
         justification_member_by: "synthetic_system",
@@ -163,24 +202,41 @@ function generateActionable(id, theme, residualScore) {
         justification_co_comment: "Approved",
         justification_co_by: "synthetic_co",
         justification_co_at: createdDate,
-
-        // Comments
-        member_comment: "",
-        reviewer_comment: "",
-        lead_comment: "",
-        co_comment: "",
-
-        // Bypass flow (not bypassed)
+        // Shared delay justification
+        delay_justification: "",
+        delay_justification_member_submitted: false,
+        delay_justification_reviewer_approved: false,
+        delay_justification_lead_approved: false,
+        delay_justification_updated_by: "",
+        delay_justification_updated_at: "",
+        // Bypass flow
         bypass_tag: false,
-
-        // Team workflows (empty for synthetic)
+        bypass_tagged_at: "",
+        bypass_tagged_by: "",
+        bypass_approved_by: "",
+        bypass_approved_at: "",
+        bypass_disapproved_by: "",
+        bypass_disapproved_at: "",
+        bypass_disapproval_reason: "",
+        bypass_reviewer_rejected_by: "",
+        bypass_reviewer_rejected_at: "",
+        bypass_reviewer_rejection_reason: "",
+        // Team workflows
+        assigned_teams: [],
         team_workflows: {},
-
-        // Tranche and other fields
-        tranche3: "",
-        impact: "",
-        control: "",
-        likelihood: "",
+        // Document metadata
+        regulation_issue_date: "",
+        circular_effective_date: "",
+        regulator: "",
+        // Audit trail
+        audit_trail: [],
+        // Tracker isolation
+        published_by_account_id: "",
+        delegated_from_account_id: "",
+        delegation_request_id: "",
+        // Metadata
+        synthetic: true,
+        generated_at: new Date().toISOString(),
     };
 }
 
