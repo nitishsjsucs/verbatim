@@ -1,12 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { ActionableItem, ActionableComment, TeamWorkflow, RiskSubDropdown } from "@/lib/types"
-import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
-import { toast } from "sonner"
+import { ActionableItem, ActionableComment, TeamWorkflow } from "@/lib/types"
 import { CommentThread } from "@/components/shared/comment-thread"
 import {
-    AlertTriangle, CheckCircle2, XCircle, Flag, RotateCcw, Paperclip, Save, Loader2, Pencil
+    AlertTriangle, CheckCircle2, XCircle, Flag, RotateCcw, Paperclip, Save, Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { safeStr, formatDate, RESIDUAL_RISK_INTERPRETATION_STYLES } from "@/lib/status-config"
@@ -153,70 +151,6 @@ export function ActionableExpansion({
     onBypassDisapprove,
     formatDate,
 }: ActionableExpansionProps) {
-    // Dropdown config for editable risk fields
-    const { getOptions } = useDropdownConfig()
-    const impactOptions = getOptions("impact_dropdown")
-
-    // ── Active section: editable theme / tranche3 / impact / new_product ──
-    const [draftTheme, setDraftTheme] = React.useState(item.theme || "")
-    const [draftTranche3, setDraftTranche3] = React.useState(item.tranche3 || "")
-    const [draftNewProduct, setDraftNewProduct] = React.useState(item.new_product || "")
-    const [draftImpactLabel, setDraftImpactLabel] = React.useState(item.impact_dropdown?.label || "")
-    const [savingFields, setSavingFields] = React.useState(false)
-
-    React.useEffect(() => {
-        setDraftTheme(item.theme || "")
-        setDraftTranche3(item.tranche3 || "")
-        setDraftNewProduct(item.new_product || "")
-        setDraftImpactLabel(item.impact_dropdown?.label || "")
-    }, [item.id, item.theme, item.tranche3, item.new_product, item.impact_dropdown?.label])
-
-    const activeFieldsDirty = draftTheme !== (item.theme || "") ||
-        draftTranche3 !== (item.tranche3 || "") ||
-        draftNewProduct !== (item.new_product || "") ||
-        draftImpactLabel !== (item.impact_dropdown?.label || "")
-
-    const handleSaveActiveFields = React.useCallback(async () => {
-        setSavingFields(true)
-        try {
-            const updates: Record<string, unknown> = {}
-            if (draftTheme !== (item.theme || "")) updates.theme = draftTheme
-            if (draftTranche3 !== (item.tranche3 || "")) updates.tranche3 = draftTranche3
-            if (draftNewProduct !== (item.new_product || "")) updates.new_product = draftNewProduct
-            if (draftImpactLabel !== (item.impact_dropdown?.label || "")) {
-                const opt = impactOptions.find(o => o.label === draftImpactLabel)
-                if (opt) {
-                    updates.impact_dropdown = { label: opt.label, score: opt.value }
-                    updates.overall_impact_score = opt.value ** 2
-                }
-            }
-            if (Object.keys(updates).length > 0) {
-                await onUpdate(docId, item.id, updates, teamName)
-                toast.success("Fields saved")
-            }
-        } catch { /* parent handles */ } finally { setSavingFields(false) }
-    }, [draftTheme, draftTranche3, draftNewProduct, draftImpactLabel, impactOptions, item, docId, onUpdate, teamName])
-
-    // ── Completed section: edit mode for tranche3 + new_product only ──
-    const [completedEditMode, setCompletedEditMode] = React.useState(false)
-    const [completedTranche3, setCompletedTranche3] = React.useState(item.tranche3 || "")
-    const [completedNewProduct, setCompletedNewProduct] = React.useState(item.new_product || "")
-    const [savingCompleted, setSavingCompleted] = React.useState(false)
-
-    const handleSaveCompletedFields = React.useCallback(async () => {
-        setSavingCompleted(true)
-        try {
-            const updates: Record<string, unknown> = {}
-            if (completedTranche3 !== (item.tranche3 || "")) updates.tranche3 = completedTranche3
-            if (completedNewProduct !== (item.new_product || "")) updates.new_product = completedNewProduct
-            if (Object.keys(updates).length > 0) {
-                await onUpdate(docId, item.id, updates, teamName)
-                toast.success("Updated successfully")
-            }
-            setCompletedEditMode(false)
-        } catch { /* parent handles */ } finally { setSavingCompleted(false) }
-    }, [completedTranche3, completedNewProduct, item, docId, onUpdate, teamName])
-
     // CO comment draft state
     const [draftCoComment, setDraftCoComment] = React.useState(item.co_comment || "")
     const [savingComment, setSavingComment] = React.useState(false)
@@ -430,102 +364,21 @@ export function ActionableExpansion({
                             <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
                         </div>
 
-                        {/* Row 1: Theme + Tranche3 + Impact + New Product — editable for active, read-only for completed */}
-                        {!readOnly ? (
-                        <>
-                        <div className="grid grid-cols-4 gap-2">
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
-                                <input value={draftTheme} onChange={e => setDraftTheme(e.target.value)} className="w-full bg-muted/20 text-xs rounded px-2 py-1 border border-border/30 focus:border-primary focus:outline-none text-foreground" placeholder="Theme" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
-                                <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/20 text-xs rounded px-2 py-1 border border-border/30 focus:border-primary focus:outline-none text-foreground">
-                                    <option value="">—</option>
-                                    <option value="Yes">Yes</option>
-                                    <option value="No">No</option>
-                                </select>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                <select value={draftImpactLabel} onChange={e => setDraftImpactLabel(e.target.value)} className="w-full bg-muted/20 text-xs rounded px-2 py-1 border border-border/30 focus:border-primary focus:outline-none text-foreground">
-                                    <option value="">—</option>
-                                    {impactOptions.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                <select value={draftNewProduct} onChange={e => setDraftNewProduct(e.target.value)} className="w-full bg-muted/20 text-xs rounded px-2 py-1 border border-border/30 focus:border-primary focus:outline-none text-foreground">
-                                    <option value="">—</option>
-                                    <option value="Yes">Yes</option>
-                                    <option value="No">No</option>
-                                </select>
-                            </div>
-                        </div>
-                        {activeFieldsDirty && (
-                            <div className="flex justify-end">
-                                <button onClick={handleSaveActiveFields} disabled={savingFields} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50">
-                                    {savingFields ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                    {savingFields ? "Saving\u2026" : "Save Fields"}
-                                </button>
-                            </div>
-                        )}
-                        </>
-                        ) : (
-                        <>
-                        <div className="grid grid-cols-4 gap-2">
+                        {/* Row 1: Theme + Tranche3 + Impact */}
+                        <div className="grid grid-cols-3 gap-2">
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                 <p className="text-xs text-foreground/80">{item.theme || "—"}</p>
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
-                                {completedEditMode ? (
-                                    <select value={completedTranche3} onChange={e => setCompletedTranche3(e.target.value)} className="w-full bg-muted/20 text-xs rounded px-2 py-1 border border-primary/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                    </select>
-                                ) : (
-                                    <p className="text-xs text-foreground/80">{item.tranche3 || "—"}</p>
-                                )}
+                                <p className="text-xs text-foreground/80">{item.tranche3 || "—"}</p>
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
                                 <p className="text-xs text-foreground/80">{item.impact_dropdown?.label || "—"}</p>
                             </div>
-                            <div>
-                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                {completedEditMode ? (
-                                    <select value={completedNewProduct} onChange={e => setCompletedNewProduct(e.target.value)} className="w-full bg-muted/20 text-xs rounded px-2 py-1 border border-primary/40 focus:border-primary focus:outline-none text-foreground">
-                                        <option value="">—</option>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                    </select>
-                                ) : (
-                                    <p className="text-xs text-foreground/80">{item.new_product || "—"}</p>
-                                )}
-                            </div>
                         </div>
-                        {userRole === "compliance_officer" && (
-                            <div className="flex justify-end gap-2">
-                                {completedEditMode ? (
-                                    <>
-                                        <button onClick={() => { setCompletedEditMode(false); setCompletedTranche3(item.tranche3 || ""); setCompletedNewProduct(item.new_product || "") }} className="text-xs px-2.5 py-1 rounded-md bg-muted/30 text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
-                                        <button onClick={handleSaveCompletedFields} disabled={savingCompleted} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50">
-                                            {savingCompleted ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                            {savingCompleted ? "Saving\u2026" : "Submit"}
-                                        </button>
-                                    </>
-                                ) : (
-                                    <button onClick={() => { setCompletedEditMode(true); setCompletedTranche3(item.tranche3 || ""); setCompletedNewProduct(item.new_product || "") }} className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-muted/20 text-muted-foreground hover:text-foreground transition-colors">
-                                        <Pencil className="h-3 w-3" /> Edit
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                        </>
-                        )}
 
                         {/* Row 2: Likelihood */}
                         <div>
@@ -748,14 +601,6 @@ export function ActionableExpansion({
                         </div>
                     )}
 
-                    {/* CO comment — read-only display in completed section */}
-                    {userRole === "compliance_officer" && readOnly && item.co_comment && (
-                        <div className="rounded-lg border border-border/30 bg-muted/5 p-3 space-y-1">
-                            <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">CO Comment</p>
-                            <p className="text-xs text-foreground/80 whitespace-pre-wrap">{item.co_comment}</p>
-                        </div>
-                    )}
-
                     {/* CO mandatory comment box — only during review and not read-only */}
                     {userRole === "compliance_officer" && taskStatus === "review" && !readOnly && (
                         <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
@@ -797,8 +642,8 @@ export function ActionableExpansion({
                             comments={comments}
                             currentUser={userName}
                             currentRole={userRole}
-                            onAddComment={taskStatus !== "completed" ? onAddComment : undefined}
-                            readOnly={taskStatus === "completed"}
+                            onAddComment={readOnly ? undefined : onAddComment}
+                            readOnly={readOnly}
                         />
                     </div>
                 </div>
