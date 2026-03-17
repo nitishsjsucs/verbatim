@@ -1,0 +1,375 @@
+[
+  {
+    "_id": "doc_3eb3bf739378",
+    "doc_id": "doc_3eb3bf739378",
+    "nodes": {
+      "0016": {
+        "node_id": "0016",
+        "score": 0.66,
+        "times_cited": 2,
+        "times_located": 3,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T12:00:55.706322+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0040": {
+        "node_id": "0040",
+        "score": 0.8,
+        "times_cited": 3,
+        "times_located": 3,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0045": {
+        "node_id": "0045",
+        "score": 0.66,
+        "times_cited": 2,
+        "times_located": 3,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T12:00:55.706322+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0006": {
+        "node_id": "0006",
+        "score": 0.7,
+        "times_cited": 2,
+        "times_located": 2,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0005": {
+        "node_id": "0005",
+        "score": 0.7,
+        "times_cited": 2,
+        "times_located": 2,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0044": {
+        "node_id": "0044",
+        "score": 0.66,
+        "times_cited": 2,
+        "times_located": 3,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T12:00:55.706322+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0046": {
+        "node_id": "0046",
+        "score": 0.56,
+        "times_cited": 1,
+        "times_located": 2,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0048": {
+        "node_id": "0048",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-02T12:13:37.799735+00:00",
+        "last_update_ts": "2026-03-02T12:13:37.799735+00:00"
+      },
+      "0042": {
+        "node_id": "0042",
+        "score": 0.56,
+        "times_cited": 1,
+        "times_located": 2,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0010": {
+        "node_id": "0010",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0008": {
+        "node_id": "0008",
+        "score": 0.56,
+        "times_cited": 1,
+        "times_located": 2,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0037": {
+        "node_id": "0037",
+        "score": 0.56,
+        "times_cited": 1,
+        "times_located": 2,
+        "times_wasted": 1,
+        "last_cited_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.768921+00:00"
+      },
+      "0015": {
+        "node_id": "0015",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0047": {
+        "node_id": "0047",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0049": {
+        "node_id": "0049",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0035": {
+        "node_id": "0035",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-02T12:13:37.800250+00:00",
+        "last_update_ts": "2026-03-02T12:13:37.800250+00:00"
+      },
+      "0036": {
+        "node_id": "0036",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-02T12:13:37.800250+00:00",
+        "last_update_ts": "2026-03-02T12:13:37.800250+00:00"
+      },
+      "0041": {
+        "node_id": "0041",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0009": {
+        "node_id": "0009",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0017": {
+        "node_id": "0017",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0043": {
+        "node_id": "0043",
+        "score": 0.42,
+        "times_cited": 0,
+        "times_located": 2,
+        "times_wasted": 2,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0034": {
+        "node_id": "0034",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-02T12:13:37.800250+00:00",
+        "last_update_ts": "2026-03-02T12:13:37.800250+00:00"
+      },
+      "0014": {
+        "node_id": "0014",
+        "score": 0.6,
+        "times_cited": 1,
+        "times_located": 1,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.768921+00:00"
+      },
+      "0062": {
+        "node_id": "0062",
+        "score": 0.6,
+        "times_cited": 1,
+        "times_located": 1,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.768921+00:00"
+      },
+      "0019": {
+        "node_id": "0019",
+        "score": 0.6,
+        "times_cited": 1,
+        "times_located": 1,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.768921+00:00"
+      },
+      "0001": {
+        "node_id": "0001",
+        "score": 0.6,
+        "times_cited": 1,
+        "times_located": 1,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.768921+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.768921+00:00"
+      },
+      "0052": {
+        "node_id": "0052",
+        "score": 0.6,
+        "times_cited": 1,
+        "times_located": 1,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0007": {
+        "node_id": "0007",
+        "score": 0.6,
+        "times_cited": 1,
+        "times_located": 1,
+        "times_wasted": 0,
+        "last_cited_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0012": {
+        "node_id": "0012",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0056": {
+        "node_id": "0056",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0060": {
+        "node_id": "0060",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      },
+      "0013": {
+        "node_id": "0013",
+        "score": 0.46,
+        "times_cited": 0,
+        "times_located": 1,
+        "times_wasted": 1,
+        "last_cited_ts": null,
+        "last_located_ts": "2026-03-03T13:27:44.769448+00:00",
+        "last_update_ts": "2026-03-03T13:27:44.769448+00:00"
+      }
+    },
+    "grades": [
+      {
+        "timestamp": "2026-03-02T12:13:37.799735+00:00",
+        "query_type": "multi_hop",
+        "precision": 0.3,
+        "nodes_located": 20,
+        "nodes_cited": 6,
+        "nodes_wasted": 16,
+        "reflect_added_value": false,
+        "verification_passed": false,
+        "total_time_s": 198.98677110671997,
+        "user_rating": null
+      },
+      {
+        "timestamp": "2026-03-03T12:00:55.706322+00:00",
+        "query_type": "multi_hop",
+        "precision": 1,
+        "nodes_located": 4,
+        "nodes_cited": 4,
+        "nodes_wasted": 0,
+        "reflect_added_value": false,
+        "verification_passed": false,
+        "total_time_s": 117.39448618888855,
+        "user_rating": null
+      },
+      {
+        "timestamp": "2026-03-03T13:27:44.768921+00:00",
+        "query_type": "multi_hop",
+        "precision": 0.542,
+        "nodes_located": 24,
+        "nodes_cited": 13,
+        "nodes_wasted": 15,
+        "reflect_added_value": false,
+        "verification_passed": false,
+        "total_time_s": 274.2660114765167,
+        "user_rating": null
+      }
+    ],
+    "type_stats": {
+      "multi_hop": {
+        "total_queries": 3,
+        "avg_precision": 0.6139,
+        "avg_time_s": 196.8824,
+        "reflect_value_rate": 0,
+        "verify_pass_rate": 0
+      }
+    }
+  }
+]

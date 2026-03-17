@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "69a35772cde2b9f7582bbd75",
+    "role": "team_reviewer",
+    "team": "Policy",
+    "cursors": {
+      "team_internal:Policy": "2026-02-28T21:00:33.555630+00:00",
+      "team_compliance:Policy": "2026-02-28T21:00:42.446981+00:00"
+    }
+  },
+  {
+    "_id": "69a35792cde2b9f7582bbd83",
+    "role": "team_lead",
+    "team": "Policy",
+    "cursors": {
+      "team_internal:Policy": "2026-02-28T21:08:22.330493+00:00",
+      "team_compliance:Policy": "2026-02-28T21:08:23.263306+00:00"
+    }
+  },
+  {
+    "_id": "69a357b5cde2b9f7582bbd88",
+    "role": "team_member",
+    "team": "Policy",
+    "cursors": {
+      "team_internal:Policy": "2026-03-01T07:51:52.749628+00:00",
+      "team_compliance:Policy": "2026-02-28T21:01:50.522210+00:00"
+    }
+  },
+  {
+    "_id": "69a357d3cde2b9f7582bbd8d",
+    "role": "compliance_officer",
+    "team": "",
+    "cursors": {
+      "compliance_internal": "2026-03-07T07:28:53.985070+00:00",
+      "team_compliance:Policy": "2026-03-07T07:28:59.300405+00:00",
+      "team_compliance:Operations": "2026-02-28T21:02:20.174583+00:00",
+      "team_compliance:Technology": "2026-03-02T09:16:02.756489+00:00",
+      "team_compliance:Training": "2026-03-07T07:29:00.179227+00:00"
+    }
+  }
+]

@@ -1,0 +1,141 @@
+[
+  {
+    "_id": "doc_3eb3bf739378",
+    "doc_id": "doc_3eb3bf739378",
+    "built_at": null,
+    "version": 0,
+    "node_count": 0,
+    "cluster_count": 0,
+    "heat_map": {
+      "0044": {
+        "node_id": "0044",
+        "citations": 2,
+        "last_cited": "2026-03-03T12:00:54.950126+00:00",
+        "query_types": {
+          "multi_hop": 2
+        }
+      },
+      "0045": {
+        "node_id": "0045",
+        "citations": 9,
+        "last_cited": "2026-03-03T12:00:54.950126+00:00",
+        "query_types": {
+          "multi_hop": 9
+        }
+      },
+      "0040": {
+        "node_id": "0040",
+        "citations": 3,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 3
+        }
+      },
+      "0016": {
+        "node_id": "0016",
+        "citations": 2,
+        "last_cited": "2026-03-03T12:00:54.950126+00:00",
+        "query_types": {
+          "multi_hop": 2
+        }
+      },
+      "0005": {
+        "node_id": "0005",
+        "citations": 2,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 2
+        }
+      },
+      "0006": {
+        "node_id": "0006",
+        "citations": 2,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 2
+        }
+      },
+      "0001": {
+        "node_id": "0001",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0007": {
+        "node_id": "0007",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0008": {
+        "node_id": "0008",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0042": {
+        "node_id": "0042",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0037": {
+        "node_id": "0037",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0046": {
+        "node_id": "0046",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0014": {
+        "node_id": "0014",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0019": {
+        "node_id": "0019",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0052": {
+        "node_id": "0052",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      },
+      "0062": {
+        "node_id": "0062",
+        "citations": 1,
+        "last_cited": "2026-03-03T13:27:43.735007+00:00",
+        "query_types": {
+          "multi_hop": 1
+        }
+      }
+    },
+    "clusters": []
+  }
+]

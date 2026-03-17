@@ -1,0 +1,536 @@
+[
+  {
+    "_id": "62bbcbad-2149-4540-9a90-9cbf0b867eb3",
+    "query_text": "In V-CIP, what are the technical security requirements are explicitly specified for the infrastructure/application?",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-02-27T14:23:32.053430+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 1.344,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 17.675,
+        "input_tokens": 25062,
+        "output_tokens": 951,
+        "llm_calls": 2,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "single_hop",
+          "sections_count": 8,
+          "tokens_retrieved": 4301
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 119.194,
+    "total_input_tokens": 25062,
+    "total_output_tokens": 951,
+    "total_llm_calls": 2,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "3cfc1172-f209-40f3-a4c4-be15cbfb9aed",
+    "query_text": "In V-CIP, what are the technical security requirements are explicitly specified for the infrastructure/application?",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "legacy",
+    "timestamp": "2026-02-27T14:27:22.770778+00:00",
+    "stages": [],
+    "total_time": 101.19,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_llm_calls": 0,
+    "stages_skipped": 0,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "2a0d08c7-b257-4783-8be0-9191a866045a",
+    "query_text": "In V-CIP, what are the technical security requirements are explicitly specified for the infrastructure/application?",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-02T10:20:02.738082+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.487,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 28.038,
+        "input_tokens": 25063,
+        "output_tokens": 3301,
+        "llm_calls": 2,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "single_hop",
+          "sections_count": 7,
+          "tokens_retrieved": 3805
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 66.063,
+    "total_input_tokens": 25063,
+    "total_output_tokens": 3301,
+    "total_llm_calls": 2,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "d0000766-3bb7-43e4-ac69-ed7be8de83ff",
+    "query_text": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-02T11:10:59.386733+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.458,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 59.413,
+        "input_tokens": 49899,
+        "output_tokens": 6592,
+        "llm_calls": 3,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "multi_hop",
+          "sections_count": 4,
+          "tokens_retrieved": 2040
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 148.158,
+    "total_input_tokens": 49899,
+    "total_output_tokens": 6592,
+    "total_llm_calls": 3,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "b0e3bd6f-59e0-4b28-a311-d85b16692926",
+    "query_text": "Identify all Beneficial Owners you must determine for X, and explain why each qualifies (ownership vs control vs “senior managing official” fallback). Also list whose CDD you must perform (customer, BOs, authorised signatories, POA holders, etc.) and what evidence you’d rely on.",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-02T11:34:48.567324+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.51,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 130.363,
+        "input_tokens": 99494,
+        "output_tokens": 16910,
+        "llm_calls": 5,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "multi_hop",
+          "sections_count": 3,
+          "tokens_retrieved": 1462
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 637.256,
+    "total_input_tokens": 99494,
+    "total_output_tokens": 16910,
+    "total_llm_calls": 5,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "25bea7c6-f865-49bf-b361-292377070b65",
+    "query_text": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-02T11:40:44.800533+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.452,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 25.535,
+        "input_tokens": 25144,
+        "output_tokens": 2937,
+        "llm_calls": 2,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "multi_hop",
+          "sections_count": 3,
+          "tokens_retrieved": 1636
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 135.834,
+    "total_input_tokens": 25144,
+    "total_output_tokens": 2937,
+    "total_llm_calls": 2,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "8a991c55-ea3c-43f0-a1aa-87f601f63d09",
+    "query_text": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-02T11:54:18.626575+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.464,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 235.673,
+        "input_tokens": 100000,
+        "output_tokens": 25535,
+        "llm_calls": 6,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "multi_hop",
+          "sections_count": 23,
+          "tokens_retrieved": 15069
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 335.688,
+    "total_input_tokens": 100000,
+    "total_output_tokens": 25535,
+    "total_llm_calls": 6,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "b852e75c-3d2c-4cac-8966-536e33c25a3f",
+    "query_text": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-02T12:13:36.933259+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.457,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 104.244,
+        "input_tokens": 100022,
+        "output_tokens": 9459,
+        "llm_calls": 6,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "query_type": "multi_hop",
+          "sections_count": 22,
+          "tokens_retrieved": 36068
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 198.987,
+    "total_input_tokens": 100022,
+    "total_output_tokens": 9459,
+    "total_llm_calls": 6,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "8aca7e62-9f7a-42b1-87a6-0486b5fa0498",
+    "query_text": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-03T12:00:54.843430+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.477,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0,
+          "qi_suggested_nodes": 6,
+          "raptor_candidates": 0,
+          "total_memory_candidates": 6
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 44.401,
+        "input_tokens": 7179,
+        "output_tokens": 3743,
+        "llm_calls": 5,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "user_context_injected": true,
+          "query_type": "multi_hop",
+          "sections_count": 7,
+          "tokens_retrieved": 6602
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 117.396,
+    "total_input_tokens": 7179,
+    "total_output_tokens": 3743,
+    "total_llm_calls": 5,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  },
+  {
+    "_id": "269bf6d7-b55b-4e42-85df-913e6b980527",
+    "query_text": "Show the latest Board-approved KYC policy and map each of the 4 mandatory elements (Customer Acceptance, Risk Management, CIP, Monitoring) to operating procedures, systems, and MI. ",
+    "doc_id": "doc_3eb3bf739378",
+    "retrieval_mode": "optimized",
+    "timestamp": "2026-03-03T13:27:43.618592+00:00",
+    "stages": [
+      {
+        "stage_name": "load_tree",
+        "duration_seconds": 0.076,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "node_count": 91,
+          "total_pages": 101,
+          "embedding_index_entries": 0,
+          "reliability_scored_nodes": 4
+        }
+      },
+      {
+        "stage_name": "retrieval",
+        "duration_seconds": 101.966,
+        "input_tokens": 100058,
+        "output_tokens": 9188,
+        "llm_calls": 6,
+        "cache_hit": false,
+        "skipped": false,
+        "skip_reason": "",
+        "metadata": {
+          "user_context_injected": true,
+          "query_type": "multi_hop",
+          "sections_count": 19,
+          "tokens_retrieved": 35787
+        }
+      },
+      {
+        "stage_name": "reflection",
+        "duration_seconds": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "llm_calls": 0,
+        "cache_hit": false,
+        "skipped": true,
+        "skip_reason": "opt-in disabled",
+        "metadata": {}
+      }
+    ],
+    "total_time": 274.267,
+    "total_input_tokens": 100058,
+    "total_output_tokens": 9188,
+    "total_llm_calls": 6,
+    "stages_skipped": 1,
+    "cache_hits": 0,
+    "comparison_record_id": ""
+  }
+]

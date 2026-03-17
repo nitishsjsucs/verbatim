@@ -1,0 +1,100 @@
+[
+  {
+    "_id": "default",
+    "user_id": "default",
+    "short_term": [
+      {
+        "entry_id": "mem_1772453617038",
+        "user_input": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+        "agent_response": "## 1) Applicable regulatory construct\nThe limits / restrictions and the one-year deadline you are asking about arise **specifically for “Accounts opened using Aadhaar OTP based e-KYC, in non-face-to-face mode”** and the conditions imposed on such accounts. [CDD Procedure in case of Individuals, p.29]\n\n## 2) Limits to test for breach (and what constitutes a breach)\nFor accounts opened using **Aadhaar OTP based e-KYC in non-face-to-face mode**, the bank must ensure compliance with all of the follo",
+        "timestamp": "2026-03-02T12:13:37.038377+00:00",
+        "keywords": [
+          "limits breached",
+          "operational restrictions",
+          "full identification deadline",
+          "customer declaration",
+          "OTP-based accounts",
+          "onboarding / CDD",
+          "temporary limits",
+          "enhanced due diligence",
+          "non-face-to-face KYC"
+        ],
+        "doc_id": "doc_3eb3bf739378"
+      },
+      {
+        "entry_id": "mem_1772539254950",
+        "user_input": "Which limits are breached (if any), what immediate operational restrictions must be applied, and by what deadline must the bank complete full identification (and what happens if it doesn’t)? Include how you’d handle the required customer declaration about not having OTP-based accounts elsewhere.",
+        "agent_response": "## 1) Limits that may be breached (and how to test breach)\nThe following limits apply to **“accounts opened using Aadhaar OTP based e-KYC, in non-face-to-face mode”** [A. CDD Procedure in case of Individuals (p.29), p.29]:\n\n### Deposit-side limits\n- **Aggregate balance cap (across all deposit accounts of the customer): ₹1,00,000**. If the customer’s **aggregate balance exceeds ₹1,00,000**, the bank must apply the specified operational restriction (see Section 2 below). [A. CDD Procedure in case ",
+        "timestamp": "2026-03-03T12:00:54.950126+00:00",
+        "keywords": [
+          "limits breached",
+          "operational restrictions",
+          "full identification deadline",
+          "customer declaration",
+          "OTP-based accounts",
+          "KYC / CDD",
+          "remediation"
+        ],
+        "doc_id": "doc_3eb3bf739378"
+      },
+      {
+        "entry_id": "mem_1772544463735",
+        "user_input": "Show the latest Board-approved KYC policy and map each of the 4 mandatory elements (Customer Acceptance, Risk Management, CIP, Monitoring) to operating procedures, systems, and MI. ",
+        "agent_response": "## 1) What the **latest (current) Board‑approved KYC Policy** must contain under RBI Directions 2025\n\n### 1.1 Board approval & mandatory elements\n- The bank **“shall have a KYC policy”** and **“[t]he Board of Directors … or any committee to which the Board has delegated power, shall duly approve the KYC policy.”** [A. Board of Directors / Policies related guidelines, pp.16-17]\n- The KYC policy **“shall include [the] following four key elements”**: **(i) Customer Acceptance Policy; (ii) Risk Mana",
+        "timestamp": "2026-03-03T13:27:43.735007+00:00",
+        "keywords": [
+          "Board-approved KYC policy",
+          "KYC",
+          "Customer Acceptance",
+          "Risk Management",
+          "CIP",
+          "Monitoring",
+          "operating procedures",
+          "systems",
+          "MI",
+          "management information",
+          "Customer Identification Program"
+        ],
+        "doc_id": "doc_3eb3bf739378"
+      }
+    ],
+    "sessions": {},
+    "profile": {
+      "expertise_areas": [],
+      "preferred_detail_level": "detailed",
+      "frequent_topics": {
+        "limits breached": 2,
+        "operational restrictions": 2,
+        "full identification deadline": 2,
+        "customer declaration": 2,
+        "OTP-based accounts": 2,
+        "onboarding / CDD": 1,
+        "temporary limits": 1,
+        "enhanced due diligence": 1,
+        "non-face-to-face KYC": 1,
+        "KYC / CDD": 1,
+        "remediation": 1,
+        "Board-approved KYC policy": 1,
+        "KYC": 1,
+        "Customer Acceptance": 1,
+        "Risk Management": 1,
+        "CIP": 1,
+        "Monitoring": 1,
+        "operating procedures": 1,
+        "systems": 1,
+        "MI": 1,
+        "management information": 1,
+        "Customer Identification Program": 1
+      },
+      "query_type_distribution": {
+        "multi_hop": 3
+      },
+      "total_queries": 3,
+      "avg_rating": 0,
+      "rating_count": 0,
+      "summary": "",
+      "last_updated": "2026-03-03T13:27:43.735007+00:00"
+    },
+    "knowledge": []
+  }
+]

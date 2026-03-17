@@ -1,0 +1,452 @@
+[
+  {
+    "_id": "69a3e46dc1ef042b4f39a080",
+    "name": "Mixed Team",
+    "is_system": true,
+    "colors": {
+      "bg": "bg-purple-500/10",
+      "text": "text-purple-400",
+      "header": "bg-purple-500"
+    },
+    "created_at": "2026-03-01T07:02:05.454016+00:00",
+    "order": -1,
+    "summary": "System-generated classification for actionables assigned to multiple teams.",
+    "depth": 0,
+    "parent_name": null,
+    "path": []
+  },
+  {
+    "_id": "69ae9ec815930139916c32df",
+    "name": "Compliance",
+    "is_system": false,
+    "colors": {
+      "header": "bg-cyan-500",
+      "bg": "bg-cyan-500/10",
+      "text": "text-cyan-500"
+    },
+    "summary": "Compliance and regulatory affairs team",
+    "created_at": "2026-03-09T10:19:52.605Z",
+    "order": 1,
+    "parent_name": null,
+    "depth": 0,
+    "path": []
+  },
+  {
+    "_id": "69ae9ec815930139916c32e0",
+    "name": "Admin",
+    "is_system": false,
+    "colors": {
+      "header": "bg-blue-500",
+      "bg": "bg-blue-500/10",
+      "text": "text-blue-500"
+    },
+    "summary": "Administrative and system management team",
+    "created_at": "2026-03-09T10:19:52.812Z",
+    "order": 2,
+    "parent_name": null,
+    "depth": 0,
+    "path": []
+  },
+  {
+    "_id": "69ae9ec915930139916c32e1",
+    "name": "Engineering",
+    "is_system": false,
+    "colors": {
+      "header": "bg-purple-500",
+      "bg": "bg-purple-500/10",
+      "text": "text-purple-500"
+    },
+    "summary": "Engineering and technical development team",
+    "created_at": "2026-03-09T10:19:53.015Z",
+    "order": 3,
+    "parent_name": null,
+    "depth": 0,
+    "path": []
+  },
+  {
+    "_id": "69ae9ec915930139916c32e2",
+    "name": "Engineering Division 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-pink-500",
+      "bg": "bg-pink-500/10",
+      "text": "text-pink-500"
+    },
+    "summary": "Division 1 under Engineering",
+    "created_at": "2026-03-09T10:19:53.220Z",
+    "order": 4,
+    "parent_name": "Engineering",
+    "depth": 1,
+    "path": [
+      "Engineering"
+    ]
+  },
+  {
+    "_id": "69ae9ec915930139916c32e3",
+    "name": "Engineering Division 1 Unit 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-red-500",
+      "bg": "bg-red-500/10",
+      "text": "text-red-500"
+    },
+    "summary": "Operational unit 1 under Engineering Division 1",
+    "created_at": "2026-03-09T10:19:53.425Z",
+    "order": 5,
+    "parent_name": "Engineering Division 1",
+    "depth": 2,
+    "path": [
+      "Engineering",
+      "Engineering Division 1"
+    ]
+  },
+  {
+    "_id": "69ae9ec915930139916c32e4",
+    "name": "Engineering Division 1 Unit 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-orange-500",
+      "bg": "bg-orange-500/10",
+      "text": "text-orange-500"
+    },
+    "summary": "Operational unit 2 under Engineering Division 1",
+    "created_at": "2026-03-09T10:19:53.627Z",
+    "order": 6,
+    "parent_name": "Engineering Division 1",
+    "depth": 2,
+    "path": [
+      "Engineering",
+      "Engineering Division 1"
+    ]
+  },
+  {
+    "_id": "69ae9ec915930139916c32e5",
+    "name": "Engineering Division 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-amber-500",
+      "bg": "bg-amber-500/10",
+      "text": "text-amber-500"
+    },
+    "summary": "Division 2 under Engineering",
+    "created_at": "2026-03-09T10:19:53.835Z",
+    "order": 7,
+    "parent_name": "Engineering",
+    "depth": 1,
+    "path": [
+      "Engineering"
+    ]
+  },
+  {
+    "_id": "69ae9eca15930139916c32e6",
+    "name": "Engineering Division 2 Unit 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-yellow-500",
+      "bg": "bg-yellow-500/10",
+      "text": "text-yellow-500"
+    },
+    "summary": "Operational unit 1 under Engineering Division 2",
+    "created_at": "2026-03-09T10:19:54.048Z",
+    "order": 8,
+    "parent_name": "Engineering Division 2",
+    "depth": 2,
+    "path": [
+      "Engineering",
+      "Engineering Division 2"
+    ]
+  },
+  {
+    "_id": "69ae9eca15930139916c32e7",
+    "name": "Engineering Division 2 Unit 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-lime-500",
+      "bg": "bg-lime-500/10",
+      "text": "text-lime-500"
+    },
+    "summary": "Operational unit 2 under Engineering Division 2",
+    "created_at": "2026-03-09T10:19:54.251Z",
+    "order": 9,
+    "parent_name": "Engineering Division 2",
+    "depth": 2,
+    "path": [
+      "Engineering",
+      "Engineering Division 2"
+    ]
+  },
+  {
+    "_id": "69ae9eca15930139916c32e8",
+    "name": "Operations",
+    "is_system": false,
+    "colors": {
+      "bg": "bg-yellow-500/10",
+      "text": "text-yellow-400",
+      "header": "bg-yellow-500"
+    },
+    "summary": "Operations and process management team",
+    "created_at": "2026-03-09T10:19:54.460Z",
+    "order": 10,
+    "parent_name": null,
+    "depth": 0,
+    "path": []
+  },
+  {
+    "_id": "69ae9eca15930139916c32e9",
+    "name": "Operations Division 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-emerald-500",
+      "bg": "bg-emerald-500/10",
+      "text": "text-emerald-500"
+    },
+    "summary": "Division 1 under Operations",
+    "created_at": "2026-03-09T10:19:54.663Z",
+    "order": 11,
+    "parent_name": "Operations",
+    "depth": 1,
+    "path": [
+      "Operations"
+    ]
+  },
+  {
+    "_id": "69ae9eca15930139916c32ea",
+    "name": "Operations Division 1 Unit 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-teal-500",
+      "bg": "bg-teal-500/10",
+      "text": "text-teal-500"
+    },
+    "summary": "Operational unit 1 under Operations Division 1",
+    "created_at": "2026-03-09T10:19:54.866Z",
+    "order": 12,
+    "parent_name": "Operations Division 1",
+    "depth": 2,
+    "path": [
+      "Operations",
+      "Operations Division 1"
+    ]
+  },
+  {
+    "_id": "69ae9ecb15930139916c32eb",
+    "name": "Operations Division 1 Unit 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-cyan-500",
+      "bg": "bg-cyan-500/10",
+      "text": "text-cyan-500"
+    },
+    "summary": "Operational unit 2 under Operations Division 1",
+    "created_at": "2026-03-09T10:19:55.070Z",
+    "order": 13,
+    "parent_name": "Operations Division 1",
+    "depth": 2,
+    "path": [
+      "Operations",
+      "Operations Division 1"
+    ]
+  },
+  {
+    "_id": "69ae9ecb15930139916c32ec",
+    "name": "Operations Division 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-blue-500",
+      "bg": "bg-blue-500/10",
+      "text": "text-blue-500"
+    },
+    "summary": "Division 2 under Operations",
+    "created_at": "2026-03-09T10:19:55.275Z",
+    "order": 14,
+    "parent_name": "Operations",
+    "depth": 1,
+    "path": [
+      "Operations"
+    ]
+  },
+  {
+    "_id": "69ae9ecb15930139916c32ed",
+    "name": "Operations Division 2 Unit 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-purple-500",
+      "bg": "bg-purple-500/10",
+      "text": "text-purple-500"
+    },
+    "summary": "Operational unit 1 under Operations Division 2",
+    "created_at": "2026-03-09T10:19:55.478Z",
+    "order": 15,
+    "parent_name": "Operations Division 2",
+    "depth": 2,
+    "path": [
+      "Operations",
+      "Operations Division 2"
+    ]
+  },
+  {
+    "_id": "69ae9ecb15930139916c32ee",
+    "name": "Operations Division 2 Unit 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-pink-500",
+      "bg": "bg-pink-500/10",
+      "text": "text-pink-500"
+    },
+    "summary": "Operational unit 2 under Operations Division 2",
+    "created_at": "2026-03-09T10:19:55.684Z",
+    "order": 16,
+    "parent_name": "Operations Division 2",
+    "depth": 2,
+    "path": [
+      "Operations",
+      "Operations Division 2"
+    ]
+  },
+  {
+    "_id": "69ae9ecb15930139916c32ef",
+    "name": "Finance",
+    "is_system": false,
+    "colors": {
+      "header": "bg-red-500",
+      "bg": "bg-red-500/10",
+      "text": "text-red-500"
+    },
+    "summary": "Finance and accounting team",
+    "created_at": "2026-03-09T10:19:55.886Z",
+    "order": 17,
+    "parent_name": null,
+    "depth": 0,
+    "path": []
+  },
+  {
+    "_id": "69ae9ecc15930139916c32f0",
+    "name": "Finance Division 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-orange-500",
+      "bg": "bg-orange-500/10",
+      "text": "text-orange-500"
+    },
+    "summary": "Division 1 under Finance",
+    "created_at": "2026-03-09T10:19:56.090Z",
+    "order": 18,
+    "parent_name": "Finance",
+    "depth": 1,
+    "path": [
+      "Finance"
+    ]
+  },
+  {
+    "_id": "69ae9ecc15930139916c32f1",
+    "name": "Finance Division 1 Unit 1",
+    "is_system": false,
+    "colors": {
+      "header": "bg-amber-500",
+      "bg": "bg-amber-500/10",
+      "text": "text-amber-500"
+    },
+    "summary": "Operational unit 1 under Finance Division 1",
+    "created_at": "2026-03-09T10:19:56.295Z",
+    "order": 19,
+    "parent_name": "Finance Division 1",
+    "depth": 2,
+    "path": [
+      "Finance",
+      "Finance Division 1"
+    ]
+  },
+  {
+    "_id": "69ae9ecc15930139916c32f2",
+    "name": "Finance Division 1 Unit 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-yellow-500",
+      "bg": "bg-yellow-500/10",
+      "text": "text-yellow-500"
+    },
+    "summary": "Operational unit 2 under Finance Division 1",
+    "created_at": "2026-03-09T10:19:56.498Z",
+    "order": 20,
+    "parent_name": "Finance Division 1",
+    "depth": 2,
+    "path": [
+      "Finance",
+      "Finance Division 1"
+    ]
+  },
+  {
+    "_id": "69ae9ecc15930139916c32f3",
+    "name": "Finance Division 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-lime-500",
+      "bg": "bg-lime-500/10",
+      "text": "text-lime-500"
+    },
+    "summary": "Division 2 under Finance",
+    "created_at": "2026-03-09T10:19:56.702Z",
+    "order": 21,
+    "parent_name": "Finance",
+    "depth": 1,
+    "path": [
+      "Finance"
+    ]
+  },
+  {
+    "_id": "69ae9ecc15930139916c32f4",
+    "name": "Finance Division 2 Unit 1",
+    "is_system": false,
+    "colors": {
+      "bg": "bg-emerald-500/10",
+      "text": "text-emerald-400",
+      "header": "bg-emerald-500"
+    },
+    "summary": "Operational unit 1 under Finance Division 2",
+    "created_at": "2026-03-09T10:19:56.922Z",
+    "order": 22,
+    "parent_name": "Finance Division 2",
+    "depth": 2,
+    "path": [
+      "Finance",
+      "Finance Division 2"
+    ]
+  },
+  {
+    "_id": "69ae9ecd15930139916c32f5",
+    "name": "Finance Division 2 Unit 2",
+    "is_system": false,
+    "colors": {
+      "header": "bg-emerald-500",
+      "bg": "bg-emerald-500/10",
+      "text": "text-emerald-500"
+    },
+    "summary": "Operational unit 2 under Finance Division 2",
+    "created_at": "2026-03-09T10:19:57.128Z",
+    "order": 23,
+    "parent_name": "Finance Division 2",
+    "depth": 2,
+    "path": [
+      "Finance",
+      "Finance Division 2"
+    ]
+  },
+  {
+    "_id": "69b6796e896394ce281d26b6",
+    "name": "DUV 3",
+    "is_system": false,
+    "colors": {
+      "bg": "bg-indigo-500/10",
+      "text": "text-indigo-400",
+      "header": "bg-indigo-500"
+    },
+    "summary": "SSDFSFDSD",
+    "created_at": "2026-03-15T09:18:38.208438+00:00",
+    "order": 24,
+    "parent_name": "Engineering",
+    "depth": 1,
+    "path": [
+      "Engineering"
+    ]
+  }
+]
