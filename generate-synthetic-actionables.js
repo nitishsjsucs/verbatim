@@ -144,10 +144,10 @@ function generateActionable(id, theme, residualScore) {
         reviewer_comments: "",
         // Risk assessment fields
         residual_risk_score: residualScore,
-        residual_risk_label: residualScore >= 28 ? "High" : residualScore >= 13 ? "Medium" : "Low",
-        residual_risk_interpretation: residualScore >= 28 ? "Weak (High)" : residualScore >= 13 ? "Improvement Needed (Medium)" : "Satisfactory (Low)",
+        residual_risk_label: residualScore <= 0 ? "" : residualScore <= 3 ? "Low" : residualScore <= 9 ? "Medium" : "High",
+        residual_risk_interpretation: residualScore < 1 ? "" : residualScore < 13 ? "Satisfactory (Low)" : residualScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)",
         inherent_risk_score: Math.round(residualScore * 1.3 * 100) / 100,
-        inherent_risk_label: residualScore >= 28 ? "High" : residualScore >= 13 ? "Medium" : "Low",
+        inherent_risk_label: (function() { const ir = Math.round(residualScore * 1.3 * 100) / 100; return ir <= 0 ? "" : ir <= 3 ? "Low" : ir <= 6 ? "Medium" : "High"; })(),
         control_score: Math.max(0.2, Math.min(1.0, 1.0 - (residualScore / 50))),
         likelihood_score: Math.round(residualScore * 0.7 * 100) / 100,
         impact_score: Math.round(residualScore * 0.6 * 100) / 100,

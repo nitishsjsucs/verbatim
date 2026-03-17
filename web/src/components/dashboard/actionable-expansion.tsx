@@ -182,6 +182,7 @@ export function ActionableExpansion({
     const allRiskFilled = !!(item.likelihood_business_volume?.label && item.likelihood_products_processes?.label && item.likelihood_compliance_violations?.label && item.impact_dropdown?.label && item.control_monitoring?.label && item.control_effectiveness?.label)
     const computedResidual = allRiskFilled ? computedInherent * computedCtrlScore : 0
     const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
+    const classifyInherentRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 6 ? "Medium" : "High"
     const computedResidualLabel = allRiskFilled ? classifyRisk(computedResidual) : ""
     const computedResidualInterp = !allRiskFilled ? "" : computedResidual < 13 ? "Satisfactory (Low)" : computedResidual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
 
@@ -448,7 +449,7 @@ export function ActionableExpansion({
                                     <p className="text-sm font-semibold tabular-nums text-orange-400">
                                         {computedInherent > 0 ? computedInherent.toFixed(0) : <span className="text-muted-foreground/40 text-xs">—</span>}
                                     </p>
-                                    {computedInherent > 0 && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{classifyRisk(computedInherent)}</p>}
+                                    {computedInherent > 0 && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{classifyInherentRisk(computedInherent)}</p>}
                                 </div>
                                 <div className="rounded-lg border border-border/40 bg-background/60 p-2">
                                     <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>

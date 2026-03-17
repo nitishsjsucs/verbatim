@@ -1996,6 +1996,7 @@ def bulk_create_actionables(doc_id: str, items: list = Body(...)):
 def get_approved_by_team():
     """Get all approved actionables grouped by workstream (team).
     Multi-team actionables appear in each assigned team's list."""
+    from models.actionable import ActionableItem
     store = get_actionable_store()
     db = store._collection
     teams: dict[str, list] = {}
@@ -2004,14 +2005,19 @@ def get_approved_by_team():
         doc_name = raw.get("doc_name", doc_id)
         for a in raw.get("actionables", []):
             if a.get("approval_status") == "approved":
-                a["doc_id"] = doc_id
-                a["doc_name"] = doc_name
-                assigned = a.get("assigned_teams", [])
-                target_teams = assigned if len(assigned) > 0 else [a.get("workstream", "Technology")]
+                # Serialize through from_dict/to_dict for consistent field structure
+                try:
+                    serialized = ActionableItem.from_dict(a).to_dict()
+                except Exception:
+                    serialized = a
+                serialized["doc_id"] = doc_id
+                serialized["doc_name"] = doc_name
+                assigned = serialized.get("assigned_teams", [])
+                target_teams = assigned if len(assigned) > 0 else [serialized.get("workstream", "Technology")]
                 for ws in target_teams:
                     if ws not in teams:
                         teams[ws] = []
-                    teams[ws].append(a)
+                    teams[ws].append(serialized)
     return teams
 
 

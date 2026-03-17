@@ -140,6 +140,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const draftInherent = draftLikScore * draftImpScore
     const draftResidual = draftAllFilled ? draftInherent * draftCtrlScore : 0
     const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
+    const classifyInherentRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 6 ? "Medium" : "High"
 
     // Explicit Save — batches all risk + comment changes
     const handleSaveChanges = React.useCallback(async () => {
@@ -164,7 +165,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             updates.overall_impact_score = Math.round(draftImpScore)
             updates.overall_control_score = draftCtrlScore
             updates.inherent_risk_score = draftInherent
-            updates.inherent_risk_label = classifyRisk(draftInherent)
+            updates.inherent_risk_label = classifyInherentRisk(draftInherent)
             updates.residual_risk_score = draftResidual
             updates.residual_risk_label = draftAllFilled ? classifyRisk(draftResidual) : ""
             updates.residual_risk_interpretation = interp

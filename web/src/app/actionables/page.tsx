@@ -254,11 +254,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     // RESIDUAL RISK = inherent risk × control score (only when all params filled)
     const residualRiskScore = allRiskFilled ? inherentRiskScore * controlScore : 0
     const classifyRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 9 ? "Medium" : "High"
+    const classifyInherentRisk = (score: number) => score <= 0 ? "" : score <= 3 ? "Low" : score <= 6 ? "Medium" : "High"
     const impactLabel = React.useMemo(() => {
         const label = getLabel("impact_dropdown")
         return label.toLowerCase() === "impact_dropdown" ? "Impact Assessment" : label
     }, [getLabel])
-    const inherentRiskLabel = classifyRisk(inherentRiskScore)
+    const inherentRiskLabel = classifyInherentRisk(inherentRiskScore)
     const residualRiskLabel = allRiskFilled ? classifyRisk(residualRiskScore) : ""
     const residualRiskInterpretation = !allRiskFilled ? "" : residualRiskScore < 13 ? "Satisfactory (Low)" : residualRiskScore < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
     const autoGrow = React.useCallback((el: HTMLTextAreaElement | null) => {
@@ -1819,6 +1820,7 @@ export default function ActionablesPage() {
     }
 
     // Pending / Rejected / Approved splits
+    const [pendingCollapsed, setPendingCollapsed] = React.useState(false)
     const [approvedCollapsed, setApprovedCollapsed] = React.useState(true)
     const [rejectedCollapsed, setRejectedCollapsed] = React.useState(false)
 
@@ -1969,8 +1971,8 @@ export default function ActionablesPage() {
                                     {pendingItems.length > 0 && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2">
-                                                <button className="flex items-center gap-2" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
-                                                    {rejectedCollapsed
+                                                <button className="flex items-center gap-2" onClick={() => setPendingCollapsed(!pendingCollapsed)}>
+                                                    {pendingCollapsed
                                                         ? <ChevronRight className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                                                         : <ChevronDown className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                                                     }
@@ -2011,7 +2013,7 @@ export default function ActionablesPage() {
                                                 )}
                                                 <div className="h-px bg-yellow-400/20 flex-1" />
                                             </div>
-                                            {!rejectedCollapsed && (
+                                            {!pendingCollapsed && (
                                         <div className="space-y-2">
                                             {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
                                                 const pendingEntries = entries.filter(e => e.item.approval_status === "pending")
@@ -2095,50 +2097,6 @@ export default function ActionablesPage() {
                                                                 />
                                                             ))}
                                                         </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-
-                                        </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* ---- ACTIVE section ---- */}
-                                    {approvedItems.length > 0 && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <button className="flex items-center gap-2" onClick={() => setApprovedCollapsed(!approvedCollapsed)}>
-                                                    {approvedCollapsed
-                                                        ? <ChevronRight className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                                                        : <ChevronDown className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                                                    }
-                                                    <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider">Active ({approvedItems.length})</p>
-                                                </button>
-                                                <div className="h-px bg-green-400/20 flex-1" />
-                                            </div>
-                                            {!approvedCollapsed && (
-                                        <div className="space-y-2">
-                                            {Object.entries(byDocument).map(([docId, { docName, entries }]) => {
-                                                const approvedEntries = entries.filter(e => e.item.approval_status === "approved")
-                                                if (approvedEntries.length === 0) return null
-                                                const isCollapsed = collapsedDocs.has(`approved-${docId}`)
-                                                return (
-                                                    <div key={`approved-${docId}`} className="border border-green-400/15 rounded-lg">
-                                                        <div className="px-3 py-1.5 bg-green-400/5 border-b border-green-400/15 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 hover:bg-green-400/10 transition-colors">
-                                                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => toggleDoc(`approved-${docId}`)}>
-                                                                {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                                                                <FileText className="h-3 w-3 text-green-400/60" /> {docName}
-                                                                <span className="ml-auto text-[10px] text-muted-foreground/60">{approvedEntries.length} active</span>
-                                                            </button>
-                                                        </div>
-                                                        {!isCollapsed && (
-                                                            <div className="p-2 space-y-2">
-                                                                {approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[docId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
-                                                                ))}
-                                                            </div>
                                                         )}
                                                     </div>
                                                 )

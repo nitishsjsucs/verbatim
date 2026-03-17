@@ -538,6 +538,7 @@ class ActionableItem:
             team_workflows=data.get("team_workflows", {}),
             published_by_account_id=data.get("published_by_account_id", ""),
             delegated_from_account_id=data.get("delegated_from_account_id", ""),
+            delegation_request_id=data.get("delegation_request_id", ""),
         )
 
 
