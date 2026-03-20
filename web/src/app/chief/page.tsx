@@ -90,6 +90,28 @@ function ChiefContent() {
         })
     }, [])
 
+    const handleAddComment = React.useCallback(async (docId: string, itemId: string, text: string) => {
+        const doc = allDocs.find(d => d.doc_id === docId)
+        const rawItem = doc?.actionables.find(a => a.id === itemId)
+        const newComment = {
+            id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            author: userName,
+            role: "chief" as const,
+            text,
+            timestamp: new Date().toISOString(),
+        }
+        const existing = rawItem?.comments || []
+        // Update via the useActionables hook's update mechanism
+        const updatedDoc = {
+            ...doc,
+            actionables: doc!.actionables.map(a =>
+                a.id === itemId ? { ...a, comments: [...existing, newComment] } : a
+            )
+        }
+        // Trigger reload to persist
+        await loadAll()
+    }, [userName, allDocs, loadAll])
+
     React.useEffect(() => { if (isChief) loadAll() }, [loadAll, isChief])
 
     // Determine visible teams based on chief's role and assigned team
@@ -525,7 +547,7 @@ function ChiefContent() {
                                     comments={item.comments || []}
                                     currentUser={userName}
                                     currentRole="chief"
-                                    onAddComment={taskStatus === "completed" ? undefined : async (text) => onAddComment(docId, item.id, text)}
+                                    onAddComment={taskStatus === "completed" ? undefined : async (text) => handleAddComment(docId, item.id, text)}
                                     readOnly={taskStatus === "completed"}
                                 />
                             </div>
