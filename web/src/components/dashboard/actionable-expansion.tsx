@@ -7,8 +7,10 @@ import {
     AlertTriangle, CheckCircle2, XCircle, Flag, RotateCcw, Paperclip, Save, Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { safeStr, formatDate, RESIDUAL_RISK_INTERPRETATION_STYLES } from "@/lib/status-config"
+import { safeStr, formatDate, RESIDUAL_RISK_INTERPRETATION_STYLES, THEME_OPTIONS } from "@/lib/status-config"
 import { EvidenceFileList } from "@/components/shared/status-components"
+import { useDropdownConfig, DropdownOption } from "@/lib/use-dropdown-config"
+import { RiskSubDropdown } from "@/lib/types"
 
 interface ActionableExpansionProps {
     // Parent actionable item (contains document metadata and risk assessment)
@@ -156,8 +158,63 @@ export function ActionableExpansion({
     const [savingComment, setSavingComment] = React.useState(false)
     const isCoCommentDirty = draftCoComment !== (item.co_comment || "")
 
+    // CAG-editable risk assessment draft states
+    const { getOptions, getLabel } = useDropdownConfig()
+    const getSafeOptions = React.useCallback((key: string): DropdownOption[] => {
+        const opts = getOptions(key)
+        return opts.length > 0 ? opts : []
+    }, [getOptions])
+    const pickSubDropdown = React.useCallback((key: string, label: string): RiskSubDropdown => {
+        if (!label) return {} as RiskSubDropdown
+        const opt = getSafeOptions(key).find(o => o.label === label)
+        return opt ? { label: opt.label, score: opt.value } : { label, score: 0 }
+    }, [getSafeOptions])
+
+    const [draftTheme, setDraftTheme] = React.useState(item.theme || "")
+    const [draftTranche3, setDraftTranche3] = React.useState(item.tranche3 || "No")
+    const [draftNewProduct, setDraftNewProduct] = React.useState(item.new_product || "No")
+    const [draftProductLiveDate, setDraftProductLiveDate] = React.useState(item.product_live_date || "")
+    const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(item.impact_dropdown || {} as RiskSubDropdown)
+    const [savingRisk, setSavingRisk] = React.useState(false)
+
+    const isRiskDirty = React.useMemo(() => {
+        if (draftTheme !== (item.theme || "")) return true
+        if (draftTranche3 !== (item.tranche3 || "No")) return true
+        if (draftNewProduct !== (item.new_product || "No")) return true
+        if (draftProductLiveDate !== (item.product_live_date || "")) return true
+        if ((draftImpactDD?.label || "") !== (item.impact_dropdown?.label || "")) return true
+        return false
+    }, [draftTheme, draftTranche3, draftNewProduct, draftProductLiveDate, draftImpactDD, item])
+
+    const handleSaveRisk = React.useCallback(async () => {
+        setSavingRisk(true)
+        try {
+            const updates: Record<string, unknown> = {}
+            if (draftTheme !== (item.theme || "")) updates.theme = draftTheme
+            if (draftTranche3 !== (item.tranche3 || "No")) updates.tranche3 = draftTranche3
+            if (draftNewProduct !== (item.new_product || "No")) updates.new_product = draftNewProduct
+            if (draftProductLiveDate !== (item.product_live_date || "")) updates.product_live_date = draftProductLiveDate
+            if ((draftImpactDD?.label || "") !== (item.impact_dropdown?.label || "")) {
+                updates.impact_dropdown = draftImpactDD
+                updates.overall_impact_score = (draftImpactDD?.score ?? 0) ** 2
+            }
+            if (Object.keys(updates).length > 0) {
+                await onUpdate(docId, item.id, updates, teamName)
+            }
+        } catch {
+            /* toast handled by parent */
+        } finally {
+            setSavingRisk(false)
+        }
+    }, [draftTheme, draftTranche3, draftNewProduct, draftProductLiveDate, draftImpactDD, onUpdate, docId, item, teamName])
+
     React.useEffect(() => {
         setDraftCoComment(item.co_comment || "")
+        setDraftTheme(item.theme || "")
+        setDraftTranche3(item.tranche3 || "No")
+        setDraftNewProduct(item.new_product || "No")
+        setDraftProductLiveDate(item.product_live_date || "")
+        setDraftImpactDD(item.impact_dropdown || {} as RiskSubDropdown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [item.id])
 
@@ -363,23 +420,85 @@ export function ActionableExpansion({
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                         <div className="flex items-center justify-between">
                             <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
+                            {isRiskDirty && (
+                                <button
+                                    onClick={handleSaveRisk}
+                                    disabled={savingRisk}
+                                    className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md bg-primary/15 text-primary hover:bg-primary/25 font-semibold transition-colors disabled:opacity-50"
+                                >
+                                    {savingRisk ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    {savingRisk ? "Saving…" : "Save Risk"}
+                                </button>
+                            )}
                         </div>
 
-                        {/* Row 1: Theme + Tranche3 + Impact */}
-                        <div className="grid grid-cols-3 gap-2">
+                        {/* Row 1: Theme + Tranche3 + New Product + Impact */}
+                        <div className="grid grid-cols-4 gap-2">
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
-                                <p className="text-xs text-foreground/80">{item.theme || "—"}</p>
+                                {taskStatus !== "completed" ? (
+                                    <select value={draftTheme} onChange={e => setDraftTheme(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="">— Select Theme —</option>
+                                        {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                ) : (
+                                    <p className="text-xs text-foreground/80">{item.theme || "—"}</p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
-                                <p className="text-xs text-foreground/80">{item.tranche3 || "—"}</p>
+                                <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                    {(getSafeOptions("tranche3").length > 0 ? getSafeOptions("tranche3") : [{ label: "No", value: 0 }, { label: "Yes", value: 1 }]).map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
+                                {taskStatus !== "completed" ? (
+                                    <select value={draftNewProduct} onChange={e => { setDraftNewProduct(e.target.value); if (e.target.value === "No") setDraftProductLiveDate("") }} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                ) : (
+                                    <p className={cn("text-xs", item.new_product === "Yes" ? "text-cyan-400 font-medium" : "text-foreground/80")}>{item.new_product || "No"}</p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                <p className="text-xs text-foreground/80">{item.impact_dropdown?.label || "—"}</p>
+                                {taskStatus !== "completed" ? (
+                                    <select
+                                        value={draftImpactDD?.label || ""}
+                                        onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
+                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
+                                    >
+                                        <option value="">— Select Impact —</option>
+                                        {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                    </select>
+                                ) : (
+                                    <p className="text-xs text-foreground/80">{item.impact_dropdown?.label || "—"}</p>
+                                )}
                             </div>
                         </div>
+                        {/* Product Live Date — editable when new_product=Yes (even when completed) */}
+                        {(draftNewProduct === "Yes" || item.new_product === "Yes") && (
+                            <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
+                                <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider mb-1">Product Live Date</p>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={draftProductLiveDate}
+                                        onChange={e => setDraftProductLiveDate(e.target.value)}
+                                        className="w-[160px] bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                    />
+                                    {draftProductLiveDate && (() => {
+                                        const diffMs = new Date(draftProductLiveDate).getTime() - Date.now()
+                                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                        if (diffDays < 0) return <span className="text-[10px] text-red-400 font-semibold">{Math.abs(diffDays)}d overdue</span>
+                                        if (diffDays === 0) return <span className="text-[10px] text-amber-400 font-semibold">Today</span>
+                                        return <span className="text-[10px] text-cyan-400 font-mono">{diffDays}d remaining</span>
+                                    })()}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Row 2: Likelihood */}
                         <div>
@@ -525,6 +644,30 @@ export function ActionableExpansion({
                         </div>
                     )}
 
+                    {/* Turnaround Time — shown for completed items when first_published_at is available */}
+                    {taskStatus === "completed" && item.first_published_at && (item.completion_date || tw?.completion_date) && (
+                        (() => {
+                            const pubDate = new Date(item.first_published_at)
+                            const compDate = new Date((tw?.completion_date || item.completion_date)!)
+                            const diffMs = compDate.getTime() - pubDate.getTime()
+                            if (diffMs < 0 || isNaN(diffMs)) return null
+                            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                            const diffHrs = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+                            const turnaroundStr = diffDays > 0 ? `${diffDays}d ${diffHrs}h` : `${diffHrs}h`
+                            return (
+                                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                                    <p className="text-[10px] font-semibold text-emerald-400/80 uppercase tracking-wider mb-1">Turnaround Time</p>
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="text-sm font-bold text-emerald-400 tabular-nums">{turnaroundStr}</span>
+                                        <span className="text-[10px] text-muted-foreground/50">
+                                            First published {formatDate(item.first_published_at)} → Completed {formatDate((tw?.completion_date || item.completion_date)!)}
+                                        </span>
+                                    </div>
+                                </div>
+                            )
+                        })()
+                    )}
+
                     {/* Evidence Files - for compliance_officer, show at bottom */}
                     {userRole === "compliance_officer" && evidenceFiles && evidenceFiles.length > 0 && (
                         <div>
@@ -578,9 +721,9 @@ export function ActionableExpansion({
                     )}
 
                     {/* Role-specific comments display (read-only, for CO to see all) */}
-                    {userRole === "compliance_officer" && (item.member_comment || item.reviewer_comment || item.lead_comment) && (
+                    {userRole === "compliance_officer" && (item.member_comment || item.reviewer_comment || item.lead_comment || item.co_comment) && (
                         <div className="rounded-lg border border-border/30 bg-muted/5 p-3 space-y-2">
-                            <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Team Comments</p>
+                            <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Team &amp; CAG Comments</p>
                             {item.member_comment && (
                                 <div>
                                     <p className="text-[10px] font-semibold text-foreground/50">Member</p>
@@ -597,6 +740,12 @@ export function ActionableExpansion({
                                 <div>
                                     <p className="text-[10px] font-semibold text-foreground/50">Lead</p>
                                     <p className="text-xs text-foreground/80">{item.lead_comment}</p>
+                                </div>
+                            )}
+                            {item.co_comment && (
+                                <div>
+                                    <p className="text-[10px] font-semibold text-primary/70">CAG (Compliance)</p>
+                                    <p className="text-xs text-foreground/80">{item.co_comment}</p>
                                 </div>
                             )}
                         </div>
@@ -634,17 +783,18 @@ export function ActionableExpansion({
                         </div>
                     )}
 
-                    {/* Chat thread */}
+                    {/* Chat thread — accessible to all roles; read-only when completed */}
                     <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
-                        {userRole === "compliance_officer" && (
-                            <p className="text-xs font-semibold text-foreground/50 mb-2">Discussion Thread</p>
-                        )}
+                        <p className="text-xs font-semibold text-foreground/50 mb-2">
+                            Discussion Thread
+                            {taskStatus === "completed" && <span className="text-[10px] text-muted-foreground/40 ml-1.5 font-normal">(read-only)</span>}
+                        </p>
                         <CommentThread
                             comments={comments}
                             currentUser={userName}
                             currentRole={userRole}
-                            onAddComment={readOnly ? undefined : onAddComment}
-                            readOnly={readOnly}
+                            onAddComment={taskStatus === "completed" ? undefined : onAddComment}
+                            readOnly={taskStatus === "completed"}
                         />
                     </div>
                 </div>

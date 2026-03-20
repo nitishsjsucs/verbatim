@@ -318,7 +318,11 @@ export interface ActionableItem {
     is_manual: boolean;
     // Publish fields (set when compliance officer approves from Actionables page)
     published_at?: string;
+    first_published_at?: string; // ISO timestamp of the FIRST time this was published (never overwritten)
     deadline?: string;           // ISO datetime for deadline
+    // New Product fields
+    new_product?: string;        // "Yes" or "No"
+    product_live_date?: string;  // ISO date — Product Live Date (only when new_product="Yes")
     // Task lifecycle fields (populated after approval)
     task_status?: TaskStatus;
     completion_date?: string;    // ISO datetime when task is completed

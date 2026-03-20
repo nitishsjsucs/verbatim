@@ -210,6 +210,20 @@ export function computeResidualScore(item: ActionableItem): number | null {
     return inherent * ctrlScore
 }
 
+/** Compute residual risk for a multi-team (mixed) actionable.
+ *  Combining logic: max likelihood, common impact, avg control.
+ *  Currently risk scores are stored at the actionable level (not per-team),
+ *  so this is equivalent to computeResidualScore. If per-team risk scores
+ *  are added in the future, this function should aggregate across teams.
+ */
+export function computeMixedTeamResidualScore(item: ActionableItem): number | null {
+    // Multi-team items share the same risk assessment at the actionable level.
+    // The combining logic (max likelihood, avg control, common impact) is already
+    // baked into computeResidualScore since likelihood = MAX(3 sub-scores),
+    // control = AVG(2 sub-scores), and impact is a single shared value.
+    return computeResidualScore(item)
+}
+
 /** Classify a theme average score using configurable thresholds. */
 export function classifyTheme(
     avgScore: number,

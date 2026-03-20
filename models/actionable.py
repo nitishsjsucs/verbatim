@@ -72,7 +72,10 @@ class ActionableItem:
     approval_status: str = "pending"  # pending, approved, rejected
     is_manual: bool = False  # True if manually created by user
     published_at: str = ""  # ISO timestamp when published to tracker
+    first_published_at: str = ""  # ISO timestamp of the FIRST time this was published (never overwritten)
     deadline: str = ""  # ISO datetime deadline for completion
+    new_product: str = ""  # "Yes" or "No"
+    product_live_date: str = ""  # ISO date — Product Live Date (only when new_product="Yes")
     task_status: str = ""  # assigned, in_progress, team_review, review, completed, reworking
     completion_date: str = ""  # ISO timestamp when completed
     reviewer_comments: str = ""  # Comments from reviewer or team member
@@ -305,7 +308,10 @@ class ActionableItem:
             "approval_status": self.approval_status,
             "is_manual": self.is_manual,
             "published_at": self.published_at,
+            "first_published_at": self.first_published_at,
             "deadline": self.deadline,
+            "new_product": self.new_product,
+            "product_live_date": self.product_live_date,
             "task_status": self.task_status,
             "completion_date": self.completion_date,
             "reviewer_comments": self.reviewer_comments,
@@ -441,7 +447,10 @@ class ActionableItem:
             approval_status=data.get("approval_status", "pending"),
             is_manual=data.get("is_manual", False),
             published_at=data.get("published_at", ""),
+            first_published_at=data.get("first_published_at", ""),
             deadline=data.get("deadline", ""),
+            new_product=data.get("new_product", ""),
+            product_live_date=data.get("product_live_date", ""),
             task_status=data.get("task_status", ""),
             completion_date=data.get("completion_date", ""),
             reviewer_comments=data.get("reviewer_comments", ""),

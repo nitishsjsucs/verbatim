@@ -607,8 +607,8 @@ export default function DashboardPage() {
         })
     }
 
-    // Grid columns: Team | Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Actions
-    const gridCols = "minmax(80px,0.7fr) minmax(180px,3fr) 100px 100px 70px 80px 90px 90px 90px"
+    // Grid columns: Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Live Date | Actions
+    const gridCols = "minmax(200px,3fr) 100px 100px 70px 80px 90px 90px 90px 90px"
 
     // ─── Render ──────────────────────────────────────────────────────────
 
@@ -842,7 +842,6 @@ export default function DashboardPage() {
                                 {/* ── Column headers ── */}
                                 {!isCollapsed && (
                                     <div className="grid gap-0 border-b border-border/20 bg-muted/20 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                        <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -850,6 +849,7 @@ export default function DashboardPage() {
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
+                                        <div className="text-[10px] font-semibold text-cyan-400/60 uppercase tracking-wider py-2 px-1 text-center">Live Date</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
                                 )}
@@ -881,12 +881,6 @@ export default function DashboardPage() {
                                                 style={{ gridTemplateColumns: gridCols }}
                                                 onClick={() => toggleRow(rowKey)}
                                             >
-                                                {/* Team */}
-                                                <div className="py-1.5 px-1">
-                                                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(getClassification(item)))}>
-                                                        {getClassification(item)}
-                                                    </span>
-                                                </div>
                                                 {/* Actionable text + progress indicator for multi-team */}
                                                 <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                     {isExpanded
@@ -956,6 +950,28 @@ export default function DashboardPage() {
                                                     <span className="text-[10px] text-muted-foreground/60">
                                                         {item.task_status === "completed" ? formatDate(item.completion_date) : "—"}
                                                     </span>
+                                                </div>
+                                                {/* Product Live Date */}
+                                                <div className="py-1.5 px-1 text-center" onClick={e => e.stopPropagation()}>
+                                                    {item.new_product === "Yes" ? (
+                                                        <div className="flex flex-col items-center gap-0.5">
+                                                            <input
+                                                                type="date"
+                                                                value={item.product_live_date || ""}
+                                                                onChange={e => handleUpdate(docId, item.id, { product_live_date: e.target.value })}
+                                                                className="w-[90px] bg-transparent text-[10px] text-cyan-400 font-mono rounded px-1 py-0.5 border border-cyan-400/20 focus:border-cyan-400 focus:outline-none text-center"
+                                                            />
+                                                            {item.product_live_date && (() => {
+                                                                const diffMs = new Date(item.product_live_date).getTime() - Date.now()
+                                                                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                                if (diffDays < 0) return <span className="text-[9px] text-red-400 font-semibold">{Math.abs(diffDays)}d over</span>
+                                                                if (diffDays === 0) return <span className="text-[9px] text-amber-400 font-semibold">Today</span>
+                                                                return <span className="text-[9px] text-cyan-400 font-mono">{diffDays}d</span>
+                                                            })()}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                    )}
                                                 </div>
                                                 {/* Actions */}
                                                 <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
@@ -1085,17 +1101,12 @@ export default function DashboardPage() {
                                                             style={{ gridTemplateColumns: gridCols }}
                                                             onClick={() => toggleRow(teamRowKey)}
                                                         >
-                                                            {/* Team tag */}
-                                                            <div className="py-1.5 px-1">
-                                                                <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", teamColors.bg, teamColors.text)}>
-                                                                    {team}
-                                                                </span>
-                                                            </div>
-                                                            {/* Implementation text */}
+                                                            {/* Actionable text (with team name inline for child rows) */}
                                                             <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                                 {isTeamExpanded
                                                                     ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                                                                     : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                                                                <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", teamColors.bg, teamColors.text)}>{team}</span>
                                                                 <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                                 {teamCommentCount > 0 && (
                                                                     <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60">
@@ -1138,6 +1149,14 @@ export default function DashboardPage() {
                                                                 <span className="text-[10px] text-muted-foreground/60">
                                                                     {twStatus === "completed" ? formatDate(tw?.completion_date) : "—"}
                                                                 </span>
+                                                            </div>
+                                                            {/* Product Live Date (inherited from parent) */}
+                                                            <div className="py-1.5 px-1 text-center">
+                                                                {item.new_product === "Yes" && item.product_live_date ? (
+                                                                    <span className="text-[10px] text-cyan-400/60 font-mono">{formatDateShort(item.product_live_date)}</span>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                                )}
                                                             </div>
                                                             {/* Actions */}
                                                             <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
@@ -1429,7 +1448,6 @@ export default function DashboardPage() {
 
                                         {!isCollapsed && (
                                             <div className="grid gap-0 border-b border-border/10 bg-muted/5 px-3" style={{ gridTemplateColumns: gridCols }}>
-                                                <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Team</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2">Actionable</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Status</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-2 text-center">Deadline</div>
@@ -1437,6 +1455,7 @@ export default function DashboardPage() {
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Evidence</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
+                                                <div className="text-[10px] font-semibold text-cyan-400/60 uppercase tracking-wider py-2 px-1 text-center">Live Date</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                             </div>
                                         )}
@@ -1462,11 +1481,6 @@ export default function DashboardPage() {
                                                         style={{ gridTemplateColumns: gridCols }}
                                                         onClick={() => toggleRow(rowKey)}
                                                     >
-                                                        <div className="py-1.5 px-1">
-                                                            <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(getClassification(item)))}>
-                                                                {getClassification(item)}
-                                                            </span>
-                                                        </div>
                                                         <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                             {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
                                                             <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
@@ -1508,6 +1522,14 @@ export default function DashboardPage() {
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
+                                                        {/* Product Live Date */}
+                                                        <div className="py-1.5 px-1 text-center">
+                                                            {item.new_product === "Yes" && item.product_live_date ? (
+                                                                <span className="text-[10px] text-cyan-400/60 font-mono">{formatDateShort(item.product_live_date)}</span>
+                                                            ) : (
+                                                                <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                            )}
+                                                        </div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400">Approved</span></div>
                                                     </div>
 
@@ -1528,17 +1550,12 @@ export default function DashboardPage() {
                                                                     style={{ gridTemplateColumns: gridCols }}
                                                                     onClick={() => toggleRow(teamRowKey)}
                                                                 >
-                                                                    {/* Team tag */}
-                                                                    <div className="py-1.5 px-1">
-                                                                        <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", teamColors.bg, teamColors.text)}>
-                                                                            {team}
-                                                                        </span>
-                                                                    </div>
-                                                                    {/* Implementation text */}
+                                                                    {/* Actionable text (with team name inline) */}
                                                                     <div className="py-1.5 px-2 min-w-0 flex items-center gap-1.5">
                                                                         {isTeamExpanded
                                                                             ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/40" />
                                                                             : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/40" />}
+                                                                        <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", teamColors.bg, teamColors.text)}>{team}</span>
                                                                         <span className="text-xs text-foreground/90 truncate">{safeStr(item.action)}</span>
                                                                         {teamCommentCount > 0 && (
                                                                             <span className="shrink-0 flex items-center gap-0.5 text-xs text-primary/60">
@@ -1575,6 +1592,14 @@ export default function DashboardPage() {
                                                                     {/* Completion date */}
                                                                     <div className="py-1.5 px-1 text-center">
                                                                         <span className="text-[10px] text-emerald-400/70">{twStatus === "completed" ? formatDate(tw?.completion_date) : "—"}</span>
+                                                                    </div>
+                                                                    {/* Product Live Date (inherited from parent) */}
+                                                                    <div className="py-1.5 px-1 text-center">
+                                                                        {item.new_product === "Yes" && item.product_live_date ? (
+                                                                            <span className="text-[10px] text-cyan-400/60 font-mono">{formatDateShort(item.product_live_date)}</span>
+                                                                        ) : (
+                                                                            <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                                        )}
                                                                     </div>
                                                                     {/* Actions */}
                                                                     <div className="py-1.5 px-1 flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>

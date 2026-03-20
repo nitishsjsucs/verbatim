@@ -517,10 +517,16 @@ function ChiefContent() {
                                 </div>
                             </div>
                             <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                <p className="text-xs font-semibold text-foreground/50 mb-2">
+                                    Discussion Thread
+                                    {taskStatus === "completed" && <span className="text-[10px] text-muted-foreground/40 ml-1.5 font-normal">(read-only)</span>}
+                                </p>
                                 <CommentThread
                                     comments={item.comments || []}
                                     currentUser={userName}
                                     currentRole="chief"
+                                    onAddComment={taskStatus === "completed" ? undefined : async (text) => onAddComment(docId, item.id, text)}
+                                    readOnly={taskStatus === "completed"}
                                 />
                             </div>
                         </div>

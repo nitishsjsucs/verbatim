@@ -216,7 +216,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [expanded, setExpanded] = React.useState(false)
     const [saving, setSaving] = React.useState(false)
     const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
-    const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3))
+    const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3) || "No")
+    const [draftNewProduct, setDraftNewProduct] = React.useState(safeStr(item.new_product) || "No")
+    const [draftProductLiveDate, setDraftProductLiveDate] = React.useState(safeStr(item.product_live_date))
     const [draftTheme, setDraftTheme] = React.useState(safeStr(item.theme) || docDefaultTheme)
     // Structured risk sub-dropdowns — each stores {label, score} or empty {}
     const emptyRSD = {} as RiskSubDropdown
@@ -310,7 +312,9 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftAction(safeStr(item.action))
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
-        setDraftTranche3(safeStr(item.tranche3))
+        setDraftTranche3(safeStr(item.tranche3) || "No")
+        setDraftNewProduct(safeStr(item.new_product) || "No")
+        setDraftProductLiveDate(safeStr(item.product_live_date))
         setDraftTheme(safeStr(item.theme) || docDefaultTheme)
         // Structured risk sub-dropdowns
         setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
@@ -351,6 +355,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         if (draftImpl !== safeStr(item.implementation_notes)) return true
         if (draftEvidence !== safeStr(item.evidence_quote)) return true
         if (draftTranche3 !== safeStr(item.tranche3)) return true
+        if (draftNewProduct !== (safeStr(item.new_product) || "No")) return true
+        if (draftProductLiveDate !== safeStr(item.product_live_date)) return true
         if (resolvedTheme !== safeStr(item.theme)) return true
         // Structured risk sub-dropdowns
         if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
@@ -376,7 +382,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             }
         }
         return false
-    }, [draftAction, draftImpl, draftEvidence, draftTranche3, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
+    }, [draftAction, draftImpl, draftEvidence, draftTranche3, draftNewProduct, draftProductLiveDate, draftTheme, draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, deadlineDate, deadlineTime, draftTeams, draftTeamImpl, teamDeadlineDrafts, item])
 
     // --- Unified Save: sends all draft changes at once ---
     const handleSaveAll = async () => {
@@ -390,6 +396,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
             // Risk assessment — structured sub-dropdowns
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
+            if (draftNewProduct !== (safeStr(item.new_product) || "No")) updates.new_product = draftNewProduct
+            if (draftProductLiveDate !== safeStr(item.product_live_date)) updates.product_live_date = draftProductLiveDate
             if (resolvedTheme !== safeStr(item.theme)) updates.theme = resolvedTheme
             // CO only sets impact_dropdown; members set likelihood + control
             if (isComplianceOfficer) {
@@ -487,13 +495,16 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             return
         }
         // Save any pending draft changes first, then publish
+        const now = new Date().toISOString()
         const updates: Record<string, unknown> = {
             approval_status: "approved",
-            published_at: new Date().toISOString(),
+            published_at: now,
             deadline: dl,
             task_status: "assigned",
             published_by_account_id: callerAccountId,
         }
+        // Preserve original first publish timestamp (never overwrite)
+        if (!item.first_published_at) updates.first_published_at = now
         if (draftImpl !== safeStr(item.implementation_notes)) updates.implementation_notes = draftImpl
         if (draftEvidence !== safeStr(item.evidence_quote)) updates.evidence_quote = draftEvidence
         const teamsChanged = draftTeams.length !== ((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).length
@@ -549,12 +560,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                 )}
                 <button onClick={() => { setExpanded(!expanded); onSelect() }} className="flex items-center gap-2 flex-1 min-w-0 text-left">
                     {expanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
-
-
-                    {/* Team tag - uses saved workstream (not draft) */}
-                    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0", getWorkstreamClass(item.workstream))}>
-                        {item.workstream}
-                    </span>
 
                     {/* Actionable text */}
                     <div className="flex-1 min-w-0">
@@ -912,8 +917,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </div>
                                 </div>
 
-                                {/* Theme — both roles can edit */}
-                                <div className="grid grid-cols-2 gap-2">
+                                {/* Theme / Tranche3 / New Product — both roles can edit */}
+                                <div className="grid grid-cols-3 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                         <select
@@ -928,11 +933,36 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">{getLabel("tranche3") || "Tranche 3"}</p>
                                         <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                            <option value="">— Select Tranche 3 —</option>
                                             {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
+                                        <select value={draftNewProduct} onChange={e => { setDraftNewProduct(e.target.value); if (e.target.value === "No") setDraftProductLiveDate("") }} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                    </div>
                                 </div>
+                                {/* Product Live Date — only when New Product = Yes */}
+                                {draftNewProduct === "Yes" && (
+                                    <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
+                                        <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider mb-1">Product Live Date</p>
+                                        <input
+                                            type="date"
+                                            value={draftProductLiveDate}
+                                            onChange={e => setDraftProductLiveDate(e.target.value)}
+                                            className="w-[160px] bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                        />
+                                        {draftProductLiveDate && (() => {
+                                            const diffMs = new Date(draftProductLiveDate).getTime() - Date.now()
+                                            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                            if (diffDays < 0) return <span className="ml-2 text-[10px] text-red-400 font-semibold">{Math.abs(diffDays)}d overdue</span>
+                                            if (diffDays === 0) return <span className="ml-2 text-[10px] text-amber-400 font-semibold">Today</span>
+                                            return <span className="ml-2 text-[10px] text-cyan-400 font-mono">{diffDays}d remaining</span>
+                                        })()}
+                                    </div>
+                                )}
 
                                 {/* Impact Assessment — CO editable, Member read-only */}
                                 <div className="rounded-md border border-border/20 p-2 bg-muted/10">
@@ -1544,6 +1574,24 @@ export default function ActionablesPage() {
         })
     }, [themesStorageKey])
 
+    // Global "New Product" selector (persisted in localStorage per user)
+    const newProductStorageKey = React.useMemo(() => (
+        callerAccountId ? `actionables_new_product_${callerAccountId}` : "actionables_new_product"
+    ), [callerAccountId])
+    const [globalNewProduct, setGlobalNewProduct] = React.useState<string>(() => {
+        if (typeof window !== "undefined") {
+            try { return localStorage.getItem(newProductStorageKey) || "No" } catch { /* ignore */ }
+        }
+        return "No"
+    })
+    React.useEffect(() => {
+        try { const saved = localStorage.getItem(newProductStorageKey); if (saved) setGlobalNewProduct(saved) } catch { /* ignore */ }
+    }, [newProductStorageKey])
+    const updateGlobalNewProduct = React.useCallback((val: string) => {
+        setGlobalNewProduct(val)
+        try { localStorage.setItem(newProductStorageKey, val) } catch { /* ignore */ }
+    }, [newProductStorageKey])
+
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")
     const [showDocFilterMenu, setShowDocFilterMenu] = React.useState(false)
@@ -1780,14 +1828,18 @@ export default function ActionablesPage() {
         for (const { item, docId } of pending) {
             const docDefault = docDeadlineDefaults[docId]
             const dl = item.deadline || (docDefault?.date ? `${docDefault.date}T${docDefault.time || "23:59"}` : "")
-            // Process sequentially to prevent document-level race conditions when saving
-            await handleUpdate(docId, item.id, {
+            const now = new Date().toISOString()
+            const pubUpdates: Record<string, unknown> = {
                 approval_status: "approved",
-                published_at: new Date().toISOString(),
+                published_at: now,
                 deadline: dl,
                 task_status: "assigned",
                 published_by_account_id: callerAccountId,
-            })
+            }
+            // Preserve original first publish timestamp (never overwrite)
+            if (!item.first_published_at) pubUpdates.first_published_at = now
+            // Process sequentially to prevent document-level race conditions when saving
+            await handleUpdate(docId, item.id, pubUpdates)
         }
         toast.success(`Published ${pending.length} actionables to tracker`)
     }, [handleUpdate, docDeadlineDefaults, callerAccountId])
@@ -1850,6 +1902,23 @@ export default function ActionablesPage() {
                         </h1>
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* Global New Product selector */}
+                        <div className="flex items-center gap-1.5 border-r border-border/40 pr-3">
+                            <span className="text-[10px] text-muted-foreground/60">New Product:</span>
+                            <select
+                                value={globalNewProduct}
+                                onChange={e => updateGlobalNewProduct(e.target.value)}
+                                className={cn(
+                                    "text-[10px] rounded px-1.5 py-0.5 border focus:outline-none font-medium",
+                                    globalNewProduct === "Yes"
+                                        ? "bg-cyan-400/10 border-cyan-400/30 text-cyan-400"
+                                        : "bg-muted/30 border-border/40 text-foreground"
+                                )}
+                            >
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
                         <div className="flex items-center gap-2 text-xs">
                             <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{formatNumber(stats.pending)} pending</span>
                             <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{formatNumber(stats.published)} in tracker</span>
