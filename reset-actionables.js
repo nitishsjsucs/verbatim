@@ -1,29 +1,29 @@
 const { MongoClient } = require('./web/node_modules/mongodb');
 
 /**
- * Global Actionable Status Reset & Backfill (Latest Schema Edition)
+ * Global Actionable Status Reset & Standardization (Consolidated Edition)
  *
- * Resets task_status to "assigned" for every ActionableItem nested inside
- * every ActionablesResult document in the 'actionables' collection.
- * Backfills missing fields (tranche3, new_product, impact_dropdown, product_live_date) with safe defaults.
+ * MAJOR CHANGES:
+ * - Keep ONLY 3 documents (remove all excess)
+ * - Standardize ALL actionables with complete schema
+ * - Ensure every actionable has: Theme, Tranche, New Product, Impact, Live Date
+ * - All actionables reset to "assigned" status with clean workflow state
+ * - Apply same backfill logic to all retained documents
  *
  * Structure:
  *   Collection: actionables
  *   Document:   { _id: <doc_id>, actionables: [ { task_status, team_workflows, ... }, ... ], ... }
  *
- * BACKFILL STRATEGY:
- *   - If tranche3 missing/null → set to ""
- *   - If new_product missing/null → set to "No"
- *   - If impact_dropdown missing/null → set to { label: null, value: null }
- *   - If product_live_date missing/null and new_product === "Yes" → left blank (for manual review)
- *   - theme → preserved if present, else set to ""
+ * STANDARDIZATION STRATEGY:
+ *   - Keep only: DOC-TEST-001, DOC-SYN-Market-Risk, DOC-SYN-Audit
+ *   - DELETE all other documents
+ *   - For each actionable: ensure complete field schema
+ *   - New Product defaults to "No" (unless set to "Yes")
+ *   - Live Date required only if New Product === "Yes"
+ *   - Theme defaults to "" (empty until user sets)
+ *   - Tranche defaults to "" (empty until user sets)
+ *   - Impact defaults to { label: null, value: null }
  *   - All workflow/approval fields reset to initial state
- *   - team_workflows reset per-team with same backfill logic
- *
- * Fields NOT touched: evidence_files, comments, audit_trail,
- *   assigned_teams, workstream, and all extraction/metadata fields.
- *
- * Preserves: teams collection, users collection.
  *
  * Usage:
  *   MONGO_URI=<uri> MONGO_DB=<db> node reset-actionables.js [--dry-run] [--preview-limit N] [--apply]
@@ -266,15 +266,39 @@ async function resetActionables() {
 
         const col = db.collection('actionables');
 
+        // Define the 3 documents to KEEP
+        const DOCUMENTS_TO_KEEP = ["DOC-TEST-001", "DOC-SYN-Market-Risk", "DOC-SYN-Audit"];
+
         // Count total items before reset
         const allDocs = await col.find({}).toArray();
         console.log(`\nFound ${allDocs.length} ActionablesResult documents.`);
+        console.log(`Documents to keep: ${DOCUMENTS_TO_KEEP.join(", ")}`);
 
+        // Separate docs to keep vs. delete
+        const docsToKeep = allDocs.filter(d => DOCUMENTS_TO_KEEP.includes(d._id || d.doc_id));
+        const docsToDelete = allDocs.filter(d => !DOCUMENTS_TO_KEEP.includes(d._id || d.doc_id));
+
+        console.log(`   → Keeping: ${docsToKeep.length} documents`);
+        console.log(`   → Deleting: ${docsToDelete.length} documents`);
+
+        // DELETE excess documents (if applying)
+        if (shouldApply && docsToDelete.length > 0) {
+            console.log('\n🧹 Deleting excess documents...');
+            const idsToDelete = docsToDelete.map(d => d._id);
+            const deleteResult = await col.deleteMany({ _id: { $in: idsToDelete } });
+            console.log(`   • Deleted ${deleteResult.deletedCount} documents`);
+        } else if (docsToDelete.length > 0) {
+            console.log(`\n⚠️  [DRY-RUN] Would delete ${docsToDelete.length} documents:`);
+            docsToDelete.forEach(d => console.log(`     - ${d._id || d.doc_id}`));
+        }
+
+        // Now process ONLY the 3 documents we're keeping
+        const allDocsToProcess = shouldApply ? docsToKeep : allDocs;
         let totalItems = 0;
         let totalToModify = 0;
         let sampleItems = [];
 
-        for (const doc of allDocs) {
+        for (const doc of allDocsToProcess) {
             const items = doc.actionables || [];
             totalItems += items.length;
 
@@ -320,12 +344,13 @@ async function resetActionables() {
 
         // Report results
         console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`📊 BACKFILL REPORT`);
+        console.log(`📊 STANDARDIZATION & BACKFILL REPORT`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`   Total documents   : ${allDocs.length}`);
-        console.log(`   Total items       : ${totalItems}`);
-        console.log(`   Items to modify   : ${totalToModify}`);
-        console.log(`   Modification rate : ${((totalToModify / totalItems) * 100).toFixed(1)}%`);
+        console.log(`   Processed documents  : ${allDocsToProcess.length}`);
+        console.log(`   Total items         : ${totalItems}`);
+        console.log(`   Items standardized  : ${totalToModify}`);
+        console.log(`   Modification rate   : ${((totalToModify / totalItems) * 100).toFixed(1)}%`);
+        console.log(`   Documents deleted   : ${docsToDelete.length}`);
         console.log(`\n📋 SAMPLE MODIFICATIONS (preview limit: ${previewLimit}):`);
 
         if (sampleItems.length > 0) {
@@ -343,35 +368,41 @@ async function resetActionables() {
 
         if (!shouldApply) {
             console.log(`\n⚠️  DRY-RUN MODE: No changes written to database.`);
-            console.log(`\n💡 To apply these changes, run: node reset-actionables.js --apply\n`);
+            console.log(`\n💡 To apply these changes (delete excess docs + standardize), run:`);
+            console.log(`   node reset-actionables.js --apply\n`);
         } else {
             console.log(`\n✅ CHANGES APPLIED TO DATABASE`);
-
-            // Verify: collect all task_status values post-reset
-            const verifyDocs = await col.find({}).toArray();
+            console.log(`   • Deleted ${docsToDelete.length} excess documents`);
+            console.log(`   • Kept ${docsToKeep.length} documents with complete schema`);
+            
+            // Verify: collect all documents post-reset
+            const finalDocs = await col.find({}).toArray();
             const statusCounts = {};
-            const fieldCounts = { tranche3_missing: 0, new_product_missing: 0, impact_dropdown_missing: 0 };
+            const fieldCounts = { theme_missing: 0, tranche3_missing: 0, new_product_missing: 0, impact_dropdown_missing: 0 };
+            let totalItemsAfter = 0;
 
-            for (const doc of verifyDocs) {
+            for (const doc of finalDocs) {
                 for (const item of (doc.actionables || [])) {
+                    totalItemsAfter++;
                     const s = item.task_status || '(empty)';
                     statusCounts[s] = (statusCounts[s] || 0) + 1;
-                    if (!item.tranche3) fieldCounts.tranche3_missing++;
+                    if (!item.theme) fieldCounts.theme_missing++;
+                    if (!item.tranche3 && item.tranche3 !== "") fieldCounts.tranche3_missing++;
                     if (!item.new_product) fieldCounts.new_product_missing++;
                     if (!item.impact_dropdown) fieldCounts.impact_dropdown_missing++;
                 }
             }
 
-            console.log('\n📈 Status distribution after backfill:');
+            console.log(`\n📈 Post-standardization verification (${finalDocs.length} docs, ${totalItemsAfter} items):`);
             Object.entries(statusCounts)
                 .sort((a, b) => b[1] - a[1])
                 .forEach(([status, count]) => console.log(`   ${status}: ${count}`));
 
-            console.log('\n🔍 Field coverage verification:');
-            const totalAfter = Object.values(statusCounts).reduce((a, b) => a + b, 0);
-            console.log(`   tranche3 still missing: ${fieldCounts.tranche3_missing} / ${totalAfter}`);
-            console.log(`   new_product still missing: ${fieldCounts.new_product_missing} / ${totalAfter}`);
-            console.log(`   impact_dropdown still missing: ${fieldCounts.impact_dropdown_missing} / ${totalAfter}`);
+            console.log('\n🔍 Field standardization check:');
+            console.log(`   theme present: ${totalItemsAfter - fieldCounts.theme_missing} / ${totalItemsAfter}`);
+            console.log(`   tranche3 present: ${totalItemsAfter - fieldCounts.tranche3_missing} / ${totalItemsAfter}`);
+            console.log(`   new_product present: ${totalItemsAfter - fieldCounts.new_product_missing} / ${totalItemsAfter}`);
+            console.log(`   impact_dropdown present: ${totalItemsAfter - fieldCounts.impact_dropdown_missing} / ${totalItemsAfter}`);
 
             // Clean up delegation_requests collection
             console.log('\n🧹 Cleaning up delegation system...');
@@ -385,7 +416,7 @@ async function resetActionables() {
             const notificationsResult = await notificationsCol.deleteMany({});
             console.log(`   • Deleted ${notificationsResult.deletedCount} notifications`);
 
-            console.log(`\n✅ Backfill and cleanup complete.\n`);
+            console.log(`\n✅ Standardization and cleanup complete.\n`);
         }
 
     } catch (error) {
