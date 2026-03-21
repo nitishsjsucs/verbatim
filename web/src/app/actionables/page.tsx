@@ -944,7 +944,6 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         </select>
                                     </div>
                                 </div>
-                                </div>
 
                                 {/* Impact Assessment — CO editable, Member read-only */}
                                 <div className="rounded-md border border-border/20 p-2 bg-muted/10">
