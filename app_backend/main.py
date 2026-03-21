@@ -1472,6 +1472,11 @@ RISK_MEMBER_ONLY_FIELDS = {
     "control_monitoring", "control_effectiveness",
 }
 
+# Fields editable only by compliance_officer (CAG Member) — blocked for all other roles
+COMPLIANCE_OFFICER_ONLY_FIELDS = {
+    "theme", "tranche3", "new_product", "product_live_date", "impact_dropdown"
+}
+
 
 @app.put("/documents/{doc_id}/actionables/{item_id}")
 def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_team: str = Query(""), caller_role: str = Query("")):
@@ -1508,6 +1513,11 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
     # Strip risk fields if caller is compliance_officer (read-only for CO)
     if caller_role == "compliance_officer":
         for blocked in RISK_MEMBER_ONLY_FIELDS:
+            body.pop(blocked, None)
+    
+    # Strip compliance-officer-only fields if caller is not compliance_officer (read-only for all other roles)
+    if caller_role != "compliance_officer":
+        for blocked in COMPLIANCE_OFFICER_ONLY_FIELDS:
             body.pop(blocked, None)
 
     # Validate CO comment before approval
@@ -1588,6 +1598,8 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "impact_sub1", "impact_sub2", "impact_sub3",
         # Theme dropdown
         "theme",
+        # New product and live date
+        "new_product", "product_live_date",
         # Tagged Incorrectly bypass flow
         "bypass_tag", "bypass_tagged_at", "bypass_tagged_by",
         "bypass_approved_by", "bypass_approved_at",

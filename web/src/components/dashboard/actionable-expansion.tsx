@@ -447,13 +447,17 @@ export function ActionableExpansion({
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
-                                <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                    {(getSafeOptions("tranche3").length > 0 ? getSafeOptions("tranche3") : [{ label: "No", value: 0 }, { label: "Yes", value: 1 }]).map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                </select>
+                                {userRole === "compliance_officer" ? (
+                                    <select value={draftTranche3} onChange={e => setDraftTranche3(e.target.value)} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                        {(getSafeOptions("tranche3").length > 0 ? getSafeOptions("tranche3") : [{ label: "No", value: 0 }, { label: "Yes", value: 1 }]).map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                    </select>
+                                ) : (
+                                    <p className="text-xs text-foreground/80">{item.tranche3 || "—"}</p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                {taskStatus !== "completed" ? (
+                                {userRole === "compliance_officer" ? (
                                     <select value={draftNewProduct} onChange={e => { setDraftNewProduct(e.target.value); if (e.target.value === "No") setDraftProductLiveDate("") }} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="No">No</option>
                                         <option value="Yes">Yes</option>
@@ -464,7 +468,7 @@ export function ActionableExpansion({
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                {taskStatus !== "completed" ? (
+                                {userRole === "compliance_officer" ? (
                                     <select
                                         value={draftImpactDD?.label || ""}
                                         onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
@@ -478,25 +482,29 @@ export function ActionableExpansion({
                                 )}
                             </div>
                         </div>
-                        {/* Product Live Date — editable when new_product=Yes (even when completed) */}
+                        {/* Product Live Date — editable when new_product=Yes (compliance_officer only) */}
                         {(draftNewProduct === "Yes" || item.new_product === "Yes") && (
                             <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
                                 <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider mb-1">Product Live Date</p>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="date"
-                                        value={draftProductLiveDate}
-                                        onChange={e => setDraftProductLiveDate(e.target.value)}
-                                        className="w-[160px] bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
-                                    />
-                                    {draftProductLiveDate && (() => {
-                                        const diffMs = new Date(draftProductLiveDate).getTime() - Date.now()
-                                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-                                        if (diffDays < 0) return <span className="text-[10px] text-red-400 font-semibold">{Math.abs(diffDays)}d overdue</span>
-                                        if (diffDays === 0) return <span className="text-[10px] text-amber-400 font-semibold">Today</span>
-                                        return <span className="text-[10px] text-cyan-400 font-mono">{diffDays}d remaining</span>
-                                    })()}
-                                </div>
+                                {userRole === "compliance_officer" ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            value={draftProductLiveDate}
+                                            onChange={e => setDraftProductLiveDate(e.target.value)}
+                                            className="w-[160px] bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                        />
+                                        {draftProductLiveDate && (() => {
+                                            const diffMs = new Date(draftProductLiveDate).getTime() - Date.now()
+                                            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                            if (diffDays < 0) return <span className="text-[10px] text-red-400 font-semibold">{Math.abs(diffDays)}d overdue</span>
+                                            if (diffDays === 0) return <span className="text-[10px] text-amber-400 font-semibold">Today</span>
+                                            return <span className="text-[10px] text-cyan-400 font-mono">{diffDays}d remaining</span>
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-foreground/80">{draftProductLiveDate ? formatDate(draftProductLiveDate) : "—"}</p>
+                                )}
                             </div>
                         )}
 

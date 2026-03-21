@@ -2186,24 +2186,25 @@ export default function ActionablesPage() {
                                                             <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
                                                                 <span className="text-[9px] text-muted-foreground/50">New Product:</span>
                                                                 <select
-                                                                    value={docNewProductDefaults[docId] || ""}
-                                                                    onChange={e => updateDocNewProduct(docId, e.target.value)}
+                                                                    value={docNewProductDefaults[docId] || "No"}
+                                                                    onChange={e => { updateDocNewProduct(docId, e.target.value); if (e.target.value === "No") updateDocLiveDate(docId, "") }}
                                                                     className="w-[80px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 >
-                                                                    <option value="">No default</option>
                                                                     <option value="Yes">Yes</option>
                                                                     <option value="No">No</option>
                                                                 </select>
                                                             </div>
-                                                            <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
-                                                                <span className="text-[9px] text-muted-foreground/50">Live Date:</span>
-                                                                <input
-                                                                    type="date"
-                                                                    value={docLiveDateDefaults[docId] || ""}
-                                                                    onChange={e => updateDocLiveDate(docId, e.target.value)}
-                                                                    className="w-[100px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
-                                                                />
-                                                            </div>
+                                                            {(docNewProductDefaults[docId] || "No") === "Yes" && (
+                                                                <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
+                                                                    <span className="text-[9px] text-muted-foreground/50">Live Date:</span>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={docLiveDateDefaults[docId] || ""}
+                                                                        onChange={e => updateDocLiveDate(docId, e.target.value)}
+                                                                        className="w-[100px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
+                                                                    />
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
