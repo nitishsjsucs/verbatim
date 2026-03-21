@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { fetchAllActionables, updateActionable } from "./api"
+import { fetchAllActionables, fetchActionablesPaginated, updateActionable } from "./api"
 import type { ActionableItem, ActionablesResult, ActionableComment } from "./types"
 import { toast } from "sonner"
 
@@ -24,6 +24,14 @@ interface UseActionablesOptions {
     commentAuthor?: string
     /** If false, `load` is not called automatically on mount. Default: true. */
     autoLoad?: boolean
+    /** Use pagination (default false for backward compat). */
+    usePagination?: boolean
+    /** Items per page when using pagination (default 50). */
+    pageSize?: number
+    /** Filter by team (optional, for paginated mode). */
+    filterTeam?: string
+    /** Filter by status (optional, for paginated mode). */
+    filterStatus?: string
 }
 
 /**
@@ -31,17 +39,39 @@ interface UseActionablesOptions {
  * used by dashboard, actionables, team-review, team-lead, and reports pages.
  *
  * Returns doc-level state (`allDocs`) plus convenience handlers.
+ * Supports both legacy (non-paginated) and paginated modes.
  */
 export function useActionables(opts: UseActionablesOptions = {}) {
-    const { forTeam, commentRole = "team_member", commentAuthor = "", autoLoad = true } = opts
+    const { 
+        forTeam, 
+        commentRole = "team_member", 
+        commentAuthor = "", 
+        autoLoad = true,
+        usePagination = false,
+        pageSize = 50,
+        filterTeam = "",
+        filterStatus = "",
+    } = opts
 
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
+    const [allItems, setAllItems] = React.useState<ActionableItem[]>([])
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    
+    // Pagination state
+    const [currentPage, setCurrentPage] = React.useState(1)
+    const [totalPages, setTotalPages] = React.useState(0)
+    const [totalItems, setTotalItems] = React.useState(0)
+    const [hasMore, setHasMore] = React.useState(false)
 
-    // ── Load ────────────────────────────────────────────────────────────────
+    // ── Load (legacy mode) ────────────────────────────────────────────────────
 
     const load = React.useCallback(async () => {
+        if (usePagination) {
+            // Use paginated version
+            return loadPage(1)
+        }
+        
         try {
             setLoading(true)
             setError(null)
@@ -61,7 +91,60 @@ export function useActionables(opts: UseActionablesOptions = {}) {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [usePagination])
+
+    // ── Load page (paginated mode) ─────────────────────────────────────────
+
+    const loadPage = React.useCallback(async (page: number) => {
+        try {
+            setLoading(true)
+            setError(null)
+            const result = await fetchActionablesPaginated(
+                page,
+                pageSize,
+                filterTeam || undefined,
+                filterStatus || undefined,
+            )
+            setCurrentPage(page)
+            setTotalPages(result.pages)
+            setTotalItems(result.total)
+            setHasMore(page < result.pages)
+            setAllItems(result.actionables)
+        } catch {
+            const msg = "Failed to load actionables page"
+            setError(msg)
+            toast.error(msg)
+        } finally {
+            setLoading(false)
+        }
+    }, [pageSize, filterTeam, filterStatus])
+
+    // ── Load more (append to current items) ────────────────────────────────
+
+    const loadMore = React.useCallback(async () => {
+        if (!hasMore || loading) return
+        const nextPage = currentPage + 1
+        try {
+            setLoading(true)
+            const result = await fetchActionablesPaginated(
+                nextPage,
+                pageSize,
+                filterTeam || undefined,
+                filterStatus || undefined,
+            )
+            setCurrentPage(nextPage)
+            setTotalPages(result.pages)
+            setTotalItems(result.total)
+            setHasMore(nextPage < result.pages)
+            setAllItems(prev => [...prev, ...result.actionables])
+        } catch {
+            const msg = "Failed to load more actionables"
+            setError(msg)
+            toast.error(msg)
+        } finally {
+            setLoading(false)
+        }
+    }, [hasMore, currentPage, loading, pageSize, filterTeam, filterStatus])
 
     React.useEffect(() => {
         if (autoLoad) load()
@@ -74,23 +157,34 @@ export function useActionables(opts: UseActionablesOptions = {}) {
             try {
                 const team = teamOverride ?? forTeam
                 const updated = await updateActionable(docId, itemId, updates, team || undefined)
-                setAllDocs(prev =>
-                    prev.map(d => {
-                        if (d.doc_id !== docId) return d
-                        return {
-                            ...d,
-                            actionables: d.actionables.map(a =>
-                                a.id === itemId ? { ...a, ...updated } : a,
-                            ),
-                        }
-                    }),
-                )
+                
+                if (usePagination) {
+                    // Update in allItems
+                    setAllItems(prev =>
+                        prev.map(a =>
+                            a.id === itemId ? { ...a, ...updated } : a,
+                        ),
+                    )
+                } else {
+                    // Update in allDocs
+                    setAllDocs(prev =>
+                        prev.map(d => {
+                            if (d.doc_id !== docId) return d
+                            return {
+                                ...d,
+                                actionables: d.actionables.map(a =>
+                                    a.id === itemId ? { ...a, ...updated } : a,
+                                ),
+                            }
+                        }),
+                    )
+                }
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Update failed")
                 throw err
             }
         },
-        [forTeam],
+        [forTeam, usePagination],
     )
 
     // ── Add a comment ───────────────────────────────────────────────────────
@@ -112,18 +206,32 @@ export function useActionables(opts: UseActionablesOptions = {}) {
 
     // ── Flat item list (convenience) ────────────────────────────────────────
 
-    const allItems = React.useMemo(
+    const flatItems = React.useMemo(
         () =>
-            allDocs.flatMap(d =>
-                d.actionables.map(a => ({ item: a, docId: d.doc_id, docName: d.doc_name })),
-            ),
-        [allDocs],
+            usePagination
+                ? allItems.map(a => ({ item: a, docId: a.doc_id || "", docName: a.doc_name || "" }))
+                : allDocs.flatMap(d =>
+                    d.actionables.map(a => ({ item: a, docId: d.doc_id, docName: d.doc_name })),
+                ),
+        [allDocs, allItems, usePagination],
     )
 
     return {
+        // Legacy mode
         allDocs,
         setAllDocs,
-        allItems,
+        allItems: flatItems,
+        
+        // Paginated mode
+        paginatedItems: allItems,
+        currentPage,
+        totalPages,
+        totalItems,
+        hasMore,
+        loadPage,
+        loadMore,
+        
+        // Common
         loading,
         error,
         load,

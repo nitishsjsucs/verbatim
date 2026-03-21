@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar"
 import dynamic from "next/dynamic"
 import {
     fetchAllActionables,
+    fetchActionablesPaginated,
     updateActionable,
     createManualActionable,
     deleteActionable as deleteActionableApi,
@@ -1526,6 +1527,11 @@ export default function ActionablesPage() {
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(true)
     
+    // Pagination state for improved performance
+    const [currentPage, setCurrentPage] = React.useState(1)
+    const [totalPages, setTotalPages] = React.useState(0)
+    const [hasMore, setHasMore] = React.useState(false)
+    
     // Document-level theme defaults (frontend-only, persisted in localStorage per user)
     const [docThemeDefaults, setDocThemeDefaults] = React.useState<Record<string, string>>({})
 
@@ -1671,15 +1677,27 @@ export default function ActionablesPage() {
     const loadAll = React.useCallback(async () => {
         try {
             setLoading(true)
-            const results = await fetchAllActionables()
-            const docs: DocActionables[] = results
-                .filter((r: ActionablesResult) => r.actionables && r.actionables.length > 0)
-                .map((r: ActionablesResult) => ({
-                    doc_id: r.doc_id,
-                    doc_name: r.doc_name || r.doc_id,
-                    actionables: r.actionables,
-                }))
+            // Load first page with pagination (50 items per page)
+            const pageResult = await fetchActionablesPaginated(1, 50)
+            
+            // Convert flat actionables to doc-grouped format for backward compatibility
+            const docsMap: Record<string, DocActionables> = {}
+            for (const item of pageResult.actionables) {
+                const docId = item.doc_id || "unknown"
+                if (!docsMap[docId]) {
+                    docsMap[docId] = {
+                        doc_id: docId,
+                        doc_name: item.doc_name || docId,
+                        actionables: [],
+                    }
+                }
+                docsMap[docId].actionables.push(item)
+            }
+            const docs = Object.values(docsMap)
             setAllDocs(docs)
+            setCurrentPage(1)
+            setTotalPages(pageResult.pages)
+            setHasMore(pageResult.pages > 1)
 
             setDocDeadlineDefaults(prev => {
                 const next = { ...prev }
@@ -1708,6 +1726,40 @@ export default function ActionablesPage() {
             setLoading(false)
         }
     }, [pdfDocId])
+
+    const loadMore = React.useCallback(async () => {
+        if (!hasMore || loading || currentPage >= totalPages) return
+        try {
+            setLoading(true)
+            const nextPage = currentPage + 1
+            const pageResult = await fetchActionablesPaginated(nextPage, 50)
+            
+            // Append new items to docs
+            const docsMap: Record<string, DocActionables> = {}
+            for (const doc of allDocs) {
+                docsMap[doc.doc_id] = { ...doc, actionables: [...doc.actionables] }
+            }
+            for (const item of pageResult.actionables) {
+                const docId = item.doc_id || "unknown"
+                if (!docsMap[docId]) {
+                    docsMap[docId] = {
+                        doc_id: docId,
+                        doc_name: item.doc_name || docId,
+                        actionables: [],
+                    }
+                }
+                docsMap[docId].actionables.push(item)
+            }
+            
+            setAllDocs(Object.values(docsMap))
+            setCurrentPage(nextPage)
+            setHasMore(nextPage < totalPages)
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load more actionables")
+        } finally {
+            setLoading(false)
+        }
+    }, [hasMore, loading, currentPage, totalPages, allDocs])
 
     React.useEffect(() => { loadAll() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2299,6 +2351,28 @@ export default function ActionablesPage() {
                             {!loading && filtered.length === 0 && allDocs.length > 0 && (
                                 <div className="text-center text-xs text-muted-foreground/60 py-12">
                                     No actionables match the current filters
+                                </div>
+                            )}
+                            
+                            {/* Load More pagination button */}
+                            {hasMore && !loading && filtered.length > 0 && (
+                                <div className="flex justify-center py-4 border-t border-border/40">
+                                    <Button
+                                        onClick={loadMore}
+                                        disabled={loading}
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            `Load More (Page ${currentPage + 1} of ${totalPages})`
+                                        )}
+                                    </Button>
                                 </div>
                             )}
                         </div>

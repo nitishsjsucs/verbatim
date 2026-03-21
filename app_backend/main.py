@@ -1383,6 +1383,7 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
             # Save to MongoDB after extraction is done
             if final_result:
                 from models.actionable import ActionablesResult as AR
+                from utils.cache import get_cache_manager
 
                 result_obj = AR.from_dict(final_result)
                 # Stamp created_at and actionable_id on any actionable that doesn't have one
@@ -1393,6 +1394,12 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
                     if not _a.actionable_id:
                         _a.actionable_id = _generate_actionable_id()
                 act_store.save(result_obj)
+                
+                # Invalidate cache after extraction
+                cache_mgr = get_cache_manager()
+                cache_mgr.delete_pattern("actionables:list:*")
+                cache_mgr.delete_pattern("actionables:approved*")
+                logger.debug(f"Invalidated actionables cache after extraction of {doc_id}")
 
         except Exception as e:
             logger.error("Actionable extraction failed: %s", e)
@@ -1437,31 +1444,94 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
 
 
 @app.get("/actionables")
-def list_all_actionables():
-    """List actionables across ALL documents."""
+def list_all_actionables(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=500),
+    team: str = Query(""),
+    status: str = Query(""),
+    doc_id: str = Query(""),
+):
+    """
+    List actionables across ALL documents with pagination and filtering.
+    
+    Query Parameters:
+      - page: Page number (1-indexed, default 1)
+      - limit: Items per page (1-500, default 50)
+      - team: Filter by assigned team (optional)
+      - status: Filter by task_status (optional, e.g. 'pending', 'completed')
+      - doc_id: Filter by document ID (optional)
+    
+    Returns paginated results with total count and page info.
+    """
+    from utils.cache import get_cache_manager
+    
+    cache_mgr = get_cache_manager()
+    cache_key = f"actionables:list:{page}:{limit}:{team}:{status}:{doc_id}"
+    
+    # Try to get from cache
+    cached = cache_mgr.get(cache_key)
+    if cached is not None:
+        logger.debug(f"Returning cached actionables list: {cache_key}")
+        return cached
+    
     store = get_actionable_store()
     db = store._collection
-    results = []
-    for raw in db.find():
-        doc_id = raw.get("doc_id", raw.get("_id", ""))
-        raw.pop("_id", None)
-        raw["doc_id"] = doc_id
-        # Properly serialize actionables using ActionableItem.from_dict() -> to_dict()
+    
+    # Build MongoDB query filter
+    query_filter = {}
+    if doc_id:
+        query_filter["_id"] = doc_id
+    
+    # Get all docs matching the doc_id filter (if any)
+    all_docs = list(db.find(query_filter))
+    
+    # Flatten actionables from all docs and apply team/status filters
+    all_actionables = []
+    for raw in all_docs:
+        doc_id_from_raw = raw.get("doc_id", raw.get("_id", ""))
+        doc_name_from_raw = raw.get("doc_name", doc_id_from_raw)
         actionables = raw.get("actionables", [])
-        serialized_actionables = []
+        
         for item_data in actionables:
             try:
                 from models.actionable import ActionableItem
                 item = ActionableItem.from_dict(item_data)
-                serialized_actionables.append(item.to_dict())
+                item_dict = item.to_dict()
+                item_dict["doc_id"] = doc_id_from_raw
+                item_dict["doc_name"] = doc_name_from_raw
+                
+                # Apply team filter
+                if team:
+                    assigned_teams = item.assigned_teams or []
+                    if team not in assigned_teams:
+                        continue
+                
+                # Apply status filter
+                if status and item.task_status != status:
+                    continue
+                
+                all_actionables.append(item_dict)
             except Exception as e:
-                # If serialization fails, log warning but include raw data to prevent items from disappearing
-                print(f"Warning: Failed to serialize actionable {item_data.get('id', 'unknown')}: {e}")
-                # Return the raw item data as-is instead of skipping
-                serialized_actionables.append(item_data)
-        raw["actionables"] = serialized_actionables
-        results.append(raw)
-    return results
+                logger.warning(f"Failed to serialize actionable {item_data.get('id', 'unknown')}: {e}")
+                all_actionables.append(item_data)
+    
+    # Pagination
+    total = len(all_actionables)
+    offset = (page - 1) * limit
+    paginated = all_actionables[offset : offset + limit]
+    
+    result = {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+        "actionables": paginated,
+    }
+    
+    # Cache results for 5 minutes
+    cache_mgr.set(cache_key, result, ttl_seconds=300)
+    
+    return result
 
 
 # Risk fields that only team_member / team_reviewer / team_lead / admin can write.
@@ -1630,6 +1700,14 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
 
     result.compute_stats()
     store.save(result)
+    
+    # Invalidate actionables cache on update
+    from utils.cache import get_cache_manager
+    cache_mgr = get_cache_manager()
+    cache_mgr.delete_pattern("actionables:list:*")
+    cache_mgr.delete_pattern("actionables:approved*")
+    logger.debug(f"Invalidated actionables cache after update to {item_id}")
+    
     return target.to_dict()
 
 
@@ -1879,6 +1957,14 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
     result.actionables.append(item)
     result.compute_stats()
     store.save(result)
+    
+    # Invalidate actionables cache on create
+    from utils.cache import get_cache_manager
+    cache_mgr = get_cache_manager()
+    cache_mgr.delete_pattern("actionables:list:*")
+    cache_mgr.delete_pattern("actionables:approved*")
+    logger.debug(f"Invalidated actionables cache after creating {new_id}")
+    
     return item.to_dict()
 
 
@@ -1989,6 +2075,14 @@ def bulk_create_actionables(doc_id: str, items: list = Body(...)):
 
     result.compute_stats()
     store.save(result)
+    
+    # Invalidate actionables cache on bulk create
+    from utils.cache import get_cache_manager
+    cache_mgr = get_cache_manager()
+    cache_mgr.delete_pattern("actionables:list:*")
+    cache_mgr.delete_pattern("actionables:approved*")
+    logger.debug(f"Invalidated actionables cache after bulk create ({len(created)} items)")
+    
     return {"created": len(created), "items": created}
 
 
@@ -2034,6 +2128,14 @@ def delete_actionable(doc_id: str, item_id: str):
         raise HTTPException(status_code=404, detail=f"Actionable {item_id} not found")
     result.compute_stats()
     store.save(result)
+    
+    # Invalidate actionables cache on delete
+    from utils.cache import get_cache_manager
+    cache_mgr = get_cache_manager()
+    cache_mgr.delete_pattern("actionables:list:*")
+    cache_mgr.delete_pattern("actionables:approved*")
+    logger.debug(f"Invalidated actionables cache after delete of {item_id}")
+    
     return {"deleted": item_id}
 
 

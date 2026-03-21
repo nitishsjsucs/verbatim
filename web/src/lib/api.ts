@@ -293,6 +293,37 @@ export async function fetchAllActionables(): Promise<ActionablesResult[]> {
     return res.json();
 }
 
+/**
+ * Fetch actionables with pagination and filtering support.
+ * @param page Page number (1-indexed, default 1)
+ * @param limit Items per page (default 50, max 500)
+ * @param team Filter by assigned team (optional)
+ * @param status Filter by task_status (optional)
+ * @returns Paginated results with total count and page info
+ */
+export async function fetchActionablesPaginated(
+    page: number = 1,
+    limit: number = 50,
+    team?: string,
+    status?: string,
+): Promise<{
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+    actionables: ActionableItem[];
+}> {
+    const qs = new URLSearchParams();
+    qs.set('page', page.toString());
+    qs.set('limit', limit.toString());
+    if (team) qs.set('team', team);
+    if (status) qs.set('status', status);
+    
+    const res = await apiFetch(`/actionables?${qs.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch paginated actionables');
+    return res.json();
+}
+
 export async function updateActionable(
     docId: string,
     itemId: string,
