@@ -924,8 +924,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </div>
                                 </div>
 
-                                {/* Theme / Tranche3 / New Product — both roles can edit */}
-                                <div className="grid grid-cols-3 gap-2">
+                                {/* Theme / Tranche3 — both roles can edit */}
+                                <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
                                         <select
@@ -943,33 +943,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
-                                        <select value={draftNewProduct} onChange={e => { setDraftNewProduct(e.target.value); if (e.target.value === "No") setDraftProductLiveDate("") }} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
-                                            <option value="No">No</option>
-                                            <option value="Yes">Yes</option>
-                                        </select>
-                                    </div>
                                 </div>
-                                {/* Product Live Date — only when New Product = Yes */}
-                                {draftNewProduct === "Yes" && (
-                                    <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
-                                        <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider mb-1">Product Live Date</p>
-                                        <input
-                                            type="date"
-                                            value={draftProductLiveDate}
-                                            onChange={e => setDraftProductLiveDate(e.target.value)}
-                                            className="w-[160px] bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
-                                        />
-                                        {draftProductLiveDate && item.published_at && (() => {
-                                            const diffMs = new Date(draftProductLiveDate).getTime() - Date.now()
-                                            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-                                            if (diffDays < 0) return <span className="ml-2 text-[10px] text-red-400 font-semibold">{Math.abs(diffDays)}d overdue</span>
-                                            if (diffDays === 0) return <span className="ml-2 text-[10px] text-amber-400 font-semibold">Today</span>
-                                            return <span className="ml-2 text-[10px] text-cyan-400 font-mono">{diffDays}d remaining</span>
-                                        })()}
-                                    </div>
-                                )}
+                                </div>
 
                                 {/* Impact Assessment — CO editable, Member read-only */}
                                 <div className="rounded-md border border-border/20 p-2 bg-muted/10">
