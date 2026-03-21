@@ -52,6 +52,11 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
     // Fallback dropdown options for risk assessment
     const FALLBACK_RISK_OPTIONS: Record<string, DropdownOption[]> = React.useMemo(() => ({
+        impact_dropdown: [
+            { label: "No Significant Impact on occurrence of regulatory breach", value: 1 },
+            { label: "Material Impact", value: 2 },
+            { label: "Very High Regulatory or Reputational Impact", value: 3 },
+        ],
         likelihood_business_volume: [
             { label: "Moderate Increase — Up to 15%", value: 1 },
             { label: "Substantial Increase — Between 15% and 30%", value: 2 },
@@ -97,6 +102,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const [draftLikeBV, setDraftLikeBV] = React.useState<RiskSubDropdown>(item.likelihood_business_volume || emptyRSD)
     const [draftLikePP, setDraftLikePP] = React.useState<RiskSubDropdown>(item.likelihood_products_processes || emptyRSD)
     const [draftLikeCV, setDraftLikeCV] = React.useState<RiskSubDropdown>(item.likelihood_compliance_violations || emptyRSD)
+    const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(item.impact_dropdown || emptyRSD)
     const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
     const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
     const [draftMemberComment, setDraftMemberComment] = React.useState(item.member_comment || "")
@@ -108,6 +114,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
         setDraftLikePP(item.likelihood_products_processes || emptyRSD)
         setDraftLikeCV(item.likelihood_compliance_violations || emptyRSD)
+        setDraftImpactDD(item.impact_dropdown || emptyRSD)
         setDraftCtrlMon(item.control_monitoring || emptyRSD)
         setDraftCtrlEff(item.control_effectiveness || emptyRSD)
         setDraftMemberComment(item.member_comment || "")
@@ -122,21 +129,22 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
         if (subDiffers(draftLikePP, item.likelihood_products_processes)) return true
         if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) return true
+        if (subDiffers(draftImpactDD, item.impact_dropdown)) return true
         if (subDiffers(draftCtrlMon, item.control_monitoring)) return true
         if (subDiffers(draftCtrlEff, item.control_effectiveness)) return true
         if (draftMemberComment !== (item.member_comment || "")) return true
         return false
-    }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftMemberComment, item])
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, draftMemberComment, item])
 
     // Compute scores from drafts
     const safeRSD = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
     const draftLikScore = Math.max(safeRSD(draftLikeBV), safeRSD(draftLikePP), safeRSD(draftLikeCV))
-    const draftImpScore = safeRSD(item.impact_dropdown) ** 2
+    const draftImpScore = safeRSD(draftImpactDD) ** 2
     const draftMonS = safeRSD(draftCtrlMon)
     const draftEffS = safeRSD(draftCtrlEff)
     const draftCtrlScore = (draftMonS || draftEffS) ? (draftMonS + draftEffS) / 2 : 0
     // All 6 risk parameters must be filled for residual to calculate
-    const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && item.impact_dropdown?.label && draftCtrlMon?.label && draftCtrlEff?.label)
+    const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
     const draftInherent = draftLikScore * draftImpScore
     const draftResidual = draftAllFilled ? draftInherent * draftCtrlScore : 0
     const classifyRisk = (s: number) => s <= 0 ? "" : s <= 3 ? "Low" : s <= 9 ? "Medium" : "High"
@@ -154,6 +162,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
             if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
             if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+            if (subDiffers(draftImpactDD, item.impact_dropdown)) {
+                updates.impact_dropdown = draftImpactDD
+                updates.overall_impact_score = Math.round(safeRSD(draftImpactDD) ** 2)
+            }
             if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
             if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
             if (draftMemberComment !== (item.member_comment || "")) updates.member_comment = draftMemberComment
@@ -178,7 +190,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             setSaving(false)
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [draftLikeBV, draftLikePP, draftLikeCV, draftCtrlMon, draftCtrlEff, draftMemberComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate, taskStatus])
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, draftMemberComment, draftLikScore, draftCtrlScore, draftImpScore, draftInherent, draftAllFilled, draftResidual, item, docId, onUpdate, taskStatus])
 
     // Submit delay justification (Member writes shared text → awaits Reviewer approval)
     const handleSubmitDelayJustification = React.useCallback(async () => {
@@ -522,10 +534,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                     <div className="space-y-2.5 rounded-lg border border-border/30 p-3 bg-muted/5">
                         <div className="flex items-center justify-between">
                             <p className="text-xs font-semibold text-foreground/70">Risk Assessment</p>
-                            <span className="text-[10px] text-muted-foreground/40 italic">Likelihood &amp; Control editable · Theme, Tranche, Impact set by Compliance</span>
+                            <span className="text-[10px] text-muted-foreground/40 italic">Likelihood, Impact & Control editable · Theme & Tranche set by Compliance</span>
                         </div>
 
-                        {/* Row 1: Theme + Tranche3 + Impact (read-only from CO) */}
+                        {/* Row 1: Theme + Tranche3 + Impact (editable like Likelihood & Control) */}
                         <div className="grid grid-cols-3 gap-2">
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
@@ -537,7 +549,18 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                {!isReadOnly ? (
+                                    <select
+                                        value={draftImpactDD?.label || ""}
+                                        onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
+                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
+                                    >
+                                        <option value="">— Select Impact —</option>
+                                        {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                                    </select>
+                                ) : (
+                                    <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                )}
                             </div>
                         </div>
 
