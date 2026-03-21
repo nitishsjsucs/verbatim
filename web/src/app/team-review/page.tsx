@@ -1308,6 +1308,13 @@ function ReviewRow({
                                     <p className="text-xs text-foreground/80">{item.reviewer_comment}</p>
                                 </div>
                             )}
+                            {/* CAG Comment - show for completed items */}
+                            {taskStatus === "completed" && item.co_comment && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-primary/70 mb-1">CAG Comment</p>
+                                    <p className="text-xs text-foreground/80">{item.co_comment}</p>
+                                </div>
+                            )}
                             {/* Chat thread — accessible always; read-only when completed */}
                             <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                 <p className="text-xs font-semibold text-foreground/50 mb-2">
