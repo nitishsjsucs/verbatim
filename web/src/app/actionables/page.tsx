@@ -193,7 +193,7 @@ function formatDateDMY(isoDate: string): string {
     return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, docDefaultTheme, callerRole, callerAccountId }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, docDefaultTheme, docDefaultNewProduct, docDefaultLiveDate, callerRole, callerAccountId }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -207,6 +207,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     docDefaultDeadline: string
     docDefaultDeadlineTime: string
     docDefaultTheme: string
+    docDefaultNewProduct: string
+    docDefaultLiveDate: string
     callerRole: string
     callerAccountId: string
 }) {
@@ -217,8 +219,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const [saving, setSaving] = React.useState(false)
     const [draftAction, setDraftAction] = React.useState(safeStr(item.action))
     const [draftTranche3, setDraftTranche3] = React.useState(safeStr(item.tranche3) || "No")
-    const [draftNewProduct, setDraftNewProduct] = React.useState(safeStr(item.new_product) || "No")
-    const [draftProductLiveDate, setDraftProductLiveDate] = React.useState(safeStr(item.product_live_date))
+    const [draftNewProduct, setDraftNewProduct] = React.useState(safeStr(item.new_product) || docDefaultNewProduct || "No")
+    const [draftProductLiveDate, setDraftProductLiveDate] = React.useState(safeStr(item.product_live_date) || docDefaultLiveDate)
     const [draftTheme, setDraftTheme] = React.useState(safeStr(item.theme) || docDefaultTheme)
     // Structured risk sub-dropdowns — each stores {label, score} or empty {}
     const emptyRSD = {} as RiskSubDropdown
@@ -313,8 +315,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         setDraftImpl(safeStr(item.implementation_notes))
         setDraftEvidence(safeStr(item.evidence_quote))
         setDraftTranche3(safeStr(item.tranche3) || "No")
-        setDraftNewProduct(safeStr(item.new_product) || "No")
-        setDraftProductLiveDate(safeStr(item.product_live_date))
+        setDraftNewProduct(safeStr(item.new_product) || docDefaultNewProduct || "No")
+        setDraftProductLiveDate(safeStr(item.product_live_date) || docDefaultLiveDate)
         setDraftTheme(safeStr(item.theme) || docDefaultTheme)
         // Structured risk sub-dropdowns
         setDraftLikeBV(item.likelihood_business_volume || emptyRSD)
@@ -484,6 +486,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         
         if (missing.length > 0) {
             toast.error(`Cannot publish — please fill: ${missing.join(", ")}`)
+            return
+        }
+        // Validate: if New Product = Yes, must have Live Date
+        if (draftNewProduct === "Yes" && !draftProductLiveDate) {
+            toast.error("Product Live Date is required when New Product is 'Yes'")
             return
         }
         let dl = deadlineDate ? `${deadlineDate}T${deadlineTime || "23:59"}` : (item.deadline || "")
@@ -954,7 +961,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             onChange={e => setDraftProductLiveDate(e.target.value)}
                                             className="w-[160px] bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
                                         />
-                                        {draftProductLiveDate && (() => {
+                                        {draftProductLiveDate && item.published_at && (() => {
                                             const diffMs = new Date(draftProductLiveDate).getTime() - Date.now()
                                             const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
                                             if (diffDays < 0) return <span className="ml-2 text-[10px] text-red-400 font-semibold">{Math.abs(diffDays)}d overdue</span>
@@ -1532,11 +1539,21 @@ export default function ActionablesPage() {
     // Per-document deadline defaults (frontend-only, persisted in localStorage per user)
     const [docDeadlineDefaults, setDocDeadlineDefaults] = React.useState<Record<string, { date: string; time: string }>>({})
 
+    // Per-document New Product and Live Date defaults (persisted in localStorage per user)
+    const [docNewProductDefaults, setDocNewProductDefaults] = React.useState<Record<string, string>>({})
+    const [docLiveDateDefaults, setDocLiveDateDefaults] = React.useState<Record<string, string>>({})
+
     const deadlinesStorageKey = React.useMemo(() => (
         callerAccountId ? `actionables_doc_deadlines_${callerAccountId}` : "actionables_doc_deadlines"
     ), [callerAccountId])
     const themesStorageKey = React.useMemo(() => (
         callerAccountId ? `actionables_doc_themes_${callerAccountId}` : "actionables_doc_themes"
+    ), [callerAccountId])
+    const docNewProductStorageKey = React.useMemo(() => (
+        callerAccountId ? `actionables_doc_new_product_${callerAccountId}` : "actionables_doc_new_product"
+    ), [callerAccountId])
+    const docLiveDateStorageKey = React.useMemo(() => (
+        callerAccountId ? `actionables_doc_live_date_${callerAccountId}` : "actionables_doc_live_date"
     ), [callerAccountId])
 
     // Load persisted per-document defaults from localStorage whenever user changes
@@ -1546,11 +1563,17 @@ export default function ActionablesPage() {
             setDocDeadlineDefaults(savedDeadlines ? JSON.parse(savedDeadlines) : {})
             const savedThemes = localStorage.getItem(themesStorageKey) ?? localStorage.getItem("actionables_doc_themes")
             setDocThemeDefaults(savedThemes ? JSON.parse(savedThemes) : {})
+            const savedNewProduct = localStorage.getItem(docNewProductStorageKey) ?? localStorage.getItem("actionables_doc_new_product")
+            setDocNewProductDefaults(savedNewProduct ? JSON.parse(savedNewProduct) : {})
+            const savedLiveDate = localStorage.getItem(docLiveDateStorageKey) ?? localStorage.getItem("actionables_doc_live_date")
+            setDocLiveDateDefaults(savedLiveDate ? JSON.parse(savedLiveDate) : {})
         } catch {
             setDocDeadlineDefaults({})
             setDocThemeDefaults({})
+            setDocNewProductDefaults({})
+            setDocLiveDateDefaults({})
         }
-    }, [deadlinesStorageKey, themesStorageKey])
+    }, [deadlinesStorageKey, themesStorageKey, docNewProductStorageKey, docLiveDateStorageKey])
 
     // Save per-document deadlines to localStorage whenever they change
     const updateDocDeadline = React.useCallback((docId: string, date: string, time: string) => {
@@ -1573,6 +1596,27 @@ export default function ActionablesPage() {
             return next
         })
     }, [themesStorageKey])
+
+    // Save per-document New Product and Live Date defaults to localStorage
+    const updateDocNewProduct = React.useCallback((docId: string, newProduct: string) => {
+        setDocNewProductDefaults(prev => {
+            const next = { ...prev, [docId]: newProduct }
+            try {
+                localStorage.setItem(docNewProductStorageKey, JSON.stringify(next))
+            } catch { /* ignore */ }
+            return next
+        })
+    }, [docNewProductStorageKey])
+
+    const updateDocLiveDate = React.useCallback((docId: string, liveDate: string) => {
+        setDocLiveDateDefaults(prev => {
+            const next = { ...prev, [docId]: liveDate }
+            try {
+                localStorage.setItem(docLiveDateStorageKey, JSON.stringify(next))
+            } catch { /* ignore */ }
+            return next
+        })
+    }, [docLiveDateStorageKey])
 
     // Global "New Product" selector (persisted in localStorage per user)
     const newProductStorageKey = React.useMemo(() => (
@@ -2139,6 +2183,27 @@ export default function ActionablesPage() {
                                                                     {THEME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
                                                                 </select>
                                                             </div>
+                                                            <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
+                                                                <span className="text-[9px] text-muted-foreground/50">New Product:</span>
+                                                                <select
+                                                                    value={docNewProductDefaults[docId] || ""}
+                                                                    onChange={e => updateDocNewProduct(docId, e.target.value)}
+                                                                    className="w-[80px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
+                                                                >
+                                                                    <option value="">No default</option>
+                                                                    <option value="Yes">Yes</option>
+                                                                    <option value="No">No</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
+                                                                <span className="text-[9px] text-muted-foreground/50">Live Date:</span>
+                                                                <input
+                                                                    type="date"
+                                                                    value={docLiveDateDefaults[docId] || ""}
+                                                                    onChange={e => updateDocLiveDate(docId, e.target.value)}
+                                                                    className="w-[100px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
+                                                                />
+                                                            </div>
                                                         </div>
                                                         {!isCollapsed && (
                                                         <div className="p-2 space-y-2">
@@ -2161,6 +2226,8 @@ export default function ActionablesPage() {
                                                                     docDefaultDeadline={docDeadlineDefaults[docId]?.date || ""}
                                                                     docDefaultDeadlineTime={docDeadlineDefaults[docId]?.time || "23:59"}
                                                                     docDefaultTheme={docThemeDefaults[docId] || ""}
+                                                                    docDefaultNewProduct={docNewProductDefaults[docId] || ""}
+                                                                    docDefaultLiveDate={docLiveDateDefaults[docId] || ""}
                                                                     callerRole={callerRole}
                                                                     callerAccountId={callerAccountId}
                                                                 />
@@ -2243,7 +2310,7 @@ export default function ActionablesPage() {
                                                                 {!isCollapsed && (
                                                                     <div className="p-2 space-y-2">
                                                                         {rejEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
+                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} docDefaultNewProduct={docNewProductDefaults[dId] || ""} docDefaultLiveDate={docLiveDateDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
                                                                         ))}
                                                                     </div>
                                                                 )}
@@ -2283,7 +2350,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} docDefaultNewProduct={docNewProductDefaults[dId] || ""} docDefaultLiveDate={docLiveDateDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
                                                                 ))}
                                                             </div>
                                                         )
