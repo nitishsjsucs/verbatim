@@ -1645,7 +1645,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
     return target.to_dict()
 
 
-def _safe_score(d: dict | None) -> float:
+def _safe_score(d: Optional[dict]) -> float:
     """Extract numeric score from a sub-dropdown dict, defaulting to 0."""
     if not d or not isinstance(d, dict):
         return 0
