@@ -661,29 +661,43 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
                                 </div>
                             )}
-                            {/* New Product — CAG editable even in completed/approved view */}
-                            <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
+                            {/* Compliance Parameters — read-only for all roles in completed view */}
+                            <div className="rounded-md border border-border/20 p-2 bg-muted/5">
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider">New Product</p>
-                                    {isComplianceOfficer && <span className="text-[10px] text-cyan-400/40 italic">Editable by CAG</span>}
+                                    <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Compliance Parameters</p>
                                 </div>
+                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product === "Yes" ? <span className="text-cyan-400 font-medium">Yes</span> : (item.new_product || <span className="text-muted-foreground/40 italic">—</span>)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Theme</p>
+                                        <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.theme || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                    </div>
+                                </div>
+                                {/* Tranche 3 — editable by CAG only */}
                                 {isComplianceOfficer ? (
                                     <div className="space-y-2">
-                                        <select
-                                            value={draftNewProduct}
-                                            onChange={e => {
-                                                setDraftNewProduct(e.target.value)
-                                                if (e.target.value === "No") setDraftProductLiveDate("")
-                                            }}
-                                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
-                                        >
-                                            <option value="No">No</option>
-                                            <option value="Yes">Yes</option>
-                                        </select>
-                                        {draftNewProduct === "Yes" && (
+                                        <div>
+                                            <p className="text-[10px] font-medium text-cyan-400/60 mb-0.5">Tranche 3 <span className="text-cyan-400/40 italic">(Editable by CAG)</span></p>
+                                            <input
+                                                type="text"
+                                                value={draftTranche3 ?? safeStr(item.tranche3)}
+                                                onChange={e => setDraftTranche3(e.target.value)}
+                                                className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                                placeholder="Enter Tranche 3…"
+                                            />
+                                        </div>
+                                        {/* Product Live Date — editable by CAG only when new_product = Yes */}
+                                        {item.new_product === "Yes" && (
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-1">
-                                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Product Live Date</p>
+                                                    <p className="text-[10px] font-medium text-cyan-400/60 mb-0.5">Product Live Date <span className="text-cyan-400/40 italic">(Editable by CAG)</span></p>
                                                     <input
                                                         type="date"
                                                         value={draftProductLiveDate}
@@ -708,20 +722,24 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 })()}
                                             </div>
                                         )}
-                                        {(draftNewProduct !== (safeStr(item.new_product) || "No") || draftProductLiveDate !== safeStr(item.product_live_date)) && (
+                                        {((draftTranche3 != null && draftTranche3 !== safeStr(item.tranche3)) || draftProductLiveDate !== safeStr(item.product_live_date)) && (
                                             <button
                                                 onClick={async () => {
                                                     setSaving(true)
                                                     try {
-                                                        const updates: Record<string, unknown> = { new_product: draftNewProduct, product_live_date: draftProductLiveDate }
-                                                        if (draftNewProduct === "Yes" && draftProductLiveDate) {
-                                                            const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
-                                                            updates.new_product_expiry = expD.toISOString().split("T")[0]
-                                                        } else {
-                                                            updates.new_product_expiry = ""
+                                                        const updates: Record<string, unknown> = {}
+                                                        if (draftTranche3 != null && draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
+                                                        if (draftProductLiveDate !== safeStr(item.product_live_date)) {
+                                                            updates.product_live_date = draftProductLiveDate
+                                                            if (item.new_product === "Yes" && draftProductLiveDate) {
+                                                                const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
+                                                                updates.new_product_expiry = expD.toISOString().split("T")[0]
+                                                            } else {
+                                                                updates.new_product_expiry = ""
+                                                            }
                                                         }
                                                         await onUpdate(docId, item.id, updates)
-                                                        toast.success("New Product updated")
+                                                        toast.success("Compliance parameters updated")
                                                     } catch (err) { toast.error(err instanceof Error ? err.message : "Update failed") }
                                                     finally { setSaving(false) }
                                                 }}
@@ -729,33 +747,20 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 className="w-full flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 font-medium transition-colors"
                                             >
                                                 {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                                Save New Product Changes
+                                                Save Changes
                                             </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-foreground/70">{item.new_product === "Yes" ? <span className="text-cyan-400 font-medium">Yes</span> : "No"}</p>
-                                        {item.new_product === "Yes" && item.product_live_date && (
-                                            <div className="flex items-center gap-2 text-[10px]">
-                                                <span className="text-muted-foreground/50">Live Date:</span>
-                                                <span className="text-cyan-400 font-mono">{formatDateDMY(item.product_live_date)}</span>
-                                                {(() => {
-                                                    const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
-                                                    const expiryStr = expD.toISOString().split("T")[0]
-                                                    const diffMs = expD.getTime() - Date.now()
-                                                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-                                                    return (
-                                                        <>
-                                                            <span className="text-cyan-400/60 font-mono">→ Exp: {formatDateDMY(expiryStr)}</span>
-                                                            <span className={cn("font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-cyan-400/60")}>
-                                                                ({diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : `${diffDays}d`})
-                                                            </span>
-                                                        </>
-                                                    )
-                                                })()}
-                                            </div>
-                                        )}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Tranche 3</p>
+                                            <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.tranche3 || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Product Live Date</p>
+                                            <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product === "Yes" && item.product_live_date ? <span className="text-cyan-400 font-mono">{item.product_live_date}</span> : <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                        </div>
                                     </div>
                                 )}
                             </div>

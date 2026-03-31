@@ -157,8 +157,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             const updates: Record<string, unknown> = {}
             // Auto-transition assigned → in_progress on first save
             if (taskStatus === "assigned") updates.task_status = "in_progress"
-            // Auto-transition reworking → resubmit on save
-            if (taskStatus === "reworking") updates.task_status = "resubmit"
+            // NOTE: Do NOT auto-transition reworking here — user must click Resubmit button
             if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
             if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
             if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
@@ -247,8 +246,6 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         const updates: Record<string, unknown> = {}
         if (taskStatus === "assigned") {
             updates.task_status = "in_progress"
-        } else if (taskStatus === "reworking") {
-            updates.task_status = "resubmit"
         }
         const newComment: ActionableComment = {
             id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -273,13 +270,9 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
     const handleFileSelected = async (file: File) => {
         // Auto-transition from assigned to in_progress on upload
-        // Auto-transition from reworking to resubmit on upload
         if (taskStatus === "assigned") {
             await onUpdate(docId, item.id, { task_status: "in_progress" })
             toast.success("Task auto-started (In Progress)")
-        } else if (taskStatus === "reworking") {
-            await onUpdate(docId, item.id, { task_status: "resubmit" })
-            toast.success("Task auto-marked for resubmission")
         }
         onUpload(docId, item.id, file)
     }
@@ -549,18 +542,19 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Impact</p>
-                                {!isReadOnly ? (
-                                    <select
-                                        value={draftImpactDD?.label || ""}
-                                        onChange={e => setDraftImpactDD(pickSubDropdown("impact_dropdown", e.target.value))}
-                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-pink-400/30 focus:border-pink-400 focus:outline-none text-foreground"
-                                    >
-                                        <option value="">— Select Impact —</option>
-                                        {getSafeOptions("impact_dropdown").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                                    </select>
-                                ) : (
-                                    <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
-                                )}
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                            </div>
+                        </div>
+
+                        {/* New Product — read-only (set by CAG) */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product === "Yes" ? <span className="text-cyan-400 font-medium">Yes</span> : (item.new_product || <span className="text-muted-foreground/40 italic">—</span>)}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Product Live Date</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product === "Yes" && item.product_live_date ? <span className="text-cyan-400 font-mono">{item.product_live_date}</span> : <span className="text-muted-foreground/40 italic">—</span>}</p>
                             </div>
                         </div>
 
@@ -718,7 +712,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                         {files.length > 0 ? (
                                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-mono">{files.length}</span>
                                         ) : !isReadOnly && (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-semibold">Required for submission</span>
+                                            <span className="text-[10px] text-muted-foreground/40 italic">None</span>
                                         )}
                                     </div>
                                     {!isReadOnly && (

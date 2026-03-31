@@ -34,6 +34,8 @@ interface ActionableExpansionProps {
     // Handlers
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>, team?: string) => Promise<void>
     onAddComment: (text: string) => Promise<void>
+    onApprove?: (docId: string, item: ActionableItem, team?: string) => void
+    onReject?: (docId: string, item: ActionableItem, team?: string) => void
     onBypassApprove?: (docId: string, item: ActionableItem) => Promise<void>
     onBypassDisapprove?: (docId: string, item: ActionableItem, reason: string, userName: string) => Promise<void>
     
@@ -149,6 +151,8 @@ export function ActionableExpansion({
     readOnly = false,
     onUpdate,
     onAddComment,
+    onApprove,
+    onReject,
     onBypassApprove,
     onBypassDisapprove,
     formatDate,
@@ -193,7 +197,15 @@ export function ActionableExpansion({
             if (draftTheme !== (item.theme || "")) updates.theme = draftTheme
             if (draftTranche3 !== (item.tranche3 || "No")) updates.tranche3 = draftTranche3
             if (draftNewProduct !== (item.new_product || "No")) updates.new_product = draftNewProduct
-            if (draftProductLiveDate !== (item.product_live_date || "")) updates.product_live_date = draftProductLiveDate
+            if (draftProductLiveDate !== (item.product_live_date || "")) {
+                updates.product_live_date = draftProductLiveDate
+                if (draftProductLiveDate) {
+                    const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
+                    updates.new_product_expiry = expD.toISOString().split("T")[0]
+                } else {
+                    updates.new_product_expiry = ""
+                }
+            }
             if ((draftImpactDD?.label || "") !== (item.impact_dropdown?.label || "")) {
                 updates.impact_dropdown = draftImpactDD
                 updates.overall_impact_score = (draftImpactDD?.score ?? 0) ** 2
@@ -313,11 +325,11 @@ export function ActionableExpansion({
                 <div className="flex items-center gap-3 mb-3">
                     <button
                         onClick={() => {
-                            if (teamName) {
-                                // Multi-team child row - approve this specific team
+                            if (onApprove) {
+                                onApprove(docId, item, teamName)
+                            } else if (teamName) {
                                 onUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() }, teamName)
                             } else {
-                                // Single-team item - approve the whole item
                                 onUpdate(docId, item.id, { task_status: "completed", completion_date: new Date().toISOString() })
                             }
                         }}
@@ -327,8 +339,9 @@ export function ActionableExpansion({
                     </button>
                     <button
                         onClick={() => {
-                            // Rejection is handled by parent component via state
-                            // This is just a placeholder - actual implementation in parent
+                            if (onReject) {
+                                onReject(docId, item, teamName)
+                            }
                         }}
                         className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors font-medium"
                     >

@@ -876,6 +876,18 @@ function OversightRow({
                                 <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.impact_dropdown?.label || <span className="text-muted-foreground/40 italic">—</span>}</p>
                             </div>
                         </div>
+
+                        {/* New Product — read-only (set by CAG) */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product === "Yes" ? <span className="text-cyan-400 font-medium">Yes</span> : (item.new_product || <span className="text-muted-foreground/40 italic">—</span>)}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Product Live Date</p>
+                                <p className="text-xs text-foreground/80 bg-muted/20 rounded px-2 py-1 border border-border/20 min-h-[28px]">{item.new_product === "Yes" && item.product_live_date ? <span className="text-cyan-400 font-mono">{item.product_live_date}</span> : <span className="text-muted-foreground/40 italic">—</span>}</p>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Delay Justification — Lead can edit text (optional) and must approve */}
