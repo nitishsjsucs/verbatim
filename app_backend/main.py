@@ -1599,7 +1599,7 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         # Theme dropdown
         "theme",
         # New product and live date
-        "new_product", "product_live_date",
+        "new_product", "product_live_date", "new_product_expiry",
         # Tagged Incorrectly bypass flow
         "bypass_tag", "bypass_tagged_at", "bypass_tagged_by",
         "bypass_approved_by", "bypass_approved_at",

@@ -400,6 +400,15 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
             if (draftTranche3 !== safeStr(item.tranche3)) updates.tranche3 = draftTranche3
             if (draftNewProduct !== (safeStr(item.new_product) || "No")) updates.new_product = draftNewProduct
             if (draftProductLiveDate !== safeStr(item.product_live_date)) updates.product_live_date = draftProductLiveDate
+            // Auto-calculate 6-month expiry whenever new_product or live date changes
+            if (draftNewProduct !== (safeStr(item.new_product) || "No") || draftProductLiveDate !== safeStr(item.product_live_date)) {
+                if (draftNewProduct === "Yes" && draftProductLiveDate) {
+                    const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
+                    updates.new_product_expiry = expD.toISOString().split("T")[0]
+                } else {
+                    updates.new_product_expiry = ""
+                }
+            }
             if (resolvedTheme !== safeStr(item.theme)) updates.theme = resolvedTheme
             // CO only sets impact_dropdown; members set likelihood + control
             if (isComplianceOfficer) {
@@ -1592,23 +1601,20 @@ export default function ActionablesPage() {
         })
     }, [docLiveDateStorageKey])
 
-    // Global "New Product" selector (persisted in localStorage per user)
-    const newProductStorageKey = React.useMemo(() => (
-        callerAccountId ? `actionables_new_product_${callerAccountId}` : "actionables_new_product"
-    ), [callerAccountId])
-    const [globalNewProduct, setGlobalNewProduct] = React.useState<string>(() => {
-        if (typeof window !== "undefined") {
-            try { return localStorage.getItem(newProductStorageKey) || "No" } catch { /* ignore */ }
-        }
-        return "No"
-    })
-    React.useEffect(() => {
-        try { const saved = localStorage.getItem(newProductStorageKey); if (saved) setGlobalNewProduct(saved) } catch { /* ignore */ }
-    }, [newProductStorageKey])
-    const updateGlobalNewProduct = React.useCallback((val: string) => {
-        setGlobalNewProduct(val)
-        try { localStorage.setItem(newProductStorageKey, val) } catch { /* ignore */ }
-    }, [newProductStorageKey])
+    // Track which documents have unsaved global changes (theme, deadline, new product, live date)
+    const [docGlobalDirty, setDocGlobalDirty] = React.useState<Set<string>>(new Set())
+    const markDocDirty = React.useCallback((docId: string) => {
+        setDocGlobalDirty(prev => { const next = new Set(prev); next.add(docId); return next })
+    }, [])
+    const [docGlobalSaving, setDocGlobalSaving] = React.useState<Set<string>>(new Set())
+
+    // Helper: compute 6-month expiry from a live date
+    const computeSixMonthExpiry = React.useCallback((liveDate: string): string => {
+        if (!liveDate) return ""
+        const d = new Date(liveDate)
+        d.setMonth(d.getMonth() + 6)
+        return d.toISOString().split("T")[0]
+    }, [])
 
     // Filters
     const [docFilter, setDocFilter] = React.useState<string>("all")
@@ -1744,6 +1750,38 @@ export default function ActionablesPage() {
             toast.error(err instanceof Error ? err.message : "Update failed")
         }
     }, [callerRole])
+
+    // Save document-level defaults to ALL pending actionables in that document
+    const handleSaveDocDefaults = React.useCallback(async (docId: string) => {
+        const doc = allDocs.find(d => d.doc_id === docId)
+        if (!doc) return
+        setDocGlobalSaving(prev => { const next = new Set(prev); next.add(docId); return next })
+        try {
+            const theme = docThemeDefaults[docId] || ""
+            const newProduct = docNewProductDefaults[docId] || "No"
+            const liveDate = docLiveDateDefaults[docId] || ""
+            const docDl = docDeadlineDefaults[docId]
+            const deadline = docDl?.date ? `${docDl.date}T${docDl.time || "23:59"}` : ""
+            const expiry = (newProduct === "Yes" && liveDate) ? computeSixMonthExpiry(liveDate) : ""
+
+            const pendingInDoc = doc.actionables.filter(a => !a.published_at && a.approval_status !== "rejected")
+            for (const item of pendingInDoc) {
+                const updates: Record<string, unknown> = {}
+                if (theme) updates.theme = theme
+                updates.new_product = newProduct
+                if (liveDate) updates.product_live_date = liveDate
+                if (expiry) updates.new_product_expiry = expiry
+                if (deadline) updates.deadline = deadline
+                await handleUpdate(docId, item.id, updates)
+            }
+            setDocGlobalDirty(prev => { const next = new Set(prev); next.delete(docId); return next })
+            toast.success(`Applied defaults to ${pendingInDoc.length} actionables in "${doc.doc_name}"`)
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to save document defaults")
+        } finally {
+            setDocGlobalSaving(prev => { const next = new Set(prev); next.delete(docId); return next })
+        }
+    }, [allDocs, docThemeDefaults, docNewProductDefaults, docLiveDateDefaults, docDeadlineDefaults, computeSixMonthExpiry, handleUpdate])
 
     const handleDelete = React.useCallback(async (docId: string, itemId: string) => {
         try {
@@ -1920,23 +1958,6 @@ export default function ActionablesPage() {
                         </h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* Global New Product selector */}
-                        <div className="flex items-center gap-1.5 border-r border-border/40 pr-3">
-                            <span className="text-[10px] text-muted-foreground/60">New Product:</span>
-                            <select
-                                value={globalNewProduct}
-                                onChange={e => updateGlobalNewProduct(e.target.value)}
-                                className={cn(
-                                    "text-[10px] rounded px-1.5 py-0.5 border focus:outline-none font-medium",
-                                    globalNewProduct === "Yes"
-                                        ? "bg-cyan-400/10 border-cyan-400/30 text-cyan-400"
-                                        : "bg-muted/30 border-border/40 text-foreground"
-                                )}
-                            >
-                                <option value="No">No</option>
-                                <option value="Yes">Yes</option>
-                            </select>
-                        </div>
                         <div className="flex items-center gap-2 text-xs">
                             <span className="px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono">{formatNumber(stats.pending)} pending</span>
                             <span className="px-2 py-0.5 rounded bg-blue-400/10 text-blue-400 font-mono">{formatNumber(stats.published)} in tracker</span>
@@ -2057,7 +2078,7 @@ export default function ActionablesPage() {
                                     {/* ---- UNPUBLISHED section ---- */}
                                     {pendingItems.length > 0 && (
                                         <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 sticky top-0 z-10 bg-background py-1">
                                                 <button className="flex items-center gap-2" onClick={() => setPendingCollapsed(!pendingCollapsed)}>
                                                     {pendingCollapsed
                                                         ? <ChevronRight className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
@@ -2136,13 +2157,13 @@ export default function ActionablesPage() {
                                                                 <input
                                                                     type="date"
                                                                     value={docDeadlineDefaults[docId]?.date || ""}
-                                                                    onChange={e => updateDocDeadline(docId, e.target.value, docDeadlineDefaults[docId]?.time || "23:59")}
+                                                                    onChange={e => { updateDocDeadline(docId, e.target.value, docDeadlineDefaults[docId]?.time || "23:59"); markDocDirty(docId) }}
                                                                     className="w-[100px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 />
                                                                 <input
                                                                     type="time"
                                                                     value={docDeadlineDefaults[docId]?.time || "23:59"}
-                                                                    onChange={e => updateDocDeadline(docId, docDeadlineDefaults[docId]?.date || "", e.target.value)}
+                                                                    onChange={e => { updateDocDeadline(docId, docDeadlineDefaults[docId]?.date || "", e.target.value); markDocDirty(docId) }}
                                                                     className="w-[65px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 />
                                                             </div>
@@ -2150,7 +2171,7 @@ export default function ActionablesPage() {
                                                                 <span className="text-[9px] text-muted-foreground/50">Theme:</span>
                                                                 <select
                                                                     value={docThemeDefaults[docId] || ""}
-                                                                    onChange={e => updateDocTheme(docId, e.target.value)}
+                                                                    onChange={e => { updateDocTheme(docId, e.target.value); markDocDirty(docId) }}
                                                                     className="w-[120px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 >
                                                                     <option value="">No default</option>
@@ -2161,7 +2182,7 @@ export default function ActionablesPage() {
                                                                 <span className="text-[9px] text-muted-foreground/50">New Product:</span>
                                                                 <select
                                                                     value={docNewProductDefaults[docId] || "No"}
-                                                                    onChange={e => { updateDocNewProduct(docId, e.target.value); if (e.target.value === "No") updateDocLiveDate(docId, "") }}
+                                                                    onChange={e => { updateDocNewProduct(docId, e.target.value); if (e.target.value === "No") updateDocLiveDate(docId, ""); markDocDirty(docId) }}
                                                                     className="w-[80px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                 >
                                                                     <option value="Yes">Yes</option>
@@ -2174,10 +2195,26 @@ export default function ActionablesPage() {
                                                                     <input
                                                                         type="date"
                                                                         value={docLiveDateDefaults[docId] || ""}
-                                                                        onChange={e => updateDocLiveDate(docId, e.target.value)}
+                                                                        onChange={e => { updateDocLiveDate(docId, e.target.value); markDocDirty(docId) }}
                                                                         className="w-[100px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-border/40 focus:border-primary focus:outline-none"
                                                                     />
+                                                                    {docLiveDateDefaults[docId] && (
+                                                                        <span className="text-[9px] text-cyan-400/70 font-mono" title="6-month new product expiry">
+                                                                            Exp: {formatDateDMY(computeSixMonthExpiry(docLiveDateDefaults[docId]))}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
+                                                            )}
+                                                            {docGlobalDirty.has(docId) && (
+                                                                <button
+                                                                    onClick={e => { e.stopPropagation(); handleSaveDocDefaults(docId) }}
+                                                                    disabled={docGlobalSaving.has(docId)}
+                                                                    className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 border border-emerald-500/30 transition-colors disabled:opacity-50"
+                                                                    title="Save defaults to all pending actionables in this document"
+                                                                >
+                                                                    {docGlobalSaving.has(docId) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                                    Save to All
+                                                                </button>
                                                             )}
                                                         </div>
                                                         {!isCollapsed && (
@@ -2221,7 +2258,7 @@ export default function ActionablesPage() {
                                     {/* ---- REJECTED section ---- */}
                                     {rejectedItems.length > 0 && (
                                         <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 sticky top-0 z-10 bg-background py-1">
                                                 <button className="flex items-center gap-2" onClick={() => setRejectedCollapsed(!rejectedCollapsed)}>
                                                     {rejectedCollapsed
                                                         ? <ChevronRight className="h-3.5 w-3.5 text-red-400 shrink-0" />

@@ -323,6 +323,7 @@ export interface ActionableItem {
     // New Product fields
     new_product?: string;        // "Yes" or "No"
     product_live_date?: string;  // ISO date — Product Live Date (only when new_product="Yes")
+    new_product_expiry?: string; // ISO date — 6 months after product_live_date (auto-calculated)
     // Task lifecycle fields (populated after approval)
     task_status?: TaskStatus;
     completion_date?: string;    // ISO datetime when task is completed
