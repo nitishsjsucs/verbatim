@@ -197,13 +197,15 @@ export function ActionableExpansion({
             if (draftTheme !== (item.theme || "")) updates.theme = draftTheme
             if (draftTranche3 !== (item.tranche3 || "No")) updates.tranche3 = draftTranche3
             if (draftNewProduct !== (item.new_product || "No")) updates.new_product = draftNewProduct
-            if (draftProductLiveDate !== (item.product_live_date || "")) {
-                updates.product_live_date = draftProductLiveDate
-                if (draftProductLiveDate) {
+            if (draftProductLiveDate !== (item.product_live_date || "")) updates.product_live_date = draftProductLiveDate
+            // Recompute expiry whenever new_product or live date changed
+            if (draftNewProduct !== (item.new_product || "No") || draftProductLiveDate !== (item.product_live_date || "")) {
+                if (draftNewProduct === "Yes" && draftProductLiveDate) {
                     const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
                     updates.new_product_expiry = expD.toISOString().split("T")[0]
                 } else {
                     updates.new_product_expiry = ""
+                    updates.product_live_date = ""
                 }
             }
             if ((draftImpactDD?.label || "") !== (item.impact_dropdown?.label || "")) {
@@ -471,7 +473,7 @@ export function ActionableExpansion({
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">New Product</p>
                                 {userRole === "compliance_officer" ? (
-                                    <select value={draftNewProduct} onChange={e => { setDraftNewProduct(e.target.value); if (e.target.value === "No") setDraftProductLiveDate("") }} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
+                                    <select value={draftNewProduct} onChange={e => { setDraftNewProduct(e.target.value); if (e.target.value === "No") { setDraftProductLiveDate("") } else if (e.target.value === "Yes" && !draftProductLiveDate) { setDraftProductLiveDate(new Date().toISOString().split("T")[0]) } }} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-border/40 focus:border-primary focus:outline-none text-foreground">
                                         <option value="No">No</option>
                                         <option value="Yes">Yes</option>
                                     </select>
@@ -496,7 +498,7 @@ export function ActionableExpansion({
                             </div>
                         </div>
                         {/* Product Live Date — editable when new_product=Yes (compliance_officer only) */}
-                        {(draftNewProduct === "Yes" || item.new_product === "Yes") && (
+                        {draftNewProduct === "Yes" && (
                             <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
                                 <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider mb-1">Product Live Date</p>
                                 {userRole === "compliance_officer" ? (

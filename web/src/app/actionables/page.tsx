@@ -41,6 +41,7 @@ import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
 import { HierarchicalTeamMultiSelect, HierarchicalTeamSelect } from "@/components/shared/hierarchical-team-selector"
 import { EmptyState } from "@/components/shared/status-components"
+import { notifyPublished } from "@/lib/notifications-helper"
 
 const PdfViewer = dynamic(
     () => import("@/components/views/pdf-viewer").then(mod => mod.PdfViewer),
@@ -530,6 +531,8 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
         }
         await onUpdate(docId, item.id, updates)
         toast.success("Published & sent to tracker")
+        const team = draftTeams[0] || item.workstream || "Technology"
+        notifyPublished(item.action || "Actionable", team, docId, item.actionable_id || item.id)
     }
 
     const handleReject = async (e: React.MouseEvent) => {
@@ -1069,7 +1072,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 value={draftNewProduct}
                                                 onChange={e => {
                                                     setDraftNewProduct(e.target.value)
-                                                    if (e.target.value === "No") setDraftProductLiveDate("")
+                                                    if (e.target.value === "No") {
+                                                        setDraftProductLiveDate("")
+                                                    } else if (e.target.value === "Yes" && !draftProductLiveDate) {
+                                                        setDraftProductLiveDate(new Date().toISOString().split("T")[0])
+                                                    }
                                                 }}
                                                 className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
                                             >
@@ -2070,6 +2077,9 @@ export default function ActionablesPage() {
             if (!item.first_published_at) pubUpdates.first_published_at = now
             // Process sequentially to prevent document-level race conditions when saving
             await handleUpdate(docId, item.id, pubUpdates)
+            // Fire-and-forget notification for each published item
+            const team = item.workstream || "Technology"
+            notifyPublished(item.action || "Actionable", team, docId, item.actionable_id || item.id)
         }
         toast.success(`Published ${pending.length} actionables to tracker`)
     }, [handleUpdate, docDeadlineDefaults, callerAccountId])

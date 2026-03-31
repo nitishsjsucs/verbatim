@@ -40,6 +40,7 @@ import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
 import { useActionables } from "@/lib/use-actionables"
 import { getVisibleTeamsForRole, isActionableVisible } from "@/lib/visibility"
+import { notifyForwardedToCO, notifyCheckerRejectedToMaker, notifyBypassApprovedByChecker, notifyDelayJustificationReviewerApproved } from "@/lib/notifications-helper"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,7 @@ function TeamReviewContent() {
             toast.success("Task approved — blocked until delay justification is fully approved")
         } else {
             toast.success("Task approved — sent to Compliance Officer for review")
+            notifyForwardedToCO(item.action || "Actionable", item.workstream || "Technology", userName, docId, item.actionable_id || item.id)
         }
     }, [userName, handleUpdate])
 
@@ -158,6 +160,7 @@ function TeamReviewContent() {
             comments: [...existing, bypassComment],
         })
         toast.success("Wrongly tagged flag approved — sent to Compliance Officer")
+        notifyBypassApprovedByChecker(item.action || "Actionable", userName, docId, item.actionable_id || item.id)
     }, [userName, handleUpdate])
 
     // Team Reviewer reject bypass: returns flagged item back to member
@@ -201,6 +204,7 @@ function TeamReviewContent() {
             comments: [...existing, rejectComment],
         })
         toast.success("Task rejected — returned to Team Member with 'Rejected by Reviewer' status")
+        notifyCheckerRejectedToMaker(item.action || "Actionable", item.workstream || "Technology", reason, docId, item.actionable_id || item.id)
     }, [userName, handleUpdate])
 
     const handleUpload = React.useCallback(async (docId: string, itemId: string, file: File) => {
@@ -715,6 +719,7 @@ function ReviewRow({
         }
         await onUpdate(docId, item.id, updates)
         toast.success("Delay justification approved — forwarded to Team Head")
+        notifyDelayJustificationReviewerApproved(item.action || "Actionable", item.workstream || "Technology", docId, item.actionable_id || item.id)
     }, [onUpdate, docId, item.id, userName, draftDelayJustification, item.delay_justification])
 
     // Reject delay justification — resets chain, sends back to Member for rework
@@ -1318,6 +1323,13 @@ function ReviewRow({
                                 <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                     <p className="text-xs font-semibold text-foreground/70 mb-1">Checker Comment</p>
                                     <p className="text-xs text-foreground/80">{item.reviewer_comment}</p>
+                                </div>
+                            )}
+                            {/* Lead Comment - show for completed items */}
+                            {taskStatus === "completed" && item.lead_comment && (
+                                <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
+                                    <p className="text-xs font-semibold text-foreground/70 mb-1">Team Head Comment</p>
+                                    <p className="text-xs text-foreground/80">{item.lead_comment}</p>
                                 </div>
                             )}
                             {/* CAG Comment - show for completed items */}

@@ -32,6 +32,7 @@ import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
 import { getVisibleTeamsForRole, isActionableVisible } from "@/lib/visibility"
 import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCell, StatDivider, EmptyState } from "@/components/shared/status-components"
+import { notifySubmittedForReview, notifyWronglyTagged, notifyDelayJustificationSubmitted } from "@/lib/notifications-helper"
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
@@ -203,6 +204,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
             delay_justification_updated_at: new Date().toISOString(),
         })
         toast.success("Delay justification submitted — awaiting Reviewer approval")
+        notifyDelayJustificationSubmitted(item.action || "Actionable", item.workstream || "Technology", userName, docId, item.actionable_id || item.id)
     }, [draftDelayJustification, onUpdate, docId, item.id, userName])
 
     const statusCfg = TASK_STATUS_STYLES[taskStatus] || TASK_STATUS_STYLES.assigned
@@ -791,6 +793,29 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                     <p className="text-xs text-foreground/80">{item.member_comment}</p>
                                 </div>
                             )}
+                            {/* Show all role comments for completed items */}
+                            {isCompleted && (item.reviewer_comment || item.lead_comment || item.co_comment) && (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {item.reviewer_comment && (
+                                        <div className="border border-border/30 rounded-lg bg-muted/5 p-2">
+                                            <p className="text-[10px] font-semibold text-foreground/50 mb-1">Checker Comment</p>
+                                            <p className="text-xs text-foreground/70">{item.reviewer_comment}</p>
+                                        </div>
+                                    )}
+                                    {item.lead_comment && (
+                                        <div className="border border-border/30 rounded-lg bg-muted/5 p-2">
+                                            <p className="text-[10px] font-semibold text-foreground/50 mb-1">Team Head Comment</p>
+                                            <p className="text-xs text-foreground/70">{item.lead_comment}</p>
+                                        </div>
+                                    )}
+                                    {item.co_comment && (
+                                        <div className="border border-border/30 rounded-lg bg-muted/5 p-2">
+                                            <p className="text-[10px] font-semibold text-foreground/50 mb-1">CAG Comment</p>
+                                            <p className="text-xs text-foreground/70">{item.co_comment}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             {/* Chat thread — accessible always; read-only when completed */}
                             <div className="border border-border/30 rounded-lg bg-muted/5 p-3">
                                 <p className="text-xs font-semibold text-foreground/50 mb-2">
@@ -970,8 +995,12 @@ function TeamBoardContent() {
         if (nextStatus) {
             await handleUpdate(docId, item.id, { task_status: nextStatus, ...extraUpdates })
             toast.success(`Task moved to ${TASK_STATUS_STYLES[nextStatus].label}`)
+            // Notify checker when maker submits for review
+            if (nextStatus === "team_review") {
+                notifySubmittedForReview(item.action || "Actionable", item.workstream || "Technology", userName, docId, item.actionable_id || item.id)
+            }
         }
-    }, [handleUpdate])
+    }, [handleUpdate, userName])
 
     const handleRevert = React.useCallback(async (docId: string, item: ActionableItem) => {
         await handleUpdate(docId, item.id, { task_status: "in_progress", submitted_at: "" })
@@ -995,6 +1024,7 @@ function TeamBoardContent() {
             bypass_approved_at: "",
         })
         toast.success("Task flagged as incorrectly assigned — Team Reviewer will review")
+        notifyWronglyTagged(item.action || "Actionable", item.workstream || "Technology", userName, docId, item.actionable_id || item.id)
     }, [handleUpdate, userName])
 
     // Stats (team-scoped from viewItems which has team-projected statuses)

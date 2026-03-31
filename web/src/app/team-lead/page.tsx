@@ -39,6 +39,7 @@ import { ProgressBar, EvidencePopover, EvidenceFileList, SectionDivider, StatCel
 import { useTeams } from "@/lib/use-teams"
 import { useActionables } from "@/lib/use-actionables"
 import { getVisibleTeamsForRole, isActionableVisible } from "@/lib/visibility"
+import { notifyDelayJustificationLeadApproved } from "@/lib/notifications-helper"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -606,6 +607,7 @@ function OversightRow({
         }
         await onUpdate(docId, item.id, updates)
         toast.success("Delay justification approved — actionable forwarded to CAG for review")
+        notifyDelayJustificationLeadApproved(item.action || "Actionable", item.workstream || "Technology", docId, item.actionable_id || item.id)
     }, [onUpdate, docId, item.id, userName, taskStatus, draftDelayJustification, item.delay_justification])
 
     // Reject delay justification — resets entire chain, sends back to Member for rework

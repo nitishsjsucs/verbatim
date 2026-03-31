@@ -36,6 +36,7 @@ import { ActionableExpansion } from "@/components/dashboard/actionable-expansion
 import { DelegateModal } from "@/components/dashboard/delegate-modal"
 import { revertDelegationRequest, cleanupActionableState } from "@/lib/api"
 import { computeResidualScore } from "@/lib/risk-engine"
+import { notifyCAGApproved, notifyCAGRejected, notifyUnpublished, notifyBypassFullReset, notifyBypassDisapproved } from "@/lib/notifications-helper"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -132,6 +133,35 @@ export default function DashboardPage() {
             residual_risk_score: null,
             residual_risk_interpretation: "",
             residual_risk_label: "",
+            // Clear role-specific mandatory comments
+            member_comment: "",
+            member_comment_history: [],
+            reviewer_comment: "",
+            lead_comment: "",
+            co_comment: "",
+            // Clear delay justification workflow
+            delay_justification: "",
+            delay_justification_member_submitted: false,
+            delay_justification_reviewer_approved: false,
+            delay_justification_lead_approved: false,
+            delay_justification_updated_by: "",
+            delay_justification_updated_at: "",
+            // Clear 4-stage justification workflow
+            justification_member_text: "",
+            justification_member_by: "",
+            justification_member_at: "",
+            justification_reviewer_approved: false,
+            justification_reviewer_comment: "",
+            justification_reviewer_by: "",
+            justification_reviewer_at: "",
+            justification_lead_approved: false,
+            justification_lead_comment: "",
+            justification_lead_by: "",
+            justification_lead_at: "",
+            justification_co_approved: false,
+            justification_co_comment: "",
+            justification_co_by: "",
+            justification_co_at: "",
             // Clear all bypass flags
             bypass_tag: false,
             bypass_tagged_at: "",
@@ -173,6 +203,12 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
+                        delay_justification: "",
+                        delay_justification_member_submitted: false,
+                        delay_justification_reviewer_approved: false,
+                        delay_justification_lead_approved: false,
+                        delay_justification_updated_by: "",
+                        delay_justification_updated_at: "",
                     }
                 }
             }
@@ -189,6 +225,7 @@ export default function DashboardPage() {
         await handleUpdate(docId, item.id, resetUpdates)
         setUnpublishingItem(null)
         toast.success("Actionable unpublished — returned to Actionables")
+        notifyUnpublished(item.action || "Actionable", item.workstream || "Technology", docId, item.actionable_id || item.id)
     }, [handleUpdate])
 
     // CO approves wrongly-tagged flag → full unpublish + clear back to Actionables section
@@ -232,6 +269,35 @@ export default function DashboardPage() {
             residual_risk_score: null,
             residual_risk_interpretation: "",
             residual_risk_label: "",
+            // Clear role-specific mandatory comments
+            member_comment: "",
+            member_comment_history: [],
+            reviewer_comment: "",
+            lead_comment: "",
+            co_comment: "",
+            // Clear delay justification workflow
+            delay_justification: "",
+            delay_justification_member_submitted: false,
+            delay_justification_reviewer_approved: false,
+            delay_justification_lead_approved: false,
+            delay_justification_updated_by: "",
+            delay_justification_updated_at: "",
+            // Clear 4-stage justification workflow
+            justification_member_text: "",
+            justification_member_by: "",
+            justification_member_at: "",
+            justification_reviewer_approved: false,
+            justification_reviewer_comment: "",
+            justification_reviewer_by: "",
+            justification_reviewer_at: "",
+            justification_lead_approved: false,
+            justification_lead_comment: "",
+            justification_lead_by: "",
+            justification_lead_at: "",
+            justification_co_approved: false,
+            justification_co_comment: "",
+            justification_co_by: "",
+            justification_co_at: "",
             // Clear all bypass flags
             bypass_tag: false,
             bypass_tagged_at: "",
@@ -282,6 +348,12 @@ export default function DashboardPage() {
                         team_reviewer_approved_at: "",
                         team_reviewer_rejected_at: "",
                         reviewer_comments: "",
+                        delay_justification: "",
+                        delay_justification_member_submitted: false,
+                        delay_justification_reviewer_approved: false,
+                        delay_justification_lead_approved: false,
+                        delay_justification_updated_by: "",
+                        delay_justification_updated_at: "",
                     }
                 }
             }
@@ -289,6 +361,7 @@ export default function DashboardPage() {
         }
         await handleUpdate(docId, item.id, bypassClear)
         toast.success("Wrongly-tagged approved — actionable returned to Actionables for re-assignment and re-publish")
+        notifyBypassFullReset(item.action || "Actionable", item.workstream || "Technology", docId, item.actionable_id || item.id)
     }, [handleUpdate])
 
     // CO disapproves wrongly-tagged flag → return to member assigned state (Start button visible)
@@ -320,6 +393,7 @@ export default function DashboardPage() {
         }
         await handleUpdate(docId, item.id, updates)
         toast.success("Wrongly-tagged disapproved — actionable returned to Team Member (Start state)")
+        notifyBypassDisapproved(item.action || "Actionable", item.workstream || "Technology", reason, docId, item.actionable_id || item.id)
     }, [handleUpdate])
 
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
@@ -348,6 +422,8 @@ export default function DashboardPage() {
         })
         
         toast.success(`All teams approved (triggered by ${team})`)
+        // Fire-and-forget notification
+        notifyCAGApproved(item.action || "Actionable", team, docId, item.actionable_id || item.id)
     }, [handleUpdate])
 
     const handleRejectTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string, reason: string) => {
@@ -370,6 +446,7 @@ export default function DashboardPage() {
             justification_status: "",
         }, team)
         toast.success(`${team} team rejected — returned for rework`)
+        notifyCAGRejected(item.action || "Actionable", team, reason, docId, item.actionable_id || item.id)
     }, [userName, handleUpdate])
 
     const handleReject = React.useCallback(async (docId: string, item: ActionableItem, reason: string) => {
@@ -392,6 +469,7 @@ export default function DashboardPage() {
             justification_status: "",
         })
         toast.success("Task rejected — returned for rework")
+        notifyCAGRejected(item.action || "Actionable", item.workstream || "Technology", reason, docId, item.actionable_id || item.id)
     }, [userName, handleUpdate])
 
     // Only show PUBLISHED actionables, scoped to this publisher (legacy items without publisher remain visible)

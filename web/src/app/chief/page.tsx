@@ -494,9 +494,9 @@ function ChiefContent() {
                             </div>
                         )}
 
-                        {/* Member + Reviewer + Lead comments display */}
-                        {(item.member_comment || item.reviewer_comment || item.lead_comment) && (
-                            <div className="grid grid-cols-3 gap-2">
+                        {/* Member + Reviewer + Lead + CAG comments display */}
+                        {(item.member_comment || item.reviewer_comment || item.lead_comment || item.co_comment) && (
+                            <div className="grid grid-cols-2 gap-2">
                                 {item.member_comment && (
                                     <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
                                         <p className="text-[10px] font-semibold text-foreground/50 mb-1">Maker Comment</p>
@@ -513,6 +513,12 @@ function ChiefContent() {
                                     <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
                                         <p className="text-[10px] font-semibold text-foreground/50 mb-1">Team Head Comment</p>
                                         <p className="text-xs text-foreground/70">{item.lead_comment}</p>
+                                    </div>
+                                )}
+                                {item.co_comment && (
+                                    <div className="rounded-lg border border-border/30 bg-muted/5 p-2">
+                                        <p className="text-[10px] font-semibold text-primary/70 mb-1">CAG Comment</p>
+                                        <p className="text-xs text-foreground/70">{item.co_comment}</p>
                                     </div>
                                 )}
                             </div>
