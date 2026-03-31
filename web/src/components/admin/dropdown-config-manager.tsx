@@ -33,7 +33,7 @@ export function DropdownConfigManager() {
         try {
             setLoading(true)
             console.log(`[DropdownConfig] Fetching from: ${API_BASE}/dropdown-configs`)
-            const res = await fetch(`${API_BASE}/dropdown-configs`)
+            const res = await fetch(`${API_BASE}/dropdown-configs`, { headers: { "ngrok-skip-browser-warning": "1" } })
             console.log(`[DropdownConfig] Response status: ${res.status}`)
             if (!res.ok) {
                 const text = await res.text()
@@ -63,7 +63,7 @@ export function DropdownConfigManager() {
         try {
             const res = await fetch(`${API_BASE}/dropdown-configs`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
                 body: JSON.stringify({ key: newCatKey, label: newCatLabel, options: [] }),
             })
             if (!res.ok) {
@@ -83,7 +83,7 @@ export function DropdownConfigManager() {
     const handleDeleteCategory = async (key: string) => {
         if (!confirm(`Delete category "${key}"? This cannot be undone.`)) return
         try {
-            const res = await fetch(`${API_BASE}/dropdown-configs/${key}`, { method: "DELETE" })
+            const res = await fetch(`${API_BASE}/dropdown-configs/${key}`, { method: "DELETE", headers: { "ngrok-skip-browser-warning": "1" } })
             if (!res.ok) {
                 const err = await res.json()
                 throw new Error(err.detail || "Failed to delete category")
@@ -108,7 +108,7 @@ export function DropdownConfigManager() {
         try {
             const res = await fetch(`${API_BASE}/dropdown-configs/${categoryKey}/options`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
                 body: JSON.stringify({ label: newOptLabel, value }),
             })
             if (!res.ok) throw new Error("Failed to add option")
@@ -137,7 +137,7 @@ export function DropdownConfigManager() {
             if (value !== undefined) body.value = value
             const res = await fetch(`${API_BASE}/dropdown-configs/${categoryKey}/options/${index}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
                 body: JSON.stringify(body),
             })
             if (!res.ok) throw new Error("Failed to update option")
@@ -156,6 +156,7 @@ export function DropdownConfigManager() {
         try {
             const res = await fetch(`${API_BASE}/dropdown-configs/${categoryKey}/options/${index}`, {
                 method: "DELETE",
+                headers: { "ngrok-skip-browser-warning": "1" },
             })
             if (!res.ok) throw new Error("Failed to delete option")
             toast.success("Option deleted")
@@ -173,7 +174,7 @@ export function DropdownConfigManager() {
         try {
             const res = await fetch(`${API_BASE}/dropdown-configs/${key}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
                 body: JSON.stringify({ label: newLabel }),
             })
             if (!res.ok) throw new Error("Failed to update category")

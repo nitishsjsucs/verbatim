@@ -63,6 +63,7 @@ export function DocumentList() {
         try {
             const res = await fetch(`${API_BASE_URL}/documents/${id}`, {
                 method: "DELETE",
+                headers: { "ngrok-skip-browser-warning": "1" },
             })
             if (!res.ok) throw new Error("Failed to delete")
 
@@ -133,7 +134,7 @@ export function DocumentList() {
         try {
             const res = await fetch(`${API_BASE_URL}/documents/${id}/rename`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "1" },
                 body: JSON.stringify({ name: newName.trim() }),
             })
             if (!res.ok) throw new Error("Failed to rename")

@@ -373,6 +373,7 @@ export async function uploadEvidence(file: File): Promise<{ filename: string; st
     formData.append('file', file);
     const res = await fetch(`${API_BASE_URL}/evidence/upload`, {
         method: 'POST',
+        headers: { 'ngrok-skip-browser-warning': '1' },
         body: formData,
     });
     if (!res.ok) {
