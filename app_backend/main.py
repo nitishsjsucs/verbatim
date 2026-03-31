@@ -48,7 +48,7 @@ app = FastAPI(title="Govinda V2 API")
 # Configure CORS
 # ALLOWED_ORIGINS env var: comma-separated list of allowed origins
 # e.g. "https://govinda.vercel.app,http://localhost:3000"
-_default_origins = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,https://govinda-is-my-god.vercel.app/"
 _allowed_origins = [o.strip().rstrip("/") for o in os.getenv("ALLOWED_ORIGINS", _default_origins).split(",") if o.strip()]
 
 app.add_middleware(
