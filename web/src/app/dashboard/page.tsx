@@ -607,8 +607,8 @@ export default function DashboardPage() {
         })
     }
 
-    // Grid columns: Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Live Date | Actions
-    const gridCols = "minmax(200px,3fr) 100px 100px 70px 80px 90px 90px 90px 90px"
+    // Grid columns: Actionable | Status | Deadline (date) | Deadline (time) | Evidence | Published | Completion | Live Date | 6M Expiry | Actions
+    const gridCols = "minmax(200px,3fr) 100px 100px 70px 80px 90px 90px 90px 90px 90px"
 
     // ─── Render ──────────────────────────────────────────────────────────
 
@@ -850,6 +850,7 @@ export default function DashboardPage() {
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
                                         <div className="text-[10px] font-semibold text-cyan-400/60 uppercase tracking-wider py-2 px-1 text-center">Live Date</div>
+                                        <div className="text-[10px] font-semibold text-amber-400/60 uppercase tracking-wider py-2 px-1 text-center">6M Expiry</div>
                                         <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                     </div>
                                 )}
@@ -958,7 +959,17 @@ export default function DashboardPage() {
                                                             <input
                                                                 type="date"
                                                                 value={item.product_live_date || ""}
-                                                                onChange={e => handleUpdate(docId, item.id, { product_live_date: e.target.value })}
+                                                                onChange={e => {
+                                                                    const ld = e.target.value
+                                                                    const updates: Record<string, unknown> = { product_live_date: ld }
+                                                                    if (ld) {
+                                                                        const expD = new Date(ld); expD.setMonth(expD.getMonth() + 6)
+                                                                        updates.new_product_expiry = expD.toISOString().split("T")[0]
+                                                                    } else {
+                                                                        updates.new_product_expiry = ""
+                                                                    }
+                                                                    handleUpdate(docId, item.id, updates)
+                                                                }}
                                                                 className="w-[90px] bg-transparent text-[10px] text-cyan-400 font-mono rounded px-1 py-0.5 border border-cyan-400/20 focus:border-cyan-400 focus:outline-none text-center"
                                                             />
                                                             {item.product_live_date && (() => {
@@ -970,6 +981,25 @@ export default function DashboardPage() {
                                                             })()}
                                                         </div>
                                                     ) : (
+                                                        <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                    )}
+                                                </div>
+                                                {/* 6-Month Expiry */}
+                                                <div className="py-1.5 px-1 text-center">
+                                                    {item.new_product === "Yes" && item.product_live_date ? (() => {
+                                                        const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
+                                                        const expiryStr = item.new_product_expiry || expD.toISOString().split("T")[0]
+                                                        const diffMs = new Date(expiryStr).getTime() - Date.now()
+                                                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                        return (
+                                                            <div className="flex flex-col items-center gap-0.5">
+                                                                <span className="text-[10px] text-amber-400 font-mono">{formatDateShort(expiryStr)}</span>
+                                                                <span className={cn("text-[9px] font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-amber-400/60")}>
+                                                                    {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Due today" : `${diffDays}d left`}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })() : (
                                                         <span className="text-[10px] text-muted-foreground/30">—</span>
                                                     )}
                                                 </div>
@@ -1155,6 +1185,25 @@ export default function DashboardPage() {
                                                                 {item.new_product === "Yes" && item.product_live_date ? (
                                                                     <span className="text-[10px] text-cyan-400/60 font-mono">{formatDateShort(item.product_live_date)}</span>
                                                                 ) : (
+                                                                    <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                                )}
+                                                            </div>
+                                                            {/* 6-Month Expiry (inherited from parent) */}
+                                                            <div className="py-1.5 px-1 text-center">
+                                                                {item.new_product === "Yes" && item.product_live_date ? (() => {
+                                                                    const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
+                                                                    const expiryStr = item.new_product_expiry || expD.toISOString().split("T")[0]
+                                                                    const diffMs = new Date(expiryStr).getTime() - Date.now()
+                                                                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                                    return (
+                                                                        <div className="flex flex-col items-center gap-0.5">
+                                                                            <span className="text-[10px] text-amber-400/60 font-mono">{formatDateShort(expiryStr)}</span>
+                                                                            <span className={cn("text-[9px] font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-amber-400/60")}>
+                                                                                {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Due today" : `${diffDays}d left`}
+                                                                            </span>
+                                                                        </div>
+                                                                    )
+                                                                })() : (
                                                                     <span className="text-[10px] text-muted-foreground/30">—</span>
                                                                 )}
                                                             </div>
@@ -1456,6 +1505,7 @@ export default function DashboardPage() {
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Published</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Completed</div>
                                                 <div className="text-[10px] font-semibold text-cyan-400/60 uppercase tracking-wider py-2 px-1 text-center">Live Date</div>
+                                                <div className="text-[10px] font-semibold text-amber-400/60 uppercase tracking-wider py-2 px-1 text-center">6M Expiry</div>
                                                 <div className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider py-2 px-1 text-center">Actions</div>
                                             </div>
                                         )}
@@ -1522,11 +1572,47 @@ export default function DashboardPage() {
                                                         </div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-muted-foreground/50">{formatDate(item.published_at)}</span></div>
                                                         <div className="py-1.5 px-1 text-center"><span className="text-[10px] text-emerald-400/70">{formatDate(item.completion_date)}</span></div>
-                                                        {/* Product Live Date */}
-                                                        <div className="py-1.5 px-1 text-center">
-                                                            {item.new_product === "Yes" && item.product_live_date ? (
-                                                                <span className="text-[10px] text-cyan-400/60 font-mono">{formatDateShort(item.product_live_date)}</span>
+                                                        {/* Product Live Date — editable by CAG even in completed */}
+                                                        <div className="py-1.5 px-1 text-center" onClick={e => e.stopPropagation()}>
+                                                            {item.new_product === "Yes" ? (
+                                                                <div className="flex flex-col items-center gap-0.5">
+                                                                    <input
+                                                                        type="date"
+                                                                        value={item.product_live_date || ""}
+                                                                        onChange={e => {
+                                                                            const ld = e.target.value
+                                                                            const updates: Record<string, unknown> = { product_live_date: ld }
+                                                                            if (ld) {
+                                                                                const expD = new Date(ld); expD.setMonth(expD.getMonth() + 6)
+                                                                                updates.new_product_expiry = expD.toISOString().split("T")[0]
+                                                                            } else {
+                                                                                updates.new_product_expiry = ""
+                                                                            }
+                                                                            handleUpdate(docId, item.id, updates)
+                                                                        }}
+                                                                        className="w-[90px] bg-transparent text-[10px] text-cyan-400/60 font-mono rounded px-1 py-0.5 border border-cyan-400/20 focus:border-cyan-400 focus:outline-none text-center"
+                                                                    />
+                                                                </div>
                                                             ) : (
+                                                                <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                            )}
+                                                        </div>
+                                                        {/* 6-Month Expiry */}
+                                                        <div className="py-1.5 px-1 text-center">
+                                                            {item.new_product === "Yes" && item.product_live_date ? (() => {
+                                                                const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
+                                                                const expiryStr = item.new_product_expiry || expD.toISOString().split("T")[0]
+                                                                const diffMs = new Date(expiryStr).getTime() - Date.now()
+                                                                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                                return (
+                                                                    <div className="flex flex-col items-center gap-0.5">
+                                                                        <span className="text-[10px] text-amber-400/60 font-mono">{formatDateShort(expiryStr)}</span>
+                                                                        <span className={cn("text-[9px] font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-amber-400/40")}>
+                                                                            {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Due today" : `${diffDays}d left`}
+                                                                        </span>
+                                                                    </div>
+                                                                )
+                                                            })() : (
                                                                 <span className="text-[10px] text-muted-foreground/30">—</span>
                                                             )}
                                                         </div>
@@ -1598,6 +1684,25 @@ export default function DashboardPage() {
                                                                         {item.new_product === "Yes" && item.product_live_date ? (
                                                                             <span className="text-[10px] text-cyan-400/60 font-mono">{formatDateShort(item.product_live_date)}</span>
                                                                         ) : (
+                                                                            <span className="text-[10px] text-muted-foreground/30">—</span>
+                                                                        )}
+                                                                    </div>
+                                                                    {/* 6-Month Expiry (inherited from parent) */}
+                                                                    <div className="py-1.5 px-1 text-center">
+                                                                        {item.new_product === "Yes" && item.product_live_date ? (() => {
+                                                                            const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
+                                                                            const expiryStr = item.new_product_expiry || expD.toISOString().split("T")[0]
+                                                                            const diffMs = new Date(expiryStr).getTime() - Date.now()
+                                                                            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                                            return (
+                                                                                <div className="flex flex-col items-center gap-0.5">
+                                                                                    <span className="text-[10px] text-amber-400/60 font-mono">{formatDateShort(expiryStr)}</span>
+                                                                                    <span className={cn("text-[9px] font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-amber-400/40")}>
+                                                                                        {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Due today" : `${diffDays}d left`}
+                                                                                    </span>
+                                                                                </div>
+                                                                            )
+                                                                        })() : (
                                                                             <span className="text-[10px] text-muted-foreground/30">—</span>
                                                                         )}
                                                                     </div>

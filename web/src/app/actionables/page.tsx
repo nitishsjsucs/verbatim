@@ -661,6 +661,104 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
                                 </div>
                             )}
+                            {/* New Product — CAG editable even in completed/approved view */}
+                            <div className="rounded-md border border-cyan-400/20 p-2 bg-cyan-400/5">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider">New Product</p>
+                                    {isComplianceOfficer && <span className="text-[10px] text-cyan-400/40 italic">Editable by CAG</span>}
+                                </div>
+                                {isComplianceOfficer ? (
+                                    <div className="space-y-2">
+                                        <select
+                                            value={draftNewProduct}
+                                            onChange={e => {
+                                                setDraftNewProduct(e.target.value)
+                                                if (e.target.value === "No") setDraftProductLiveDate("")
+                                            }}
+                                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                        >
+                                            <option value="No">No</option>
+                                            <option value="Yes">Yes</option>
+                                        </select>
+                                        {draftNewProduct === "Yes" && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1">
+                                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Product Live Date</p>
+                                                    <input
+                                                        type="date"
+                                                        value={draftProductLiveDate}
+                                                        onChange={e => setDraftProductLiveDate(e.target.value)}
+                                                        className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                                    />
+                                                </div>
+                                                {draftProductLiveDate && (() => {
+                                                    const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
+                                                    const expiryStr = expD.toISOString().split("T")[0]
+                                                    const diffMs = expD.getTime() - Date.now()
+                                                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                    return (
+                                                        <div className="shrink-0 text-right">
+                                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">6-Month Expiry</p>
+                                                            <p className="text-[10px] font-mono text-cyan-400">{formatDateDMY(expiryStr)}</p>
+                                                            <p className={cn("text-[9px] font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-cyan-400/60")}>
+                                                                {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Today" : `${diffDays}d remaining`}
+                                                            </p>
+                                                        </div>
+                                                    )
+                                                })()}
+                                            </div>
+                                        )}
+                                        {(draftNewProduct !== (safeStr(item.new_product) || "No") || draftProductLiveDate !== safeStr(item.product_live_date)) && (
+                                            <button
+                                                onClick={async () => {
+                                                    setSaving(true)
+                                                    try {
+                                                        const updates: Record<string, unknown> = { new_product: draftNewProduct, product_live_date: draftProductLiveDate }
+                                                        if (draftNewProduct === "Yes" && draftProductLiveDate) {
+                                                            const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
+                                                            updates.new_product_expiry = expD.toISOString().split("T")[0]
+                                                        } else {
+                                                            updates.new_product_expiry = ""
+                                                        }
+                                                        await onUpdate(docId, item.id, updates)
+                                                        toast.success("New Product updated")
+                                                    } catch (err) { toast.error(err instanceof Error ? err.message : "Update failed") }
+                                                    finally { setSaving(false) }
+                                                }}
+                                                disabled={saving}
+                                                className="w-full flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 font-medium transition-colors"
+                                            >
+                                                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                Save New Product Changes
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <p className="text-xs text-foreground/70">{item.new_product === "Yes" ? <span className="text-cyan-400 font-medium">Yes</span> : "No"}</p>
+                                        {item.new_product === "Yes" && item.product_live_date && (
+                                            <div className="flex items-center gap-2 text-[10px]">
+                                                <span className="text-muted-foreground/50">Live Date:</span>
+                                                <span className="text-cyan-400 font-mono">{formatDateDMY(item.product_live_date)}</span>
+                                                {(() => {
+                                                    const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
+                                                    const expiryStr = expD.toISOString().split("T")[0]
+                                                    const diffMs = expD.getTime() - Date.now()
+                                                    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                    return (
+                                                        <>
+                                                            <span className="text-cyan-400/60 font-mono">→ Exp: {formatDateDMY(expiryStr)}</span>
+                                                            <span className={cn("font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-cyan-400/60")}>
+                                                                ({diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : `${diffDays}d`})
+                                                            </span>
+                                                        </>
+                                                    )
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                             {/* Circular Source Information */}
                             <div className="space-y-2 rounded-lg border border-border/30 p-3 bg-muted/5">
                                 <p className="text-xs font-semibold text-foreground/70">Circular Source Information</p>
@@ -952,6 +1050,77 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                             {getSafeOptions("tranche3").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                         </select>
                                     </div>
+                                </div>
+
+                                {/* New Product — CO editable, Member read-only (like Impact) */}
+                                <div className="rounded-md border border-border/20 p-2 bg-muted/10">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[10px] font-semibold text-cyan-400/80 uppercase tracking-wider">New Product</p>
+                                        {!isComplianceOfficer && <span className="text-[10px] text-muted-foreground/40 italic">Set by CAG</span>}
+                                    </div>
+                                    {isComplianceOfficer ? (
+                                        <div className="space-y-2">
+                                            <select
+                                                value={draftNewProduct}
+                                                onChange={e => {
+                                                    setDraftNewProduct(e.target.value)
+                                                    if (e.target.value === "No") setDraftProductLiveDate("")
+                                                }}
+                                                className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                            >
+                                                <option value="No">No</option>
+                                                <option value="Yes">Yes</option>
+                                            </select>
+                                            {draftNewProduct === "Yes" && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1">
+                                                        <p className="text-[10px] text-muted-foreground/50 mb-0.5">Product Live Date</p>
+                                                        <input
+                                                            type="date"
+                                                            value={draftProductLiveDate}
+                                                            onChange={e => setDraftProductLiveDate(e.target.value)}
+                                                            className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-cyan-400/30 focus:border-cyan-400 focus:outline-none text-foreground"
+                                                        />
+                                                    </div>
+                                                    {draftProductLiveDate && (() => {
+                                                        const expD = new Date(draftProductLiveDate); expD.setMonth(expD.getMonth() + 6)
+                                                        const expiryStr = expD.toISOString().split("T")[0]
+                                                        const diffMs = expD.getTime() - Date.now()
+                                                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+                                                        return (
+                                                            <div className="shrink-0 text-right">
+                                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">6-Month Expiry</p>
+                                                                <p className="text-[10px] font-mono text-cyan-400">{formatDateDMY(expiryStr)}</p>
+                                                                <p className={cn("text-[9px] font-semibold", diffDays < 0 ? "text-red-400" : diffDays <= 30 ? "text-amber-400" : "text-cyan-400/60")}>
+                                                                    {diffDays < 0 ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? "Today" : `${diffDays}d remaining`}
+                                                                </p>
+                                                            </div>
+                                                        )
+                                                    })()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <div className="text-xs bg-muted/20 rounded px-2 py-1.5 border border-border/20 text-foreground/70 min-h-[28px]">
+                                                {draftNewProduct === "Yes" ? (
+                                                    <span className="text-cyan-400 font-medium">Yes</span>
+                                                ) : (
+                                                    <span>{item.new_product || <span className="text-muted-foreground/40 italic">Will be set by CAG</span>}</span>
+                                                )}
+                                            </div>
+                                            {(item.new_product === "Yes" || draftNewProduct === "Yes") && item.product_live_date && (
+                                                <div className="flex items-center gap-2 text-[10px]">
+                                                    <span className="text-muted-foreground/50">Live Date:</span>
+                                                    <span className="text-cyan-400 font-mono">{formatDateDMY(item.product_live_date)}</span>
+                                                    {(() => {
+                                                        const expD = new Date(item.product_live_date); expD.setMonth(expD.getMonth() + 6)
+                                                        return <span className="text-cyan-400/60 font-mono">→ Exp: {formatDateDMY(expD.toISOString().split("T")[0])}</span>
+                                                    })()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Impact Assessment — CO editable, Member read-only */}
