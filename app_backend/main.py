@@ -5372,20 +5372,27 @@ def pull_actionables_to_testing(body: dict = Body(...)):
     import uuid
     from datetime import datetime
 
+    from models.actionable import ActionableItem
     store = get_actionable_store()
     col = get_testing_collection()
     actionable_ids = body.get("actionable_ids", [])
 
-    # Get all published actionables
-    all_docs = store.list_all()
+    # Get all published actionables using store._collection (same pattern as /actionables)
+    db = store._collection
     candidates = []
-    for doc_result in all_docs:
-        for a in doc_result.actionables:
+    for raw in db.find():
+        doc_id = raw.get("doc_id", raw.get("_id", ""))
+        doc_name = raw.get("doc_name", "")
+        for item_data in raw.get("actionables", []):
+            try:
+                a = ActionableItem.from_dict(item_data)
+            except Exception:
+                continue
             if not a.published_at:
                 continue
             if actionable_ids and a.id not in actionable_ids:
                 continue
-            candidates.append((doc_result.doc_id, doc_result.doc_name, a))
+            candidates.append((doc_id, doc_name, a))
 
     # Check which are already pulled
     existing_ids = set()
