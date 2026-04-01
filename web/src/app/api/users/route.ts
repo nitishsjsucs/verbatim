@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         if (!role?.trim()) {
             return NextResponse.json({ error: "Role is required" }, { status: 400 })
         }
-        if (!team?.trim() && !["admin", "compliance_officer"].includes(role)) {
+        if (!team?.trim() && !["admin", "compliance_officer", "testing_head", "tester", "testing_maker", "testing_checker"].includes(role)) {
             return NextResponse.json({ error: "Team is required" }, { status: 400 })
         }
 
