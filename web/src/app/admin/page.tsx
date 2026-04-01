@@ -2730,6 +2730,10 @@ const ROLE_OPTIONS = [
   { value: "team_reviewer", label: "Checker" },
   { value: "compliance_officer", label: "CAG" },
   { value: "admin", label: "Admin" },
+  { value: "testing_head", label: "Testing Head" },
+  { value: "tester", label: "Tester" },
+  { value: "testing_maker", label: "Testing Maker" },
+  { value: "testing_checker", label: "Testing Checker" },
 ]
 
 const ROLE_LABELS: Record<string, string> = {
@@ -2738,6 +2742,10 @@ const ROLE_LABELS: Record<string, string> = {
   team_reviewer: "Checker",
   compliance_officer: "CAG",
   admin: "Admin",
+  testing_head: "Testing Head",
+  tester: "Tester",
+  testing_maker: "Testing Maker",
+  testing_checker: "Testing Checker",
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -2746,6 +2754,10 @@ const ROLE_COLORS: Record<string, string> = {
   team_lead: "bg-blue-500/10 text-blue-400",
   team_reviewer: "bg-teal-500/10 text-teal-400",
   team_member: "bg-slate-500/10 text-slate-400",
+  testing_head: "bg-teal-500/10 text-teal-400",
+  tester: "bg-cyan-500/10 text-cyan-400",
+  testing_maker: "bg-purple-500/10 text-purple-400",
+  testing_checker: "bg-emerald-500/10 text-emerald-400",
 }
 
 type UserGroupBy = "team" | "role"
@@ -2828,7 +2840,8 @@ function UsersTab() {
 
   const handleCreate = async () => {
     if (!newName.trim() || !newRole) return
-    if (!["admin", "compliance_officer"].includes(newRole) && !newTeam) return
+    const noTeamRoles = ["admin", "compliance_officer", "testing_head", "tester", "testing_maker", "testing_checker"]
+    if (!noTeamRoles.includes(newRole) && !newTeam) return
     setCreating(true)
     setCreateResult(null)
     try {
@@ -2946,7 +2959,7 @@ function UsersTab() {
               <select
                 value={newTeam}
                 onChange={e => setNewTeam(e.target.value)}
-                disabled={["admin", "compliance_officer"].includes(newRole)}
+                disabled={["admin", "compliance_officer", "testing_head", "tester", "testing_maker", "testing_checker"].includes(newRole)}
                 className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               >
                 <option value="">Select team…</option>
@@ -2966,7 +2979,7 @@ function UsersTab() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleCreate}
-              disabled={creating || !newName.trim() || (!["admin", "compliance_officer"].includes(newRole) && !newTeam)}
+              disabled={creating || !newName.trim() || (!["admin", "compliance_officer", "testing_head", "tester", "testing_maker", "testing_checker"].includes(newRole) && !newTeam)}
               className="flex items-center gap-1 h-8 px-4 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -3086,7 +3099,7 @@ function UsersTab() {
                           </td>
                           <td className="px-3 py-2">
                             {isEditing ? (
-                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground" disabled={["admin", "compliance_officer"].includes(editRole)}>
+                              <select value={editTeam} onChange={e => setEditTeam(e.target.value)} className="h-6 rounded border border-input bg-background px-1 text-xs text-foreground" disabled={["admin", "compliance_officer", "testing_head", "tester", "testing_maker", "testing_checker"].includes(editRole)}>
                                 <option value="">—</option>
                                 {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                               </select>

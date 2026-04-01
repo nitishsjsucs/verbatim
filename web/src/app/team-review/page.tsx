@@ -80,10 +80,12 @@ function TeamReviewContent() {
         forTeam: userTeam || undefined,
         commentRole: "team_reviewer",
         commentAuthor: userName,
+        callerRole: "team_reviewer",
         autoLoad: false,
     })
     const [searchQuery, setSearchQuery] = React.useState("")
     const [deadlineFilter, setDeadlineFilter] = React.useState<string>("all")
+    const [docFilter, setDocFilter] = React.useState<string>("all")
     const [sortBy, setSortBy] = React.useState<string>("risk")
     const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
     const [expandedRow, setExpandedRow] = React.useState<string | null>(null)
@@ -258,10 +260,20 @@ function TeamReviewContent() {
         return viewRows
     }, [viewRows, tab])
 
+    // Unique doc names for filter dropdown
+    const docOptions = React.useMemo(() => {
+        const map = new Map<string, string>()
+        for (const r of viewRows) {
+            if (!map.has(r.docId)) map.set(r.docId, r.docName)
+        }
+        return Array.from(map.entries())
+    }, [viewRows])
+
     // Filter + Sort
     const filtered = React.useMemo(() => {
-        let result = tabRows.filter(({ item }) => {
+        let result = tabRows.filter(({ item, docId }) => {
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
+            if (docFilter !== "all" && docId !== docFilter) return false
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
                 const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${safeStr(item.actionable_id)}`.toLowerCase()
@@ -285,7 +297,7 @@ function TeamReviewContent() {
             return sortDir === "desc" ? -cmp : cmp
         })
         return result
-    }, [tabRows, deadlineFilter, searchQuery, sortBy, sortDir])
+    }, [tabRows, deadlineFilter, docFilter, searchQuery, sortBy, sortDir])
 
     // Split
     const activeRows = React.useMemo(() => filtered.filter(r => r.item.task_status !== "completed"), [filtered])
@@ -394,10 +406,22 @@ function TeamReviewContent() {
                         <option value="d90">Delayed 90d</option>
                     </select>
 
-                    {(deadlineFilter !== "all" || searchQuery) && (
+                    <select
+                        value={docFilter}
+                        onChange={e => setDocFilter(e.target.value)}
+                        className="bg-muted/30 text-xs rounded-md px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none text-foreground max-w-[160px]"
+                    >
+                        <option value="all">All Documents</option>
+                        {docOptions.map(([id, name]) => (
+                            <option key={id} value={id}>{name}</option>
+                        ))}
+                    </select>
+
+                    {(deadlineFilter !== "all" || docFilter !== "all" || searchQuery) && (
                         <button
                             onClick={() => {
                                 setDeadlineFilter("all")
+                                setDocFilter("all")
                                 setSearchQuery("")
                             }}
                             className="px-2.5 py-1.5 text-xs rounded-md bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors border border-border/40"

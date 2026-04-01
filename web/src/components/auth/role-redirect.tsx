@@ -30,6 +30,23 @@ const LEAD_ONLY_PATHS = [
     "/team-lead",
 ]
 
+/** Pages only for testing cycle roles */
+const TESTING_ONLY_PATHS = [
+    "/testing-head",
+    "/testing-tester",
+    "/testing-maker",
+    "/testing-checker",
+]
+
+/** All control-cycle restricted paths (officer + reviewer + lead + member boards) */
+const CONTROL_CYCLE_PATHS = [
+    ...OFFICER_ONLY_PATHS,
+    ...REVIEWER_ONLY_PATHS,
+    ...LEAD_ONLY_PATHS,
+    "/team-board",
+    "/chief",
+]
+
 /**
  * Wrap any page with this component to enforce:
  *  1. Must be signed in  → redirect to /sign-in
@@ -99,6 +116,41 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
                 return
             }
         }
+
+        // Testing roles trying to access control cycle pages → redirect to their home
+        const isTestingRole = ["testing_head", "tester", "testing_maker", "testing_checker"].includes(role)
+        if (isTestingRole) {
+            const isControlPage = CONTROL_CYCLE_PATHS.some(p =>
+                pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
+            )
+            if (isControlPage) {
+                const homeMap: Record<string, string> = {
+                    testing_head: "/testing-head",
+                    tester: "/testing-tester",
+                    testing_maker: "/testing-maker",
+                    testing_checker: "/testing-checker",
+                }
+                router.replace(homeMap[role] || "/testing-head")
+                return
+            }
+        }
+
+        // Control cycle roles trying to access testing-only pages → redirect back
+        if (!isTestingRole && role !== "compliance_officer" && role !== "admin") {
+            const isTestingPage = TESTING_ONLY_PATHS.some(p =>
+                pathname === p || pathname.startsWith(p + "/")
+            )
+            if (isTestingPage) {
+                const homeMap: Record<string, string> = {
+                    team_member: "/team-board",
+                    team_reviewer: "/team-review",
+                    team_lead: "/team-lead",
+                    chief: "/chief",
+                }
+                router.replace(homeMap[role] || "/")
+                return
+            }
+        }
     }, [isPending, session, pathname, router])
 
     // Show loading while checking
@@ -144,6 +196,14 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
             pathname === p || pathname.startsWith(p + "/")
         )
         if (isOfficerOnly || isReviewerOnly) return null
+    }
+    // Testing roles on control cycle pages → show nothing while redirecting
+    const isTestingRole = ["testing_head", "tester", "testing_maker", "testing_checker"].includes(role)
+    if (isTestingRole) {
+        const isControlPage = CONTROL_CYCLE_PATHS.some(p =>
+            pathname === p || (p !== "/" && pathname.startsWith(p + "/"))
+        )
+        if (isControlPage) return null
     }
 
     return <>{children}</>

@@ -495,6 +495,121 @@ export interface ActionablesResult {
 }
 
 // ---------------------------------------------------------------------------
+// Testing Cycle Types (separate from Control Cycle)
+// ---------------------------------------------------------------------------
+
+/** Testing module roles — completely separate from existing control cycle roles */
+export type TestingRole = "testing_head" | "tester" | "testing_maker" | "testing_checker";
+
+/** Testing section categories — determines how actionables are pulled into testing */
+export type TestingSection = "theme" | "product" | "tranche3" | "adhoc";
+
+/** Testing item lifecycle statuses */
+export type TestingStatus =
+    | "pending_assignment"    // In testing head's pool, not yet assigned
+    | "assigned_to_tester"   // Assigned to tester for scope validation
+    | "tester_review"        // Tester reviewing before forwarding to maker
+    | "assigned_to_maker"    // Forwarded to testing maker
+    | "maker_open"           // Maker selected OPEN → needs deadline + checker
+    | "checker_review"       // Checker validating maker's deadline (only for OPEN)
+    | "active"               // Checker approved deadline → countdown running
+    | "maker_closed"         // Maker closed the item → goes to tester
+    | "tester_validation"    // Tester doing final pass/reject
+    | "passed"               // Tester accepted → final completed state
+    | "rejected_to_maker"    // Tester rejected → sent back to maker for rework
+    ;
+
+/** A testing item wraps a reference to a control cycle actionable */
+export interface TestingItem {
+    id: string;                          // Unique testing item ID (e.g. "TST-001")
+    // Reference to source actionable (from control cycle)
+    source_actionable_id: string;        // ActionableItem.id
+    source_doc_id: string;               // Document ID the actionable belongs to
+    source_doc_name: string;             // Document name
+    source_actionable_text: string;      // Snapshot of action text for display
+    source_theme: string;                // Theme from control cycle
+    source_new_product: string;          // "Yes" or "No"
+    source_product_live_date: string;    // ISO date
+    source_tranche3: string;             // "Yes" or "No"
+    source_workstream: string;           // Team name
+    // Testing section (determined by priority: tranche3 > product > theme)
+    testing_section: TestingSection;
+    // Assignment chain
+    assigned_tester_id: string;          // User ID of assigned tester
+    assigned_tester_name: string;        // Display name
+    assigned_maker_id: string;           // User ID of assigned testing maker
+    assigned_maker_name: string;
+    // Status
+    status: TestingStatus;
+    // Testing deadline (overall business deadline — set by testing head)
+    testing_deadline: string;            // ISO datetime
+    // Maker deadline (only when maker selects OPEN — separate from testing deadline)
+    maker_deadline: string;              // ISO datetime — set by maker, validated by checker
+    maker_deadline_confirmed: boolean;   // True after checker confirms
+    maker_deadline_confirmed_by: string; // Checker name
+    maker_deadline_confirmed_at: string; // ISO timestamp
+    // Maker decision
+    maker_decision: "" | "open" | "close"; // "" = not decided yet
+    // Evidence & comments (testing-specific, separate from control cycle)
+    testing_evidence_files: EvidenceFile[];
+    testing_comments: TestingComment[];
+    // Tester validation
+    tester_pass_reject_reason: string;   // Reason when tester rejects
+    // Rework tracking
+    rework_count: number;                // How many times rejected back to maker
+    // Ad-hoc window reference (if from ad-hoc section)
+    adhoc_window_id: string;             // Empty if not ad-hoc
+    // Timestamps
+    created_at: string;                  // When pulled into testing
+    assigned_at: string;                 // When testing head assigned to tester
+    tester_forwarded_at: string;         // When tester forwarded to maker
+    maker_submitted_at: string;          // When maker submitted (open/close)
+    checker_confirmed_at: string;        // When checker confirmed deadline
+    active_at: string;                   // When item became active (countdown started)
+    closed_at: string;                   // When maker closed during active state
+    passed_at: string;                   // When tester accepted (final)
+    // Audit trail
+    testing_audit_trail: AuditTrailEntry[];
+}
+
+/** Comment specific to the testing module */
+export interface TestingComment {
+    id: string;
+    author: string;
+    role: TestingRole;
+    text: string;
+    timestamp: string; // ISO datetime
+}
+
+/** Ad-hoc testing window — created by Testing Head */
+export interface TestingAdHocWindow {
+    id: string;
+    name: string;                     // e.g. "Quarter 1 2026"
+    start_date: string;               // ISO date
+    end_date: string;                 // ISO date
+    completion_deadline: string;      // ISO datetime
+    themes: string[];                 // Selected themes for this window
+    created_by: string;               // Testing head user ID
+    created_at: string;               // ISO timestamp
+    status: "active" | "completed" | "cancelled";
+}
+
+/** Testing status display configuration */
+export const TESTING_STATUS_STYLES: Record<TestingStatus, { label: string; color: string; bg: string }> = {
+    pending_assignment: { label: "Pending Assignment", color: "text-gray-400", bg: "bg-gray-400/10" },
+    assigned_to_tester: { label: "Assigned to Tester", color: "text-blue-400", bg: "bg-blue-400/10" },
+    tester_review: { label: "Tester Review", color: "text-indigo-400", bg: "bg-indigo-400/10" },
+    assigned_to_maker: { label: "Assigned to Maker", color: "text-purple-400", bg: "bg-purple-400/10" },
+    maker_open: { label: "Open (Maker)", color: "text-amber-400", bg: "bg-amber-400/10" },
+    checker_review: { label: "Checker Review", color: "text-teal-400", bg: "bg-teal-400/10" },
+    active: { label: "Active", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+    maker_closed: { label: "Closed (Maker)", color: "text-emerald-400", bg: "bg-emerald-400/10" },
+    tester_validation: { label: "Tester Validation", color: "text-orange-400", bg: "bg-orange-400/10" },
+    passed: { label: "Passed", color: "text-green-400", bg: "bg-green-400/10" },
+    rejected_to_maker: { label: "Rejected (Rework)", color: "text-red-400", bg: "bg-red-400/10" },
+};
+
+// ---------------------------------------------------------------------------
 // Conversation Types
 // ---------------------------------------------------------------------------
 

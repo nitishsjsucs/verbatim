@@ -55,6 +55,7 @@ export default function DashboardPage() {
     const { allDocs, setAllDocs, loading, load: loadAll, handleUpdate, handleAddComment } = useActionables({
         commentRole: "compliance_officer",
         commentAuthor: userName,
+        callerRole: "compliance_officer",
     })
     const [searchQuery, setSearchQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<string>("all")

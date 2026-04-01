@@ -5,7 +5,7 @@ import { useSession } from "@/lib/auth-client"
 import { useRouter } from "next/navigation"
 import { Loader2, ShieldAlert } from "lucide-react"
 
-type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "chief" | "admin"
+type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "chief" | "admin" | "testing_head" | "tester" | "testing_maker" | "testing_checker"
 
 interface AuthGuardProps {
     children: React.ReactNode
@@ -22,6 +22,11 @@ export function getUserRole(session: any): UserRole {
     if (role === "chief") return "chief"
     if (role === "team_reviewer") return "team_reviewer"
     if (role === "team_lead") return "team_lead"
+    // Testing cycle roles
+    if (role === "testing_head") return "testing_head"
+    if (role === "tester") return "tester"
+    if (role === "testing_maker") return "testing_maker"
+    if (role === "testing_checker") return "testing_checker"
     return "team_member"
 }
 
@@ -63,6 +68,14 @@ export function AuthGuard({ children, fallback, allowedRoles }: AuthGuardProps) 
                     router.replace("/team-lead")
                 } else if (role === "chief") {
                     router.replace("/chief")
+                } else if (role === "testing_head") {
+                    router.replace("/testing-head")
+                } else if (role === "tester") {
+                    router.replace("/testing-tester")
+                } else if (role === "testing_maker") {
+                    router.replace("/testing-maker")
+                } else if (role === "testing_checker") {
+                    router.replace("/testing-checker")
                 } else {
                     router.replace("/")
                 }

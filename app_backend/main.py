@@ -5318,6 +5318,351 @@ def get_compliance_officers():
     return {"officers": result}
 
 
+# ---------------------------------------------------------------------------
+# Testing Cycle API Endpoints
+# ---------------------------------------------------------------------------
+
+def get_testing_collection():
+    """Get the MongoDB collection for testing items."""
+    from utils.mongo import get_db
+    db = get_db()
+    return db["testing_items"]
+
+def get_testing_windows_collection():
+    """Get the MongoDB collection for ad-hoc testing windows."""
+    from utils.mongo import get_db
+    db = get_db()
+    return db["testing_adhoc_windows"]
+
+
+@app.get("/testing/items")
+def list_testing_items(section: str = Query(""), status: str = Query("")):
+    """List all testing items, optionally filtered by section and/or status."""
+    col = get_testing_collection()
+    query = {}
+    if section:
+        query["testing_section"] = section
+    if status:
+        query["status"] = status
+    items = list(col.find(query, {"_id": 0}))
+    return {"items": items, "total": len(items)}
+
+
+@app.get("/testing/items/{item_id}")
+def get_testing_item(item_id: str):
+    """Get a single testing item by ID."""
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+    return item
+
+
+@app.post("/testing/pull-actionables")
+def pull_actionables_to_testing(body: dict = Body(...)):
+    """
+    Pull published actionables from the control cycle into the testing module.
+    Applies priority dedup: if an actionable qualifies for multiple sections,
+    it appears only in the highest-priority one (tranche3 > product > theme).
+
+    Body: { "actionable_ids": ["id1", "id2", ...] }
+    Optional: pull all published if actionable_ids is empty.
+    """
+    from models.testing import TestingItem, determine_testing_section
+    import uuid
+    from datetime import datetime
+
+    store = get_actionable_store()
+    col = get_testing_collection()
+    actionable_ids = body.get("actionable_ids", [])
+
+    # Get all published actionables
+    all_docs = store.list_all()
+    candidates = []
+    for doc_result in all_docs:
+        for a in doc_result.actionables:
+            if not a.published_at:
+                continue
+            if actionable_ids and a.id not in actionable_ids:
+                continue
+            candidates.append((doc_result.doc_id, doc_result.doc_name, a))
+
+    # Check which are already pulled
+    existing_ids = set()
+    for existing in col.find({}, {"source_actionable_id": 1, "_id": 0}):
+        existing_ids.add(existing["source_actionable_id"])
+
+    created = []
+    now = datetime.utcnow().isoformat() + "Z"
+    for doc_id, doc_name, actionable in candidates:
+        if actionable.id in existing_ids:
+            continue
+        a_dict = actionable.to_dict()
+        section = determine_testing_section(a_dict)
+        item = TestingItem(
+            id=f"TST-{uuid.uuid4().hex[:8].upper()}",
+            source_actionable_id=actionable.id,
+            source_doc_id=doc_id,
+            source_doc_name=doc_name,
+            source_actionable_text=actionable.action or "",
+            source_theme=a_dict.get("theme", ""),
+            source_new_product=a_dict.get("new_product", ""),
+            source_product_live_date=a_dict.get("product_live_date", ""),
+            source_tranche3=a_dict.get("tranche3", ""),
+            source_workstream=actionable.workstream or "",
+            testing_section=section,
+            status="pending_assignment",
+            created_at=now,
+        )
+        item.add_audit("pulled_to_testing", "system", "system", f"Section: {section}")
+        col.insert_one(item.to_dict())
+        created.append(item.to_dict())
+
+    return {"pulled": len(created), "items": created}
+
+
+@app.put("/testing/items/{item_id}")
+def update_testing_item(item_id: str, body: dict = Body(...)):
+    """Update a testing item's fields."""
+    from models.testing import TestingItem
+    col = get_testing_collection()
+    existing = col.find_one({"id": item_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    # Merge updates
+    for key, value in body.items():
+        if key == "id":
+            continue  # Never allow changing the ID
+        existing[key] = value
+
+    col.replace_one({"id": item_id}, existing)
+    return existing
+
+
+@app.post("/testing/items/{item_id}/assign")
+def assign_testing_item(item_id: str, body: dict = Body(...)):
+    """Testing Head assigns an item to a tester."""
+    from datetime import datetime
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    tester_id = body.get("tester_id", "")
+    tester_name = body.get("tester_name", "")
+    testing_deadline = body.get("testing_deadline", "")
+
+    now = datetime.utcnow().isoformat() + "Z"
+    item["assigned_tester_id"] = tester_id
+    item["assigned_tester_name"] = tester_name
+    item["testing_deadline"] = testing_deadline
+    item["status"] = "assigned_to_tester"
+    item["assigned_at"] = now
+
+    # Audit
+    from models.testing import TestingItem as TI
+    ti = TI.from_dict(item)
+    ti.add_audit("assigned_to_tester", body.get("assigned_by", "testing_head"), "testing_head",
+                 f"Tester: {tester_name}, Deadline: {testing_deadline}")
+    item["testing_audit_trail"] = ti.testing_audit_trail
+
+    col.replace_one({"id": item_id}, item)
+    return item
+
+
+@app.post("/testing/items/{item_id}/forward-to-maker")
+def forward_to_maker(item_id: str, body: dict = Body(...)):
+    """Tester forwards item to a testing maker."""
+    from datetime import datetime
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    maker_id = body.get("maker_id", "")
+    maker_name = body.get("maker_name", "")
+    now = datetime.utcnow().isoformat() + "Z"
+
+    item["assigned_maker_id"] = maker_id
+    item["assigned_maker_name"] = maker_name
+    item["status"] = "assigned_to_maker"
+    item["tester_forwarded_at"] = now
+
+    from models.testing import TestingItem as TI
+    ti = TI.from_dict(item)
+    ti.add_audit("forwarded_to_maker", body.get("forwarded_by", "tester"), "tester",
+                 f"Maker: {maker_name}")
+    item["testing_audit_trail"] = ti.testing_audit_trail
+
+    col.replace_one({"id": item_id}, item)
+    return item
+
+
+@app.post("/testing/items/{item_id}/maker-decision")
+def maker_decision(item_id: str, body: dict = Body(...)):
+    """Maker decides OPEN or CLOSE."""
+    from datetime import datetime
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    decision = body.get("decision", "")  # "open" or "close"
+    now = datetime.utcnow().isoformat() + "Z"
+
+    item["maker_decision"] = decision
+    item["maker_submitted_at"] = now
+
+    if decision == "open":
+        item["maker_deadline"] = body.get("maker_deadline", "")
+        item["status"] = "checker_review"
+    elif decision == "close":
+        item["status"] = "maker_closed"
+        item["closed_at"] = now
+
+    from models.testing import TestingItem as TI
+    ti = TI.from_dict(item)
+    ti.add_audit(f"maker_{decision}", body.get("actor", "testing_maker"), "testing_maker",
+                 f"Decision: {decision}" + (f", Deadline: {body.get('maker_deadline', '')}" if decision == "open" else ""))
+    item["testing_audit_trail"] = ti.testing_audit_trail
+
+    col.replace_one({"id": item_id}, item)
+    return item
+
+
+@app.post("/testing/items/{item_id}/checker-confirm")
+def checker_confirm_deadline(item_id: str, body: dict = Body(...)):
+    """Checker confirms/validates the maker's deadline."""
+    from datetime import datetime
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    now = datetime.utcnow().isoformat() + "Z"
+    item["maker_deadline_confirmed"] = True
+    item["maker_deadline_confirmed_by"] = body.get("checker_name", "")
+    item["maker_deadline_confirmed_at"] = now
+    item["checker_confirmed_at"] = now
+    item["status"] = "active"
+    item["active_at"] = now
+
+    from models.testing import TestingItem as TI
+    ti = TI.from_dict(item)
+    ti.add_audit("checker_confirmed", body.get("checker_name", ""), "testing_checker",
+                 f"Deadline confirmed: {item.get('maker_deadline', '')}")
+    item["testing_audit_trail"] = ti.testing_audit_trail
+
+    col.replace_one({"id": item_id}, item)
+    return item
+
+
+@app.post("/testing/items/{item_id}/tester-verdict")
+def tester_verdict(item_id: str, body: dict = Body(...)):
+    """Tester gives final pass or reject verdict."""
+    from datetime import datetime
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    verdict = body.get("verdict", "")  # "pass" or "reject"
+    reason = body.get("reason", "")
+    now = datetime.utcnow().isoformat() + "Z"
+
+    if verdict == "pass":
+        item["status"] = "passed"
+        item["passed_at"] = now
+    elif verdict == "reject":
+        item["status"] = "rejected_to_maker"
+        item["tester_pass_reject_reason"] = reason
+        item["rework_count"] = item.get("rework_count", 0) + 1
+        # Reset maker decision for rework
+        item["maker_decision"] = ""
+        item["maker_submitted_at"] = ""
+
+    from models.testing import TestingItem as TI
+    ti = TI.from_dict(item)
+    ti.add_audit(f"tester_{verdict}", body.get("tester_name", ""), "tester",
+                 f"Verdict: {verdict}" + (f", Reason: {reason}" if reason else ""))
+    item["testing_audit_trail"] = ti.testing_audit_trail
+
+    col.replace_one({"id": item_id}, item)
+    return item
+
+
+@app.post("/testing/items/{item_id}/comment")
+def add_testing_comment(item_id: str, body: dict = Body(...)):
+    """Add a comment to a testing item."""
+    from models.testing import TestingItem as TI
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    ti = TI.from_dict(item)
+    comment = ti.add_comment(
+        author=body.get("author", ""),
+        role=body.get("role", ""),
+        text=body.get("text", ""),
+    )
+    item["testing_comments"] = ti.testing_comments
+    col.replace_one({"id": item_id}, item)
+    return {"comment": comment, "item": item}
+
+
+# --- Ad-Hoc Windows ---
+
+@app.get("/testing/windows")
+def list_testing_windows():
+    """List all ad-hoc testing windows."""
+    col = get_testing_windows_collection()
+    windows = list(col.find({}, {"_id": 0}))
+    return {"windows": windows}
+
+
+@app.post("/testing/windows")
+def create_testing_window(body: dict = Body(...)):
+    """Create a new ad-hoc testing window."""
+    from models.testing import TestingAdHocWindow
+    import uuid
+    from datetime import datetime
+
+    window = TestingAdHocWindow(
+        id=f"WIN-{uuid.uuid4().hex[:8].upper()}",
+        name=body.get("name", ""),
+        start_date=body.get("start_date", ""),
+        end_date=body.get("end_date", ""),
+        completion_deadline=body.get("completion_deadline", ""),
+        themes=body.get("themes", []),
+        created_by=body.get("created_by", ""),
+        created_at=datetime.utcnow().isoformat() + "Z",
+        status="active",
+    )
+    col = get_testing_windows_collection()
+    col.insert_one(window.to_dict())
+    return window.to_dict()
+
+
+@app.get("/testing/stats")
+def testing_stats():
+    """Get testing module statistics."""
+    col = get_testing_collection()
+    items = list(col.find({}, {"_id": 0, "status": 1, "testing_section": 1}))
+    stats = {
+        "total": len(items),
+        "by_section": {},
+        "by_status": {},
+    }
+    for item in items:
+        sec = item.get("testing_section", "theme")
+        st = item.get("status", "pending_assignment")
+        stats["by_section"][sec] = stats["by_section"].get(sec, 0) + 1
+        stats["by_status"][st] = stats["by_status"].get(st, 0) + 1
+    return stats
+
+
 if __name__ == "__main__":
     import uvicorn
 

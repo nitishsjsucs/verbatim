@@ -50,6 +50,11 @@ export function Sidebar({ className }: SidebarProps) {
   const isChief = role === "chief"
   const isTeamReviewer = role === "team_reviewer"
   const isTeamLead = role === "team_lead"
+  const isTestingHead = role === "testing_head"
+  const isTester = role === "tester"
+  const isTestingMaker = role === "testing_maker"
+  const isTestingChecker = role === "testing_checker"
+  const isTestingRole = isTestingHead || isTester || isTestingMaker || isTestingChecker
   const userTeam = getUserTeam(session)
   const [chatUnread, setChatUnread] = React.useState(0)
   const [notifUnread, setNotifUnread] = React.useState(0)
@@ -336,8 +341,65 @@ export function Sidebar({ className }: SidebarProps) {
           </>
         )}
 
+        {/* ─── Testing Cycle Roles ─── */}
+        {isTestingRole && (
+          <>
+            <div>
+              {isTestingHead && (
+                <NavItem
+                  href="/testing-head"
+                  icon={<Eye className="h-4 w-4" />}
+                  iconClassName="text-teal-500"
+                  label="Testing Head"
+                  active={pathname === "/testing-head"}
+                  collapsed={collapsed}
+                />
+              )}
+              {isTester && (
+                <NavItem
+                  href="/testing-tester"
+                  icon={<ClipboardList className="h-4 w-4" />}
+                  iconClassName="text-teal-500"
+                  label="My Testing"
+                  active={pathname === "/testing-tester"}
+                  collapsed={collapsed}
+                />
+              )}
+              {isTestingMaker && (
+                <NavItem
+                  href="/testing-maker"
+                  icon={<Shield className="h-4 w-4" />}
+                  iconClassName="text-teal-500"
+                  label="Testing Maker"
+                  active={pathname === "/testing-maker"}
+                  collapsed={collapsed}
+                />
+              )}
+              {isTestingChecker && (
+                <NavItem
+                  href="/testing-checker"
+                  icon={<Eye className="h-4 w-4" />}
+                  iconClassName="text-teal-500"
+                  label="Testing Checker"
+                  active={pathname === "/testing-checker"}
+                  collapsed={collapsed}
+                />
+              )}
+              <div className="my-2 border-t border-sidebar-border/50" />
+              <NavItem
+                href="/chat"
+                icon={<span className="relative"><MessageSquare className="h-4 w-4" />{chatUnread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-xs font-bold rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5">{chatUnread > 99 ? "99+" : chatUnread}</span>}</span>}
+                iconClassName="text-blue-500"
+                label="Chat"
+                active={pathname === "/chat"}
+                collapsed={collapsed}
+              />
+            </div>
+          </>
+        )}
+
         {/* ─── Team Member: limited nav ─── */}
-        {!isOfficer && !isChief && !isTeamReviewer && !isTeamLead && (
+        {!isOfficer && !isChief && !isTeamReviewer && !isTeamLead && !isTestingRole && (
           <>
             <div>
               <NavItem
@@ -374,7 +436,7 @@ export function Sidebar({ className }: SidebarProps) {
         {!collapsed && session?.user && (
           <div className="px-2 py-1.5">
             <p className="text-xs font-medium text-sidebar-foreground truncate">{session.user.name || session.user.email}</p>
-            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "CAG" : role === "chief" ? "Chief" : role === "team_reviewer" ? "Checker" : role === "team_lead" ? "Team Head" : "Maker"}</p>
+            <p className="text-xs text-sidebar-foreground/40 truncate">{role === "compliance_officer" ? "CAG" : role === "chief" ? "Chief" : role === "team_reviewer" ? "Checker" : role === "team_lead" ? "Team Head" : role === "testing_head" ? "Testing Head" : role === "tester" ? "Tester" : role === "testing_maker" ? "Testing Maker" : role === "testing_checker" ? "Testing Checker" : "Maker"}</p>
           </div>
         )}
         <div className={cn("flex items-center gap-1", collapsed ? "flex-col" : "justify-between")}>

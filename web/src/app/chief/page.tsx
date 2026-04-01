@@ -67,6 +67,7 @@ function ChiefContent() {
     const { allDocs, loading, load: loadAll } = useActionables({
         commentRole: "chief",
         commentAuthor: userName,
+        callerRole: "chief",
         autoLoad: false,
     })
 

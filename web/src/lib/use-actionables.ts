@@ -24,6 +24,8 @@ interface UseActionablesOptions {
     commentAuthor?: string
     /** If false, `load` is not called automatically on mount. Default: true. */
     autoLoad?: boolean
+    /** Caller role passed to the backend so role-gated fields are not stripped. */
+    callerRole?: string
 }
 
 /**
@@ -33,7 +35,7 @@ interface UseActionablesOptions {
  * Returns doc-level state (`allDocs`) plus convenience handlers.
  */
 export function useActionables(opts: UseActionablesOptions = {}) {
-    const { forTeam, commentRole = "team_member", commentAuthor = "", autoLoad = true } = opts
+    const { forTeam, commentRole = "team_member", commentAuthor = "", autoLoad = true, callerRole } = opts
 
     const [allDocs, setAllDocs] = React.useState<DocActionables[]>([])
     const [loading, setLoading] = React.useState(false)
@@ -73,7 +75,7 @@ export function useActionables(opts: UseActionablesOptions = {}) {
         async (docId: string, itemId: string, updates: Record<string, unknown>, teamOverride?: string): Promise<void> => {
             try {
                 const team = teamOverride ?? forTeam
-                const updated = await updateActionable(docId, itemId, updates, team || undefined)
+                const updated = await updateActionable(docId, itemId, updates, team || undefined, callerRole || undefined)
                 setAllDocs(prev =>
                     prev.map(d => {
                         if (d.doc_id !== docId) return d
@@ -90,7 +92,7 @@ export function useActionables(opts: UseActionablesOptions = {}) {
                 throw err
             }
         },
-        [forTeam],
+        [forTeam, callerRole],
     )
 
     // ── Add a comment ───────────────────────────────────────────────────────

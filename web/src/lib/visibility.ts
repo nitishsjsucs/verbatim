@@ -3,7 +3,7 @@
 import type { ActionableItem, Team } from "./types"
 import { isMultiTeam } from "./types"
 
-export type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "chief" | "admin"
+export type UserRole = "compliance_officer" | "team_reviewer" | "team_lead" | "team_member" | "chief" | "admin" | "testing_head" | "tester" | "testing_maker" | "testing_checker"
 
 /**
  * Determines which teams a user can see based on their role and assigned team.
