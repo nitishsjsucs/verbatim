@@ -65,3 +65,29 @@ export const adminRole = ac.newRole({
     admin: ["manage_users", "manage_roles"],
     delay: ["view", "justify"],
 })
+
+// ─── Testing Cycle Roles ────────────────────────────────────────────────────
+
+export const testingHead = ac.newRole({
+    actionable: ["view"],
+    dashboard: ["view"],
+    evidence: ["view"],
+})
+
+export const testerRole = ac.newRole({
+    actionable: ["view"],
+    dashboard: ["view"],
+    evidence: ["view", "submit"],
+})
+
+export const testingMaker = ac.newRole({
+    actionable: ["view"],
+    dashboard: ["view"],
+    evidence: ["view", "submit"],
+})
+
+export const testingChecker = ac.newRole({
+    actionable: ["view"],
+    dashboard: ["view"],
+    evidence: ["view"],
+})
