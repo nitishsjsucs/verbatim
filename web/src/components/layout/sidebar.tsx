@@ -349,11 +349,11 @@ export function Sidebar({ className }: SidebarProps) {
               {isTestingHead && (
                 <>
                   <NavItem
-                    href="/testing-head/transparency"
+                    href="/testing-head/tranche3"
                     icon={<Shield className="h-4 w-4" />}
                     iconClassName="text-red-400"
-                    label="Transparency"
-                    active={pathname === "/testing-head/transparency"}
+                    label="Tranche 3"
+                    active={pathname === "/testing-head/tranche3"}
                     collapsed={collapsed}
                   />
                   <NavItem

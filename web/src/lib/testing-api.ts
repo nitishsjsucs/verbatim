@@ -147,6 +147,23 @@ export async function fetchTestingStats(): Promise<{
 }
 
 // ---------------------------------------------------------------------------
+// Testers (for assignment dropdown)
+// ---------------------------------------------------------------------------
+
+export interface TesterUser {
+    id: string
+    name: string
+    email: string
+    role: string
+}
+
+export async function fetchTesters(): Promise<{ testers: TesterUser[] }> {
+    const res = await fetch(`${API_BASE_URL}/testing/testers`, { headers })
+    if (!res.ok) throw new Error(`Failed to fetch testers: ${res.status}`)
+    return res.json()
+}
+
+// ---------------------------------------------------------------------------
 // Themes & Deadline Management
 // ---------------------------------------------------------------------------
 

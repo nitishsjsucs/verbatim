@@ -9,7 +9,7 @@ export default function TestingHeadPage() {
     const router = useRouter()
 
     useEffect(() => {
-        router.replace("/testing-head/transparency")
+        router.replace("/testing-head/tranche3")
     }, [router])
 
     return (

@@ -1,7 +1,10 @@
 "use client"
 
-import { TestingSectionPage } from "@/components/testing/testing-section-page"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
-export default function TransparencyTestingPage() {
-    return <TestingSectionPage section="tranche3" />
+export default function TransparencyRedirect() {
+    const router = useRouter()
+    useEffect(() => { router.replace("/testing-head/tranche3") }, [router])
+    return null
 }

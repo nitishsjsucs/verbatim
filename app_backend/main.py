@@ -5318,6 +5318,31 @@ def get_compliance_officers():
     return {"officers": result}
 
 
+@app.get("/testing/testers")
+def get_testing_testers():
+    """Return list of tester-role accounts for assignment dropdown."""
+    import os
+    from pymongo import MongoClient
+    auth_db_name = os.getenv("AUTH_DB_NAME", "govinda_auth")
+    mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    client = MongoClient(mongo_uri)
+    auth_db = client[auth_db_name]
+    # Include all testing-cycle roles that can be assigned as testers
+    users = list(auth_db["user"].find(
+        {"role": {"$in": ["tester", "testing_maker", "testing_checker"]}},
+        {"_id": 1, "name": 1, "email": 1, "role": 1}
+    ))
+    result = []
+    for u in users:
+        result.append({
+            "id": str(u["_id"]),
+            "name": u.get("name", u.get("email", "")),
+            "email": u.get("email", ""),
+            "role": u.get("role", "tester"),
+        })
+    return {"testers": result}
+
+
 # ---------------------------------------------------------------------------
 # Testing Cycle API Endpoints
 # ---------------------------------------------------------------------------
@@ -5710,15 +5735,22 @@ def testing_available_themes():
 
 @app.post("/testing/check-delays")
 def testing_check_delays():
-    """Scan all testing items and mark any past-deadline items as DELAYED."""
+    """Scan all testing items and flag any past-deadline items as delayed.
+
+    CRITICAL BUSINESS RULE:
+    - If overdue but status != 'passed': keep current workflow state, only set is_testing_delayed flag
+    - Do NOT change status to 'delayed' — the item continues in its current workflow
+    - Only passed items can be reset/moved to next cycle (handled by tranche3-annual-reset)
+    """
     from datetime import datetime, timezone
     col = get_testing_collection()
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
     updated_count = 0
 
-    for item in col.find({"_id": 0}):
-        if item.get("status") in ("passed", "delayed", "maker_closed"):
+    for item in col.find({}, {"_id": 0}):
+        # Skip already-passed or already-flagged items
+        if item.get("status") == "passed":
             continue
         if item.get("is_testing_delayed"):
             continue
@@ -5742,12 +5774,13 @@ def testing_check_delays():
         try:
             dl = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
             if now > dl:
+                # Only flag as delayed — do NOT change status
+                # Item continues in its current workflow state
                 col.update_one(
                     {"id": item["id"]},
                     {"$set": {
                         "is_testing_delayed": True,
                         "delay_detected_at": now_iso,
-                        "status": "delayed",
                     }}
                 )
                 updated_count += 1
@@ -5788,8 +5821,17 @@ def testing_set_deadline(body: dict = Body(...)):
 
 @app.post("/testing/transition-products")
 def testing_transition_expired_products():
-    """Auto-transition new product items past the 6-month window into theme testing."""
-    from datetime import datetime, timezone
+    """Auto-transition new product items past the 6-month window.
+
+    After 6 months from live_date:
+    - set new_product = No, remove live date
+    - route to correct section:
+        if source_tranche3 == "Yes" → tranche3 section
+        elif source_theme is set → theme section
+        else → theme section (fallback)
+    - Only transition items that have status == 'passed' (don't disrupt active testing)
+    """
+    from datetime import datetime, timezone, timedelta
     col = get_testing_collection()
     now = datetime.now(timezone.utc)
     transitioned = 0
@@ -5798,16 +5840,27 @@ def testing_transition_expired_products():
         live_date_str = item.get("source_product_live_date", "")
         if not live_date_str:
             continue
+        # Only transition passed items — active/pending items keep working even if overdue
+        if item.get("status") != "passed":
+            continue
         try:
             live_dt = datetime.fromisoformat(live_date_str.replace("Z", "+00:00"))
-            from datetime import timedelta
             expiry = live_dt + timedelta(days=183)
             if now > expiry:
+                # Determine target section based on source properties
+                target_section = "theme"  # default
+                if (item.get("source_tranche3") or "").strip().lower() == "yes":
+                    target_section = "tranche3"
+                elif (item.get("source_theme") or "").strip():
+                    target_section = "theme"
+
                 col.update_one(
                     {"id": item["id"]},
                     {"$set": {
-                        "testing_section": "theme",
+                        "testing_section": target_section,
                         "source_new_product": "No",
+                        "source_product_live_date": "",
+                        "computed_deadline": "",
                         "product_transition_done": True,
                         "product_transitioned_at": now.isoformat(),
                     }}
