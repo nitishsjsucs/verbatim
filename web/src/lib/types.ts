@@ -517,6 +517,7 @@ export type TestingStatus =
     | "tester_validation"    // Tester doing final pass/reject
     | "passed"               // Tester accepted → final completed state
     | "rejected_to_maker"    // Tester rejected → sent back to maker for rework
+    | "delayed"              // Past deadline — auto-triggered
     ;
 
 /** A testing item wraps a reference to a control cycle actionable */
@@ -559,6 +560,17 @@ export interface TestingItem {
     rework_count: number;                // How many times rejected back to maker
     // Ad-hoc window reference (if from ad-hoc section)
     adhoc_window_id: string;             // Empty if not ad-hoc
+    // Deadline & countdown fields
+    computed_deadline: string;           // Auto: product_live_date + 6 months (product section)
+    theme_deadline: string;              // Manual deadline (theme section)
+    adhoc_deadline: string;              // Manual deadline (ad-hoc section)
+    is_testing_delayed: boolean;         // True if current date > applicable deadline
+    delay_detected_at: string;           // ISO timestamp when delay was detected
+    // Year-sensitive tracking (tranche3 annual reset)
+    testing_cycle_year: number;          // Year this testing cycle belongs to (e.g. 2026)
+    // New product transition
+    product_transition_done: boolean;    // True after 6-month window expires
+    product_transitioned_at: string;     // ISO timestamp when transition happened
     // Timestamps
     created_at: string;                  // When pulled into testing
     assigned_at: string;                 // When testing head assigned to tester
@@ -607,6 +619,7 @@ export const TESTING_STATUS_STYLES: Record<TestingStatus, { label: string; color
     tester_validation: { label: "Tester Validation", color: "text-orange-400", bg: "bg-orange-400/10" },
     passed: { label: "Passed", color: "text-green-400", bg: "bg-green-400/10" },
     rejected_to_maker: { label: "Rejected (Rework)", color: "text-red-400", bg: "bg-red-400/10" },
+    delayed: { label: "Delayed", color: "text-rose-500", bg: "bg-rose-500/10" },
 };
 
 // ---------------------------------------------------------------------------

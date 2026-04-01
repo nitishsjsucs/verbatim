@@ -1,0 +1,7 @@
+"use client"
+
+import { TestingSectionPage } from "@/components/testing/testing-section-page"
+
+export default function AdhocTestingPage() {
+    return <TestingSectionPage section="adhoc" />
+}

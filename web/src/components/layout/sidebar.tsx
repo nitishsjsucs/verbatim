@@ -19,6 +19,7 @@ import {
   Eye,
   MessageSquare,
   Bell,
+  Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -338,7 +339,7 @@ export function Sidebar({ className }: SidebarProps) {
                 collapsed={collapsed}
               />
             </div>
-          </>
+          </> 
         )}
 
         {/* ─── Testing Cycle Roles ─── */}
@@ -346,14 +347,40 @@ export function Sidebar({ className }: SidebarProps) {
           <>
             <div>
               {isTestingHead && (
-                <NavItem
-                  href="/testing-head"
-                  icon={<Eye className="h-4 w-4" />}
-                  iconClassName="text-teal-500"
-                  label="Testing Head"
-                  active={pathname === "/testing-head"}
-                  collapsed={collapsed}
-                />
+                <>
+                  <NavItem
+                    href="/testing-head/transparency"
+                    icon={<Shield className="h-4 w-4" />}
+                    iconClassName="text-red-400"
+                    label="Transparency"
+                    active={pathname === "/testing-head/transparency"}
+                    collapsed={collapsed}
+                  />
+                  <NavItem
+                    href="/testing-head/product"
+                    icon={<ClipboardList className="h-4 w-4" />}
+                    iconClassName="text-amber-400"
+                    label="Product"
+                    active={pathname === "/testing-head/product"}
+                    collapsed={collapsed}
+                  />
+                  <NavItem
+                    href="/testing-head/theme"
+                    icon={<BookOpen className="h-4 w-4" />}
+                    iconClassName="text-blue-400"
+                    label="Theme"
+                    active={pathname === "/testing-head/theme"}
+                    collapsed={collapsed}
+                  />
+                  <NavItem
+                    href="/testing-head/adhoc"
+                    icon={<Calendar className="h-4 w-4" />}
+                    iconClassName="text-purple-400"
+                    label="Ad Hoc"
+                    active={pathname === "/testing-head/adhoc"}
+                    collapsed={collapsed}
+                  />
+                </>
               )}
               {isTester && (
                 <NavItem

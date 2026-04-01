@@ -141,14 +141,16 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
         }
     }, [])
 
-    const handlePullActionables = React.useCallback(async (actionableIds?: string[]) => {
+    const handlePullActionables = React.useCallback(async (opts?: {
+        actionableIds?: string[]; section?: string; theme?: string
+    }) => {
         try {
-            const result = await pullActionablesToTesting(actionableIds)
+            const result = await pullActionablesToTesting(opts)
             if (result.pulled > 0) {
                 setItems(prev => [...prev, ...result.items])
                 toast.success(`Pulled ${result.pulled} actionable(s) into testing`)
             } else {
-                toast.info("No new actionables to pull")
+                toast.info("No new completed actionables to pull")
             }
             return result
         } catch (err) {

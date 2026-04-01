@@ -23,11 +23,17 @@ export async function fetchTestingItem(itemId: string): Promise<TestingItem> {
     return res.json()
 }
 
-export async function pullActionablesToTesting(actionableIds?: string[]): Promise<{ pulled: number; items: TestingItem[] }> {
+export async function pullActionablesToTesting(opts?: {
+    actionableIds?: string[]; section?: string; theme?: string
+}): Promise<{ pulled: number; items: TestingItem[] }> {
     const res = await fetch(`${API_BASE_URL}/testing/pull-actionables`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ actionable_ids: actionableIds || [] }),
+        body: JSON.stringify({
+            actionable_ids: opts?.actionableIds || [],
+            section: opts?.section || "",
+            theme: opts?.theme || "",
+        }),
     })
     if (!res.ok) throw new Error(`Failed to pull actionables: ${res.status}`)
     return res.json()
@@ -137,5 +143,43 @@ export async function fetchTestingStats(): Promise<{
 }> {
     const res = await fetch(`${API_BASE_URL}/testing/stats`, { headers })
     if (!res.ok) throw new Error(`Failed to fetch testing stats: ${res.status}`)
+    return res.json()
+}
+
+// ---------------------------------------------------------------------------
+// Themes & Deadline Management
+// ---------------------------------------------------------------------------
+
+export async function fetchAvailableThemes(): Promise<{ themes: string[] }> {
+    const res = await fetch(`${API_BASE_URL}/testing/available-themes`, { headers })
+    if (!res.ok) throw new Error(`Failed to fetch themes: ${res.status}`)
+    return res.json()
+}
+
+export async function checkTestingDelays(): Promise<{ delayed_count: number }> {
+    const res = await fetch(`${API_BASE_URL}/testing/check-delays`, { method: "POST", headers })
+    if (!res.ok) throw new Error(`Failed to check delays: ${res.status}`)
+    return res.json()
+}
+
+export async function setTestingDeadline(body: {
+    item_ids?: string[]; theme?: string; deadline: string; deadline_type: "theme" | "adhoc"
+}): Promise<{ updated: number }> {
+    const res = await fetch(`${API_BASE_URL}/testing/set-deadline`, {
+        method: "POST", headers, body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`Failed to set deadline: ${res.status}`)
+    return res.json()
+}
+
+export async function transitionExpiredProducts(): Promise<{ transitioned: number }> {
+    const res = await fetch(`${API_BASE_URL}/testing/transition-products`, { method: "POST", headers })
+    if (!res.ok) throw new Error(`Failed to transition products: ${res.status}`)
+    return res.json()
+}
+
+export async function tranche3AnnualReset(): Promise<{ reset_count: number; items: TestingItem[] }> {
+    const res = await fetch(`${API_BASE_URL}/testing/tranche3-annual-reset`, { method: "POST", headers })
+    if (!res.ok) throw new Error(`Failed to reset tranche3: ${res.status}`)
     return res.json()
 }

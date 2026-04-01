@@ -125,7 +125,7 @@ export function RoleRedirect({ children }: { children: React.ReactNode }) {
             )
             if (isControlPage) {
                 const homeMap: Record<string, string> = {
-                    testing_head: "/testing-head",
+                    testing_head: "/testing-head/transparency",
                     tester: "/testing-tester",
                     testing_maker: "/testing-maker",
                     testing_checker: "/testing-checker",

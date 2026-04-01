@@ -32,6 +32,7 @@ class TestingStatus(str, Enum):
     TESTER_VALIDATION = "tester_validation"
     PASSED = "passed"
     REJECTED_TO_MAKER = "rejected_to_maker"
+    DELAYED = "delayed"
 
 
 @dataclass
@@ -121,6 +122,17 @@ class TestingItem:
     rework_count: int = 0
     # Ad-hoc
     adhoc_window_id: str = ""
+    # ── Deadline & countdown fields ──
+    computed_deadline: str = ""  # Auto-computed: product_live_date + 6 months (product section)
+    theme_deadline: str = ""  # Manual deadline set by testing head (theme section)
+    adhoc_deadline: str = ""  # Manual deadline for ad-hoc section
+    is_testing_delayed: bool = False  # True if current date > applicable deadline
+    delay_detected_at: str = ""  # ISO timestamp when delay was first detected
+    # ── Year-sensitive tracking (for tranche3 annual reset) ──
+    testing_cycle_year: int = 0  # Year this testing cycle belongs to (e.g. 2026)
+    # ── New product transition tracking ──
+    product_transition_done: bool = False  # True after 6-month window expires
+    product_transitioned_at: str = ""  # ISO timestamp when transition happened
     # Timestamps
     created_at: str = ""
     assigned_at: str = ""

@@ -5361,23 +5361,27 @@ def get_testing_item(item_id: str):
 @app.post("/testing/pull-actionables")
 def pull_actionables_to_testing(body: dict = Body(...)):
     """
-    Pull published actionables from the control cycle into the testing module.
-    Applies priority dedup: if an actionable qualifies for multiple sections,
-    it appears only in the highest-priority one (tranche3 > product > theme).
+    Pull COMPLETED actionables from the control cycle into the testing module.
+    Only actionables with task_status == 'completed' are eligible.
 
-    Body: { "actionable_ids": ["id1", "id2", ...] }
-    Optional: pull all published if actionable_ids is empty.
+    Body: {
+        "actionable_ids": ["id1", ...],  // optional — pull specific IDs
+        "section": "tranche3"|"product"|"theme"|"adhoc",  // optional — filter by section
+        "theme": "Audit",  // optional — filter by theme (for theme/adhoc sections)
+    }
     """
     from models.testing import TestingItem, determine_testing_section
     import uuid
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     from models.actionable import ActionableItem
     store = get_actionable_store()
     col = get_testing_collection()
     actionable_ids = body.get("actionable_ids", [])
+    section_filter = body.get("section", "")
+    theme_filter = body.get("theme", "")
 
-    # Get all published actionables using store._collection (same pattern as /actionables)
+    # Get all COMPLETED actionables using store._collection
     db = store._collection
     candidates = []
     for raw in db.find():
@@ -5388,24 +5392,49 @@ def pull_actionables_to_testing(body: dict = Body(...)):
                 a = ActionableItem.from_dict(item_data)
             except Exception:
                 continue
+            # CRITICAL: Only pull COMPLETED actionables
+            if a.task_status != "completed":
+                continue
             if not a.published_at:
                 continue
             if actionable_ids and a.id not in actionable_ids:
                 continue
-            candidates.append((doc_id, doc_name, a))
+            # Determine section
+            a_dict = a.to_dict()
+            section = determine_testing_section(a_dict)
+            # Apply section filter if provided
+            if section_filter and section != section_filter:
+                continue
+            # Apply theme filter if provided (for theme/adhoc sections)
+            if theme_filter and (a_dict.get("theme", "") or "").strip().lower() != theme_filter.strip().lower():
+                continue
+            candidates.append((doc_id, doc_name, a, section))
 
-    # Check which are already pulled
-    existing_ids = set()
-    for existing in col.find({}, {"source_actionable_id": 1, "_id": 0}):
-        existing_ids.add(existing["source_actionable_id"])
+    # Check which are already pulled (dedup by source_actionable_id + testing_cycle_year)
+    existing_keys = set()
+    current_year = datetime.utcnow().year
+    for existing in col.find({}, {"source_actionable_id": 1, "testing_cycle_year": 1, "_id": 0}):
+        key = f"{existing['source_actionable_id']}_{existing.get('testing_cycle_year', 0)}"
+        existing_keys.add(key)
 
     created = []
     now = datetime.utcnow().isoformat() + "Z"
-    for doc_id, doc_name, actionable in candidates:
-        if actionable.id in existing_ids:
+    for doc_id, doc_name, actionable, section in candidates:
+        dedup_key = f"{actionable.id}_{current_year}"
+        if dedup_key in existing_keys:
             continue
         a_dict = actionable.to_dict()
-        section = determine_testing_section(a_dict)
+
+        # Compute deadline for product section (live_date + 6 months)
+        computed_deadline = ""
+        if section == "product" and a_dict.get("product_live_date"):
+            try:
+                live_dt = datetime.fromisoformat(a_dict["product_live_date"].replace("Z", "+00:00"))
+                deadline_dt = live_dt + timedelta(days=183)  # ~6 months
+                computed_deadline = deadline_dt.isoformat()
+            except Exception:
+                pass
+
         item = TestingItem(
             id=f"TST-{uuid.uuid4().hex[:8].upper()}",
             source_actionable_id=actionable.id,
@@ -5420,10 +5449,14 @@ def pull_actionables_to_testing(body: dict = Body(...)):
             testing_section=section,
             status="pending_assignment",
             created_at=now,
+            testing_cycle_year=current_year,
+            computed_deadline=computed_deadline,
         )
-        item.add_audit("pulled_to_testing", "system", "system", f"Section: {section}")
+        item.add_audit("pulled_to_testing", "system", "system",
+                        f"Section: {section}, Year: {current_year}")
         col.insert_one(item.to_dict())
         created.append(item.to_dict())
+        existing_keys.add(dedup_key)
 
     return {"pulled": len(created), "items": created}
 
@@ -5650,6 +5683,193 @@ def create_testing_window(body: dict = Body(...)):
     col = get_testing_windows_collection()
     col.insert_one(window.to_dict())
     return window.to_dict()
+
+
+@app.get("/testing/available-themes")
+def testing_available_themes():
+    """Return list of distinct themes from COMPLETED actionables eligible for testing."""
+    from models.actionable import ActionableItem
+    store = get_actionable_store()
+    db = store._collection
+    themes = set()
+    for raw in db.find():
+        for item_data in raw.get("actionables", []):
+            try:
+                a = ActionableItem.from_dict(item_data)
+            except Exception:
+                continue
+            if a.task_status != "completed":
+                continue
+            if not a.published_at:
+                continue
+            theme = (a.theme or "").strip()
+            if theme:
+                themes.add(theme)
+    return {"themes": sorted(themes)}
+
+
+@app.post("/testing/check-delays")
+def testing_check_delays():
+    """Scan all testing items and mark any past-deadline items as DELAYED."""
+    from datetime import datetime, timezone
+    col = get_testing_collection()
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    updated_count = 0
+
+    for item in col.find({"_id": 0}):
+        if item.get("status") in ("passed", "delayed", "maker_closed"):
+            continue
+        if item.get("is_testing_delayed"):
+            continue
+
+        # Determine the applicable deadline
+        section = item.get("testing_section", "theme")
+        deadline_str = ""
+        if section == "product":
+            deadline_str = item.get("computed_deadline", "")
+        elif section == "theme":
+            deadline_str = item.get("theme_deadline", "")
+        elif section == "adhoc":
+            deadline_str = item.get("adhoc_deadline", "")
+        # Also check testing_deadline (set by testing head on assignment)
+        if not deadline_str:
+            deadline_str = item.get("testing_deadline", "")
+
+        if not deadline_str:
+            continue
+
+        try:
+            dl = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
+            if now > dl:
+                col.update_one(
+                    {"id": item["id"]},
+                    {"$set": {
+                        "is_testing_delayed": True,
+                        "delay_detected_at": now_iso,
+                        "status": "delayed",
+                    }}
+                )
+                updated_count += 1
+        except Exception:
+            continue
+
+    return {"delayed_count": updated_count}
+
+
+@app.post("/testing/set-deadline")
+def testing_set_deadline(body: dict = Body(...)):
+    """Set a manual deadline for theme or ad-hoc testing items.
+    Body: { "item_ids": ["TST-xxx"], "deadline": "ISO datetime", "deadline_type": "theme"|"adhoc" }
+    OR: { "theme": "Audit", "deadline": "ISO datetime" } to set for all items in a theme.
+    """
+    col = get_testing_collection()
+    deadline = body.get("deadline", "")
+    deadline_type = body.get("deadline_type", "theme")
+    item_ids = body.get("item_ids", [])
+    theme = body.get("theme", "")
+
+    field_name = "theme_deadline" if deadline_type == "theme" else "adhoc_deadline"
+
+    if item_ids:
+        result = col.update_many(
+            {"id": {"$in": item_ids}},
+            {"$set": {field_name: deadline}}
+        )
+        return {"updated": result.modified_count}
+    elif theme:
+        result = col.update_many(
+            {"source_theme": theme, "testing_section": deadline_type if deadline_type != "theme" else "theme"},
+            {"$set": {field_name: deadline}}
+        )
+        return {"updated": result.modified_count}
+    return {"updated": 0}
+
+
+@app.post("/testing/transition-products")
+def testing_transition_expired_products():
+    """Auto-transition new product items past the 6-month window into theme testing."""
+    from datetime import datetime, timezone
+    col = get_testing_collection()
+    now = datetime.now(timezone.utc)
+    transitioned = 0
+
+    for item in col.find({"testing_section": "product", "product_transition_done": {"$ne": True}}, {"_id": 0}):
+        live_date_str = item.get("source_product_live_date", "")
+        if not live_date_str:
+            continue
+        try:
+            live_dt = datetime.fromisoformat(live_date_str.replace("Z", "+00:00"))
+            from datetime import timedelta
+            expiry = live_dt + timedelta(days=183)
+            if now > expiry:
+                col.update_one(
+                    {"id": item["id"]},
+                    {"$set": {
+                        "testing_section": "theme",
+                        "source_new_product": "No",
+                        "product_transition_done": True,
+                        "product_transitioned_at": now.isoformat(),
+                    }}
+                )
+                transitioned += 1
+        except Exception:
+            continue
+
+    return {"transitioned": transitioned}
+
+
+@app.post("/testing/tranche3-annual-reset")
+def testing_tranche3_annual_reset():
+    """Reset tranche3 items for the new year — creates fresh testing cycles."""
+    from models.testing import TestingItem
+    import uuid
+    from datetime import datetime
+    col = get_testing_collection()
+    current_year = datetime.utcnow().year
+
+    # Find all tranche3 items from previous years that were passed
+    prev_passed = list(col.find({
+        "testing_section": "tranche3",
+        "status": "passed",
+        "testing_cycle_year": {"$lt": current_year},
+    }, {"_id": 0}))
+
+    # Check which already have a current-year entry
+    existing_keys = set()
+    for existing in col.find({"testing_section": "tranche3", "testing_cycle_year": current_year},
+                              {"source_actionable_id": 1, "_id": 0}):
+        existing_keys.add(existing["source_actionable_id"])
+
+    created = []
+    now = datetime.utcnow().isoformat() + "Z"
+    for old_item in prev_passed:
+        src_id = old_item.get("source_actionable_id", "")
+        if src_id in existing_keys:
+            continue
+        new_item = TestingItem(
+            id=f"TST-{uuid.uuid4().hex[:8].upper()}",
+            source_actionable_id=src_id,
+            source_doc_id=old_item.get("source_doc_id", ""),
+            source_doc_name=old_item.get("source_doc_name", ""),
+            source_actionable_text=old_item.get("source_actionable_text", ""),
+            source_theme=old_item.get("source_theme", ""),
+            source_new_product=old_item.get("source_new_product", ""),
+            source_product_live_date=old_item.get("source_product_live_date", ""),
+            source_tranche3=old_item.get("source_tranche3", ""),
+            source_workstream=old_item.get("source_workstream", ""),
+            testing_section="tranche3",
+            status="pending_assignment",
+            created_at=now,
+            testing_cycle_year=current_year,
+        )
+        new_item.add_audit("annual_reset", "system", "system",
+                           f"Reset from {old_item.get('testing_cycle_year', '?')} cycle")
+        col.insert_one(new_item.to_dict())
+        created.append(new_item.to_dict())
+        existing_keys.add(src_id)
+
+    return {"reset_count": len(created), "items": created}
 
 
 @app.get("/testing/stats")
