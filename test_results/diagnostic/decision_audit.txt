@@ -1,0 +1,223 @@
+======================================================================
+GOVINDA PIPELINE — DECISION AUDIT REPORT
+======================================================================
+
+Generated: 2026-04-03T10:13:24.960888+00:00
+Questions: 15
+Themes: 3
+
+──────────────────────────────────────────────────────────────────────
+THEME 1: The regulatory scope and conceptual foundation of liquidity risk under the ALM Directions
+Document: ALM
+──────────────────────────────────────────────────────────────────────
+
+  Q1 [explain] (position 1/5)
+  Question: Explain the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions....
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: multi_hop
+    Sub-queries generated: 2
+      1. What is the regulatory scope: which entities/activities/transactions and which parts of ba
+      2. What is the conceptual foundation: how do the ALM Directions define liquidity risk, its ty
+    Key terms: liquidity risk, ALM Directions, Asset-Liability Management Directions, regulatory scope, conceptual foundation, ALCO, contingency funding plan, flow approach, funding liquidity, market liquidity
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 0
+    Total memory candidates: 10
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 11,543
+    Output tokens from LLM: 5,095
+    LLM calls: 6
+    Nodes located: 11
+    Sections read: 18
+    Tokens retrieved: 18,489
+
+  SYNTHESIS:
+    Total tokens used: 70,102
+    Total LLM calls: 10
+    Answer length: 16,526 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 184.6s
+    Server time: 170.5s
+    Memory pre-query: 2.74s
+    Retrieval: 47.1s
+    Synthesis: 114.8s
+    Verification: 5.4s
+
+  RESULTS:
+    Citations: 15
+    Precision: 0.83
+
+  MEMORY CHANGES:
+    qi_facts_added: +0
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +0
+
+  Q2 [why] (position 2/5)
+  Question: Why does the RBI framework place such emphasis on the regulatory scope and conceptual foundation of ...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: multi_hop
+    Sub-queries generated: 4
+      1. What does the ALM Directions state as the regulatory scope for liquidity risk?
+      2. How do the ALM Directions define or describe the conceptual foundation of liquidity risk?
+      3. What specific objectives and supervisory concerns motivate RBI's emphasis on liquidity ris
+      4. What governance, control and operational expectations (e.g., ALCO, contingency funding pla
+    Key terms: RBI framework, regulatory scope, conceptual foundation, liquidity risk, ALM Directions, Asset Liability Management, ALCO, contingency funding plan, governance, financial stability
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 15,727
+    Output tokens from LLM: 5,854
+    LLM calls: 6
+    Nodes located: 14
+    Sections read: 22
+    Tokens retrieved: 20,531
+
+  SYNTHESIS:
+    Total tokens used: 66,227
+    Total LLM calls: 11
+    Answer length: 14,024 chars
+    Verification: skipped
+
+  TIMING:
+    Wall time: 173.7s
+    Server time: 168.4s
+    Memory pre-query: 0.57s
+    Retrieval: 50.9s
+    Synthesis: 116.8s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 16
+    Precision: 0.73
+
+  MEMORY CHANGES:
+    qi_facts_added: +0
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +0
+
+  Q3 [how] (position 3/5)
+  Question: How should a bank operationalise the regulatory scope and conceptual foundation of liquidity risk un...
+  Status: ✗
+  Error: 503 Server Error: Service Unavailable for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q4 [governance] (position 4/5)
+  Question: What governance or control failures can arise if the regulatory scope and conceptual foundation of l...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q5 [scenario] (position 5/5)
+  Question: In a realistic banking scenario, how would the regulatory scope and conceptual foundation of liquidi...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  THEME TRENDS:
+    Time:      185s → 174s
+    Tokens:    70,102 → 66,227
+    Precision: 0.83 → 0.73
+    Ret Input: 11,543 → 15,727
+
+
+──────────────────────────────────────────────────────────────────────
+THEME 2: The Board’s responsibilities for liquidity risk and intraday oversight
+Document: ALM
+──────────────────────────────────────────────────────────────────────
+
+  Q6 [explain] (position 1/5)
+  Question: Explain the Board’s responsibilities for liquidity risk and intraday oversight....
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q7 [why] (position 2/5)
+  Question: Why does the RBI framework place such emphasis on the Board’s responsibilities for liquidity risk an...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q8 [how] (position 3/5)
+  Question: How should a bank operationalise the Board’s responsibilities for liquidity risk and intraday oversi...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q9 [governance] (position 4/5)
+  Question: What governance or control failures can arise if the Board’s responsibilities for liquidity risk and...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q10 [scenario] (position 5/5)
+  Question: In a realistic banking scenario, how would the Board’s responsibilities for liquidity risk and intra...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  THEME TRENDS:
+
+
+──────────────────────────────────────────────────────────────────────
+THEME 3: The distinct roles of the RMC and ALCO in liquidity governance
+Document: ALM
+──────────────────────────────────────────────────────────────────────
+
+  Q11 [explain] (position 1/5)
+  Question: Explain the distinct roles of the RMC and ALCO in liquidity governance....
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q12 [why] (position 2/5)
+  Question: Why does the RBI framework place such emphasis on the distinct roles of the RMC and ALCO in liquidit...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q13 [how] (position 3/5)
+  Question: How should a bank operationalise the distinct roles of the RMC and ALCO in liquidity governance in d...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q14 [governance] (position 4/5)
+  Question: What governance or control failures can arise if the distinct roles of the RMC and ALCO in liquidity...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  Q15 [scenario] (position 5/5)
+  Question: In a realistic banking scenario, how would the distinct roles of the RMC and ALCO in liquidity gover...
+  Status: ✗
+  Error: 404 Client Error: Not Found for url: https://maniacally-unaggravating-delisa.ngrok-free.dev/query
+
+  THEME TRENDS:
+
+
+======================================================================
+ROOT CAUSE ANALYSIS
+======================================================================
+
+[HIGH] F2_SYNTHESIS_DOMINANCE
+  Synthesis consumes 68% of total server time on average. Retrieval is only ~30%. The Planner's multi-hop synthesis path is the primary bottleneck.
+  ROOT CAUSE: Every query is classified as multi_hop, triggering the Planner which runs N parallel sub-query retrievals and then synthesizes from all merged sections. The synthesis prompt includes all retrieved content (~18K tokens of document text) plus growing user context.
+
+[MEDIUM] F4_UNIFORM_CLASSIFICATION
+  All 2 queries classified as 'multi_hop'. No query was classified as single_hop or definitional, despite variation types including simple 'explain' and 'why' questions.
+  ROOT CAUSE: The QueryClassifier's prompt or thresholds are too aggressive — complex regulatory questions with multiple key terms always trigger multi_hop. This forces every query through the expensive Planner path.
+
+
+RECOMMENDATIONS:
+  [HIGH] F2_SYNTHESIS_DOMINANCE: 1) Add query caching for near-duplicate questions. 2) Classify simpler variations (explain, why) as single_hop to skip the Planner. 3) Limit sub-queries to max 4.
+  [MEDIUM] F4_UNIFORM_CLASSIFICATION: Add classification feedback from QI: if a theme has been answered as multi_hop before and precision was high, downgrade subsequent variations to single_hop.

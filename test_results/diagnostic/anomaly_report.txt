@@ -1,0 +1,18 @@
+ANOMALY REPORT
+==================================================
+
+Total query anomalies: 11
+Total theme anomalies: 0
+
+PER-QUERY ANOMALIES:
+  Q3 (Theme 1): PRECISION_DROP: 0.00 vs Q1's 0.83
+  Q4 (Theme 1): PRECISION_DROP: 0.00 vs Q1's 0.83
+  Q4 (Theme 1): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q5 (Theme 1): PRECISION_DROP: 0.00 vs Q1's 0.83
+  Q5 (Theme 1): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q8 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q9 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q10 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q13 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q14 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q15 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
