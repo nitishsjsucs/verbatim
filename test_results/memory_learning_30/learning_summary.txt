@@ -1,0 +1,76 @@
+======================================================================
+GOVINDA MEMORY LEARNING TEST — SUMMARY REPORT
+======================================================================
+
+Run: 2026-04-03T09:17:02.348788+00:00
+Backend: https://maniacally-unaggravating-delisa.ngrok-free.dev
+Doc ID: (multi-doc mode)
+Questions: 30 completed, 0 failed
+Total time: 5090s
+
+────────────────────────────────────────
+OVERALL LEARNING METRICS
+────────────────────────────────────────
+  Time reduction (1st half → 2nd half):      -22.7%
+  Token reduction (1st half → 2nd half):     -235.9%
+  Precision improvement:                     -8.2%
+  LLM calls reduction:                       -5.4%
+
+────────────────────────────────────────
+POSITION ANALYSIS (Q1 vs Q5 within themes)
+────────────────────────────────────────
+This is the key metric. Within each theme, Q1 is the first
+question on a topic and Q5 is the 5th variation. If the
+memory system works, Q5 should be faster and cheaper.
+
+  Position 1: 160.8s | 327587.5 tokens | 11.5 LLM calls | precision=0.517
+  Position 2: 155.6s | 202827.5 tokens | 12.0 LLM calls | precision=0.554
+  Position 3: 173.8s | 86975.2 tokens | 14.3 LLM calls | precision=0.615
+  Position 4: 167.7s | 275313.8 tokens | 12.8 LLM calls | precision=0.591
+  Position 5: 178.0s | 80459.2 tokens | 13.0 LLM calls | precision=0.694
+
+  Q1→Q5 Time reduction:      -10.7%
+  Q1→Q5 Token reduction:     +75.4%
+  Q1→Q5 Precision change:    +0.177
+  Q1→Q5 LLM calls reduction: -13.0%
+
+────────────────────────────────────────
+PER-DOCUMENT LEARNING
+────────────────────────────────────────
+  ALM: 30 questions
+    Time reduction: -22.7%
+
+────────────────────────────────────────
+TOP 5 MOST IMPROVED THEMES
+────────────────────────────────────────
+  Theme 6 (ALM): +13.7% time | +72.6% tokens
+    The flow approach and the use of the Structural Liquidity St
+  Theme 4 (ALM): +13.2% time | +86.5% tokens
+    The ALM Support Group and the design of the bank’s liquidity
+  Theme 3 (ALM): -8.0% time | +85.4% tokens
+    The distinct roles of the RMC and ALCO in liquidity governan
+  Theme 1 (ALM): -30.0% time | -16.3% tokens
+    The regulatory scope and conceptual foundation of liquidity 
+  Theme 5 (ALM): -32.3% time | +84.9% tokens
+    The strategy for managing liquidity risk and the identificat
+
+────────────────────────────────────────
+TOP 5 LEAST IMPROVED THEMES (potential issues)
+────────────────────────────────────────
+  Theme 2 (ALM): -32.6% time | -12.3% tokens
+    The Board’s responsibilities for liquidity risk and intraday
+  Theme 5 (ALM): -32.3% time | +84.9% tokens
+    The strategy for managing liquidity risk and the identificat
+  Theme 1 (ALM): -30.0% time | -16.3% tokens
+    The regulatory scope and conceptual foundation of liquidity 
+  Theme 3 (ALM): -8.0% time | +85.4% tokens
+    The distinct roles of the RMC and ALCO in liquidity governan
+  Theme 4 (ALM): +13.2% time | +86.5% tokens
+    The ALM Support Group and the design of the bank’s liquidity
+
+======================================================================
+VERDICT
+======================================================================
+~ PARTIAL: The memory system shows SOME learning.
+  Tokens reduce by 75.4%
+  But time did NOT improve (-10.7%)

@@ -290,12 +290,24 @@ class QAEngine:
 
         # Step 2: Classify + Retrieve (with benchmark wrapping)
         with tracker.stage("retrieval") as s:
-            # Inject user context into query text supplement if available
+            # Inject user context into query text supplement if available.
+            # Cap user context to prevent retrieval input token explosion:
+            # uncapped context grew to 180K+ tokens by Q11 in testing,
+            # causing 190K retrieval input tokens per query (15-20x normal).
+            _USER_CONTEXT_MAX_CHARS = 1500
             user_context = memory_context.get("user_context", "")
+            if user_context and len(user_context) > _USER_CONTEXT_MAX_CHARS:
+                user_context = user_context[:_USER_CONTEXT_MAX_CHARS] + "\n[…truncated]"
+                logger.info(
+                    "[QA] User context capped at %d chars (was %d)",
+                    _USER_CONTEXT_MAX_CHARS,
+                    len(memory_context.get("user_context", "")),
+                )
             effective_query = query_text
             if user_context and self._is_feature_enabled("enable_user_memory"):
                 effective_query = f"{query_text}\n\n[User Context]: {user_context}"
                 s.set_metadata("user_context_injected", True)
+                s.set_metadata("user_context_chars", len(user_context))
 
             query, sections, routing_log = self._router.retrieve(effective_query, tree)
 
@@ -417,8 +429,10 @@ class QAEngine:
             logger.info("[QA] QI hint: skipping verification (clean rate > 90%% for this query type)")
             verify = False
 
-        # Inject user memory context into query for synthesis
+        # Inject user memory context into query for synthesis (capped)
         _user_ctx = _mem_ctx.get("user_context", "") if _mem_ctx else ""
+        if _user_ctx and len(_user_ctx) > 1500:
+            _user_ctx = _user_ctx[:1500] + "\n[…truncated]"
         _original_query_text = query.text
         if _user_ctx and self._get_retrieval_mode() == "optimized":
             query.text = f"{query.text}\n\n[User Context]: {_user_ctx}"

@@ -75,8 +75,18 @@ class Planner:
         """
         start = time.time()
 
-        # Get sub-queries from the classifier (already populated)
+        # Get sub-queries from the classifier (already populated).
+        # Cap at 4 sub-queries to prevent expensive parallel retrieval storms.
+        # Testing showed queries with 6-7 sub-queries used 2x more time and
+        # tokens without meaningful precision improvement over 4 sub-queries.
+        _MAX_SUB_QUERIES = 4
         sub_queries = query.sub_queries if query.sub_queries else [query.text]
+        if len(sub_queries) > _MAX_SUB_QUERIES:
+            logger.info(
+                "Planner: capping sub-queries from %d to %d",
+                len(sub_queries), _MAX_SUB_QUERIES,
+            )
+            sub_queries = sub_queries[:_MAX_SUB_QUERIES]
 
         if len(sub_queries) <= 1:
             # Not truly multi-hop — fall through to normal retrieval

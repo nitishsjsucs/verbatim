@@ -1,0 +1,64 @@
+======================================================================
+GOVINDA MEMORY LEARNING TEST — SUMMARY REPORT
+======================================================================
+
+Run: 2026-04-03T06:58:27.089735+00:00
+Backend: https://maniacally-unaggravating-delisa.ngrok-free.dev
+Doc ID: (multi-doc mode)
+Questions: 10 completed, 0 failed
+Total time: 1592s
+
+────────────────────────────────────────
+OVERALL LEARNING METRICS
+────────────────────────────────────────
+  Time reduction (1st half → 2nd half):      +20.5%
+  Token reduction (1st half → 2nd half):     -254.4%
+  Precision improvement:                     -35.6%
+  LLM calls reduction:                       +1.6%
+
+────────────────────────────────────────
+POSITION ANALYSIS (Q1 vs Q5 within themes)
+────────────────────────────────────────
+This is the key metric. Within each theme, Q1 is the first
+question on a topic and Q5 is the 5th variation. If the
+memory system works, Q5 should be faster and cheaper.
+
+  Position 1: 163.6s | 208570.0 tokens | 10.0 LLM calls | precision=0.472
+  Position 2: 152.7s | 261389.0 tokens | 11.5 LLM calls | precision=0.556
+  Position 3: 152.1s | 68470.5 tokens | 14.0 LLM calls | precision=0.853
+  Position 4: 158.8s | 274216.5 tokens | 13.0 LLM calls | precision=0.639
+  Position 5: 159.5s | 72170.5 tokens | 12.0 LLM calls | precision=0.758
+
+  Q1→Q5 Time reduction:      +2.5%
+  Q1→Q5 Token reduction:     +65.4%
+  Q1→Q5 Precision change:    +0.286
+  Q1→Q5 LLM calls reduction: -20.0%
+
+────────────────────────────────────────
+PER-DOCUMENT LEARNING
+────────────────────────────────────────
+  ALM: 10 questions
+    Time reduction: +20.5%
+
+────────────────────────────────────────
+TOP 5 MOST IMPROVED THEMES
+────────────────────────────────────────
+  Theme 1 (ALM): +6.5% time | -5.1% tokens
+    The regulatory scope and conceptual foundation of liquidity 
+  Theme 2 (ALM): -3.0% time | +80.4% tokens
+    The Board’s responsibilities for liquidity risk and intraday
+
+────────────────────────────────────────
+TOP 5 LEAST IMPROVED THEMES (potential issues)
+────────────────────────────────────────
+  Theme 2 (ALM): -3.0% time | +80.4% tokens
+    The Board’s responsibilities for liquidity risk and intraday
+  Theme 1 (ALM): +6.5% time | -5.1% tokens
+    The regulatory scope and conceptual foundation of liquidity 
+
+======================================================================
+VERDICT
+======================================================================
+~ PARTIAL: The memory system shows SOME learning.
+  Tokens reduce by 65.4%
+  But time did NOT improve (2.5%)

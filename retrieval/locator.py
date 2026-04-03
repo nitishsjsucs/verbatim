@@ -150,7 +150,35 @@ class Locator:
                 logger.warning("[BENCHMARK][memory_only] Failed, falling back to full index: %s", e)
                 tree_index = json.dumps(tree.to_index(), indent=2)
         else:
-            tree_index = json.dumps(tree.to_index(), indent=2)
+            # No memory candidates and no embedding pre-filter.
+            # Full tree index can be extremely large (183 nodes → ~30K tokens per
+            # LLM call).  Cap the index to the top-level + second-level nodes to
+            # keep the locate prompt under control while still allowing the LLM
+            # to reason over the document structure.
+            _MAX_FULL_INDEX_TOKENS = 20_000
+            full_index = tree.to_index()
+            full_json = json.dumps(full_index, indent=2)
+            _est_tokens = len(full_json) // 4  # rough char-to-token estimate
+            if _est_tokens > _MAX_FULL_INDEX_TOKENS:
+                # Fall back to top-2 level summary index to keep locate affordable
+                try:
+                    tree_index = json.dumps(
+                        tree.to_summary_index(max_depth=2), indent=2,
+                    )
+                    logger.info(
+                        "[BENCHMARK][index_cap] Full index too large (~%d tokens), "
+                        "using depth-2 summary index instead",
+                        _est_tokens,
+                    )
+                except Exception:
+                    # to_summary_index not available — truncate JSON directly
+                    tree_index = full_json[:_MAX_FULL_INDEX_TOKENS * 4]
+                    logger.info(
+                        "[BENCHMARK][index_cap] Full index truncated from ~%d tokens",
+                        _est_tokens,
+                    )
+            else:
+                tree_index = full_json
 
         user_msg = format_prompt(
             user_template,

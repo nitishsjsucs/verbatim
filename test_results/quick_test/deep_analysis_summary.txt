@@ -1,0 +1,46 @@
+======================================================================
+GOVINDA MEMORY LEARNING — DEEP ANALYSIS
+======================================================================
+
+SUMMARY STATISTICS
+----------------------------------------
+  Total queries: 10
+  Wall time: 157.4s avg (±21.0s)
+  Tokens: 176963 avg, 1769633 total
+  Precision: 0.656 avg
+  LLM calls: 12.1 avg, 121 total
+
+STATISTICAL SIGNIFICANCE TESTS
+----------------------------------------
+  q1_vs_q5_time: effect=+2.5%, p=1.7371 
+  q1_vs_q5_tokens: effect=+65.4%, p=0.5127 
+  q1_vs_q5_llm_calls: effect=+0.0%, p=1.0000 
+  q1_vs_q5_precision: effect=+37.7%, p=0.6256 
+  q1_vs_q2_time: effect=+6.7%, p=1.2953 
+  q1_vs_q2_tokens: effect=-25.3%, p=1.5370 
+  q1_vs_rest_time: effect=+4.8%, p=1.4399 
+  q1_vs_rest_tokens: effect=+18.9%, p=1.4673 
+
+VERDICT
+========================================
+  LEARNING POSSIBLE (confidence: low)
+  Strong signals: 0
+  Moderate signals: 1
+  Weak signals: 0
+
+  ◐ Overall time trend is decreasing
+
+EFFICIENCY (first quarter vs last quarter)
+----------------------------------------
+  Tokens/citation: 5342 → 26635
+  Time/citation:   13.19s → 14.61s
+  Token efficiency improvement: -398.5%
+  Time efficiency improvement:  -10.8%
+
+THEME LEARNING CURVES (0/2 themes show learning)
+----------------------------------------
+  ✗ ALM_theme_1: slope=-2.3999, R²=0.128
+    Times: 190.9s → 165.1s → 176.1s → 165.8s → 178.6s
+  ✗ ALM_theme_2: slope=1.9783, R²=0.135
+    Times: 136.4s → 140.3s → 128.2s → 151.7s → 140.5s
+

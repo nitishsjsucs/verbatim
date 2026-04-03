@@ -425,6 +425,30 @@ class MemoryManager:
                     mc.retrieval_fb.error = mc.retrieval_fb.error or str(e)
                 logger.warning("[MemoryManager] Retrieval feedback post-query failed: %s", e)
 
+        # Auto-trigger RAPTOR index build after enough queries on a doc.
+        # The RAPTOR index was contributing 0 candidates because build()
+        # was never called during normal query flow.  Trigger a build once
+        # enough unique nodes have been cited so heat-map data starts
+        # feeding back into the Locator via pre-query candidates.
+        _RAPTOR_BUILD_THRESHOLD = 5
+        if self._is_enabled("enable_raptor_index"):
+            try:
+                raptor = self._get_raptor(doc_id)
+                if raptor and hasattr(raptor, "_heat_map"):
+                    _heated = len(raptor._heat_map)
+                    if _heated >= _RAPTOR_BUILD_THRESHOLD and not raptor.is_built:
+                        from tree.tree_store import TreeStore
+                        _ts = TreeStore()
+                        _tree = _ts.load(doc_id)
+                        if _tree and self._embedding_client:
+                            raptor.build(_tree, self._embedding_client)
+                            logger.info(
+                                "[MemoryManager] Auto-built RAPTOR index for doc=%s "
+                                "(heat_map has %d nodes)", doc_id, _heated,
+                            )
+            except Exception as e:
+                logger.warning("[MemoryManager] RAPTOR auto-build failed: %s", e)
+
         elapsed = time.time() - t0
         if mc:
             mc.post_query_ms = round(elapsed * 1000, 1)

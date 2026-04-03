@@ -335,6 +335,48 @@ class DocumentTree:
             "structure": [node.to_index_entry() for node in self.structure],
         }
 
+    def to_summary_index(self, max_depth: int = 2) -> dict:
+        """
+        Export a depth-limited index for the LLM Locator.
+
+        When no memory candidates or embedding pre-filter are available,
+        the full recursive index can exceed 30K tokens for large documents.
+        This method caps the tree depth so the Locator prompt stays affordable
+        while still exposing enough structure for the LLM to reason about.
+
+        Args:
+            max_depth: Maximum tree depth to include (1 = top-level only,
+                       2 = top + children, etc.).
+
+        Returns:
+            A dict in the same shape as ``to_index()`` but with deeper
+            children replaced by a ``"…N more children"`` placeholder.
+        """
+
+        def _trim(node: "TreeNode", depth: int) -> dict:
+            entry = {
+                "node_id": node.node_id,
+                "title": node.title,
+                "type": node.node_type.value,
+                "pages": node.page_range_str,
+                "summary": node.summary,
+            }
+            if node.topics:
+                entry["topics"] = node.topics
+            if depth < max_depth and node.children:
+                entry["children"] = [_trim(c, depth + 1) for c in node.children]
+            elif node.children:
+                entry["children_omitted"] = len(node.children)
+            return entry
+
+        return {
+            "doc_id": self.doc_id,
+            "doc_name": self.doc_name,
+            "doc_description": self.doc_description,
+            "total_pages": self.total_pages,
+            "structure": [_trim(n, 1) for n in self.structure],
+        }
+
     def to_compressed_index(self, candidate_ids: set[str]) -> dict:
         """
         Export a compressed index with only pre-filtered candidate nodes.

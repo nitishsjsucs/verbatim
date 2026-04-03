@@ -1,0 +1,295 @@
+================================================================================
+GOVINDA 30-QUESTION DECISION AUDIT
+================================================================================
+
+GLOBAL PATTERNS
+────────────────────────────────────────
+
+Query types seen: {'multi_hop'}
+  → ALL queries classified as 'multi_hop'
+  → This forces the expensive Planner path for every query
+
+Sub-queries per query: min=2, max=7, avg=4.9
+  Q 1 (explain   ): 3 sub-queries
+  Q 2 (why       ): 4 sub-queries
+  Q 3 (how       ): 7 sub-queries
+  Q 4 (governance): 7 sub-queries
+  Q 5 (scenario  ): 5 sub-queries
+  Q 6 (explain   ): 2 sub-queries
+  Q 7 (why       ): 4 sub-queries
+  Q 8 (how       ): 6 sub-queries
+  Q 9 (governance): 4 sub-queries
+  Q10 (scenario  ): 4 sub-queries
+  Q11 (explain   ): 3 sub-queries
+  Q12 (why       ): 4 sub-queries
+  Q13 (how       ): 6 sub-queries
+  Q14 (governance): 5 sub-queries
+  Q15 (scenario  ): 5 sub-queries
+  Q16 (explain   ): 5 sub-queries
+  Q17 (why       ): 5 sub-queries
+  Q18 (how       ): 6 sub-queries
+  Q19 (governance): 5 sub-queries
+  Q20 (scenario  ): 5 sub-queries
+  Q21 (explain   ): 4 sub-queries
+  Q22 (why       ): 4 sub-queries
+  Q23 (how       ): 7 sub-queries
+  Q24 (governance): 5 sub-queries
+  Q25 (scenario  ): 5 sub-queries
+  Q26 (explain   ): 4 sub-queries
+  Q27 (why       ): 5 sub-queries
+  Q28 (how       ): 7 sub-queries
+  Q29 (governance): 5 sub-queries
+  Q30 (scenario  ): 6 sub-queries
+
+QI suggested nodes: {0, 9, 10, 5} (unique values)
+QI avoid nodes: {1, 2, 3, 5, 6} (unique values)
+RAPTOR candidates: {0} (unique values)
+Total memory candidates: {0, 9, 10, 5} (unique values)
+  → RAPTOR NEVER FIRED: 0 candidates for every query
+
+════════════════════════════════════════════════════════════════════════════════
+🔍 CRITICAL FINDING: RETRIEVAL INPUT TOKEN GROWTH
+════════════════════════════════════════════════════════════════════════════════
+
+This is the root cause of the token spikes.
+The user_context is injected into retrieval and grows unboundedly.
+
+  Q Theme Pos  Variation    Ret Input   Ret Output Total Tokens Sections Tok Retrieved
+-----------------------------------------------------------------------------------------------
+Q 1  T 1    1     explain       10,638        5,059       68,924       18        18,354
+Q 2  T 1    2         why       11,388        4,916       53,164       18        18,489
+Q 3  T 1    3         how       11,495        5,406       91,238       18        18,489
+Q 4  T 1    4  governance        8,935        4,325       86,910       20        19,474
+Q 5  T 1    5    scenario       11,441        5,596       80,165       18        18,489
+Q 6  T 2    1     explain       12,097        5,291       66,486       17        32,021
+Q 7  T 2    2         why       10,861        4,566       67,924       14        16,290
+Q 8  T 2    3         how       11,509        5,257       81,727       16        18,412
+Q 9  T 2    4  governance       11,260        5,347       59,451       16        11,154
+Q10  T 2    5    scenario       12,194        5,687       74,683       14        17,427
+Q11  T 3    1     explain      190,505        5,902      379,399       16        31,327 <<<
+Q12  T 3    2         why       11,506        4,692       47,003       13        16,792
+Q13  T 3    3         how        7,814        4,484       59,144        8        12,392
+Q14  T 3    4  governance        7,810        4,499       67,760        9        28,039
+Q15  T 3    5    scenario        7,773        4,284       55,441        8        13,069
+Q16  T 4    1     explain      190,796        8,384      485,820       25        18,494 <<<
+Q17  T 4    2         why       12,018        5,352       85,566       18        33,477
+Q18  T 4    3         how       12,128        5,827       86,669       20        20,872
+Q19  T 4    4  governance      190,721        7,587      499,352       31        30,500 <<<
+Q20  T 4    5    scenario       11,417        5,302       65,430       16        10,787
+Q21  T 5    1     explain      190,575        8,296      464,907       24        36,277 <<<
+Q22  T 5    2         why      190,600        7,124      450,427       30        42,029 <<<
+Q23  T 5    3         how       12,526        5,537       60,557       18        12,190
+Q24  T 5    4  governance      143,339        6,548      446,898       22        22,325 <<<
+Q25  T 5    5    scenario       12,594        5,717       69,975       16        11,128
+Q26  T 6    1     explain      190,554        8,557      499,989       17        38,710 <<<
+Q27  T 6    2         why      190,569        9,261      512,881       26        35,751 <<<
+Q28  T 6    3         how       11,728        6,130      142,516       16        32,309
+Q29  T 6    4  governance      190,760        7,458      491,512       27        25,605 <<<
+Q30  T 6    5    scenario       11,503        6,064      137,061       15        31,809
+
+KEY OBSERVATION:
+  Normal queries (ret_input < 20K): Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10, Q12, Q13, Q14, Q15, Q17, Q18, Q20, Q23, Q25, Q28, Q30
+  Spike queries (ret_input > 50K):  Q11, Q16, Q19, Q21, Q22, Q24, Q26, Q27, Q29
+  First spike at Q11
+
+  The user_context injection causes retrieval input tokens to explode.
+  Normal retrieval uses ~10-12K input tokens.
+  After user memory accumulates, retrieval uses 190K+ input tokens.
+  This means the LLM processes 15-20x more data for the same task.
+
+────────────────────────────────────────────────────────────────────────────────
+THEME 1: The regulatory scope and conceptual foundation of liquidity risk under the ALM Directions
+────────────────────────────────────────────────────────────────────────────────
+
+Pos        Var   Wall  Synth    RetIn   Tokens  LLM  Cit  Prec SubQs    Verif
+---------------------------------------------------------------------------
+  1     explain   131s    74s  10,638  68,924  11  14  0.78    3 verified
+  2         why   156s   106s  11,388  53,164  11  17  0.94    4  skipped
+  3         how   193s   132s  11,495  91,238  15  16  0.89    7 verified
+  4  governance   188s   132s   8,935  86,910  14  13  0.65    7 verified
+  5    scenario   170s   106s  11,441  80,165  13  10  0.56    5 verified
+
+  ⚠ TIME DEGRADATION: 131s → 170s (+30%)
+
+  Sub-query counts: [3, 4, 7, 7, 5]
+
+  Q1 vs Q5 COMPARISON:
+    Time:       131s → 170s (WORSE)
+    Tokens:     68,924 → 80,165 (WORSE)
+    Precision:  0.78 → 0.56 (WORSE)
+    Ret Input:  10,638 → 11,441 (WORSE)
+    Sub-queries: 3 → 5
+    LLM calls:  11 → 13
+
+────────────────────────────────────────────────────────────────────────────────
+THEME 2: The Board’s responsibilities for liquidity risk and intraday oversight
+────────────────────────────────────────────────────────────────────────────────
+
+Pos        Var   Wall  Synth    RetIn   Tokens  LLM  Cit  Prec SubQs    Verif
+---------------------------------------------------------------------------
+  1     explain   121s    62s  12,097  66,486  10   5  0.29    2 verified
+  2         why   134s    78s  10,861  67,924  12   8  0.57    4 verified
+  3         how   167s    99s  11,509  81,727  14   8  0.50    6 verified
+  4  governance   148s    86s  11,260  59,451  12  10  0.62    4 verified
+  5    scenario   160s   100s  12,194  74,683  12   9  0.64    4 verified
+
+  ⚠ TIME DEGRADATION: 121s → 160s (+33%)
+
+  Sub-query counts: [2, 4, 6, 4, 4]
+
+  Q1 vs Q5 COMPARISON:
+    Time:       121s → 160s (WORSE)
+    Tokens:     66,486 → 74,683 (WORSE)
+    Precision:  0.29 → 0.64 (better)
+    Ret Input:  12,097 → 12,194 (WORSE)
+    Sub-queries: 2 → 4
+    LLM calls:  10 → 12
+
+────────────────────────────────────────────────────────────────────────────────
+THEME 3: The distinct roles of the RMC and ALCO in liquidity governance
+────────────────────────────────────────────────────────────────────────────────
+
+Pos        Var   Wall  Synth    RetIn   Tokens  LLM  Cit  Prec SubQs    Verif
+---------------------------------------------------------------------------
+  1     explain   125s    53s 190,505 379,399  11   4  0.25    3 verified
+  2         why   115s    70s  11,506  47,003  11   7  0.54    4  skipped
+  3         how   191s   135s   7,814  59,144  14   4  0.50    6 verified
+  4  governance   118s    66s   7,810  67,760  13   5  0.56    5 verified
+  5    scenario   135s    77s   7,773  55,441  13   8  1.00    5 verified
+
+  ⚠ RETRIEVAL INPUT VARIANCE: 7,773 → 190,505 (24.5x)
+  ⚠ TOKEN BIMODALITY: 47,003 → 379,399 (8.1x)
+
+  Sub-query counts: [3, 4, 6, 5, 5]
+
+  Q1 vs Q5 COMPARISON:
+    Time:       125s → 135s (WORSE)
+    Tokens:     379,399 → 55,441 (better)
+    Precision:  0.25 → 1.00 (better)
+    Ret Input:  190,505 → 7,773 (better)
+    Sub-queries: 3 → 5
+    LLM calls:  11 → 13
+
+────────────────────────────────────────────────────────────────────────────────
+THEME 4: The ALM Support Group and the design of the bank’s liquidity risk management policy
+────────────────────────────────────────────────────────────────────────────────
+
+Pos        Var   Wall  Synth    RetIn   Tokens  LLM  Cit  Prec SubQs    Verif
+---------------------------------------------------------------------------
+  1     explain   194s    85s 190,796 485,820  13  11  0.44    5 verified
+  2         why   137s    74s  12,018  85,566  13   8  0.44    5 verified
+  3         how   167s    91s  12,128  86,669  14   8  0.40    6 verified
+  4  governance   206s   112s 190,721 499,352  13  14  0.45    5 verified
+  5    scenario   169s    99s  11,417  65,430  13  10  0.62    5 verified
+
+  ⚠ RETRIEVAL INPUT VARIANCE: 11,417 → 190,796 (16.7x)
+  ⚠ TOKEN BIMODALITY: 65,430 → 499,352 (7.6x)
+
+  Sub-query counts: [5, 5, 6, 5, 5]
+
+  Q1 vs Q5 COMPARISON:
+    Time:       194s → 169s (better)
+    Tokens:     485,820 → 65,430 (better)
+    Precision:  0.44 → 0.62 (better)
+    Ret Input:  190,796 → 11,417 (better)
+    Sub-queries: 5 → 5
+    LLM calls:  13 → 13
+
+────────────────────────────────────────────────────────────────────────────────
+THEME 5: The strategy for managing liquidity risk and the identification of exposures
+────────────────────────────────────────────────────────────────────────────────
+
+Pos        Var   Wall  Synth    RetIn   Tokens  LLM  Cit  Prec SubQs    Verif
+---------------------------------------------------------------------------
+  1     explain   205s    99s 190,575 464,907  12  18  0.75    4 verified
+  2         why   204s    96s 190,600 450,427  12  12  0.40    4 verified
+  3         how   148s    87s  12,526  60,557  14  14  0.78    7  skipped
+  4  governance   173s   103s 143,339 446,898  12  18  0.82    5 verified
+  5    scenario   271s   206s  12,594  69,975  13  14  0.88    5 verified
+
+  ⚠ TIME DEGRADATION: 205s → 271s (+32%)
+  ⚠ RETRIEVAL INPUT VARIANCE: 12,526 → 190,600 (15.2x)
+  ⚠ TOKEN BIMODALITY: 60,557 → 464,907 (7.7x)
+
+  Sub-query counts: [4, 4, 7, 5, 5]
+
+  Q1 vs Q5 COMPARISON:
+    Time:       205s → 271s (WORSE)
+    Tokens:     464,907 → 69,975 (better)
+    Precision:  0.75 → 0.88 (better)
+    Ret Input:  190,575 → 12,594 (better)
+    Sub-queries: 4 → 5
+    LLM calls:  12 → 13
+
+────────────────────────────────────────────────────────────────────────────────
+THEME 6: The flow approach and the use of the Structural Liquidity Statement
+────────────────────────────────────────────────────────────────────────────────
+
+Pos        Var   Wall  Synth    RetIn   Tokens  LLM  Cit  Prec SubQs    Verif
+---------------------------------------------------------------------------
+  1     explain   188s    95s 190,554 499,989  12  10  0.59    4 verified
+  2         why   188s    96s 190,569 512,881  13  11  0.42    5 verified
+  3         how   176s    97s  11,728 142,516  15  10  0.62    7 verified
+  4  governance   175s    94s 190,760 491,512  13  12  0.44    5 verified
+  5    scenario   163s   105s  11,503 137,061  14   7  0.47    6 verified
+
+  ⚠ RETRIEVAL INPUT VARIANCE: 11,503 → 190,760 (16.6x)
+  ⚠ TOKEN BIMODALITY: 137,061 → 512,881 (3.7x)
+
+  Sub-query counts: [4, 5, 7, 5, 6]
+
+  Q1 vs Q5 COMPARISON:
+    Time:       188s → 163s (better)
+    Tokens:     499,989 → 137,061 (better)
+    Precision:  0.59 → 0.47 (WORSE)
+    Ret Input:  190,554 → 11,503 (better)
+    Sub-queries: 4 → 6
+    LLM calls:  12 → 14
+
+================================================================================
+ROOT CAUSE ANALYSIS
+================================================================================
+
+[CRITICAL] F1 — UNBOUNDED USER CONTEXT INJECTION
+  The UserMemoryManager accumulates interaction history.
+  This context is injected into EVERY retrieval query via:
+    effective_query = f"{query_text}\n\n[User Context]: {user_context}"
+  By Q11, user_context contains summaries of 10 previous Q&A pairs,
+  causing retrieval input tokens to explode from 10K to 190K+.
+  This happens because the LLM classifier/locator receives the
+  entire bloated query for EVERY sub-query retrieval in the Planner.
+  FIX: Cap user_context to 2000 tokens or last 3 interactions.
+
+[HIGH] F2 — SYNTHESIS DOMINATES PIPELINE TIME
+  Synthesis is 59% of server time on average.
+  The Planner runs N sub-query retrievals in parallel, then
+  synthesizes from all merged sections. Each sub-query retrieval
+  includes the bloated user_context.
+  FIX: Cache synthesis for near-duplicate queries within a theme.
+       Reduce sub-queries to max 4.
+
+[MEDIUM] F3 — QUERY INTELLIGENCE IS STALE
+  QI suggested the same 10 nodes for ALL 30 queries.
+  QI avoided the same 1 node for ALL queries.
+  The learning loop records facts but the suggestions don't adapt
+  because they're based on embedding similarity to the query,
+  and all ALM queries have similar embeddings.
+  FIX: Weight QI suggestions by recent key_term overlap, not just
+       embedding similarity.
+
+[MEDIUM] F4 — ALL QUERIES CLASSIFIED AS MULTI_HOP
+  Even simple 'explain' and 'why' variations get the expensive
+  multi-hop Planner path with parallel sub-query retrieval.
+  FIX: After the first multi_hop query in a theme achieves
+       high precision, classify subsequent variations as single_hop.
+
+[LOW] F5 — RAPTOR INDEX NEVER FIRES
+  The 'Know What Matters' loop contributed 0 candidates.
+  This entire learning subsystem is inactive during normal queries.
+  FIX: Trigger raptor.build_index after N queries on a doc.
+
+[INFO] F6 — RETRIEVAL TIME IS CONSTANT
+  Retrieval time: 40s to 98s (avg 58s)
+  The memory system is NOT reducing retrieval time.
+  Retrieval does the same 6 LLM calls every time.
+

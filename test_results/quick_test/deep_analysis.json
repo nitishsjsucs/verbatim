@@ -1,0 +1,305 @@
+{
+  "summary_stats": {
+    "total_queries": 10,
+    "wall_time": {
+      "mean": 157.358,
+      "median": 158.437,
+      "std_dev": 20.971,
+      "p25": 140.331,
+      "p75": 173.507,
+      "min": 128.192,
+      "max": 190.919
+    },
+    "tokens": {
+      "mean": 176963.3,
+      "median": 80038.5,
+      "std_dev": 171085.9,
+      "total": 1769633
+    },
+    "retrieval_precision": {
+      "mean": 0.6556,
+      "median": 0.7105,
+      "std_dev": 0.2388
+    },
+    "llm_calls": {
+      "mean": 12.1,
+      "median": 12.0,
+      "total": 121
+    }
+  },
+  "position_significance": {
+    "q1_vs_q5_time": {
+      "t_stat": 0.123,
+      "p_value": 1.7371,
+      "df": 1.8,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 163.637,
+      "mean_b": 159.549,
+      "effect_size": 2.5
+    },
+    "q1_vs_q5_tokens": {
+      "t_stat": 1.007,
+      "p_value": 0.5127,
+      "df": 1.0,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 208570.0,
+      "mean_b": 72170.5,
+      "effect_size": 65.4
+    },
+    "q1_vs_q5_llm_calls": {
+      "t_stat": 0,
+      "p_value": 1.0,
+      "significant": false,
+      "note": "zero variance"
+    },
+    "q1_vs_q5_precision": {
+      "t_stat": 0.883,
+      "p_value": 0.6256,
+      "df": 1.8,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 0.758,
+      "mean_b": 0.472,
+      "effect_size": 37.7
+    },
+    "q1_vs_q2_time": {
+      "t_stat": 0.365,
+      "p_value": 1.2953,
+      "df": 1.4,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 163.637,
+      "mean_b": 152.702,
+      "effect_size": 6.7
+    },
+    "q1_vs_q2_tokens": {
+      "t_stat": -0.226,
+      "p_value": 1.537,
+      "df": 1.8,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 208570.0,
+      "mean_b": 261389.0,
+      "effect_size": -25.3
+    },
+    "q1_vs_rest_time": {
+      "t_stat": 0.28,
+      "p_value": 1.4399,
+      "df": 1.1,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 163.637,
+      "mean_b": 155.789,
+      "effect_size": 4.8
+    },
+    "q1_vs_rest_tokens": {
+      "t_stat": 0.264,
+      "p_value": 1.4673,
+      "df": 1.5,
+      "significant_at_05": false,
+      "significant_at_01": false,
+      "mean_a": 208570.0,
+      "mean_b": 169061.625,
+      "effect_size": 18.9
+    }
+  },
+  "trend_analysis": {
+    "time_trend": {
+      "slope": -5.48877,
+      "r_squared": 0.6279,
+      "direction": "decreasing",
+      "rolling_avg_10": [
+        190.919,
+        178.026,
+        177.376,
+        174.482,
+        175.303,
+        168.812,
+        164.734,
+        160.167,
+        159.23,
+        157.358
+      ]
+    },
+    "token_trend": {
+      "slope": 23721.266667,
+      "r_squared": 0.1762,
+      "direction": "increasing",
+      "rolling_avg_10": [
+        73208.0,
+        72123.5,
+        76450.0,
+        78113.5,
+        77885.4,
+        122226.5,
+        169299.7,
+        154617.0,
+        189140.6,
+        176963.3
+      ]
+    },
+    "precision_trend": {
+      "slope": -0.027169,
+      "r_squared": 0.1187,
+      "direction": "declining",
+      "rolling_avg_10": [
+        0.7368,
+        0.7105,
+        0.7368,
+        0.761,
+        0.7977,
+        0.6992,
+        0.6605,
+        0.6926,
+        0.665,
+        0.6556
+      ]
+    }
+  },
+  "efficiency_metrics": {
+    "first_quarter": {
+      "tokens_per_citation": 5342.5,
+      "time_per_citation": 13.187,
+      "tokens_per_second": 405.1,
+      "citations_per_query": 13.5,
+      "total_tokens": 144247,
+      "total_citations": 27
+    },
+    "last_quarter": {
+      "tokens_per_citation": 26634.8,
+      "time_per_citation": 14.613,
+      "tokens_per_second": 1822.7,
+      "citations_per_query": 10.0,
+      "total_tokens": 532697,
+      "total_citations": 20
+    },
+    "efficiency_improvement": {
+      "tokens_per_citation_change_pct": -398.5,
+      "time_per_citation_change_pct": -10.8
+    }
+  },
+  "per_document_analysis": {
+    "ALM": {
+      "count": 10,
+      "time_slope": -5.48877,
+      "time_r2": 0.6279,
+      "token_slope": 23721.266667,
+      "token_r2": 0.1762,
+      "t_test_time": {
+        "t_stat": 5.907,
+        "p_value": 0.0,
+        "df": 7.6,
+        "significant_at_05": true,
+        "significant_at_01": true,
+        "mean_a": 175.303,
+        "mean_b": 139.414,
+        "effect_size": 20.5
+      }
+    }
+  },
+  "theme_learning_curves": [
+    {
+      "theme_key": "ALM_theme_1",
+      "theme_title": "The regulatory scope and conceptual foundation of liquidity risk under the ALM Directions",
+      "document": "ALM",
+      "n_questions": 5,
+      "time_series": [
+        190.919,
+        165.133,
+        176.076,
+        165.8,
+        178.586
+      ],
+      "token_series": [
+        73208,
+        71039,
+        85103,
+        83104,
+        76973
+      ],
+      "time_slope": -2.3999,
+      "time_r2": 0.1283,
+      "token_slope": 1959.5,
+      "token_r2": 0.2578,
+      "learning_detected": false
+    },
+    {
+      "theme_key": "ALM_theme_2",
+      "theme_title": "The Board\u2019s responsibilities for liquidity risk and intraday oversight",
+      "document": "ALM",
+      "n_questions": 5,
+      "time_series": [
+        136.356,
+        140.27,
+        128.192,
+        151.741,
+        140.512
+      ],
+      "token_series": [
+        343932,
+        451739,
+        51838,
+        465329,
+        67368
+      ],
+      "time_slope": 1.9783,
+      "time_r2": 0.1353,
+      "token_slope": -53953.8,
+      "token_r2": 0.1763,
+      "learning_detected": false
+    }
+  ],
+  "variation_type_analysis": {
+    "explain": {
+      "count": 2,
+      "avg_time": 163.637,
+      "avg_tokens": 208570.0,
+      "avg_precision": 0.4719,
+      "std_time": 38.582
+    },
+    "why": {
+      "count": 2,
+      "avg_time": 152.702,
+      "avg_tokens": 261389.0,
+      "avg_precision": 0.5564,
+      "std_time": 17.581
+    },
+    "how": {
+      "count": 2,
+      "avg_time": 152.134,
+      "avg_tokens": 68470.5,
+      "avg_precision": 0.8531,
+      "std_time": 33.859
+    },
+    "governance": {
+      "count": 2,
+      "avg_time": 158.771,
+      "avg_tokens": 274216.5,
+      "avg_precision": 0.6389,
+      "std_time": 9.941
+    },
+    "scenario": {
+      "count": 2,
+      "avg_time": 159.549,
+      "avg_tokens": 72170.5,
+      "avg_precision": 0.7579,
+      "std_time": 26.922
+    }
+  },
+  "learning_verdict": {
+    "verdict": "LEARNING POSSIBLE",
+    "confidence": "low",
+    "signals": [
+      {
+        "signal": "Overall time trend is decreasing",
+        "strength": "moderate",
+        "r_squared": 0.6279
+      }
+    ],
+    "strong_signals": 0,
+    "moderate_signals": 1,
+    "weak_signals": 0
+  }
+}
