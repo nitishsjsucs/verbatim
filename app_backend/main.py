@@ -5327,9 +5327,9 @@ def get_testing_testers():
     mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://localhost:27017")
     client = MongoClient(mongo_uri)
     auth_db = client[auth_db_name]
-    # Include all testing-cycle roles that can be assigned as testers
+    # Only return users with the tester role (not maker/checker)
     users = list(auth_db["user"].find(
-        {"role": {"$in": ["tester", "testing_maker", "testing_checker"]}},
+        {"role": "tester"},
         {"_id": 1, "name": 1, "email": 1, "role": 1}
     ))
     result = []
@@ -5341,6 +5341,30 @@ def get_testing_testers():
             "role": u.get("role", "tester"),
         })
     return {"testers": result}
+
+
+@app.get("/testing/testing-makers")
+def get_testing_makers():
+    """Return list of testing_maker-role accounts for the forward-to-maker picker."""
+    import os
+    from pymongo import MongoClient
+    auth_db_name = os.getenv("AUTH_DB_NAME", "govinda_auth")
+    mongo_uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    client = MongoClient(mongo_uri)
+    auth_db = client[auth_db_name]
+    users = list(auth_db["user"].find(
+        {"role": "testing_maker"},
+        {"_id": 1, "name": 1, "email": 1, "role": 1}
+    ))
+    result = []
+    for u in users:
+        result.append({
+            "id": str(u["_id"]),
+            "name": u.get("name", u.get("email", "")),
+            "email": u.get("email", ""),
+            "role": u.get("role", "testing_maker"),
+        })
+    return {"makers": result}
 
 
 # ---------------------------------------------------------------------------
@@ -5599,13 +5623,13 @@ def maker_decision(item_id: str, body: dict = Body(...)):
 @app.post("/testing/items/{item_id}/checker-confirm")
 def checker_confirm_deadline(item_id: str, body: dict = Body(...)):
     """Checker confirms/validates the maker's deadline."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     col = get_testing_collection()
     item = col.find_one({"id": item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Testing item not found")
 
-    now = datetime.utcnow().isoformat() + "Z"
+    now = datetime.now(timezone.utc).isoformat()
     item["maker_deadline_confirmed"] = True
     item["maker_deadline_confirmed_by"] = body.get("checker_name", "")
     item["maker_deadline_confirmed_at"] = now
@@ -5617,6 +5641,54 @@ def checker_confirm_deadline(item_id: str, body: dict = Body(...)):
     ti = TI.from_dict(item)
     ti.add_audit("checker_confirmed", body.get("checker_name", ""), "testing_checker",
                  f"Deadline confirmed: {item.get('maker_deadline', '')}")
+    item["testing_audit_trail"] = ti.testing_audit_trail
+
+    col.replace_one({"id": item_id}, item)
+
+    # Notify the assigned tester that the item is now active with a confirmed deadline
+    tester_id = item.get("assigned_tester_id", "")
+    if tester_id:
+        from utils.mongo import get_db
+        db = get_db()
+        notif = {
+            "user_id": tester_id,
+            "testing_item_id": item_id,
+            "type": "testing_deadline_confirmed",
+            "message": (
+                f"Testing item {item_id} is now active. "
+                f"Maker deadline confirmed: {item.get('maker_deadline', 'N/A')}. "
+                f"Confirmed by: {body.get('checker_name', 'checker')}"
+            ),
+            "is_read": False,
+            "created_at": now,
+        }
+        db["notifications"].insert_one(notif)
+
+    return item
+
+
+@app.post("/testing/items/{item_id}/checker-reject")
+def checker_reject_deadline(item_id: str, body: dict = Body(...)):
+    """Checker rejects the maker's deadline — sends the item back to the maker."""
+    from datetime import datetime
+    col = get_testing_collection()
+    item = col.find_one({"id": item_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Testing item not found")
+
+    now = datetime.utcnow().isoformat() + "Z"
+    # Reset deadline fields so maker must resubmit
+    item["maker_deadline"] = ""
+    item["maker_deadline_confirmed"] = False
+    item["maker_deadline_confirmed_by"] = ""
+    item["maker_deadline_confirmed_at"] = ""
+    item["status"] = "assigned_to_maker"
+
+    from models.testing import TestingItem as TI
+    ti = TI.from_dict(item)
+    reason = body.get("reason", "")
+    ti.add_audit("checker_rejected", body.get("checker_name", ""), "testing_checker",
+                 f"Deadline rejected, sent back to maker" + (f": {reason}" if reason else ""))
     item["testing_audit_trail"] = ti.testing_audit_trail
 
     col.replace_one({"id": item_id}, item)

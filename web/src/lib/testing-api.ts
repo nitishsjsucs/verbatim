@@ -93,6 +93,16 @@ export async function checkerConfirmDeadline(itemId: string, body: {
     return res.json()
 }
 
+export async function checkerRejectDeadline(itemId: string, body: {
+    checker_name: string; reason?: string
+}): Promise<TestingItem> {
+    const res = await fetch(`${API_BASE_URL}/testing/items/${itemId}/checker-reject`, {
+        method: "POST", headers, body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`Failed to reject deadline: ${res.status}`)
+    return res.json()
+}
+
 export async function submitTesterVerdict(itemId: string, body: {
     verdict: "pass" | "reject"; reason?: string; tester_name: string
 }): Promise<TestingItem> {
@@ -160,6 +170,12 @@ export interface TesterUser {
 export async function fetchTesters(): Promise<{ testers: TesterUser[] }> {
     const res = await fetch(`${API_BASE_URL}/testing/testers`, { headers })
     if (!res.ok) throw new Error(`Failed to fetch testers: ${res.status}`)
+    return res.json()
+}
+
+export async function fetchTestingMakers(): Promise<{ makers: TesterUser[] }> {
+    const res = await fetch(`${API_BASE_URL}/testing/testing-makers`, { headers })
+    if (!res.ok) throw new Error(`Failed to fetch testing makers: ${res.status}`)
     return res.json()
 }
 

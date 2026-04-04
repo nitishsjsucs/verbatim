@@ -10,7 +10,7 @@ import type { TestingItem } from "@/lib/types"
 import { toast } from "sonner"
 import {
     Eye, Search, ChevronDown, ChevronRight, Clock,
-    CheckCircle2, Calendar, RefreshCw, Loader2, MessageSquare,
+    CheckCircle2, XCircle, Calendar, RefreshCw, Loader2, MessageSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -43,7 +43,7 @@ export default function TestingCheckerPage() {
 
     const {
         items, loading, load,
-        handleCheckerConfirm, handleAddComment,
+        handleCheckerConfirm, handleCheckerReject, handleAddComment,
     } = useTestingItems()
 
     const [searchQuery, setSearchQuery] = React.useState("")
@@ -51,6 +51,8 @@ export default function TestingCheckerPage() {
     const [expandedItem, setExpandedItem] = React.useState<string | null>(null)
     const [commentItem, setCommentItem] = React.useState<string | null>(null)
     const [commentText, setCommentText] = React.useState("")
+    const [rejectingItem, setRejectingItem] = React.useState<string | null>(null)
+    const [rejectReason, setRejectReason] = React.useState("")
 
     // Checker sees items in "checker_review" status (needs their confirmation)
     // and items they've already confirmed ("active" and beyond)
@@ -86,6 +88,12 @@ export default function TestingCheckerPage() {
         await handleAddComment(itemId, userName, "testing_checker", commentText)
         setCommentItem(null)
         setCommentText("")
+    }
+
+    const handleDoReject = async (itemId: string) => {
+        await handleCheckerReject(itemId, userName, rejectReason || undefined)
+        setRejectingItem(null)
+        setRejectReason("")
     }
 
     return (
@@ -184,13 +192,22 @@ export default function TestingCheckerPage() {
 
                                 {/* Confirm button — only for checker_review items */}
                                 {item.status === "checker_review" && (
-                                    <Button
-                                        variant="outline" size="sm"
-                                        className="h-6 text-[10px] gap-1 text-green-400 border-green-400/30 hover:bg-green-400/10"
-                                        onClick={() => handleCheckerConfirm(item.id, userName)}
-                                    >
-                                        <CheckCircle2 className="h-3 w-3" />Confirm Deadline
-                                    </Button>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <Button
+                                            variant="outline" size="sm"
+                                            className="h-6 text-[10px] gap-1 text-green-400 border-green-400/30 hover:bg-green-400/10"
+                                            onClick={() => handleCheckerConfirm(item.id, userName)}
+                                        >
+                                            <CheckCircle2 className="h-3 w-3" />Confirm
+                                        </Button>
+                                        <Button
+                                            variant="outline" size="sm"
+                                            className="h-6 text-[10px] gap-1 text-red-400 border-red-400/30 hover:bg-red-400/10"
+                                            onClick={() => setRejectingItem(item.id)}
+                                        >
+                                            <XCircle className="h-3 w-3" />Reject
+                                        </Button>
+                                    </div>
                                 )}
 
                                 <button onClick={() => setCommentItem(commentItem === item.id ? null : item.id)} className="text-muted-foreground hover:text-foreground">
@@ -200,6 +217,25 @@ export default function TestingCheckerPage() {
                                     {expandedItem === item.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                 </button>
                             </div>
+
+                            {/* Reject reason form */}
+                            {rejectingItem === item.id && (
+                                <div className="px-4 py-2.5 bg-red-400/5 border-t border-border/20 flex items-end gap-3">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] text-muted-foreground mb-1 block">Rejection Reason (optional)</label>
+                                        <input
+                                            value={rejectReason}
+                                            onChange={e => setRejectReason(e.target.value)}
+                                            placeholder="Enter reason for rejecting this deadline..."
+                                            className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none"
+                                        />
+                                    </div>
+                                    <Button size="sm" variant="destructive" className="h-7 text-xs gap-1" onClick={() => handleDoReject(item.id)}>
+                                        <XCircle className="h-3 w-3" />Reject
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setRejectingItem(null); setRejectReason("") }}>Cancel</Button>
+                                </div>
+                            )}
 
                             {/* Comment form */}
                             {commentItem === item.id && (

@@ -8,6 +8,7 @@ import {
     forwardToMaker,
     submitMakerDecision,
     checkerConfirmDeadline,
+    checkerRejectDeadline,
     submitTesterVerdict,
     addTestingComment,
     pullActionablesToTesting,
@@ -112,6 +113,18 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
         }
     }, [])
 
+    const handleCheckerReject = React.useCallback(async (itemId: string, checkerName: string, reason?: string) => {
+        try {
+            const updated = await checkerRejectDeadline(itemId, { checker_name: checkerName, reason })
+            setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
+            toast.success("Deadline rejected — item sent back to maker")
+            return updated
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Rejection failed")
+            throw err
+        }
+    }, [])
+
     const handleTesterVerdict = React.useCallback(async (
         itemId: string, verdict: "pass" | "reject", testerName: string, reason?: string
     ) => {
@@ -162,7 +175,7 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
     return {
         items, setItems, loading, load,
         handleUpdate, handleAssign, handleForwardToMaker,
-        handleMakerDecision, handleCheckerConfirm, handleTesterVerdict,
+        handleMakerDecision, handleCheckerConfirm, handleCheckerReject, handleTesterVerdict,
         handleAddComment, handlePullActionables,
     }
 }

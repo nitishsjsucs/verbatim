@@ -6,6 +6,7 @@ import { getUserRole } from "@/components/auth/auth-guard"
 import { RoleRedirect } from "@/components/auth/role-redirect"
 import { Sidebar } from "@/components/layout/sidebar"
 import { useTestingItems } from "@/lib/use-testing-items"
+import { fetchTestingMakers, type TesterUser } from "@/lib/testing-api"
 import type { TestingItem } from "@/lib/types"
 import { toast } from "sonner"
 import {
@@ -58,6 +59,11 @@ export default function TesterPage() {
     const [forwardingItem, setForwardingItem] = React.useState<string | null>(null)
     const [forwardMakerName, setForwardMakerName] = React.useState("")
     const [forwardMakerId, setForwardMakerId] = React.useState("")
+    const [makers, setMakers] = React.useState<TesterUser[]>([])
+
+    React.useEffect(() => {
+        fetchTestingMakers().then(r => setMakers(r.makers)).catch(() => {})
+    }, [])
 
     // Verdict form
     const [verdictItem, setVerdictItem] = React.useState<string | null>(null)
@@ -239,18 +245,35 @@ export default function TesterPage() {
                             {forwardingItem === item.id && (
                                 <div className="px-4 py-2.5 bg-muted/20 border-t border-border/20 flex items-end gap-3">
                                     <div className="flex-1">
-                                        <label className="text-[10px] text-muted-foreground mb-1 block">Maker Name</label>
-                                        <input
-                                            value={forwardMakerName}
-                                            onChange={e => setForwardMakerName(e.target.value)}
-                                            placeholder="Enter maker name"
-                                            className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none"
-                                        />
+                                        <label className="text-[10px] text-muted-foreground mb-1 block">Select Maker</label>
+                                        {makers.length > 0 ? (
+                                            <select
+                                                value={forwardMakerId}
+                                                onChange={e => {
+                                                    const selected = makers.find(m => m.id === e.target.value)
+                                                    setForwardMakerId(e.target.value)
+                                                    setForwardMakerName(selected?.name || "")
+                                                }}
+                                                className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none"
+                                            >
+                                                <option value="">-- Select a maker --</option>
+                                                {makers.map(m => (
+                                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                value={forwardMakerName}
+                                                onChange={e => setForwardMakerName(e.target.value)}
+                                                placeholder="Enter maker name"
+                                                className="w-full bg-background text-xs rounded px-2 py-1.5 border border-border/40 focus:border-border focus:outline-none"
+                                            />
+                                        )}
                                     </div>
                                     <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleDoForward(item.id)}>
                                         <Send className="h-3 w-3" />Forward
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setForwardingItem(null)}>Cancel</Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setForwardingItem(null); setForwardMakerName(""); setForwardMakerId("") }}>Cancel</Button>
                                 </div>
                             )}
 
