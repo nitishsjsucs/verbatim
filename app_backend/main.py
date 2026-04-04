@@ -1525,7 +1525,25 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         new_status = body.get("task_status")
         # Check if CO is trying to approve (change to completed or move to next status)
         if new_status == "completed" or (is_team_update and new_status == "completed"):
-            co_comment = body.get("co_comment", "").strip() if isinstance(body.get("co_comment"), str) else ""
+            # Prefer the incoming comment in the request body, but FALLBACK to the
+            # existing saved value on the actionable if the body does not include
+            # a CO comment. This prevents blocking approval when the CO has
+            # already saved their comment in a prior request and the approval
+            # call only sends `task_status: "completed"`.
+            co_comment = ""
+            if isinstance(body.get("co_comment"), str):
+                co_comment = body.get("co_comment", "").strip()
+            else:
+                # If this is a team-scoped update, check the team's workflow first
+                if is_team_update and isinstance(target.team_workflows, dict):
+                    tw = target.team_workflows.get(for_team, {})
+                    if isinstance(tw.get("co_comment"), str) and tw.get("co_comment", "").strip():
+                        co_comment = tw.get("co_comment", "").strip()
+                # Fallback to the top-level stored value
+                if not co_comment:
+                    stored = getattr(target, "co_comment", "")
+                    co_comment = stored.strip() if isinstance(stored, str) else ""
+
             if not co_comment:
                 raise HTTPException(status_code=400, detail="CO Comment is required before approval. Please fill the CO Comment field.")
 

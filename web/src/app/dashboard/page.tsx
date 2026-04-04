@@ -398,33 +398,36 @@ export default function DashboardPage() {
     }, [handleUpdate])
 
     const handleApproveTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string) => {
-        // Validate co_comment is filled before approval
-        if (!item.co_comment?.trim()) {
-            toast.error("Cannot approve — CO Comment is required. Please save your comment first.")
-            return
-        }
-
-        // Multi-team approval: approving any team marks ALL teams as approved
+        // Perform approval; backend will validate CO comment (and will accept
+        // if a comment was previously saved). Rely on server-side validation
+        // rather than a strict client-side check to avoid false negatives when
+        // client state may be briefly stale.
         const assignedTeams = item.assigned_teams || [item.workstream]
         const completionDate = new Date().toISOString()
-        
-        // Update all teams to completed status
-        await Promise.all(assignedTeams.map(t => 
-            handleUpdate(docId, item.id, {
+        try {
+            // Update all teams to completed status
+            await Promise.all(assignedTeams.map(t => 
+                handleUpdate(docId, item.id, {
+                    task_status: "completed",
+                    completion_date: completionDate,
+                }, t)
+            ))
+
+            // Also update the main item status to completed
+            await handleUpdate(docId, item.id, {
                 task_status: "completed",
                 completion_date: completionDate,
-            }, t)
-        ))
-        
-        // Also update the main item status to completed
-        await handleUpdate(docId, item.id, {
-            task_status: "completed",
-            completion_date: completionDate,
-        })
-        
-        toast.success(`All teams approved (triggered by ${team})`)
-        // Fire-and-forget notification
-        notifyCAGApproved(item.action || "Actionable", team, docId, item.actionable_id || item.id)
+            })
+
+            toast.success(`All teams approved (triggered by ${team})`)
+            // Fire-and-forget notification
+            notifyCAGApproved(item.action || "Actionable", team, docId, item.actionable_id || item.id)
+        } catch (err) {
+            // `handleUpdate` already toasts the error message for API failures,
+            // but surface a friendly fallback if needed.
+            const msg = err instanceof Error ? err.message : "Approval failed"
+            toast.error(msg || "Approval failed")
+        }
     }, [handleUpdate])
 
     const handleRejectTeam = React.useCallback(async (docId: string, item: ActionableItem, team: string, reason: string) => {

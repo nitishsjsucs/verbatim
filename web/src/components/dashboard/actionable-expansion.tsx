@@ -229,8 +229,7 @@ export function ActionableExpansion({
         setDraftNewProduct(item.new_product || "No")
         setDraftProductLiveDate(item.product_live_date || "")
         setDraftImpactDD(item.impact_dropdown || {} as RiskSubDropdown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [item.id])
+    }, [item.id, item.co_comment, item.theme, item.tranche3, item.new_product, item.product_live_date, item.impact_dropdown])
 
     const handleSaveCoComment = React.useCallback(async () => {
         setSavingComment(true)
