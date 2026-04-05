@@ -127,6 +127,7 @@ export interface RiskEngineConfig {
     param6_options: ParameterOption[]
     param7_options: ParameterOption[]
     final_interpretation: FinalInterpretationBand[]
+    likelihood_owner_team: string  // Bank-level default: which team owns document likelihood
 }
 
 export const DEFAULT_RISK_ENGINE_CONFIG: RiskEngineConfig = {
@@ -139,6 +140,7 @@ export const DEFAULT_RISK_ENGINE_CONFIG: RiskEngineConfig = {
     param6_options: DEFAULT_PARAM6_OPTIONS,
     param7_options: DEFAULT_PARAM7_OPTIONS,
     final_interpretation: DEFAULT_FINAL_INTERPRETATION,
+    likelihood_owner_team: "",
 }
 
 // ─── Saved parameter selections (persisted per-assessment) ───────────────────
@@ -183,16 +185,23 @@ export interface ParameterRow {
 
 // ─── Pure calculation functions ──────────────────────────────────────────────
 
-/** Compute residual risk score for a single actionable (client-side recomputation). */
-export function computeResidualScore(item: ActionableItem): number | null {
+/** Compute residual risk score for a single actionable (client-side recomputation).
+ *  If documentLikelihoodScore is provided, it overrides the per-actionable likelihood. */
+export function computeResidualScore(item: ActionableItem, documentLikelihoodScore?: number): number | null {
     const safeScore = (d: { score?: number } | null | undefined) =>
         d && typeof d.score === "number" ? d.score : 0
 
-    const likScore = Math.max(
-        safeScore(item.likelihood_business_volume),
-        safeScore(item.likelihood_products_processes),
-        safeScore(item.likelihood_compliance_violations),
-    )
+    // Use document-level likelihood override when provided
+    let likScore: number;
+    if (documentLikelihoodScore != null && documentLikelihoodScore > 0) {
+        likScore = documentLikelihoodScore
+    } else {
+        likScore = Math.max(
+            safeScore(item.likelihood_business_volume),
+            safeScore(item.likelihood_products_processes),
+            safeScore(item.likelihood_compliance_violations),
+        )
+    }
     const impScore = safeScore(item.impact_dropdown) ** 2
     const monS = safeScore(item.control_monitoring)
     const effS = safeScore(item.control_effectiveness)

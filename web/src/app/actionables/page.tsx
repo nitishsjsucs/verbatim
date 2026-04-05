@@ -9,6 +9,7 @@ import {
     createManualActionable,
     deleteActionable as deleteActionableApi,
     API_BASE_URL,
+    setDocumentLikelihood,
 } from "@/lib/api"
 import {
     ActionableItem,
@@ -91,6 +92,14 @@ interface DocActionables {
     doc_id: string
     doc_name: string
     actionables: ActionableItem[]
+    document_likelihood_score?: number
+    document_likelihood_breakdown?: {
+        business_volume?: RiskSubDropdown
+        products_processes?: RiskSubDropdown
+        compliance_violations?: RiskSubDropdown
+    }
+    document_likelihood_updated_at?: string
+    document_likelihood_updated_by?: string
 }
 
 // --- Editable Field Component ---
@@ -194,7 +203,7 @@ function formatDateDMY(isoDate: string): string {
     return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
-function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, docDefaultTheme, docDefaultNewProduct, docDefaultLiveDate, callerRole, callerAccountId }: {
+function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClick, isSelected, onSelect, isChecked, onCheck, docDefaultDeadline, docDefaultDeadlineTime, docDefaultTheme, docDefaultNewProduct, docDefaultLiveDate, callerRole, callerAccountId, docLikelihoodScore }: {
     item: ActionableItem
     docId: string
     docName: string
@@ -212,6 +221,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     docDefaultLiveDate: string
     callerRole: string
     callerAccountId: string
+    docLikelihoodScore?: number
 }) {
     const isComplianceOfficer = callerRole === "compliance_officer"
     const { teamNames, leafTeamNames } = useTeams()
@@ -418,9 +428,12 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                     updates.overall_impact_score = impactScore
                 }
             } else {
-                if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
-                if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
-                if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+                // Skip per-actionable likelihood when document-level likelihood is set
+                if (!(docLikelihoodScore && docLikelihoodScore > 0)) {
+                    if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
+                    if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
+                    if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+                }
                 if (subDiffers(draftImpactDD, item.impact_dropdown)) updates.impact_dropdown = draftImpactDD
                 if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
                 if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
@@ -1158,31 +1171,35 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     )}
                                 </div>
 
-                                {/* Likelihood — Member editable, hidden for Compliance */}
+                                {/* Likelihood — Member editable (unless doc-level set), hidden for Compliance */}
                                 {!isComplianceOfficer && (
                                     <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                                         <div className="flex items-center justify-between mb-1.5">
                                             <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
-                                            <span className="text-[10px] font-mono text-blue-400/60">Overall: {likelihoodScore} (MAX of 3)</span>
+                                            {(docLikelihoodScore && docLikelihoodScore > 0) ? (
+                                                <span className="text-[10px] text-blue-400/60 italic">Set at document level (Score: {docLikelihoodScore})</span>
+                                            ) : (
+                                                <span className="text-[10px] font-mono text-blue-400/60">Overall: {likelihoodScore} (MAX of 3)</span>
+                                            )}
                                         </div>
                                         <div className="grid grid-cols-3 gap-2">
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
-                                                <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                                <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} disabled={!!(docLikelihoodScore && docLikelihoodScore > 0)} className={cn("w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground", docLikelihoodScore && docLikelihoodScore > 0 && "opacity-60 cursor-not-allowed")}>
                                                     <option value="">— Select volume change —</option>
                                                     {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
-                                                <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                                <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} disabled={!!(docLikelihoodScore && docLikelihoodScore > 0)} className={cn("w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground", docLikelihoodScore && docLikelihoodScore > 0 && "opacity-60 cursor-not-allowed")}>
                                                     <option value="">— Select rollouts —</option>
                                                     {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
-                                                <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
+                                                <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} disabled={!!(docLikelihoodScore && docLikelihoodScore > 0)} className={cn("w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground", docLikelihoodScore && docLikelihoodScore > 0 && "opacity-60 cursor-not-allowed")}>
                                                     <option value="">— Select violation history —</option>
                                                     {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                                                 </select>
@@ -1803,6 +1820,47 @@ export default function ActionablesPage() {
     const [docFilterSearch, setDocFilterSearch] = React.useState("")
     const [searchQuery, setSearchQuery] = React.useState("")
 
+    // Document-level likelihood state
+    const isLikelihoodSetter = !["compliance_officer"].includes(callerRole) || callerRole === "admin"
+    const { getOptions: getLikOpts } = useDropdownConfig()
+    const [docLikSaving, setDocLikSaving] = React.useState<Set<string>>(new Set())
+    const [docLikDrafts, setDocLikDrafts] = React.useState<Record<string, { bv: RiskSubDropdown; pp: RiskSubDropdown; cv: RiskSubDropdown }>>({})
+    const getDocLikDraft = React.useCallback((docId: string, doc: DocActionables) => {
+        if (docLikDrafts[docId]) return docLikDrafts[docId]
+        return {
+            bv: doc.document_likelihood_breakdown?.business_volume || {} as RiskSubDropdown,
+            pp: doc.document_likelihood_breakdown?.products_processes || {} as RiskSubDropdown,
+            cv: doc.document_likelihood_breakdown?.compliance_violations || {} as RiskSubDropdown,
+        }
+    }, [docLikDrafts])
+    const setDocLikDraft = React.useCallback((docId: string, field: "bv" | "pp" | "cv", val: RiskSubDropdown) => {
+        setDocLikDrafts(prev => {
+            const current = prev[docId] || { bv: {} as RiskSubDropdown, pp: {} as RiskSubDropdown, cv: {} as RiskSubDropdown }
+            return { ...prev, [docId]: { ...current, [field]: val } }
+        })
+    }, [])
+    const handleSaveDocLikelihood = React.useCallback(async (docId: string) => {
+        const docData = allDocs.find(d => d.doc_id === docId)
+        const draft = getDocLikDraft(docId, docData || { doc_id: docId, doc_name: "", actionables: [] })
+        setDocLikSaving(prev => { const n = new Set(prev); n.add(docId); return n })
+        try {
+            await setDocumentLikelihood(docId, {
+                breakdown: { business_volume: draft.bv, products_processes: draft.pp, compliance_violations: draft.cv },
+                caller_role: callerRole,
+                caller_team: "",
+                caller_name: (session?.user as Record<string, unknown>)?.name as string || "",
+                auto_propagate: true,
+            })
+            toast.success("Document likelihood saved & propagated")
+            await loadAllRef.current?.()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to save document likelihood")
+        } finally {
+            setDocLikSaving(prev => { const n = new Set(prev); n.delete(docId); return n })
+        }
+    }, [docLikDrafts, callerRole, session, allDocs, getDocLikDraft])
+    const loadAllRef = React.useRef<(() => Promise<void>) | null>(null)
+
     // PDF state
     const [pdfDocId, setPdfDocId] = React.useState<string | null>(null)
     const [pdfDocName, setPdfDocName] = React.useState<string>("")
@@ -1883,6 +1941,10 @@ export default function ActionablesPage() {
                     doc_id: r.doc_id,
                     doc_name: r.doc_name || r.doc_id,
                     actionables: r.actionables,
+                    document_likelihood_score: r.document_likelihood_score,
+                    document_likelihood_breakdown: r.document_likelihood_breakdown,
+                    document_likelihood_updated_at: r.document_likelihood_updated_at,
+                    document_likelihood_updated_by: r.document_likelihood_updated_by,
                 }))
             setAllDocs(docs)
 
@@ -1915,6 +1977,7 @@ export default function ActionablesPage() {
     }, [pdfDocId])
 
     React.useEffect(() => { loadAll() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    React.useEffect(() => { loadAllRef.current = loadAll }, [loadAll])
 
     const handleUpdate = React.useCallback(async (docId: string, itemId: string, updates: Record<string, unknown>) => {
         try {
@@ -2313,6 +2376,15 @@ export default function ActionablesPage() {
                                                 const isCollapsed = collapsedDocs.has(docId)
                                                 const docKeys = pendingEntries.map(e => `${docId}-${e.item.id}`)
                                                 const allDocChecked = docKeys.length > 0 && docKeys.every(k => checkedItems.has(k))
+                                                const docData = allDocs.find(d => d.doc_id === docId)
+                                                const docLikScore = docData?.document_likelihood_score || 0
+                                                const likDraft = getDocLikDraft(docId, docData || { doc_id: docId, doc_name: docName, actionables: [] })
+                                                const bvScore = typeof likDraft.bv?.score === "number" ? likDraft.bv.score : 0
+                                                const ppScore = typeof likDraft.pp?.score === "number" ? likDraft.pp.score : 0
+                                                const cvScore = typeof likDraft.cv?.score === "number" ? likDraft.cv.score : 0
+                                                const draftDocLikScore = Math.max(bvScore, ppScore, cvScore)
+                                                const getLikOptions = (key: string) => { const o = getLikOpts(key); return o.length ? o : (FALLBACK_DROPDOWN_OPTIONS[key] || []) }
+                                                const pickLikSD = (key: string, label: string): RiskSubDropdown => { const o = getLikOptions(key).find(x => x.label === label); return o ? { label: o.label, score: o.value } : ({} as RiskSubDropdown) }
                                                 return (
                                                     <div key={docId} className="border border-border/30 rounded-lg">
                                                         <div className="px-3 py-1.5 bg-muted/40 border-b border-border/30 text-[10px] font-semibold text-muted-foreground flex items-center gap-2 hover:bg-muted/50 transition-colors">
@@ -2402,6 +2474,37 @@ export default function ActionablesPage() {
                                                             )}
                                                         </div>
                                                         {!isCollapsed && (
+                                                        <div>
+                                                            {isLikelihoodSetter && (
+                                                                <div className="px-3 py-2 border-b border-blue-400/20 bg-blue-950/10 flex items-center gap-2 flex-wrap">
+                                                                    <span className="text-[9px] font-semibold text-blue-400/80 uppercase tracking-wider shrink-0">Doc Likelihood:</span>
+                                                                    {docLikScore > 0 && <span className="text-[9px] font-mono text-blue-400/70 shrink-0">Current: {docLikScore}</span>}
+                                                                    <select value={likDraft.bv?.label || ""} onChange={e => setDocLikDraft(docId, "bv", pickLikSD("likelihood_business_volume", e.target.value))} className="bg-background text-[10px] rounded px-1.5 py-0.5 border border-blue-400/30 focus:border-blue-400 focus:outline-none">
+                                                                        <option value="">— Business Vol —</option>
+                                                                        {getLikOptions("likelihood_business_volume").map(o => <option key={o.value} value={o.label}>{o.label}</option>)}
+                                                                    </select>
+                                                                    <select value={likDraft.pp?.label || ""} onChange={e => setDocLikDraft(docId, "pp", pickLikSD("likelihood_products_processes", e.target.value))} className="bg-background text-[10px] rounded px-1.5 py-0.5 border border-blue-400/30 focus:border-blue-400 focus:outline-none">
+                                                                        <option value="">— Products —</option>
+                                                                        {getLikOptions("likelihood_products_processes").map(o => <option key={o.value} value={o.label}>{o.label}</option>)}
+                                                                    </select>
+                                                                    <select value={likDraft.cv?.label || ""} onChange={e => setDocLikDraft(docId, "cv", pickLikSD("likelihood_compliance_violations", e.target.value))} className="bg-background text-[10px] rounded px-1.5 py-0.5 border border-blue-400/30 focus:border-blue-400 focus:outline-none">
+                                                                        <option value="">— Violations —</option>
+                                                                        {getLikOptions("likelihood_compliance_violations").map(o => <option key={o.value} value={o.label}>{o.label}</option>)}
+                                                                    </select>
+                                                                    {draftDocLikScore > 0 && <span className="text-[9px] font-mono text-blue-300/70">→ Score: {draftDocLikScore}</span>}
+                                                                    <button
+                                                                        onClick={() => handleSaveDocLikelihood(docId)}
+                                                                        disabled={docLikSaving.has(docId) || draftDocLikScore === 0}
+                                                                        className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-400/30 transition-colors disabled:opacity-50"
+                                                                    >
+                                                                        {docLikSaving.has(docId) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                                                        Set for All
+                                                                    </button>
+                                                                    {docData?.document_likelihood_updated_by && (
+                                                                        <span className="text-[9px] text-muted-foreground/40 italic">Last set by {docData.document_likelihood_updated_by}</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         <div className="p-2 space-y-2">
                                                             {pendingEntries.map(({ item }) => (
                                                                 <ActionableCard
@@ -2426,8 +2529,10 @@ export default function ActionablesPage() {
                                                                     docDefaultLiveDate={docLiveDateDefaults[docId] || ""}
                                                                     callerRole={callerRole}
                                                                     callerAccountId={callerAccountId}
+                                                                    docLikelihoodScore={docLikScore}
                                                                 />
                                                             ))}
+                                                        </div>
                                                         </div>
                                                         )}
                                                     </div>
@@ -2506,7 +2611,7 @@ export default function ActionablesPage() {
                                                                 {!isCollapsed && (
                                                                     <div className="p-2 space-y-2">
                                                                         {rejEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} docDefaultNewProduct={docNewProductDefaults[dId] || ""} docDefaultLiveDate={docLiveDateDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
+                                                                            <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={rejCheckedItems.has(`${dId}-${item.id}`)} onCheck={() => toggleRejChecked(`${dId}-${item.id}`)} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} docDefaultNewProduct={docNewProductDefaults[dId] || ""} docDefaultLiveDate={docLiveDateDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} docLikelihoodScore={allDocs.find(d => d.doc_id === dId)?.document_likelihood_score} />
                                                                         ))}
                                                                     </div>
                                                                 )}
@@ -2546,7 +2651,7 @@ export default function ActionablesPage() {
                                                                     <div className="h-px bg-border/30 flex-1" />
                                                                 </div>
                                                                 {!isCollapsed && approvedEntries.map(({ item, docId: dId, docName: dName }) => (
-                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} docDefaultNewProduct={docNewProductDefaults[dId] || ""} docDefaultLiveDate={docLiveDateDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} />
+                                                                    <ActionableCard key={`${dId}-${item.id}`} item={item} docId={dId} docName={dName} onUpdate={handleUpdate} onDelete={handleDelete} onSourceClick={handleSourceClick} isSelected={selectedItemKey === `${dId}-${item.id}`} onSelect={() => { setSelectedItemKey(`${dId}-${item.id}`); if (pdfDocId !== dId) { setPdfDocId(dId); setPdfDocName(dName) } }} isChecked={false} onCheck={() => {}} docDefaultDeadline={docDeadlineDefaults[dId]?.date || ""} docDefaultDeadlineTime={docDeadlineDefaults[dId]?.time || "23:59"} docDefaultTheme={docThemeDefaults[dId] || ""} docDefaultNewProduct={docNewProductDefaults[dId] || ""} docDefaultLiveDate={docLiveDateDefaults[dId] || ""} callerRole={callerRole} callerAccountId={callerAccountId} docLikelihoodScore={allDocs.find(d => d.doc_id === dId)?.document_likelihood_score} />
                                                                 ))}
                                                             </div>
                                                         )

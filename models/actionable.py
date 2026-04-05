@@ -561,6 +561,13 @@ class ActionablesResult:
     circular_effective_date: str = ""  # ISO date — circular effective date
     regulator: str = ""  # Regulator name
     global_theme: str = ""  # Document-level default theme (Feature 1)
+    # ── Document-level likelihood (single source of truth) ──
+    document_likelihood_breakdown: dict = field(default_factory=dict)  # {business_volume: {label,score}, products_processes: {label,score}, compliance_violations: {label,score}}
+    document_likelihood_score: float = 0  # MAX of 3 breakdown sub-scores
+    document_likelihood_owner_team: str = ""  # Per-doc override of bank-level owner team (empty = use global)
+    document_likelihood_updated_at: str = ""  # ISO timestamp
+    document_likelihood_updated_by: str = ""  # Username/ID of last updater
+    document_likelihood_updated_by_role: str = ""  # Role of last updater
     actionables: list[ActionableItem] = field(default_factory=list)
     total_extracted: int = 0
     total_validated: int = 0
@@ -606,6 +613,12 @@ class ActionablesResult:
             "circular_effective_date": self.circular_effective_date,
             "regulator": self.regulator,
             "global_theme": self.global_theme,
+            "document_likelihood_breakdown": self.document_likelihood_breakdown,
+            "document_likelihood_score": self.document_likelihood_score,
+            "document_likelihood_owner_team": self.document_likelihood_owner_team,
+            "document_likelihood_updated_at": self.document_likelihood_updated_at,
+            "document_likelihood_updated_by": self.document_likelihood_updated_by,
+            "document_likelihood_updated_by_role": self.document_likelihood_updated_by_role,
             "actionables": [a.to_dict() for a in self.actionables],
             "total_extracted": self.total_extracted,
             "total_validated": self.total_validated,
@@ -629,6 +642,12 @@ class ActionablesResult:
             circular_effective_date=data.get("circular_effective_date", ""),
             regulator=data.get("regulator", ""),
             global_theme=data.get("global_theme", ""),
+            document_likelihood_breakdown=data.get("document_likelihood_breakdown", {}),
+            document_likelihood_score=data.get("document_likelihood_score", 0),
+            document_likelihood_owner_team=data.get("document_likelihood_owner_team", ""),
+            document_likelihood_updated_at=data.get("document_likelihood_updated_at", ""),
+            document_likelihood_updated_by=data.get("document_likelihood_updated_by", ""),
+            document_likelihood_updated_by_role=data.get("document_likelihood_updated_by_role", ""),
             actionables=[
                 ActionableItem.from_dict(a) for a in data.get("actionables", [])
             ],

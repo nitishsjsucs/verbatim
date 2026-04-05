@@ -12,6 +12,7 @@ import {
 } from "@/lib/risk-engine"
 import { cn } from "@/lib/utils"
 import { Loader2, Save, RotateCcw, Plus, Trash2 } from "lucide-react"
+import { useTeams } from "@/lib/use-teams"
 
 export function RiskEngineConfigManager() {
   const [config, setConfig] = React.useState<RiskEngineConfig>(DEFAULT_RISK_ENGINE_CONFIG)
@@ -19,6 +20,7 @@ export function RiskEngineConfigManager() {
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState("")
   const [success, setSuccess] = React.useState("")
+  const { teamNames } = useTeams()
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -104,6 +106,20 @@ export function RiskEngineConfigManager() {
 
       {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-1.5">{error}</p>}
       {success && <p className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-3 py-1.5">{success}</p>}
+
+      {/* ── Likelihood Owner Team (CAG config) ── */}
+      <Section title="Likelihood Owner Team" subtitle="Bank-level default: which team is authorised to set document-level likelihood. Maker, Team Lead, and Checker from this team may edit likelihood.">
+        <select
+          value={config.likelihood_owner_team || ""}
+          onChange={e => setConfig(prev => ({ ...prev, likelihood_owner_team: e.target.value }))}
+          className="w-full max-w-xs text-xs bg-background border border-border/30 rounded px-2 py-1.5 text-foreground/80"
+        >
+          <option value="">— No team restriction (any allowed role) —</option>
+          {teamNames.map(tn => (
+            <option key={tn} value={tn}>{tn}</option>
+          ))}
+        </select>
+      </Section>
 
       {/* ── Theme Risk Thresholds ── */}
       <Section title="Theme Risk Thresholds" subtitle="Classification bands for theme average residual risk scores">

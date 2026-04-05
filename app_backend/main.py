@@ -1674,7 +1674,7 @@ def _safe_score(d: Optional[dict]) -> float:
         return 0
 
 
-def _recompute_risk_scores(target) -> None:
+def _recompute_risk_scores(target, document_likelihood_score: float | None = None) -> None:
     """Recompute all derived risk scores from sub-dropdown selections.
 
     OVERALL LIKELIHOOD SCORE = MAX(businessVolume, productProcess, complianceViolation)
@@ -1683,15 +1683,23 @@ def _recompute_risk_scores(target) -> None:
     OVERALL CONTROL SCORE    = (monitoringMechanism + controlEffectiveness) / 2
     OVERALL RESIDUAL SCORE   = inherentRiskScore × overallControlScore
 
+    If *document_likelihood_score* is provided (not None), it overrides the
+    actionable-level likelihood calculation — this is used when propagating
+    a document-level likelihood change to all actionables in the document.
+
     The residual_risk_label is resolved via the admin-configurable
     residual_risk_matrix collection. If no matrix match, falls back to
     a simple threshold classification.
     """
-    # Likelihood = MAX of 3 independent sub-dropdown scores
-    bv = _safe_score(target.likelihood_business_volume)
-    pp = _safe_score(target.likelihood_products_processes)
-    cv = _safe_score(target.likelihood_compliance_violations)
-    ls = max(bv, pp, cv)
+    # Likelihood — use document-level override when provided
+    if document_likelihood_score is not None:
+        ls = float(document_likelihood_score)
+    else:
+        # MAX of 3 independent sub-dropdown scores
+        bv = _safe_score(target.likelihood_business_volume)
+        pp = _safe_score(target.likelihood_products_processes)
+        cv = _safe_score(target.likelihood_compliance_violations)
+        ls = max(bv, pp, cv)
     target.likelihood_score = ls
     target.overall_likelihood_score = int(ls)
 
@@ -4720,6 +4728,226 @@ def delete_risk_matrix_entry(entry_id: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Document-Level Likelihood — single source of truth for likelihood per document
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Allowed roles that can set document-level likelihood (if they belong to the owner team)
+_LIKELIHOOD_SETTER_ROLES = {"testing_maker", "team_lead", "testing_checker", "compliance_officer", "admin"}
+
+
+def _get_likelihood_owner_team() -> str:
+    """Return the bank-level Likelihood Owner Team from risk engine config, or '' if unset."""
+    from utils.mongo import get_db
+    db = get_db()
+    doc = db[RISK_ENGINE_CONFIG_COLLECTION].find_one({"key": "default"})
+    if doc:
+        return doc.get("likelihood_owner_team", "")
+    return ""
+
+
+def _propagate_document_likelihood(doc_id: str, doc_likelihood_score: float,
+                                    breakdown: dict | None = None) -> int:
+    """Propagate document-level likelihood to ALL actionables in a document.
+
+    Updates every actionable regardless of status (including completed/archived).
+    Recomputes all derived scores and persists the updated ActionablesResult.
+    Returns the number of actionables updated.
+    """
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        return 0
+
+    # Update the document-level fields
+    result.document_likelihood_score = doc_likelihood_score
+    if breakdown:
+        result.document_likelihood_breakdown = breakdown
+
+    count = 0
+    for actionable in result.actionables:
+        # Override likelihood sub-dropdowns from document-level breakdown if provided
+        if breakdown:
+            if "business_volume" in breakdown:
+                actionable.likelihood_business_volume = breakdown["business_volume"]
+            if "products_processes" in breakdown:
+                actionable.likelihood_products_processes = breakdown["products_processes"]
+            if "compliance_violations" in breakdown:
+                actionable.likelihood_compliance_violations = breakdown["compliance_violations"]
+        # Recompute all derived scores using document-level override
+        _recompute_risk_scores(actionable, document_likelihood_score=doc_likelihood_score)
+        count += 1
+
+    result.compute_stats()
+    store.save(result)
+    return count
+
+
+@app.put("/documents/{doc_id}/likelihood")
+def set_document_likelihood(doc_id: str, body: dict = Body(...)):
+    """Set document-level likelihood (single source of truth).
+
+    Body:
+        breakdown: {business_volume: {label, score}, products_processes: {label, score},
+                     compliance_violations: {label, score}}  — structured sub-scores
+        caller_role: str  — role of the caller
+        caller_team: str  — team of the caller
+        caller_name: str  — display name of the caller
+        auto_propagate: bool (default true) — whether to immediately propagate to actionables
+
+    RBAC: only Maker, Team Lead, or Checker in the configured Likelihood Owner Team
+    (or admin/compliance_officer) may call this.
+    """
+    from datetime import datetime, timezone
+
+    caller_role = body.get("caller_role", "")
+    caller_team = body.get("caller_team", "")
+    caller_name = body.get("caller_name", "")
+    breakdown = body.get("breakdown", {})
+    auto_propagate = body.get("auto_propagate", True)
+
+    # ── RBAC check ──
+    if caller_role not in _LIKELIHOOD_SETTER_ROLES:
+        raise HTTPException(status_code=403, detail=f"Role '{caller_role}' is not allowed to set document likelihood.")
+
+    # Check team membership (skip for admin/compliance_officer)
+    if caller_role not in ("compliance_officer", "admin"):
+        # Load owner team from bank-level config and per-doc override
+        store = get_actionable_store()
+        result = store.load(doc_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Actionables not found for this document")
+        owner_team = result.document_likelihood_owner_team or _get_likelihood_owner_team()
+        if owner_team and caller_team != owner_team:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Only members of '{owner_team}' team can set document likelihood. Your team: '{caller_team}'."
+            )
+    else:
+        store = get_actionable_store()
+        result = store.load(doc_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    # Compute overall document likelihood score from breakdown
+    bv_score = _safe_score(breakdown.get("business_volume"))
+    pp_score = _safe_score(breakdown.get("products_processes"))
+    cv_score = _safe_score(breakdown.get("compliance_violations"))
+    doc_lik_score = max(bv_score, pp_score, cv_score)
+
+    # Persist document-level fields
+    now = datetime.now(timezone.utc).isoformat()
+    result.document_likelihood_breakdown = breakdown
+    result.document_likelihood_score = doc_lik_score
+    result.document_likelihood_updated_at = now
+    result.document_likelihood_updated_by = caller_name
+    result.document_likelihood_updated_by_role = caller_role
+
+    # Propagate to all actionables if requested
+    propagated_count = 0
+    if auto_propagate:
+        for actionable in result.actionables:
+            if "business_volume" in breakdown:
+                actionable.likelihood_business_volume = breakdown["business_volume"]
+            if "products_processes" in breakdown:
+                actionable.likelihood_products_processes = breakdown["products_processes"]
+            if "compliance_violations" in breakdown:
+                actionable.likelihood_compliance_violations = breakdown["compliance_violations"]
+            _recompute_risk_scores(actionable, document_likelihood_score=doc_lik_score)
+            propagated_count += 1
+
+    result.compute_stats()
+    store.save(result)
+
+    return {
+        "doc_id": doc_id,
+        "document_likelihood_score": doc_lik_score,
+        "document_likelihood_breakdown": breakdown,
+        "updated_at": now,
+        "updated_by": caller_name,
+        "propagated_count": propagated_count,
+    }
+
+
+@app.post("/documents/{doc_id}/likelihood/propagate")
+def propagate_document_likelihood(doc_id: str, body: dict = Body(default={})):
+    """Force re-propagation of existing document-level likelihood to all actionables.
+
+    This recalculates every actionable's derived risk scores using the
+    document's stored likelihood_score, regardless of actionable status.
+    Useful after config changes (thresholds, control matrix, etc.).
+
+    Body (optional):
+        caller_role: str — for RBAC validation (same rules as set endpoint)
+        caller_team: str
+    """
+    caller_role = body.get("caller_role", "compliance_officer")
+
+    if caller_role not in _LIKELIHOOD_SETTER_ROLES:
+        raise HTTPException(status_code=403, detail=f"Role '{caller_role}' is not allowed to propagate likelihood.")
+
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    doc_lik_score = result.document_likelihood_score
+    breakdown = result.document_likelihood_breakdown
+
+    if not doc_lik_score and not breakdown:
+        raise HTTPException(status_code=400, detail="No document-level likelihood set for this document. Use PUT /documents/{doc_id}/likelihood first.")
+
+    count = _propagate_document_likelihood(doc_id, doc_lik_score, breakdown)
+
+    return {
+        "doc_id": doc_id,
+        "document_likelihood_score": doc_lik_score,
+        "propagated_count": count,
+    }
+
+
+@app.get("/documents/{doc_id}/likelihood")
+def get_document_likelihood(doc_id: str):
+    """Return the document-level likelihood metadata for a document."""
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+    return {
+        "doc_id": doc_id,
+        "document_likelihood_score": result.document_likelihood_score,
+        "document_likelihood_breakdown": result.document_likelihood_breakdown,
+        "document_likelihood_owner_team": result.document_likelihood_owner_team or _get_likelihood_owner_team(),
+        "updated_at": result.document_likelihood_updated_at,
+        "updated_by": result.document_likelihood_updated_by,
+        "updated_by_role": result.document_likelihood_updated_by_role,
+    }
+
+
+@app.put("/documents/{doc_id}/likelihood/owner-team")
+def set_document_likelihood_owner_team(doc_id: str, body: dict = Body(...)):
+    """Set a per-document override for the Likelihood Owner Team.
+
+    Body:
+        owner_team: str  — team name (empty string to clear override and use global default)
+        caller_role: str — must be compliance_officer or admin
+    """
+    caller_role = body.get("caller_role", "")
+    if caller_role not in ("compliance_officer", "admin"):
+        raise HTTPException(status_code=403, detail="Only compliance_officer or admin can set per-document owner team override.")
+
+    owner_team = body.get("owner_team", "")
+    store = get_actionable_store()
+    result = store.load(doc_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Actionables not found for this document")
+
+    result.document_likelihood_owner_team = owner_team
+    store.save(result)
+
+    return {"doc_id": doc_id, "document_likelihood_owner_team": owner_team}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Risk Engine Config — admin-configurable thresholds, weights, parameter options
 # Collection: risk_engine_config  (singleton document, key="default")
 # ─────────────────────────────────────────────────────────────────────────────
@@ -5393,7 +5621,11 @@ def get_testing_collection():
     """Get the MongoDB collection for testing items."""
     from utils.mongo import get_db
     db = get_db()
-    return db["testing_items"]
+    col = db["testing_items"]
+    col.create_index("status")
+    col.create_index("testing_deadline")
+    col.create_index("maker_deadline")
+    return col
 
 def get_testing_windows_collection():
     """Get the MongoDB collection for ad-hoc testing windows."""

@@ -1099,6 +1099,69 @@ export async function migrateRiskFields(): Promise<{ status: string; total_actio
     return res.json();
 }
 
+// ─── Document-Level Likelihood API ───────────────────────────────────────────
+
+export async function getDocumentLikelihood(docId: string): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/documents/${docId}/likelihood`);
+    if (!res.ok) throw new Error('Failed to fetch document likelihood');
+    return res.json();
+}
+
+export async function setDocumentLikelihood(
+    docId: string,
+    body: {
+        breakdown: Record<string, { label: string; score: number }>;
+        caller_role: string;
+        caller_team: string;
+        caller_name: string;
+        auto_propagate?: boolean;
+    },
+): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/documents/${docId}/likelihood`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to set document likelihood' }));
+        throw new Error(err.detail || 'Failed to set document likelihood');
+    }
+    return res.json();
+}
+
+export async function propagateDocumentLikelihood(
+    docId: string,
+    body?: { caller_role?: string; caller_team?: string },
+): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/documents/${docId}/likelihood/propagate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to propagate likelihood' }));
+        throw new Error(err.detail || 'Failed to propagate likelihood');
+    }
+    return res.json();
+}
+
+export async function setDocumentLikelihoodOwnerTeam(
+    docId: string,
+    ownerTeam: string,
+    callerRole: string,
+): Promise<Record<string, unknown>> {
+    const res = await apiFetch(`/documents/${docId}/likelihood/owner-team`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_team: ownerTeam, caller_role: callerRole }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to set owner team' }));
+        throw new Error(err.detail || 'Failed to set owner team');
+    }
+    return res.json();
+}
+
 // ─── Risk Engine Config API ──────────────────────────────────────────────────
 
 export async function fetchRiskEngineConfig(): Promise<Record<string, unknown>> {

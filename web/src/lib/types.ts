@@ -480,6 +480,17 @@ export interface ActionablesResult {
     circular_effective_date?: string;   // ISO date — document-level
     regulator?: string;                 // Regulator — document-level
     global_theme?: string;              // Document-level default theme (Feature 1)
+    // Document-level likelihood (single source of truth)
+    document_likelihood_breakdown?: {
+        business_volume?: RiskSubDropdown;
+        products_processes?: RiskSubDropdown;
+        compliance_violations?: RiskSubDropdown;
+    };
+    document_likelihood_score?: number;
+    document_likelihood_owner_team?: string;
+    document_likelihood_updated_at?: string;
+    document_likelihood_updated_by?: string;
+    document_likelihood_updated_by_role?: string;
     actionables: ActionableItem[];
     total_extracted: number;
     total_validated: number;
