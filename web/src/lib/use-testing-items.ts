@@ -11,7 +11,6 @@ import {
     checkerRejectDeadline,
     submitTesterVerdict,
     addTestingComment,
-    pullActionablesToTesting,
 } from "./testing-api"
 
 interface UseTestingItemsOptions {
@@ -154,28 +153,10 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
         }
     }, [])
 
-    const handlePullActionables = React.useCallback(async (opts?: {
-        actionableIds?: string[]; section?: string; theme?: string
-    }) => {
-        try {
-            const result = await pullActionablesToTesting(opts)
-            if (result.pulled > 0) {
-                setItems(prev => [...prev, ...result.items])
-                toast.success(`Pulled ${result.pulled} actionable(s) into testing`)
-            } else {
-                toast.info("No new completed actionables to pull")
-            }
-            return result
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Pull failed")
-            throw err
-        }
-    }, [])
-
     return {
         items, setItems, loading, load,
         handleUpdate, handleAssign, handleForwardToMaker,
         handleMakerDecision, handleCheckerConfirm, handleCheckerReject, handleTesterVerdict,
-        handleAddComment, handlePullActionables,
+        handleAddComment,
     }
 }

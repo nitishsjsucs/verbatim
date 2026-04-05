@@ -39,6 +39,25 @@ export async function pullActionablesToTesting(opts?: {
     return res.json()
 }
 
+/**
+ * System-driven sync — automatically pulls eligible actionables into the testing section.
+ * Replaces the manual "Pull Actionables" button. Same underlying endpoint, different semantic.
+ */
+export async function syncTestingItems(opts?: {
+    section?: string; theme?: string
+}): Promise<{ pulled: number; items: TestingItem[] }> {
+    const res = await fetch(`${API_BASE_URL}/testing/sync`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+            section: opts?.section || "",
+            theme: opts?.theme || "",
+        }),
+    })
+    if (!res.ok) throw new Error(`Failed to sync testing items: ${res.status}`)
+    return res.json()
+}
+
 export async function updateTestingItem(itemId: string, updates: Record<string, unknown>): Promise<TestingItem> {
     const res = await fetch(`${API_BASE_URL}/testing/items/${itemId}`, {
         method: "PUT",
@@ -64,7 +83,8 @@ export async function assignTestingItem(itemId: string, body: {
 }
 
 export async function forwardToMaker(itemId: string, body: {
-    maker_id: string; maker_name: string; forwarded_by: string
+    maker_id: string; maker_name: string; forwarded_by: string;
+    operational_deadline?: string; instructions?: string
 }): Promise<TestingItem> {
     const res = await fetch(`${API_BASE_URL}/testing/items/${itemId}/forward-to-maker`, {
         method: "POST", headers, body: JSON.stringify(body),
@@ -74,7 +94,9 @@ export async function forwardToMaker(itemId: string, body: {
 }
 
 export async function submitMakerDecision(itemId: string, body: {
-    decision: "open" | "close"; maker_deadline?: string; actor: string
+    decision: "open" | "close"; maker_deadline?: string; actor: string;
+    evidence_files?: { name: string; url: string; stored_name: string }[];
+    comment?: string
 }): Promise<TestingItem> {
     const res = await fetch(`${API_BASE_URL}/testing/items/${itemId}/maker-decision`, {
         method: "POST", headers, body: JSON.stringify(body),
@@ -214,5 +236,24 @@ export async function transitionExpiredProducts(): Promise<{ transitioned: numbe
 export async function tranche3AnnualReset(): Promise<{ reset_count: number; items: TestingItem[] }> {
     const res = await fetch(`${API_BASE_URL}/testing/tranche3-annual-reset`, { method: "POST", headers })
     if (!res.ok) throw new Error(`Failed to reset tranche3: ${res.status}`)
+    return res.json()
+}
+
+// ---------------------------------------------------------------------------
+// Evidence Upload (testing-specific)
+// ---------------------------------------------------------------------------
+
+export async function uploadTestingEvidence(itemId: string, file: File): Promise<{
+    name: string; url: string; stored_name: string; uploaded_at: string
+}> {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("testing_item_id", itemId)
+    const res = await fetch(`${API_BASE_URL}/evidence/upload`, {
+        method: "POST",
+        headers: { "ngrok-skip-browser-warning": "1" },
+        body: formData,
+    })
+    if (!res.ok) throw new Error(`Failed to upload evidence: ${res.status}`)
     return res.json()
 }

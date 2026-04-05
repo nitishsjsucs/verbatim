@@ -106,13 +106,15 @@ class TestingItem:
     # Status
     status: str = "pending_assignment"
     # Deadlines
-    testing_deadline: str = ""
-    maker_deadline: str = ""
+    testing_deadline: str = ""       # Final completion deadline set by Testing Head (visible to tester only)
+    maker_deadline: str = ""         # Operational deadline set by Tester for Maker (visible to maker only)
     maker_deadline_confirmed: bool = False
     maker_deadline_confirmed_by: str = ""
     maker_deadline_confirmed_at: str = ""
     # Maker decision
     maker_decision: str = ""  # "" | "open" | "close"
+    # Tester instructions (set by tester when forwarding to maker)
+    tester_instructions: str = ""
     # Evidence
     testing_evidence_files: List[dict] = field(default_factory=list)
     testing_comments: List[dict] = field(default_factory=list)
@@ -128,6 +130,10 @@ class TestingItem:
     adhoc_deadline: str = ""  # Manual deadline for ad-hoc section
     is_testing_delayed: bool = False  # True if current date > applicable deadline
     delay_detected_at: str = ""  # ISO timestamp when delay was first detected
+    # ── Escalation tracking ──
+    escalation_count: int = 0
+    last_escalated_at: str = ""
+    escalation_history: List[dict] = field(default_factory=list)
     # ── Year-sensitive tracking (for tranche3 annual reset) ──
     testing_cycle_year: int = 0  # Year this testing cycle belongs to (e.g. 2026)
     # ── New product transition tracking ──

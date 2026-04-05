@@ -542,15 +542,17 @@ export interface TestingItem {
     assigned_maker_name: string;
     // Status
     status: TestingStatus;
-    // Testing deadline (overall business deadline — set by testing head)
+    // Testing deadline — final completion deadline set by Testing Head (visible to tester only)
     testing_deadline: string;            // ISO datetime
-    // Maker deadline (only when maker selects OPEN — separate from testing deadline)
-    maker_deadline: string;              // ISO datetime — set by maker, validated by checker
+    // Maker deadline — operational deadline set by Tester for Maker (visible to maker only)
+    maker_deadline: string;              // ISO datetime — set by tester, validated by checker
     maker_deadline_confirmed: boolean;   // True after checker confirms
     maker_deadline_confirmed_by: string; // Checker name
     maker_deadline_confirmed_at: string; // ISO timestamp
     // Maker decision
     maker_decision: "" | "open" | "close"; // "" = not decided yet
+    // Tester instructions (set by tester when forwarding to maker)
+    tester_instructions: string;
     // Evidence & comments (testing-specific, separate from control cycle)
     testing_evidence_files: EvidenceFile[];
     testing_comments: TestingComment[];
@@ -566,6 +568,10 @@ export interface TestingItem {
     adhoc_deadline: string;              // Manual deadline (ad-hoc section)
     is_testing_delayed: boolean;         // True if current date > applicable deadline
     delay_detected_at: string;           // ISO timestamp when delay was detected
+    // Escalation tracking
+    escalation_count: number;
+    last_escalated_at: string;
+    escalation_history: { escalated_to: string; escalated_at: string; reason: string }[];
     // Year-sensitive tracking (tranche3 annual reset)
     testing_cycle_year: number;          // Year this testing cycle belongs to (e.g. 2026)
     // New product transition

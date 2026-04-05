@@ -360,7 +360,7 @@ export function Sidebar({ className }: SidebarProps) {
                     href="/testing-head/product"
                     icon={<ClipboardList className="h-4 w-4" />}
                     iconClassName="text-amber-400"
-                    label="Product"
+                    label="New Product"
                     active={pathname === "/testing-head/product"}
                     collapsed={collapsed}
                   />

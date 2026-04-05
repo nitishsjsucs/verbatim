@@ -5528,6 +5528,22 @@ def pull_actionables_to_testing(body: dict = Body(...)):
     return {"pulled": len(created), "items": created}
 
 
+@app.post("/testing/sync")
+def sync_testing_items(body: dict = Body({})):
+    """
+    System-driven sync — automatically pulls eligible completed actionables
+    into the testing module.  Replaces the manual "Pull Actionables" button
+    for normal users.  Delegates to the same logic as pull-actionables.
+    Body (all optional): { "section": "...", "theme": "..." }
+    """
+    sync_body = {
+        "actionable_ids": [],
+        "section": body.get("section", ""),
+        "theme": body.get("theme", ""),
+    }
+    return pull_actionables_to_testing(sync_body)
+
+
 @app.put("/testing/items/{item_id}")
 def update_testing_item(item_id: str, body: dict = Body(...)):
     """Update a testing item's fields."""
@@ -5580,12 +5596,19 @@ def assign_testing_item(item_id: str, body: dict = Body(...)):
 
 @app.post("/testing/items/{item_id}/forward-to-maker")
 def forward_to_maker(item_id: str, body: dict = Body(...)):
-    """Tester forwards item to a testing maker."""
+    """Tester forwards item to a testing maker.
+    Body: { maker_id, maker_name, forwarded_by, operational_deadline?, instructions? }
+    """
     from datetime import datetime
     col = get_testing_collection()
     item = col.find_one({"id": item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Testing item not found")
+
+    # RBAC: only tester may forward
+    caller_role = body.get("caller_role", "")
+    if caller_role and caller_role not in ("tester", "testing_head"):
+        raise HTTPException(status_code=403, detail="Only testers can forward items to makers")
 
     maker_id = body.get("maker_id", "")
     maker_name = body.get("maker_name", "")
@@ -5596,10 +5619,18 @@ def forward_to_maker(item_id: str, body: dict = Body(...)):
     item["status"] = "assigned_to_maker"
     item["tester_forwarded_at"] = now
 
+    # Accept operational deadline (tester → maker) and instructions
+    op_deadline = body.get("operational_deadline", "")
+    if op_deadline:
+        item["maker_deadline"] = op_deadline
+    instructions = body.get("instructions", "")
+    if instructions:
+        item["tester_instructions"] = instructions
+
     from models.testing import TestingItem as TI
     ti = TI.from_dict(item)
     ti.add_audit("forwarded_to_maker", body.get("forwarded_by", "tester"), "tester",
-                 f"Maker: {maker_name}")
+                 f"Maker: {maker_name}" + (f", Operational deadline: {op_deadline}" if op_deadline else ""))
     item["testing_audit_trail"] = ti.testing_audit_trail
 
     col.replace_one({"id": item_id}, item)
@@ -5608,12 +5639,20 @@ def forward_to_maker(item_id: str, body: dict = Body(...)):
 
 @app.post("/testing/items/{item_id}/maker-decision")
 def maker_decision(item_id: str, body: dict = Body(...)):
-    """Maker decides OPEN or CLOSE."""
+    """Maker decides OPEN or CLOSE.
+    - OPEN → sets maker_deadline, status → checker_review (checker approval gate)
+    - CLOSE → requires evidence + comment, status → tester_validation (back to tester review)
+    """
     from datetime import datetime
     col = get_testing_collection()
     item = col.find_one({"id": item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Testing item not found")
+
+    # RBAC: only testing_maker may decide
+    caller_role = body.get("caller_role", "")
+    if caller_role and caller_role not in ("testing_maker",):
+        raise HTTPException(status_code=403, detail="Only testing makers can submit decisions")
 
     decision = body.get("decision", "")  # "open" or "close"
     now = datetime.utcnow().isoformat() + "Z"
@@ -5625,7 +5664,24 @@ def maker_decision(item_id: str, body: dict = Body(...)):
         item["maker_deadline"] = body.get("maker_deadline", "")
         item["status"] = "checker_review"
     elif decision == "close":
-        item["status"] = "maker_closed"
+        # Validate: evidence and comment are mandatory for close
+        evidence = item.get("testing_evidence_files", [])
+        comments = item.get("testing_comments", [])
+        inline_comment = body.get("comment", "")
+        if not evidence:
+            raise HTTPException(status_code=400, detail="Evidence upload is mandatory to close an item")
+        if not comments and not inline_comment:
+            raise HTTPException(status_code=400, detail="At least one comment is required to close an item")
+
+        # If an inline comment was sent, persist it
+        if inline_comment:
+            from models.testing import TestingItem as TI
+            ti_temp = TI.from_dict(item)
+            ti_temp.add_comment(author=body.get("actor", "testing_maker"), role="testing_maker", text=inline_comment)
+            item["testing_comments"] = ti_temp.testing_comments
+
+        # Close → tester_validation (tester reviews before final pass)
+        item["status"] = "tester_validation"
         item["closed_at"] = now
 
     from models.testing import TestingItem as TI
@@ -5646,6 +5702,11 @@ def checker_confirm_deadline(item_id: str, body: dict = Body(...)):
     item = col.find_one({"id": item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Testing item not found")
+
+    # RBAC: only testing_checker may confirm
+    caller_role = body.get("caller_role", "")
+    if caller_role and caller_role not in ("testing_checker",):
+        raise HTTPException(status_code=403, detail="Only testing checkers can confirm deadlines")
 
     now = datetime.now(timezone.utc).isoformat()
     item["maker_deadline_confirmed"] = True
@@ -5694,6 +5755,11 @@ def checker_reject_deadline(item_id: str, body: dict = Body(...)):
     if not item:
         raise HTTPException(status_code=404, detail="Testing item not found")
 
+    # RBAC: only testing_checker may reject
+    caller_role = body.get("caller_role", "")
+    if caller_role and caller_role not in ("testing_checker",):
+        raise HTTPException(status_code=403, detail="Only testing checkers can reject deadlines")
+
     now = datetime.utcnow().isoformat() + "Z"
     # Reset deadline fields so maker must resubmit
     item["maker_deadline"] = ""
@@ -5721,6 +5787,11 @@ def tester_verdict(item_id: str, body: dict = Body(...)):
     item = col.find_one({"id": item_id}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Testing item not found")
+
+    # RBAC: only tester may give verdict
+    caller_role = body.get("caller_role", "")
+    if caller_role and caller_role not in ("tester", "testing_head"):
+        raise HTTPException(status_code=403, detail="Only testers can submit verdicts")
 
     verdict = body.get("verdict", "")  # "pass" or "reject"
     reason = body.get("reason", "")
@@ -5827,10 +5898,12 @@ def testing_available_themes():
 def testing_check_delays():
     """Scan all testing items and flag any past-deadline items as delayed.
 
-    CRITICAL BUSINESS RULE:
-    - If overdue but status != 'passed': keep current workflow state, only set is_testing_delayed flag
-    - Do NOT change status to 'delayed' — the item continues in its current workflow
-    - Only passed items can be reset/moved to next cycle (handled by tranche3-annual-reset)
+    ESCALATION LOGIC:
+    - Primary trigger: tester's operational deadline (maker_deadline) for items with a maker
+    - Fallback: computed_deadline, theme_deadline, adhoc_deadline, or testing_deadline
+    - When delay detected: flag item, increment escalation_count, add escalation_history,
+      and send notifications to testing_checker + CAG (compliance_officer)
+    - Does NOT change the workflow status — item continues in its current state
     """
     from datetime import datetime, timezone
     col = get_testing_collection()
@@ -5838,23 +5911,34 @@ def testing_check_delays():
     now_iso = now.isoformat()
     updated_count = 0
 
+    from utils.mongo import get_db
+    db = get_db()
+
     for item in col.find({}, {"_id": 0}):
-        # Skip already-passed or already-flagged items
+        # Skip already-passed items
         if item.get("status") == "passed":
-            continue
-        if item.get("is_testing_delayed"):
             continue
 
         # Determine the applicable deadline
-        section = item.get("testing_section", "theme")
+        # Priority: operational deadline (maker_deadline) → section-specific → testing_deadline
         deadline_str = ""
-        if section == "product":
-            deadline_str = item.get("computed_deadline", "")
-        elif section == "theme":
-            deadline_str = item.get("theme_deadline", "")
-        elif section == "adhoc":
-            deadline_str = item.get("adhoc_deadline", "")
-        # Also check testing_deadline (set by testing head on assignment)
+
+        # If item is with maker or in active state, use operational deadline first
+        if item.get("maker_deadline") and item.get("status") in (
+            "assigned_to_maker", "maker_open", "checker_review", "active", "rejected_to_maker"
+        ):
+            deadline_str = item.get("maker_deadline", "")
+
+        if not deadline_str:
+            section = item.get("testing_section", "theme")
+            if section == "product":
+                deadline_str = item.get("computed_deadline", "")
+            elif section == "theme":
+                deadline_str = item.get("theme_deadline", "")
+            elif section == "adhoc":
+                deadline_str = item.get("adhoc_deadline", "")
+
+        # Fallback to testing_deadline (set by testing head on assignment)
         if not deadline_str:
             deadline_str = item.get("testing_deadline", "")
 
@@ -5864,15 +5948,61 @@ def testing_check_delays():
         try:
             dl = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
             if now > dl:
-                # Only flag as delayed — do NOT change status
-                # Item continues in its current workflow state
+                # Determine if this is a new delay or re-escalation
+                already_delayed = item.get("is_testing_delayed", False)
+                escalation_count = item.get("escalation_count", 0) + (1 if already_delayed else 1)
+                escalation_entry = {
+                    "escalated_at": now_iso,
+                    "deadline_used": deadline_str,
+                    "escalation_number": escalation_count,
+                }
+
+                # Update the item
+                update_fields = {
+                    "is_testing_delayed": True,
+                    "escalation_count": escalation_count,
+                    "last_escalated_at": now_iso,
+                }
+                if not already_delayed:
+                    update_fields["delay_detected_at"] = now_iso
+
                 col.update_one(
                     {"id": item["id"]},
-                    {"$set": {
-                        "is_testing_delayed": True,
-                        "delay_detected_at": now_iso,
-                    }}
+                    {
+                        "$set": update_fields,
+                        "$push": {"escalation_history": escalation_entry},
+                    }
                 )
+
+                # Send escalation notifications to testing_checker users and CAG
+                item_id = item["id"]
+                item_text = (item.get("source_actionable_text", "") or "")[:80]
+                notif_message = (
+                    f"DELAY ESCALATION: Testing item {item_id} is overdue "
+                    f"(deadline: {deadline_str[:10]}). "
+                    f"Escalation #{escalation_count}. "
+                    f"Item: {item_text}..."
+                )
+
+                # Find testing_checker and compliance_officer users to notify
+                users_col = db.get_collection("users") if "users" in db.list_collection_names() else None
+                notify_user_ids = []
+                if users_col:
+                    for u in users_col.find({"role": {"$in": ["testing_checker", "compliance_officer"]}}, {"id": 1, "_id": 0}):
+                        uid = u.get("id", "")
+                        if uid:
+                            notify_user_ids.append(uid)
+
+                for uid in notify_user_ids:
+                    db["notifications"].insert_one({
+                        "user_id": uid,
+                        "testing_item_id": item_id,
+                        "type": "testing_delay_escalation",
+                        "message": notif_message,
+                        "is_read": False,
+                        "created_at": now_iso,
+                    })
+
                 updated_count += 1
         except Exception:
             continue
