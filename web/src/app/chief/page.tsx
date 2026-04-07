@@ -147,8 +147,8 @@ function ChiefContent() {
     const teamOptions = React.useMemo(() => {
         const s = new Set<string>()
         for (const r of allRows) {
-            const classification = getClassification(r.item)
-            s.add(classification)
+            if (r.item.workstream) s.add(r.item.workstream)
+            for (const t of r.item.assigned_teams || []) s.add(t)
         }
         return Array.from(s).sort()
     }, [allRows])
@@ -159,11 +159,14 @@ function ChiefContent() {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (docFilter !== "all" && docId !== docFilter) return false
-            if (teamFilter !== "all" && getClassification(item) !== teamFilter) return false
+            if (teamFilter !== "all") {
+                const teams = item.assigned_teams?.length ? item.assigned_teams : [item.workstream]
+                if (!teams.includes(teamFilter)) return false
+            }
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                const classification = getClassification(item)
-                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${classification} ${safeStr(item.actionable_id)}`.toLowerCase()
+                const teams = item.assigned_teams?.length ? item.assigned_teams.join(" ") : ""
+                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${teams} ${safeStr(item.actionable_id)}`.toLowerCase()
                 if (!s.includes(q)) return false
             }
             return true

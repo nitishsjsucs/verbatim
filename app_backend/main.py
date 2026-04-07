@@ -1136,24 +1136,32 @@ def list_regulators():
 
 @app.put("/documents/{doc_id}/metadata")
 def update_document_metadata(doc_id: str, body: dict = Body(...)):
-    """Update document-level metadata: regulation_issue_date, circular_effective_date, regulator.
-    Also propagates these fields to all actionables in the document."""
+    """Update document-level metadata: regulation dates, regulator, and global fallback fields.
+    Global fields (theme, deadline, tranche3, new_product, live_date, impact_dropdown,
+    likelihood_owner_team) are stored at the document level for fallback inheritance —
+    they are NOT propagated/written into individual actionables."""
     store = get_actionable_store()
     result = store.load(doc_id)
     if not result:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    allowed = ["regulation_issue_date", "circular_effective_date", "regulator"]
-    for field_name in allowed:
+    # Propagated fields (written to each actionable)
+    propagated = ["regulation_issue_date", "circular_effective_date", "regulator"]
+    for field_name in propagated:
         if field_name in body:
             setattr(result, field_name, body[field_name])
-            # Propagate to all actionables in this document
             for a in result.actionables:
                 setattr(a, field_name, body[field_name])
 
-    # Global theme (document-level, not propagated to actionables — inheritance is frontend)
-    if "global_theme" in body:
-        result.global_theme = body["global_theme"]
+    # Global fallback fields (document-level only, NOT propagated to actionables)
+    global_fields = [
+        "global_theme", "global_deadline", "global_tranche3",
+        "global_new_product", "global_live_date", "global_impact_dropdown",
+        "global_likelihood_owner_team",
+    ]
+    for field_name in global_fields:
+        if field_name in body:
+            setattr(result, field_name, body[field_name])
 
     store.save(result)
     return {
@@ -1162,6 +1170,12 @@ def update_document_metadata(doc_id: str, body: dict = Body(...)):
         "circular_effective_date": result.circular_effective_date,
         "regulator": result.regulator,
         "global_theme": result.global_theme,
+        "global_deadline": result.global_deadline,
+        "global_tranche3": result.global_tranche3,
+        "global_new_product": result.global_new_product,
+        "global_live_date": result.global_live_date,
+        "global_impact_dropdown": result.global_impact_dropdown,
+        "global_likelihood_owner_team": result.global_likelihood_owner_team,
     }
 
 
@@ -1302,12 +1316,17 @@ def reset_team(doc_id: str, item_id: str, body: dict = Body(...)):
 
 @app.get("/documents/{doc_id}/actionables")
 def get_actionables(doc_id: str):
-    """Get extracted actionables for a document (if available)."""
+    """Get extracted actionables for a document (if available).
+    Enriches each actionable with computed_* fallback fields."""
     store = get_actionable_store()
     result = store.load(doc_id)
     if not result:
         return {"status": "not_extracted", "doc_id": doc_id, "actionables": []}
-    return result.to_dict()
+    data = result.to_dict()
+    # Enrich actionables with computed fallback fields
+    from app_backend.services.fallback_service import enrich_actionables_with_fallbacks
+    enrich_actionables_with_fallbacks(data.get("actionables", []), data)
+    return data
 
 
 @app.post("/documents/{doc_id}/extract-actionables")
@@ -1438,9 +1457,11 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
 
 @app.get("/actionables")
 def list_all_actionables():
-    """List actionables across ALL documents."""
+    """List actionables across ALL documents.
+    Enriches each actionable with computed_* fallback fields."""
     store = get_actionable_store()
     db = store._collection
+    from app_backend.services.fallback_service import enrich_actionables_with_fallbacks
     results = []
     for raw in db.find():
         doc_id = raw.get("doc_id", raw.get("_id", ""))
@@ -1460,6 +1481,8 @@ def list_all_actionables():
                 # Return the raw item data as-is instead of skipping
                 serialized_actionables.append(item_data)
         raw["actionables"] = serialized_actionables
+        # Enrich with fallback computed fields
+        enrich_actionables_with_fallbacks(raw["actionables"], raw)
         results.append(raw)
     return results
 
@@ -1520,6 +1543,22 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         for blocked in COMPLIANCE_OFFICER_ONLY_FIELDS:
             body.pop(blocked, None)
 
+    # Single-owner likelihood model: only the designated likelihood owner team
+    # can write likelihood fields. Other teams can read but not write.
+    LIKELIHOOD_FIELDS = {"likelihood_business_volume", "likelihood_products_processes",
+                         "likelihood_compliance_violations", "likelihood_score",
+                         "overall_likelihood_score"}
+    if for_team and caller_role != "compliance_officer":
+        from app_backend.services.fallback_service import compute_field_with_fallback
+        doc_meta = {
+            "global_likelihood_owner_team": result.global_likelihood_owner_team if hasattr(result, "global_likelihood_owner_team") else "",
+        }
+        item_dict = {"likelihood_owner_team": getattr(target, "likelihood_owner_team", "")}
+        owner_team = compute_field_with_fallback(item_dict, "likelihood_owner_team", doc_meta)
+        if owner_team and for_team != owner_team:
+            for blocked in LIKELIHOOD_FIELDS:
+                body.pop(blocked, None)
+
     # Validate CO comment before approval
     if caller_role == "compliance_officer":
         new_status = body.get("task_status")
@@ -1548,18 +1587,49 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
                 raise HTTPException(status_code=400, detail="CO Comment is required before approval. Please fill the CO Comment field.")
 
     # Publish validation: Theme, Tranche 3, Impact must be present before approval/publish
+    # Uses fallback to document-level global values when actionable-level is empty
     publish_intent = body.get("approval_status") == "approved" or body.get("published_at")
     if publish_intent:
-        next_theme = body.get("theme", target.theme or "")
-        next_tranche3 = body.get("tranche3", target.tranche3 or "")
-        next_impact = body.get("impact_dropdown") or target.impact_dropdown
+        from app_backend.services.fallback_service import compute_field_with_fallback
+        doc_meta = {
+            "global_theme": result.global_theme,
+            "global_tranche3": result.global_tranche3,
+            "global_new_product": result.global_new_product,
+            "global_live_date": result.global_live_date,
+            "global_impact_dropdown": result.global_impact_dropdown,
+            "global_deadline": result.global_deadline,
+            "global_likelihood_owner_team": result.global_likelihood_owner_team,
+        }
+        item_dict = target.to_dict()
+        # Apply any incoming body values as overrides for validation
+        for k in ("theme", "tranche3", "new_product", "product_live_date", "impact_dropdown"):
+            if k in body:
+                item_dict[k] = body[k]
+
+        resolved_theme = compute_field_with_fallback(item_dict, "theme", doc_meta)
+        resolved_tranche3 = compute_field_with_fallback(item_dict, "tranche3", doc_meta)
+        resolved_impact = compute_field_with_fallback(item_dict, "impact_dropdown", doc_meta)
+        resolved_new_product = compute_field_with_fallback(item_dict, "new_product", doc_meta)
+        resolved_live_date = compute_field_with_fallback(item_dict, "product_live_date", doc_meta)
+
         impact_label = ""
-        if isinstance(next_impact, dict):
-            impact_label = (next_impact.get("label") or "").strip()
-        elif isinstance(next_impact, str):
-            impact_label = next_impact.strip()
-        if not next_theme or not next_tranche3 or not impact_label:
-            raise HTTPException(status_code=400, detail="Cannot publish without Theme, Tranche 3, and Impact Assessment.")
+        if isinstance(resolved_impact, dict):
+            impact_label = (resolved_impact.get("label") or "").strip()
+        elif isinstance(resolved_impact, str):
+            impact_label = resolved_impact.strip()
+
+        missing = []
+        if not resolved_theme:
+            missing.append("Theme")
+        if not resolved_tranche3:
+            missing.append("Tranche 3")
+        if not impact_label:
+            missing.append("Impact")
+        # Conditional: if New Product = Yes, Product Live Date is required
+        if resolved_new_product == "Yes" and not resolved_live_date:
+            missing.append("Product Live Date (required when New Product is Yes)")
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Cannot publish — missing: {', '.join(missing)}")
 
     # Update allowed fields
     editable_fields = [
@@ -1625,6 +1695,10 @@ def update_actionable(doc_id: str, item_id: str, body: dict = Body(...), for_tea
         "bypass_reviewer_rejected_by", "bypass_reviewer_rejected_at", "bypass_reviewer_rejection_reason",
         # Tracker isolation & delegation (Feature 2 & 3)
         "published_by_account_id", "delegated_from_account_id", "delegation_request_id",
+        # Single-owner likelihood model
+        "likelihood_owner_team",
+        # Timestamp of first publish
+        "first_published_at",
     ]
     for field_name in editable_fields:
         if field_name in body:
@@ -1680,7 +1754,7 @@ def _recompute_risk_scores(target, document_likelihood_score: float | None = Non
     OVERALL LIKELIHOOD SCORE = MAX(businessVolume, productProcess, complianceViolation)
     OVERALL IMPACT SCORE     = (selectedImpactScore)²
     INHERENT RISK SCORE      = overallLikelihoodScore × overallImpactScore
-    OVERALL CONTROL SCORE    = (monitoringMechanism + controlEffectiveness) / 2
+    OVERALL CONTROL SCORE    = MAX(monitoringMechanism, controlEffectiveness)
     OVERALL RESIDUAL SCORE   = inherentRiskScore × overallControlScore
 
     If *document_likelihood_score* is provided (not None), it overrides the
@@ -1714,10 +1788,10 @@ def _recompute_risk_scores(target, document_likelihood_score: float | None = Non
     target.inherent_risk_score = ir
     target.inherent_risk_label = _classify_inherent_risk(ir)
 
-    # Control = average of 2 sub-dropdown scores
+    # Control = MAX (worst-case) of 2 sub-dropdown scores
     mon = _safe_score(target.control_monitoring)
     eff = _safe_score(target.control_effectiveness)
-    cs = (mon + eff) / 2 if (mon or eff) else 0
+    cs = max(mon, eff) if (mon or eff) else 0
     target.control_score = cs
     target.overall_control_score = cs
 

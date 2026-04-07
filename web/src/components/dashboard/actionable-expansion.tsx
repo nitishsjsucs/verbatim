@@ -247,7 +247,7 @@ export function ActionableExpansion({
     const computedImpScore = safeRiskScore(item.impact_dropdown) ** 2
     const computedMonS = safeRiskScore(item.control_monitoring)
     const computedEffS = safeRiskScore(item.control_effectiveness)
-    const computedCtrlScore = (computedMonS || computedEffS) ? (computedMonS + computedEffS) / 2 : 0
+    const computedCtrlScore = (computedMonS || computedEffS) ? Math.max(computedMonS, computedEffS) : 0
     const computedInherent = computedLikScore * computedImpScore
     const allRiskFilled = !!(item.likelihood_business_volume?.label && item.likelihood_products_processes?.label && item.likelihood_compliance_violations?.label && item.impact_dropdown?.label && item.control_monitoring?.label && item.control_effectiveness?.label)
     const computedResidual = allRiskFilled ? computedInherent * computedCtrlScore : 0

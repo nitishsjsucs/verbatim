@@ -10,6 +10,7 @@ import {
     deleteActionable as deleteActionableApi,
     API_BASE_URL,
     setDocumentLikelihood,
+    updateDocumentMetadata,
 } from "@/lib/api"
 import {
     ActionableItem,
@@ -100,6 +101,7 @@ interface DocActionables {
     }
     document_likelihood_updated_at?: string
     document_likelihood_updated_by?: string
+    global_likelihood_owner_team?: string
 }
 
 // --- Editable Field Component ---
@@ -260,10 +262,10 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     const impactScore = rawImpact ** 2
     // INHERENT RISK = likelihood × impact
     const inherentRiskScore = likelihoodScore * impactScore
-    // OVERALL CONTROL = average of 2 sub-dropdown scores
+    // OVERALL CONTROL = MAX (worst-case) of 2 sub-dropdown scores
     const monScore = safeScore(draftCtrlMon)
     const effScore = safeScore(draftCtrlEff)
-    const controlScore = (monScore || effScore) ? (monScore + effScore) / 2 : 0
+    const controlScore = (monScore || effScore) ? Math.max(monScore, effScore) : 0
     // All 6 risk parameters must be filled for residual to calculate
     const allRiskFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
     // RESIDUAL RISK = inherent risk × control score (only when all params filled)
@@ -1213,7 +1215,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                                         <div className="flex items-center justify-between mb-1.5">
                                             <p className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider">Control Assessment</p>
-                                            <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore.toFixed(1)} (avg)</span>
+                                            <span className="text-[10px] font-mono text-teal-400/60">Overall: {controlScore.toFixed(1)} (max)</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
@@ -1861,6 +1863,38 @@ export default function ActionablesPage() {
     }, [docLikDrafts, callerRole, session, allDocs, getDocLikDraft])
     const loadAllRef = React.useRef<(() => Promise<void>) | null>(null)
 
+    // Per-document likelihood owner team state
+    const [docOwnerTeamDrafts, setDocOwnerTeamDrafts] = React.useState<Record<string, string>>({})
+    const [docOwnerTeamSaving, setDocOwnerTeamSaving] = React.useState<Set<string>>(new Set())
+    const getDocOwnerTeam = React.useCallback((docId: string): string => {
+        if (docOwnerTeamDrafts[docId] !== undefined) return docOwnerTeamDrafts[docId]
+        const doc = allDocs.find(d => d.doc_id === docId)
+        return doc?.global_likelihood_owner_team || ""
+    }, [docOwnerTeamDrafts, allDocs])
+    const getDocTeams = React.useCallback((docId: string): string[] => {
+        const doc = allDocs.find(d => d.doc_id === docId)
+        if (!doc) return []
+        const teams = new Set<string>()
+        for (const a of doc.actionables) {
+            if (a.workstream) teams.add(a.workstream)
+            if (a.assigned_teams) a.assigned_teams.forEach(t => teams.add(t))
+        }
+        return Array.from(teams).sort()
+    }, [allDocs])
+    const handleSaveOwnerTeam = React.useCallback(async (docId: string) => {
+        const ownerTeam = docOwnerTeamDrafts[docId] ?? ""
+        setDocOwnerTeamSaving(prev => { const n = new Set(prev); n.add(docId); return n })
+        try {
+            await updateDocumentMetadata(docId, { global_likelihood_owner_team: ownerTeam })
+            toast.success(ownerTeam ? `Likelihood owner set to "${ownerTeam}"` : "Likelihood owner cleared")
+            await loadAllRef.current?.()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to set owner team")
+        } finally {
+            setDocOwnerTeamSaving(prev => { const n = new Set(prev); n.delete(docId); return n })
+        }
+    }, [docOwnerTeamDrafts, callerRole])
+
     // PDF state
     const [pdfDocId, setPdfDocId] = React.useState<string | null>(null)
     const [pdfDocName, setPdfDocName] = React.useState<string>("")
@@ -1945,6 +1979,7 @@ export default function ActionablesPage() {
                     document_likelihood_breakdown: r.document_likelihood_breakdown,
                     document_likelihood_updated_at: r.document_likelihood_updated_at,
                     document_likelihood_updated_by: r.document_likelihood_updated_by,
+                    global_likelihood_owner_team: r.global_likelihood_owner_team,
                 }))
             setAllDocs(docs)
 
@@ -2461,6 +2496,29 @@ export default function ActionablesPage() {
                                                                     )}
                                                                 </div>
                                                             )}
+                                                            <div className="flex items-center gap-1.5 ml-2" onClick={e => e.stopPropagation()}>
+                                                                <span className="text-[9px] text-muted-foreground/50">Likelihood Owner:</span>
+                                                                <select
+                                                                    value={getDocOwnerTeam(docId)}
+                                                                    onChange={e => {
+                                                                        setDocOwnerTeamDrafts(prev => ({ ...prev, [docId]: e.target.value }))
+                                                                    }}
+                                                                    className="w-[140px] bg-background text-[10px] rounded px-1.5 py-0.5 border border-amber-400/30 focus:border-amber-400 focus:outline-none"
+                                                                >
+                                                                    <option value="">Any team</option>
+                                                                    {getDocTeams(docId).map(t => <option key={t} value={t}>{t}</option>)}
+                                                                </select>
+                                                                {docOwnerTeamDrafts[docId] !== undefined && docOwnerTeamDrafts[docId] !== (allDocs.find(d => d.doc_id === docId)?.global_likelihood_owner_team || "") && (
+                                                                    <button
+                                                                        onClick={() => handleSaveOwnerTeam(docId)}
+                                                                        disabled={docOwnerTeamSaving.has(docId)}
+                                                                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-400/30 transition-colors disabled:opacity-50"
+                                                                    >
+                                                                        {docOwnerTeamSaving.has(docId) ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5" />}
+                                                                        Set
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                             {docGlobalDirty.has(docId) && (
                                                                 <button
                                                                     onClick={e => { e.stopPropagation(); handleSaveDocDefaults(docId) }}

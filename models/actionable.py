@@ -148,10 +148,10 @@ class ActionableItem:
     # Impact: single dropdown → overall = score²
     impact_dropdown: dict = field(default_factory=dict)  # {label, score}
     impact_score: float = 0  # (selected impact score)²
-    # Control: 2 sub-dropdowns → overall = average of 2 scores
+    # Control: 2 sub-dropdowns → overall = MAX (worst-case) of 2 scores
     control_monitoring: dict = field(default_factory=dict)    # {label, score}
     control_effectiveness: dict = field(default_factory=dict) # {label, score}
-    control_score: float = 0  # (monitoring + effectiveness) / 2
+    control_score: float = 0  # max(monitoring, effectiveness)
     # Derived risk scores
     inherent_risk_score: float = 0  # likelihood_score × impact_score
     inherent_risk_label: str = ""  # Display label
@@ -188,6 +188,12 @@ class ActionableItem:
     # ── Feature 3: Delegation ──
     delegated_from_account_id: str = ""  # If delegated, the original CO's account ID
     delegation_request_id: str = ""  # Pending delegation request ID (blank when none)
+    # ── Synthetic dry-run flag ──
+    is_synthetic: bool = False  # True for synthetic actionables used in dry-run testing
+    # ── Single-owner likelihood model ──
+    likelihood_owner_team: str = ""  # Which team is designated to set likelihood for this actionable
+    # ── New product 6-month expiry ──
+    new_product_expiry: str = ""  # ISO date — 6 months after product_live_date
 
     # ── Multi-team helpers ──
     TEAM_WORKFLOW_FIELDS = [
@@ -409,6 +415,9 @@ class ActionableItem:
             "published_by_account_id": self.published_by_account_id,
             "delegated_from_account_id": self.delegated_from_account_id,
             "delegation_request_id": self.delegation_request_id,
+            "is_synthetic": self.is_synthetic,
+            "likelihood_owner_team": self.likelihood_owner_team,
+            "new_product_expiry": self.new_product_expiry,
         }
 
     @classmethod
@@ -548,6 +557,9 @@ class ActionableItem:
             published_by_account_id=data.get("published_by_account_id", ""),
             delegated_from_account_id=data.get("delegated_from_account_id", ""),
             delegation_request_id=data.get("delegation_request_id", ""),
+            is_synthetic=data.get("is_synthetic", False),
+            likelihood_owner_team=data.get("likelihood_owner_team", ""),
+            new_product_expiry=data.get("new_product_expiry", ""),
         )
 
 
@@ -561,6 +573,13 @@ class ActionablesResult:
     circular_effective_date: str = ""  # ISO date — circular effective date
     regulator: str = ""  # Regulator name
     global_theme: str = ""  # Document-level default theme (Feature 1)
+    # ── Document-level global metadata for fallback inheritance ──
+    global_deadline: str = ""  # Document-level default deadline (ISO datetime)
+    global_tranche3: str = ""  # Document-level default tranche3 (Yes/No)
+    global_new_product: str = ""  # Document-level default new_product (Yes/No)
+    global_live_date: str = ""  # Document-level default product live date (ISO date)
+    global_impact_dropdown: dict = field(default_factory=dict)  # Document-level default impact {label, score}
+    global_likelihood_owner_team: str = ""  # Document-level default likelihood owner team
     # ── Document-level likelihood (single source of truth) ──
     document_likelihood_breakdown: dict = field(default_factory=dict)  # {business_volume: {label,score}, products_processes: {label,score}, compliance_violations: {label,score}}
     document_likelihood_score: float = 0  # MAX of 3 breakdown sub-scores
@@ -613,6 +632,12 @@ class ActionablesResult:
             "circular_effective_date": self.circular_effective_date,
             "regulator": self.regulator,
             "global_theme": self.global_theme,
+            "global_deadline": self.global_deadline,
+            "global_tranche3": self.global_tranche3,
+            "global_new_product": self.global_new_product,
+            "global_live_date": self.global_live_date,
+            "global_impact_dropdown": self.global_impact_dropdown,
+            "global_likelihood_owner_team": self.global_likelihood_owner_team,
             "document_likelihood_breakdown": self.document_likelihood_breakdown,
             "document_likelihood_score": self.document_likelihood_score,
             "document_likelihood_owner_team": self.document_likelihood_owner_team,
@@ -642,6 +667,12 @@ class ActionablesResult:
             circular_effective_date=data.get("circular_effective_date", ""),
             regulator=data.get("regulator", ""),
             global_theme=data.get("global_theme", ""),
+            global_deadline=data.get("global_deadline", ""),
+            global_tranche3=data.get("global_tranche3", ""),
+            global_new_product=data.get("global_new_product", ""),
+            global_live_date=data.get("global_live_date", ""),
+            global_impact_dropdown=data.get("global_impact_dropdown", {}),
+            global_likelihood_owner_team=data.get("global_likelihood_owner_team", ""),
             document_likelihood_breakdown=data.get("document_likelihood_breakdown", {}),
             document_likelihood_score=data.get("document_likelihood_score", 0),
             document_likelihood_owner_team=data.get("document_likelihood_owner_team", ""),

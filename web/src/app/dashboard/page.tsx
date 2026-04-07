@@ -500,28 +500,31 @@ export default function DashboardPage() {
         return Array.from(map.entries())
     }, [allRows])
 
-    // Unique team names for filter dropdown
+    // Unique team names for filter dropdown (still useful for filtering by team assignment)
     const teamOptions = React.useMemo(() => {
         const s = new Set<string>()
         for (const r of allRows) {
-            const classification = getClassification(r.item)
-            s.add(classification)
+            // Add workstream and all assigned teams
+            if (r.item.workstream) s.add(r.item.workstream)
+            for (const t of r.item.assigned_teams || []) s.add(t)
         }
         return Array.from(s).sort()
     }, [allRows])
 
     // Filter + Sort
     const filtered = React.useMemo(() => {
-        let result = allRows.filter(({ item, docId }) => {
+        let result = allRows.filter(({ item, docId, docName }) => {
             if (statusFilter !== "all" && (item.task_status || "assigned") !== statusFilter) return false
             if (deadlineFilter !== "all" && deadlineCategory(item.deadline) !== deadlineFilter) return false
             if (docFilter !== "all" && docId !== docFilter) return false
-            if (teamFilter !== "all" && getClassification(item) !== teamFilter) return false
+            if (teamFilter !== "all") {
+                const teams = item.assigned_teams?.length ? item.assigned_teams : [item.workstream]
+                if (!teams.includes(teamFilter)) return false
+            }
             if (searchQuery) {
                 const q = searchQuery.toLowerCase()
-                // Include classification in search so "Mixed Team" is searchable
-                const classification = getClassification(item)
-                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${classification} ${safeStr(item.actionable_id)}`.toLowerCase()
+                const teams = item.assigned_teams?.length ? item.assigned_teams.join(" ") : ""
+                const s = `${safeStr(item.action)} ${safeStr(item.implementation_notes)} ${safeStr(item.workstream)} ${teams} ${safeStr(item.actionable_id)} ${docId} ${docName}`.toLowerCase()
                 if (!s.includes(q)) return false
             }
             return true
@@ -556,97 +559,70 @@ export default function DashboardPage() {
         })
     }, [filtered])
 
-    // Group active items by classification (multi-team items go to "Mixed Team")
+    // Group active items by document (not by team)
     const grouped = React.useMemo(() => {
         const groups: Record<string, FlatRow[]> = {}
         for (const row of activeRows) {
-            // Use getClassification to determine grouping - multi-team items go to "Mixed Team"
-            const classification = getClassification(row.item)
-            if (!groups[classification]) groups[classification] = []
-            groups[classification].push(row)
+            const groupKey = row.docId || "Unassigned Document"
+            if (!groups[groupKey]) groups[groupKey] = []
+            groups[groupKey].push(row)
         }
         return groups
     }, [activeRows])
 
-    // Hierarchical ordered entries: walks teamTree producing parent headers + leaf groups
+    // Document name lookup for group headers
+    const docNameLookup = React.useMemo(() => {
+        const map: Record<string, string> = {}
+        for (const row of activeRows) {
+            if (row.docId && !map[row.docId]) map[row.docId] = row.docName || row.docId
+        }
+        return map
+    }, [activeRows])
+
+    // Flat ordered entries for document-based grouping (sorted by document name)
     type TreeEntry = { type: "parent"; name: string; depth: number; totalCount: number } | { type: "leaf"; name: string; depth: number }
     const orderedEntries = React.useMemo(() => {
         const entries: TreeEntry[] = []
-        // Mixed Team first if present
-        if (grouped[MIXED_TEAM_CLASSIFICATION]?.length) {
-            entries.push({ type: "leaf", name: MIXED_TEAM_CLASSIFICATION, depth: 0 })
-        }
-        // Walk tree recursively
-        function countDescendantItems(node: Team): number {
-            const own = (grouped[node.name] || []).length
-            return own + (node.children || []).reduce((sum: number, c: Team) => sum + countDescendantItems(c), 0)
-        }
-        function walk(node: Team, depth: number) {
-            const total = countDescendantItems(node)
-            if (total === 0) return
-            const isLeaf = !node.children?.length
-            if (isLeaf) {
-                entries.push({ type: "leaf", name: node.name, depth })
-            } else {
-                entries.push({ type: "parent", name: node.name, depth, totalCount: total })
-                for (const child of node.children || []) {
-                    walk(child as Team, depth + 1)
-                }
-            }
-        }
-        for (const root of teamTree) walk(root, 0)
-        // Any teams not in tree (e.g. "Other")
-        const treeNames = new Set(entries.map(e => e.name))
-        for (const key of Object.keys(grouped)) {
-            if (!treeNames.has(key) && key !== MIXED_TEAM_CLASSIFICATION && grouped[key].length > 0) {
+        // Sort document groups by name
+        const sortedKeys = Object.keys(grouped).sort((a, b) => {
+            const nameA = docNameLookup[a] || a
+            const nameB = docNameLookup[b] || b
+            return nameA.localeCompare(nameB)
+        })
+        for (const key of sortedKeys) {
+            if (grouped[key]?.length) {
                 entries.push({ type: "leaf", name: key, depth: 0 })
             }
         }
         return entries
-    }, [grouped, teamTree])
+    }, [grouped, docNameLookup])
 
-    // Group completed by classification (multi-team items go to "Mixed Team")
+    // Group completed by document
     const completedByTeam = React.useMemo(() => {
         const groups: Record<string, FlatRow[]> = {}
         for (const row of completedRows) {
-            // Use getClassification to determine grouping
-            const classification = getClassification(row.item)
-            if (!groups[classification]) groups[classification] = []
-            groups[classification].push(row)
+            const groupKey = row.docId || "Unassigned Document"
+            if (!groups[groupKey]) groups[groupKey] = []
+            groups[groupKey].push(row)
         }
         return groups
     }, [completedRows])
 
-    // Hierarchical completed entries: walks teamTree producing parent headers + leaf groups
+    // Flat completed entries for document-based grouping
     const completedEntries = React.useMemo(() => {
         const entries: TreeEntry[] = []
-        if (completedByTeam[MIXED_TEAM_CLASSIFICATION]?.length) {
-            entries.push({ type: "leaf", name: MIXED_TEAM_CLASSIFICATION, depth: 0 })
-        }
-        function countDescendantCompleted(node: Team): number {
-            const own = (completedByTeam[node.name] || []).length
-            return own + (node.children || []).reduce((sum: number, c: Team) => sum + countDescendantCompleted(c), 0)
-        }
-        function walk(node: Team, depth: number) {
-            const total = countDescendantCompleted(node)
-            if (total === 0) return
-            const isLeaf = !node.children?.length
-            if (isLeaf) {
-                entries.push({ type: "leaf", name: node.name, depth })
-            } else {
-                entries.push({ type: "parent", name: node.name, depth, totalCount: total })
-                for (const child of node.children || []) walk(child as Team, depth + 1)
-            }
-        }
-        for (const root of teamTree) walk(root, 0)
-        const treeNames = new Set(entries.map(e => e.name))
-        for (const key of Object.keys(completedByTeam)) {
-            if (!treeNames.has(key) && key !== MIXED_TEAM_CLASSIFICATION && completedByTeam[key].length > 0) {
+        const sortedKeys = Object.keys(completedByTeam).sort((a, b) => {
+            const nameA = docNameLookup[a] || a
+            const nameB = docNameLookup[b] || b
+            return nameA.localeCompare(nameB)
+        })
+        for (const key of sortedKeys) {
+            if (completedByTeam[key]?.length) {
                 entries.push({ type: "leaf", name: key, depth: 0 })
             }
         }
         return entries
-    }, [completedByTeam, teamTree])
+    }, [completedByTeam, docNameLookup])
 
     const [collapsedCompletedTeams, setCollapsedCompletedTeams] = React.useState<Set<string>>(new Set())
     const toggleCompletedTeam = (ws: string) => {
@@ -858,45 +834,14 @@ export default function DashboardPage() {
                     )}
 
                     {!loading && !activeCollapsed && orderedEntries.map(entry => {
-                        // Check if any ancestor parent is collapsed — applies to both parent and leaf entries
-                        const isHiddenByAncestor = (() => {
-                            for (let i = orderedEntries.indexOf(entry) - 1; i >= 0; i--) {
-                                const prev = orderedEntries[i]
-                                if (prev.type === "parent" && prev.depth < entry.depth) {
-                                    if (collapsedGroups.has(prev.name)) return true
-                                }
-                            }
-                            return false
-                        })()
-                        if (isHiddenByAncestor) return null
+                        // All entries are leaf (flat document grouping)
+                        if (entry.type === "parent") return null
 
-                        // Parent team header — expandable container
-                        if (entry.type === "parent") {
-                            const wsColors = WORKSTREAM_COLORS[entry.name] || DEFAULT_WORKSTREAM_COLORS
-                            const isCollapsed = collapsedGroups.has(entry.name)
-                            return (
-                                <div key={`parent-${entry.name}`} style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
-                                    <div
-                                        className="flex items-center gap-2 px-3 py-2 bg-background/95 backdrop-blur-sm border-b border-border/30 cursor-pointer hover:bg-muted/20 transition-colors"
-                                        onClick={() => toggleGroup(entry.name)}
-                                    >
-                                        {isCollapsed
-                                            ? <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                            : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-                                        <div className={cn("h-5 w-1.5 rounded-full shrink-0", wsColors.header)} />
-                                        <span className="text-xs font-bold text-foreground">{entry.name}</span>
-                                        <span className="text-[10px] text-muted-foreground/50 font-mono">{entry.totalCount} items</span>
-                                        <div className="h-px bg-border/30 flex-1" />
-                                    </div>
-                                </div>
-                            )
-                        }
-
-                        // Leaf team group — render existing table group
+                        // Leaf document group — render table group
                         const ws = entry.name
                         const rows = grouped[ws] || []
                         const isCollapsed = collapsedGroups.has(ws)
-                        const wsColors = WORKSTREAM_COLORS[ws] || DEFAULT_WORKSTREAM_COLORS
+                        const displayName = docNameLookup[ws] || ws
                         const groupCompleted = rows.filter(r => r.item.task_status === "completed").length
                         const pct = rows.length > 0 ? Math.round((groupCompleted / rows.length) * 100) : 0
 
@@ -909,8 +854,8 @@ export default function DashboardPage() {
                                             ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                             : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                         }
-                                        <div className={cn("h-4 w-1 rounded-full shrink-0", wsColors.header)} />
-                                        <span className="text-xs font-semibold text-foreground">{ws}</span>
+                                        <div className="h-4 w-1 rounded-full shrink-0 bg-primary/40" />
+                                        <span className="text-xs font-semibold text-foreground">{displayName}</span>
                                         <span className="text-xs text-muted-foreground/50 font-mono">{rows.length} items</span>
                                     </button>
                                     <div className="flex items-center gap-1.5 shrink-0">
@@ -1486,46 +1431,14 @@ export default function DashboardPage() {
                             <SectionDivider label="Completed" count={completedRows.length} icon={<CheckCircle2 className="h-3.5 w-3.5" />} borderClass="border-y border-border/20" textClass="text-muted-foreground" collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed(!completedCollapsed)} />
 
                             {!completedCollapsed && completedEntries.map(entry => {
-                                // Check if any ancestor parent is collapsed
-                                const isHiddenByAncestor = (() => {
-                                    for (let i = completedEntries.indexOf(entry) - 1; i >= 0; i--) {
-                                        const prev = completedEntries[i]
-                                        if (prev.type === "parent" && prev.depth < entry.depth) {
-                                            if (collapsedCompletedTeams.has(prev.name)) return true
-                                        }
-                                    }
-                                    return false
-                                })()
-                                if (isHiddenByAncestor) return null
+                                if (entry.type === "parent") return null
 
-                                // Parent team header
-                                if (entry.type === "parent") {
-                                    const wsColors = WORKSTREAM_COLORS[entry.name] || DEFAULT_WORKSTREAM_COLORS
-                                    const isCollapsed = collapsedCompletedTeams.has(entry.name)
-                                    return (
-                                        <div key={`completed-parent-${entry.name}`} style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
-                                            <div
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-background/95 backdrop-blur-sm border-b border-border/20 cursor-pointer hover:bg-muted/20 transition-colors"
-                                                onClick={() => toggleCompletedTeam(entry.name)}
-                                            >
-                                                {isCollapsed
-                                                    ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                    : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                                                <div className={cn("h-4 w-1 rounded-full shrink-0", wsColors.header)} />
-                                                <span className="text-xs font-bold text-muted-foreground">{entry.name}</span>
-                                                <span className="text-[10px] text-muted-foreground/40 font-mono">{entry.totalCount}</span>
-                                                <div className="h-px bg-border/20 flex-1" />
-                                            </div>
-                                        </div>
-                                    )
-                                }
-
-                                // Leaf team group
+                                // Leaf document group
                                 const ws = entry.name
                                 const rows = completedByTeam[ws] || []
                                 if (rows.length === 0) return null
                                 const isCollapsed = collapsedCompletedTeams.has(ws)
-                                const wsColors = WORKSTREAM_COLORS[ws] || DEFAULT_WORKSTREAM_COLORS
+                                const completedDisplayName = docNameLookup[ws] || ws
 
                                 return (
                                     <div key={`completed-${ws}`} className="mb-0.5" style={{ marginLeft: entry.depth > 0 ? `${entry.depth * 12}px` : undefined }}>
@@ -1534,8 +1447,8 @@ export default function DashboardPage() {
                                                 {isCollapsed
                                                     ? <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/50" />
                                                     : <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground/50" />}
-                                                <div className={cn("h-3 w-0.5 rounded-full shrink-0", wsColors.header)} />
-                                                <span className="text-xs font-medium text-muted-foreground">{ws}</span>
+                                                <div className="h-3 w-0.5 rounded-full shrink-0 bg-primary/30" />
+                                                <span className="text-xs font-medium text-muted-foreground">{completedDisplayName}</span>
                                                 <span className="text-xs text-muted-foreground/40 font-mono">{rows.length}</span>
                                             </button>
                                         </div>

@@ -205,7 +205,7 @@ export function computeResidualScore(item: ActionableItem, documentLikelihoodSco
     const impScore = safeScore(item.impact_dropdown) ** 2
     const monS = safeScore(item.control_monitoring)
     const effS = safeScore(item.control_effectiveness)
-    const ctrlScore = monS || effS ? (monS + effS) / 2 : 0
+    const ctrlScore = monS || effS ? Math.max(monS, effS) : 0
     const inherent = likScore * impScore
     const allFilled = !!(
         item.likelihood_business_volume?.label &&
@@ -220,7 +220,7 @@ export function computeResidualScore(item: ActionableItem, documentLikelihoodSco
 }
 
 /** Compute residual risk for a multi-team (mixed) actionable.
- *  Combining logic: max likelihood, common impact, avg control.
+ *  Combining logic: max likelihood, common impact, max control (worst-case).
  *  Currently risk scores are stored at the actionable level (not per-team),
  *  so this is equivalent to computeResidualScore. If per-team risk scores
  *  are added in the future, this function should aggregate across teams.

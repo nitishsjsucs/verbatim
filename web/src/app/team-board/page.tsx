@@ -36,7 +36,7 @@ import { notifySubmittedForReview, notifyWronglyTagged, notifyDelayJustification
 
 // ─── Task Row (expandable with evidence + comments) ─────────────────────────
 
-const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRevert, onTagIncorrect, userName }: {
+const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUpload, onStatusTransition, onRevert, onTagIncorrect, userName, userTeam }: {
     entry: { item: ActionableItem; docId: string; docName: string }
     gridCols: string
     onUpdate: (docId: string, itemId: string, updates: Record<string, unknown>) => Promise<void>
@@ -45,6 +45,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     onRevert: (docId: string, item: ActionableItem) => void
     onTagIncorrect: (docId: string, item: ActionableItem) => void
     userName: string
+    userTeam: string | null
 }) {
     const { item, docId, docName } = entry
     const [expanded, setExpanded] = React.useState(false)
@@ -143,7 +144,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const draftImpScore = safeRSD(draftImpactDD) ** 2
     const draftMonS = safeRSD(draftCtrlMon)
     const draftEffS = safeRSD(draftCtrlEff)
-    const draftCtrlScore = (draftMonS || draftEffS) ? (draftMonS + draftEffS) / 2 : 0
+    const draftCtrlScore = (draftMonS || draftEffS) ? Math.max(draftMonS, draftEffS) : 0
     // All 6 risk parameters must be filled for residual to calculate
     const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
     const draftInherent = draftLikScore * draftImpScore
@@ -215,6 +216,10 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const isUnderReview = taskStatus === "review"
     const isTaggedIncorrectly = taskStatus === "tagged_incorrectly" || taskStatus === "bypass_approved"
     const isReadOnly = isCompleted || isUnderTeamReview || isUnderReview || isTaggedIncorrectly
+    // Likelihood ownership: only the designated owner team can edit likelihood fields
+    const likelihoodOwner = (item as any).computed_likelihood_owner_team || (item as any).likelihood_owner_team || ""
+    const isLikelihoodOwner = !likelihoodOwner || (userTeam ? likelihoodOwner === userTeam : true)
+    const isLikelihoodReadOnly = isReadOnly || !isLikelihoodOwner
     const files = item.evidence_files || []
 
     // Check if revert is allowed (within 10 minutes of submission)
@@ -560,15 +565,16 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                         </div>
 
-                        {/* Row 2: Likelihood (3 dropdowns) — member editable via draft */}
+                        {/* Row 2: Likelihood (3 dropdowns) — editable only by likelihood owner team */}
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
+                                {!isLikelihoodOwner && likelihoodOwner && <span className="text-[9px] text-amber-400/70 italic">Owned by {likelihoodOwner}</span>}
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
-                                    {!isReadOnly ? (
+                                    {!isLikelihoodReadOnly ? (
                                         <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
@@ -579,7 +585,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
-                                    {!isReadOnly ? (
+                                    {!isLikelihoodReadOnly ? (
                                         <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
@@ -590,7 +596,7 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
-                                    {!isReadOnly ? (
+                                    {!isLikelihoodReadOnly ? (
                                         <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
@@ -1147,6 +1153,7 @@ function TeamBoardContent() {
             onRevert={handleRevert}
             onTagIncorrect={handleTagIncorrect}
             userName={userName}
+            userTeam={userTeam}
         />
     )
 

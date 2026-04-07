@@ -454,6 +454,18 @@ export interface ActionableItem {
     // Feature 3: Delegation
     delegated_from_account_id?: string;
     delegation_request_id?: string;  // ID of pending delegation request
+    // Synthetic dry-run flag
+    is_synthetic?: boolean;
+    // Single-owner likelihood model
+    likelihood_owner_team?: string;
+    // Computed fallback fields (populated by backend, never modified client-side)
+    computed_theme?: string;
+    computed_deadline?: string;
+    computed_new_product?: string;
+    computed_live_date?: string;
+    computed_tranche3?: string;
+    computed_impact_dropdown?: RiskSubDropdown;
+    computed_likelihood_owner_team?: string;
 }
 
 export interface ActionableComment {
@@ -480,6 +492,13 @@ export interface ActionablesResult {
     circular_effective_date?: string;   // ISO date — document-level
     regulator?: string;                 // Regulator — document-level
     global_theme?: string;              // Document-level default theme (Feature 1)
+    // Document-level global metadata for fallback inheritance
+    global_deadline?: string;            // Document-level default deadline
+    global_tranche3?: string;            // Document-level default tranche3
+    global_new_product?: string;         // Document-level default new_product (Yes/No)
+    global_live_date?: string;           // Document-level default product live date
+    global_impact_dropdown?: RiskSubDropdown;  // Document-level default impact
+    global_likelihood_owner_team?: string;     // Document-level likelihood owner team
     // Document-level likelihood (single source of truth)
     document_likelihood_breakdown?: {
         business_volume?: RiskSubDropdown;
