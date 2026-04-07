@@ -3,7 +3,14 @@
 //   node generate-100-assigned-actionables.js         # create 100 assigned synthetic items
 //   node generate-100-assigned-actionables.js --count 50 --doc-id DOC-SYN-ASSIGNED-TEST
 
-const { MongoClient } = require('./web/node_modules/mongodb');
+let MongoClient;
+try {
+    // Prefer top-level `mongodb` dependency if available in the project
+    ({ MongoClient } = require('mongodb'));
+} catch (err) {
+    // Fallback to the copy under `web/node_modules` used in this repo
+    ({ MongoClient } = require('./web/node_modules/mongodb'));
+}
 
 const DEFAULT_URI = process.env.MONGO_URI
     || process.env.MONGODB_URI
@@ -15,6 +22,7 @@ const countIndex = args.indexOf('--count');
 const COUNT = countIndex !== -1 ? parseInt(args[countIndex + 1], 10) || 100 : 100;
 const docIdIndex = args.indexOf('--doc-id');
 const DOC_ID = docIdIndex !== -1 ? args[docIdIndex + 1] : `DOC-SYN-ASSIGNED-${new Date().toISOString().replace(/[:.]/g,'-').slice(0,-5)}`;
+const DRY_RUN = args.includes('--dry-run');
 
 function nowISO() { return new Date().toISOString(); }
 
@@ -118,29 +126,41 @@ async function main() {
             items.push(generateItem(i));
         }
 
-        const result = await col.updateOne(
-            { _id: DOC_ID, synthetic: true },
-            {
-                $set: {
-                    _id: DOC_ID,
-                    doc_id: DOC_ID,
-                    doc_name: `Synthetic Assigned Actionables (${COUNT})`,
-                    actionables: items,
-                    synthetic: true,
-                    generated_at: nowISO(),
-                }
-            },
-            { upsert: true }
-        );
+        if (DRY_RUN) {
+            console.log('\n⚠️  DRY-RUN mode enabled — no changes will be written to the database.');
+            console.log(`   • Would upsert document: _id=${DOC_ID}, actionables=${items.length}`);
+            console.log('   • Sample item (first):');
+            console.log(JSON.stringify(items[0], null, 2));
+        } else {
+            const result = await col.updateOne(
+                { _id: DOC_ID },
+                {
+                    $set: {
+                        _id: DOC_ID,
+                        doc_id: DOC_ID,
+                        doc_name: `Synthetic Assigned Actionables (${COUNT})`,
+                        actionables: items,
+                        synthetic: true,
+                        generated_at: nowISO(),
+                    }
+                },
+                { upsert: true }
+            );
 
-        console.log('Write result:', result.result || result);
+            console.log('Write result:', {
+                matchedCount: result.matchedCount,
+                modifiedCount: result.modifiedCount,
+                upsertedCount: result.upsertedCount,
+                acknowledged: result.acknowledged,
+            });
 
-        // Verify
-        const insertedDoc = await col.findOne({ _id: DOC_ID });
-        const countInDb = insertedDoc?.actionables?.length || 0;
-        console.log(`Verified in DB: ${countInDb} actionables in document '${DOC_ID}'`);
+            // Verify
+            const insertedDoc = await col.findOne({ _id: DOC_ID });
+            const countInDb = insertedDoc?.actionables?.length || 0;
+            console.log(`Verified in DB: ${countInDb} actionables in document '${DOC_ID}'`);
 
-        console.log('\n✅ Done. Use reset-synthetic-actionables.js to remove these later.');
+            console.log('\n✅ Done. Use reset-synthetic-actionables.js to remove these later.');
+        }
 
     } catch (err) {
         console.error('Error:', err);
