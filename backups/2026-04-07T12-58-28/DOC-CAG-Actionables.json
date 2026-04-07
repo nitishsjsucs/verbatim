@@ -1,0 +1,33 @@
+{
+  "_id": "DOC-CAG-Actionables",
+  "doc_id": "DOC-CAG-Actionables",
+  "doc_name": "CAG → Actionable section",
+  "regulation_issue_date": "",
+  "circular_effective_date": "",
+  "regulator": "",
+  "global_theme": "",
+  "document_likelihood_breakdown": {},
+  "document_likelihood_score": 0,
+  "document_likelihood_owner_team": "",
+  "document_likelihood_updated_at": "",
+  "document_likelihood_updated_by": "",
+  "document_likelihood_updated_by_role": "",
+  "actionables": [],
+  "total_extracted": 100,
+  "total_validated": 100,
+  "total_flagged": 0,
+  "nodes_processed": 0,
+  "nodes_with_actionables": 0,
+  "extraction_time_seconds": 0,
+  "llm_calls": 0,
+  "total_tokens": 0,
+  "extracted_at": "",
+  "by_modality": {
+    "Mandatory": 100
+  },
+  "by_workstream": {
+    "Other": 100
+  },
+  "generated_at": "2026-04-07T12:29:58.913Z",
+  "synthetic": false
+}
