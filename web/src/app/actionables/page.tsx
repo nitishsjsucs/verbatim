@@ -888,6 +888,13 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                         <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", getWorkstreamClass(draftTeams[0]))}>
                                             {draftTeams[0]}
                                         </span>
+                                        <button
+                                            onClick={() => setDraftTeams(prev => prev.filter(t => t !== draftTeams[0]))}
+                                            className="ml-auto p-0.5 rounded hover:bg-red-500/15 text-muted-foreground/40 hover:text-red-400 transition-colors"
+                                            title="Remove team assignment"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
@@ -956,11 +963,18 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                     <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", teamColors.bg, teamColors.text)}>
                                                         {team}
                                                     </span>
+                                                    <button
+                                                        onClick={() => setDraftTeams(prev => prev.filter(t => t !== team))}
+                                                        className="ml-auto p-0.5 rounded hover:bg-red-500/15 text-muted-foreground/40 hover:text-red-400 transition-colors"
+                                                        title="Remove team assignment"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                                     <textarea
-                                                        value={draftTeamImpl[team] || ""}
+                                                        value={draftTeamImpl[team] || ""
                                                         onChange={e => {
                                                             setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value }))
                                                             autoGrow(e.target)
@@ -1552,6 +1566,13 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                                 <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", getWorkstreamClass(draftTeams[0]))}>
                                     {draftTeams[0]}
                                 </span>
+                                <button
+                                    onClick={() => setDraftTeams(prev => prev.filter(t => t !== draftTeams[0]))}
+                                    className="ml-auto p-0.5 rounded hover:bg-red-500/15 text-muted-foreground/40 hover:text-red-400 transition-colors"
+                                    title="Remove team assignment"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
                             </div>
                             <div>
                                 <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation *</p>
@@ -1607,6 +1628,13 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                                         <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", teamColors.bg, teamColors.text)}>
                                             {team}
                                         </span>
+                                        <button
+                                            onClick={() => setDraftTeams(prev => prev.filter(t => t !== team))}
+                                            className="ml-auto p-0.5 rounded hover:bg-red-500/15 text-muted-foreground/40 hover:text-red-400 transition-colors"
+                                            title="Remove team assignment"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
                                     </div>
                                     <div>
                                         <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation *</p>
