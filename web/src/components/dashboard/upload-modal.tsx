@@ -26,6 +26,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
     const [result, setResult] = useState<IngestResponse | null>(null)
     const [customName, setCustomName] = useState("")
     const [editingName, setEditingName] = useState(false)
+    const [circularTitle, setCircularTitle] = useState("")
     const [regulationIssueDate, setRegulationIssueDate] = useState("")
     const [circularEffectiveDate, setCircularEffectiveDate] = useState("")
     const [regulator, setRegulator] = useState("")
@@ -72,15 +73,21 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         try {
             const response = await ingestDocument(file, force)
             setResult(response)
-            // Save document metadata (regulation dates + regulator)
-            if (regulationIssueDate || circularEffectiveDate || regulator) {
+            // Save document metadata (circular info + regulation dates + regulator)
+            if (circularTitle || regulationIssueDate || circularEffectiveDate || regulator) {
                 try {
                     await updateDocumentMetadata(response.doc_id, {
+                        circular_title: circularTitle,
                         regulation_issue_date: regulationIssueDate,
                         circular_effective_date: circularEffectiveDate,
                         regulator,
                     })
                 } catch { /* metadata save is non-fatal */ }
+            } else {
+                // Always trigger metadata save to auto-generate circular_id
+                try {
+                    await updateDocumentMetadata(response.doc_id, {})
+                } catch { /* non-fatal */ }
             }
             window.dispatchEvent(new Event("document-uploaded"))
         } catch (error) {
@@ -97,6 +104,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         setForce(false)
         setCustomName("")
         setEditingName(false)
+        setCircularTitle("")
         setRegulationIssueDate("")
         setCircularEffectiveDate("")
         setRegulator("")
@@ -267,9 +275,20 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                                         </div>
                                     </div>
 
-                                    {/* Regulation Issue Date */}
+                                    {/* Circular Title */}
                                     <div className="w-full mb-3">
-                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Regulation Issue Date</label>
+                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Circular Title</label>
+                                        <input
+                                            value={circularTitle}
+                                            onChange={e => setCircularTitle(e.target.value)}
+                                            placeholder="Enter circular title..."
+                                            className="w-full bg-muted/30 text-xs rounded-md px-3 py-1.5 border border-border focus:border-primary focus:outline-none text-foreground"
+                                        />
+                                    </div>
+
+                                    {/* Circular Issued Date */}
+                                    <div className="w-full mb-3">
+                                        <label className="text-xs font-medium text-muted-foreground/60 block mb-1">Circular Issued Date</label>
                                         <input
                                             type="date"
                                             value={regulationIssueDate}

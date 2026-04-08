@@ -505,11 +505,11 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                                <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                <p className="text-xs text-foreground/80 font-mono">{item.circular_id || docId || "—"}</p>
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                                <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                <p className="text-xs text-foreground/80">{item.circular_title || docName || "—"}</p>
                             </div>
                             <div>
                                 <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>

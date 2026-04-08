@@ -792,11 +792,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_id || docId || "—"}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                        <p className="text-xs text-foreground/80">{item.circular_title || docName || "—"}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
@@ -1019,11 +1019,11 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                                        <p className="text-xs text-foreground/80 font-mono">{docId || "—"}</p>
+                                        <p className="text-xs text-foreground/80 font-mono">{item.circular_id || docId || "—"}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                                        <p className="text-xs text-foreground/80">{docName || "—"}</p>
+                                        <p className="text-xs text-foreground/80">{item.circular_title || docName || "—"}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>
@@ -1367,6 +1367,8 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
     const circMeta = React.useMemo(() => {
         const first = selectedDoc?.actionables[0]
         return {
+            circular_id: (selectedDoc as unknown as { circular_id?: string })?.circular_id || first?.circular_id || "",
+            circular_title: (selectedDoc as unknown as { circular_title?: string })?.circular_title || first?.circular_title || "",
             regulation_issue_date: first?.regulation_issue_date || "",
             circular_effective_date: first?.circular_effective_date || "",
             regulator: first?.regulator || "",
@@ -1425,6 +1427,8 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
             regulation_issue_date: circMeta.regulation_issue_date,
             circular_effective_date: circMeta.circular_effective_date,
             regulator: circMeta.regulator,
+            circular_id: circMeta.circular_id,
+            circular_title: circMeta.circular_title,
         }
 
         setCreating(true)
@@ -1654,11 +1658,11 @@ function CreateActionableForm({ docId, docName, allDocs, onCreated, onCancel }: 
                         </div>
                         <div>
                             <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular ID</p>
-                            <p className="text-xs text-foreground/80 font-mono">{selectedDocId || "—"}</p>
+                            <p className="text-xs text-foreground/80 font-mono">{circMeta.circular_id || selectedDocId || "—"}</p>
                         </div>
                         <div>
                             <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Title</p>
-                            <p className="text-xs text-foreground/80">{selectedDocNameActual || "—"}</p>
+                            <p className="text-xs text-foreground/80">{circMeta.circular_title || selectedDocNameActual || "—"}</p>
                         </div>
                         <div>
                             <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">Circular Issued Date</p>

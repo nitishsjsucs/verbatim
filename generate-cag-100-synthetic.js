@@ -7,7 +7,7 @@
 // - Randomize Tranche (Transfer) field
 // - Randomize New Product (Yes/No)
 // - If New Product = Yes, assign random future date; else leave empty
-// - Assign all to "Engineering Division 1 - Unit 1"
+// - Assign all to "Engineering Division 1 Unit 1"
 // - Generate action names aligned with team context
 //
 // Usage:
@@ -29,7 +29,7 @@ const COUNT = countIndex !== -1 ? parseInt(args[countIndex + 1], 10) || 100 : 10
 const DRY_RUN = args.includes('--dry-run');
 
 const DOC_ID = 'DOC-CAG-Actionables';
-const TEAM_NAME = 'Engineering Division 1 - Unit 1';
+const TEAM_NAME = 'Engineering Division 1 Unit 1';
 
 // Impact options: label/value pairs
 const IMPACT_OPTIONS = [

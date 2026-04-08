@@ -944,7 +944,7 @@ export async function fetchRegulators(): Promise<string[]> {
 
 export async function updateDocumentMetadata(
     docId: string,
-    metadata: { regulation_issue_date?: string; circular_effective_date?: string; regulator?: string; global_theme?: string; global_likelihood_owner_team?: string },
+    metadata: { circular_id?: string; circular_title?: string; regulation_issue_date?: string; circular_effective_date?: string; regulator?: string; global_theme?: string; global_likelihood_owner_team?: string },
 ): Promise<Record<string, unknown>> {
     const res = await apiFetch(`/documents/${docId}/metadata`, {
         method: 'PUT',

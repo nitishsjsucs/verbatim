@@ -1108,18 +1108,8 @@ def save_memory(doc_id: str = ""):
 # ---------------------------------------------------------------------------
 
 REGULATORS = [
-    "Reserve Bank of India (RBI)",
-    "Securities and Exchange Board of India (SEBI)",
-    "Insurance Regulatory and Development Authority of India (IRDAI)",
-    "Pension Fund Regulatory and Development Authority (PFRDA)",
-    "Competition Commission of India (CCI)",
-    "Insolvency and Bankruptcy Board of India (IBBI)",
-    "National Financial Reporting Authority (NFRA)",
-    "National Bank for Agriculture and Rural Development (NABARD)",
-    "Small Industries Development Bank of India (SIDBI)",
-    "Export-Import Bank of India (EXIM Bank)",
-    "International Financial Services Centres Authority (IFSCA)",
-    "Forward Markets Commission (FMC – merged with SEBI)",
+    "RBI",
+    "SEBI",
 ]
 
 
@@ -1136,17 +1126,28 @@ def list_regulators():
 
 @app.put("/documents/{doc_id}/metadata")
 def update_document_metadata(doc_id: str, body: dict = Body(...)):
-    """Update document-level metadata: regulation dates, regulator, and global fallback fields.
-    Global fields (theme, deadline, tranche3, new_product, live_date, impact_dropdown,
-    likelihood_owner_team) are stored at the document level for fallback inheritance —
-    they are NOT propagated/written into individual actionables."""
+    """Update document-level metadata: circular info, regulation dates, regulator, and global fallback fields.
+    If no ActionablesResult exists yet (pre-extraction), a stub is created so metadata
+    is preserved and inherited when extraction runs later.
+    Propagated fields (circular_id, circular_title, regulation_issue_date,
+    circular_effective_date, regulator) are written to each existing actionable too.
+    Global fallback fields are stored at document level only."""
+    import random
+    import string as _string
     store = get_actionable_store()
+    from models.actionable import ActionablesResult as _AR
     result = store.load(doc_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Document not found")
+        # Create a stub so metadata can be stored before extraction
+        result = _AR(doc_id=doc_id)
+
+    # Auto-generate circular_id if not already set and not provided in body
+    if not result.circular_id and not body.get("circular_id"):
+        suffix = "".join(random.choices(_string.digits, k=4))
+        result.circular_id = f"CIRC-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{suffix}"
 
     # Propagated fields (written to each actionable)
-    propagated = ["regulation_issue_date", "circular_effective_date", "regulator"]
+    propagated = ["circular_id", "circular_title", "regulation_issue_date", "circular_effective_date", "regulator"]
     for field_name in propagated:
         if field_name in body:
             setattr(result, field_name, body[field_name])
@@ -1166,6 +1167,8 @@ def update_document_metadata(doc_id: str, body: dict = Body(...)):
     store.save(result)
     return {
         "doc_id": result.doc_id,
+        "circular_id": result.circular_id,
+        "circular_title": result.circular_title,
         "regulation_issue_date": result.regulation_issue_date,
         "circular_effective_date": result.circular_effective_date,
         "regulator": result.regulator,
@@ -1404,13 +1407,32 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
                 from models.actionable import ActionablesResult as AR
 
                 result_obj = AR.from_dict(final_result)
-                # Stamp created_at and actionable_id on any actionable that doesn't have one
+
+                # Merge any pre-existing metadata (saved before extraction via upload modal)
+                _existing = act_store.load(result_obj.doc_id)
+                _meta_fields = [
+                    "circular_id", "circular_title",
+                    "regulation_issue_date", "circular_effective_date", "regulator",
+                ]
+                if _existing:
+                    for _f in _meta_fields:
+                        _val = getattr(_existing, _f, "")
+                        if _val:
+                            setattr(result_obj, _f, _val)
+
+                # Propagate document-level metadata down to each actionable
                 _now = datetime.now(timezone.utc).isoformat()
                 for _a in result_obj.actionables:
                     if not _a.created_at:
                         _a.created_at = _now
                     if not _a.actionable_id:
                         _a.actionable_id = _generate_actionable_id()
+                    # Stamp circular metadata on each actionable
+                    for _f in _meta_fields:
+                        _doc_val = getattr(result_obj, _f, "")
+                        if _doc_val and not getattr(_a, _f, ""):
+                            setattr(_a, _f, _doc_val)
+
                 act_store.save(result_obj)
 
         except Exception as e:
@@ -1971,6 +1993,8 @@ def create_manual_actionable(doc_id: str, body: dict = Body(...)):
         impact_dropdown=body.get("impact_dropdown"),
         overall_impact_score=body.get("overall_impact_score"),
         # Circular metadata
+        circular_id=body.get("circular_id", ""),
+        circular_title=body.get("circular_title", ""),
         regulation_issue_date=body.get("regulation_issue_date", ""),
         circular_effective_date=body.get("circular_effective_date", ""),
         regulator=body.get("regulator", ""),

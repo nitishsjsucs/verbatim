@@ -377,6 +377,8 @@ export interface ActionableItem {
     assigned_teams?: string[];             // Teams assigned to this actionable
     team_workflows?: Record<string, TeamWorkflow>;  // Per-team workflow state
     // Document metadata (inherited from parent document)
+    circular_id?: string;             // Auto-generated unique ID for the circular
+    circular_title?: string;          // Title of the circular / regulatory document
     regulation_issue_date?: string;   // ISO date — regulation issued date
     circular_effective_date?: string;  // ISO date — circular effective date
     regulator?: string;               // Regulator name
@@ -488,6 +490,8 @@ export interface ActionablesResult {
     status?: string;                    // "not_extracted" if not yet run
     doc_id: string;
     doc_name: string;
+    circular_id?: string;               // Auto-generated unique ID for the circular
+    circular_title?: string;            // Title of the circular
     regulation_issue_date?: string;     // ISO date — document-level
     circular_effective_date?: string;   // ISO date — document-level
     regulator?: string;                 // Regulator — document-level

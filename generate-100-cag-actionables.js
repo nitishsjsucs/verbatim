@@ -197,7 +197,7 @@ async function main() {
         console.log(`  • Matched ${clearResult.matchedCount}, Modified ${clearResult.modifiedCount}`);
 
         console.log(`\nCreating CAG document '${DOC_ID}' with ${COUNT} assigned actionables...`);
-        const teamName = 'Engineering Division 1 - Unit 1';
+        const teamName = 'Engineering Division 1 Unit 1';
         const items = [];
         for (let i = 1; i <= COUNT; i++) {
             items.push(generateActionable(i, teamName));

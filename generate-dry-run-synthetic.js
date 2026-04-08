@@ -23,7 +23,7 @@ const DRY_RUN = args.includes('--dry-run');
 
 const DOC_ID = 'DOC-SYN-DRY-RUN';
 const DOC_NAME = 'Synthetic Dry-Run Document';
-const TEAM_NAME = 'Engineering Division 1 - Unit 1';
+const TEAM_NAME = 'Engineering Division 1 Unit 1';
 
 function generateActionable(i) {
     const id = `ACT-DRY-${String(i).padStart(4, '0')}`;

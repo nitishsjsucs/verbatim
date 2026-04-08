@@ -124,6 +124,8 @@ class ActionableItem:
     lead_comment: str = ""  # Mandatory comment from lead (if applicable)
     co_comment: str = ""  # Mandatory comment from CO before final approval
     # ── Document metadata (inherited from parent document) ──
+    circular_id: str = ""  # Auto-generated unique ID for the circular (e.g. "CIRC-20260101-0001")
+    circular_title: str = ""  # Title of the circular / regulatory document
     regulation_issue_date: str = ""  # ISO date — when the regulation was issued
     circular_effective_date: str = ""  # ISO date — when the circular becomes effective
     regulator: str = ""  # Regulator name (e.g. "RBI", "SEBI")
@@ -364,6 +366,8 @@ class ActionableItem:
             "lead_comment": self.lead_comment,
             "co_comment": self.co_comment,
             "audit_trail": self.audit_trail,
+            "circular_id": self.circular_id,
+            "circular_title": self.circular_title,
             "regulation_issue_date": self.regulation_issue_date,
             "circular_effective_date": self.circular_effective_date,
             "regulator": self.regulator,
@@ -506,6 +510,8 @@ class ActionableItem:
             lead_comment=data.get("lead_comment", ""),
             co_comment=data.get("co_comment", ""),
             audit_trail=data.get("audit_trail", []),
+            circular_id=data.get("circular_id", ""),
+            circular_title=data.get("circular_title", ""),
             regulation_issue_date=data.get("regulation_issue_date", ""),
             circular_effective_date=data.get("circular_effective_date", ""),
             regulator=data.get("regulator", ""),
@@ -569,6 +575,8 @@ class ActionablesResult:
 
     doc_id: str
     doc_name: str = ""
+    circular_id: str = ""  # Auto-generated unique ID for this circular
+    circular_title: str = ""  # Title of the circular
     regulation_issue_date: str = ""  # ISO date — regulation issued date
     circular_effective_date: str = ""  # ISO date — circular effective date
     regulator: str = ""  # Regulator name
@@ -628,6 +636,8 @@ class ActionablesResult:
         return {
             "doc_id": self.doc_id,
             "doc_name": self.doc_name,
+            "circular_id": self.circular_id,
+            "circular_title": self.circular_title,
             "regulation_issue_date": self.regulation_issue_date,
             "circular_effective_date": self.circular_effective_date,
             "regulator": self.regulator,
@@ -663,6 +673,8 @@ class ActionablesResult:
         result = cls(
             doc_id=data.get("doc_id", ""),
             doc_name=data.get("doc_name", ""),
+            circular_id=data.get("circular_id", ""),
+            circular_title=data.get("circular_title", ""),
             regulation_issue_date=data.get("regulation_issue_date", ""),
             circular_effective_date=data.get("circular_effective_date", ""),
             regulator=data.get("regulator", ""),
