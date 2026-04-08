@@ -948,9 +948,9 @@ function TeamBoardContent() {
         else if (currentStatus === "in_progress") {
             // Member submission: validate all prerequisites
             const missing: string[] = []
-            // Likelihood is only required for the team that has edit permission
-            const assignedTeamsIP = (item.assigned_teams ?? []) as string[]
-            const isLikelihoodOwner = assignedTeamsIP.length === 0 || (!!userTeam && assignedTeamsIP.includes(userTeam))
+            // Likelihood is only required for the team that owns it (mirrors TaskRow UI logic)
+            const likelihoodOwnerIP = item.computed_likelihood_owner_team || item.likelihood_owner_team || ""
+            const isLikelihoodOwner = !likelihoodOwnerIP || (userTeam ? likelihoodOwnerIP === userTeam : true)
             if (isLikelihoodOwner) {
                 if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
                 if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
@@ -978,9 +978,9 @@ function TeamBoardContent() {
         else if (currentStatus === "reworking") {
             // Resubmission: same validation as initial submission
             const missing: string[] = []
-            // Likelihood is only required for the team that has edit permission
-            const assignedTeamsRW = (item.assigned_teams ?? []) as string[]
-            const isLikelihoodOwnerRW = assignedTeamsRW.length === 0 || (!!userTeam && assignedTeamsRW.includes(userTeam))
+            // Likelihood is only required for the team that owns it (mirrors TaskRow UI logic)
+            const likelihoodOwnerRW = item.computed_likelihood_owner_team || item.likelihood_owner_team || ""
+            const isLikelihoodOwnerRW = !likelihoodOwnerRW || (userTeam ? likelihoodOwnerRW === userTeam : true)
             if (isLikelihoodOwnerRW) {
                 if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
                 if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
