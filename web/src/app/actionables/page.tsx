@@ -974,7 +974,7 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                                 <div>
                                                     <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
                                                     <textarea
-                                                        value={draftTeamImpl[team] || ""
+                                                        value={draftTeamImpl[team] || ""}
                                                         onChange={e => {
                                                             setDraftTeamImpl(prev => ({ ...prev, [team]: e.target.value }))
                                                             autoGrow(e.target)
