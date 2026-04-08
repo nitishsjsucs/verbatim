@@ -948,9 +948,14 @@ function TeamBoardContent() {
         else if (currentStatus === "in_progress") {
             // Member submission: validate all prerequisites
             const missing: string[] = []
-            if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
-            if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
-            if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
+            // Likelihood is only required for the team that has edit permission
+            const assignedTeamsIP = (item.assigned_teams ?? []) as string[]
+            const isLikelihoodOwner = assignedTeamsIP.length === 0 || (!!userTeam && assignedTeamsIP.includes(userTeam))
+            if (isLikelihoodOwner) {
+                if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
+                if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
+                if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
+            }
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
             if (!item.member_comment?.trim()) missing.push("Maker Comment (required — save it first)")
@@ -973,9 +978,14 @@ function TeamBoardContent() {
         else if (currentStatus === "reworking") {
             // Resubmission: same validation as initial submission
             const missing: string[] = []
-            if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
-            if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
-            if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
+            // Likelihood is only required for the team that has edit permission
+            const assignedTeamsRW = (item.assigned_teams ?? []) as string[]
+            const isLikelihoodOwnerRW = assignedTeamsRW.length === 0 || (!!userTeam && assignedTeamsRW.includes(userTeam))
+            if (isLikelihoodOwnerRW) {
+                if (!item.likelihood_business_volume?.label) missing.push("Business Volume")
+                if (!item.likelihood_products_processes?.label) missing.push("Products & Processes")
+                if (!item.likelihood_compliance_violations?.label) missing.push("Compliance Violations")
+            }
             if (!item.control_monitoring?.label) missing.push("Monitoring Mechanism")
             if (!item.control_effectiveness?.label) missing.push("Control Effectiveness")
             if (!item.member_comment?.trim()) missing.push("Rework Comment (required — save it first)")
@@ -1007,7 +1017,7 @@ function TeamBoardContent() {
                 notifySubmittedForReview(item.action || "Actionable", item.workstream || "Technology", userName, docId, item.actionable_id || item.id)
             }
         }
-    }, [handleUpdate, userName])
+    }, [handleUpdate, userName, userTeam])
 
     const handleRevert = React.useCallback(async (docId: string, item: ActionableItem) => {
         await handleUpdate(docId, item.id, { task_status: "in_progress", submitted_at: "" })
