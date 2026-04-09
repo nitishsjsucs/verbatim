@@ -298,6 +298,10 @@ export interface TeamWorkflow {
     comments?: ActionableComment[];
     completion_date?: string;
     deadline?: string;  // Per-team deadline for mixed group projects
+    // Per-team control assessment (each team has independent control inputs)
+    control_monitoring?: RiskSubDropdown;
+    control_effectiveness?: RiskSubDropdown;
+    control_score?: number;
 }
 
 export interface RiskSubDropdown {
@@ -648,18 +652,18 @@ export interface TestingAdHocWindow {
 
 /** Testing status display configuration */
 export const TESTING_STATUS_STYLES: Record<TestingStatus, { label: string; color: string; bg: string }> = {
-    pending_assignment: { label: "Pending Assignment", color: "text-gray-400", bg: "bg-gray-400/10" },
-    assigned_to_tester: { label: "Assigned to Tester", color: "text-blue-400", bg: "bg-blue-400/10" },
-    tester_review: { label: "Tester Review", color: "text-indigo-400", bg: "bg-indigo-400/10" },
-    assigned_to_maker: { label: "Assigned to Maker", color: "text-purple-400", bg: "bg-purple-400/10" },
-    maker_open: { label: "Open (Maker)", color: "text-amber-400", bg: "bg-amber-400/10" },
-    checker_review: { label: "Checker Review", color: "text-teal-400", bg: "bg-teal-400/10" },
-    active: { label: "Active", color: "text-cyan-400", bg: "bg-cyan-400/10" },
-    maker_closed: { label: "Closed (Maker)", color: "text-emerald-400", bg: "bg-emerald-400/10" },
-    tester_validation: { label: "Tester Validation", color: "text-orange-400", bg: "bg-orange-400/10" },
-    passed: { label: "Passed", color: "text-green-400", bg: "bg-green-400/10" },
-    rejected_to_maker: { label: "Rejected (Rework)", color: "text-red-400", bg: "bg-red-400/10" },
-    delayed: { label: "Delayed", color: "text-rose-500", bg: "bg-rose-500/10" },
+    pending_assignment: { label: "Awaiting Assignment by Test Head", color: "text-gray-400", bg: "bg-gray-400/10" },
+    assigned_to_tester: { label: "Assigned — Awaiting Tester Review", color: "text-blue-400", bg: "bg-blue-400/10" },
+    tester_review: { label: "Tester Reviewing Scope", color: "text-indigo-400", bg: "bg-indigo-400/10" },
+    assigned_to_maker: { label: "Pending Team Evidence Submission", color: "text-purple-400", bg: "bg-purple-400/10" },
+    maker_open: { label: "Open — Awaiting Deadline Confirmation", color: "text-amber-400", bg: "bg-amber-400/10" },
+    checker_review: { label: "Awaiting Open Date Approval", color: "text-teal-400", bg: "bg-teal-400/10" },
+    active: { label: "Active — Countdown Running", color: "text-cyan-400", bg: "bg-cyan-400/10" },
+    maker_closed: { label: "Closed — Pending Tester Approval", color: "text-emerald-400", bg: "bg-emerald-400/10" },
+    tester_validation: { label: "Pending Closure Approval", color: "text-orange-400", bg: "bg-orange-400/10" },
+    passed: { label: "Approved — Testing Complete", color: "text-green-400", bg: "bg-green-400/10" },
+    rejected_to_maker: { label: "Returned for Rework", color: "text-red-400", bg: "bg-red-400/10" },
+    delayed: { label: "Delayed — Past Deadline", color: "text-rose-500", bg: "bg-rose-500/10" },
 };
 
 // ---------------------------------------------------------------------------
@@ -895,5 +899,9 @@ export function getTeamView(item: ActionableItem, team: string): ActionableItem 
         deadline: tw.deadline || item.deadline,
         implementation_notes: tw.implementation_notes ?? item.implementation_notes,
         evidence_quote: tw.evidence_quote ?? item.evidence_quote,
+        // Per-team control fields (each team has independent control inputs)
+        control_monitoring: tw.control_monitoring ?? item.control_monitoring,
+        control_effectiveness: tw.control_effectiveness ?? item.control_effectiveness,
+        control_score: tw.control_score ?? item.control_score,
     };
 }

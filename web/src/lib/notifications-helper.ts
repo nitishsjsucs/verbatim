@@ -283,3 +283,115 @@ export async function notifyCheckerRejectedToMaker(
         { team, actionableId, docId }
     )
 }
+
+// ─── Testing Cycle Notification Functions ────────────────────────────────────
+
+/** T1. Testing Head assigns item to Tester → notify Tester */
+export async function notifyTestingAssigned(
+    itemTitle: string,
+    testerId: string,
+    deadline: string
+): Promise<void> {
+    await notifyUser(testerId, "testing_assigned",
+        `You have been assigned a testing task: "${itemTitle.slice(0, 60)}" — deadline: ${deadline}`
+    )
+}
+
+/** T2. Tester forwards to Maker → notify Maker */
+export async function notifyTestingForwardedToMaker(
+    itemTitle: string,
+    makerId: string,
+    testerName: string
+): Promise<void> {
+    await notifyUser(makerId, "testing_forward",
+        `${testerName} assigned testing task to you: "${itemTitle.slice(0, 60)}"`
+    )
+}
+
+/** T3. Maker submits Open decision → notify Checker */
+export async function notifyTestingMakerOpen(
+    itemTitle: string,
+    makerName: string
+): Promise<void> {
+    await notifyByRole("testing_checker", "testing_open",
+        `${makerName} marked "${itemTitle.slice(0, 60)}" as OPEN — deadline confirmation required`
+    )
+}
+
+/** T4. Maker submits Close decision → notify Tester */
+export async function notifyTestingMakerClosed(
+    itemTitle: string,
+    testerId: string,
+    makerName: string
+): Promise<void> {
+    await notifyUser(testerId, "testing_close",
+        `${makerName} marked "${itemTitle.slice(0, 60)}" as CLOSED — validation required`
+    )
+}
+
+/** T5. Checker confirms deadline → notify Tester + Maker */
+export async function notifyTestingCheckerConfirmed(
+    itemTitle: string,
+    testerId: string,
+    makerId: string,
+    checkerName: string
+): Promise<void> {
+    const msg = `${checkerName} confirmed deadline for "${itemTitle.slice(0, 60)}" — now active`
+    await Promise.all([
+        notifyUser(testerId, "testing_confirmed", msg),
+        notifyUser(makerId, "testing_confirmed", msg),
+    ])
+}
+
+/** T6. Checker rejects deadline → notify Maker */
+export async function notifyTestingCheckerRejected(
+    itemTitle: string,
+    makerId: string,
+    checkerName: string,
+    reason: string
+): Promise<void> {
+    await notifyUser(makerId, "testing_rejection",
+        `${checkerName} rejected deadline for "${itemTitle.slice(0, 60)}": ${reason.slice(0, 100)}`
+    )
+}
+
+/** T7. Tester passes item → notify all (Maker, Checker, Head) */
+export async function notifyTestingPassed(
+    itemTitle: string,
+    testerName: string,
+    makerId: string
+): Promise<void> {
+    const msg = `${testerName} PASSED testing for "${itemTitle.slice(0, 60)}"`
+    await Promise.all([
+        notifyUser(makerId, "testing_passed", msg),
+        notifyByRole("testing_checker", "testing_passed", msg),
+        notifyByRole("testing_head", "testing_passed", msg),
+    ])
+}
+
+/** T8. Tester rejects item → notify Maker */
+export async function notifyTestingRejected(
+    itemTitle: string,
+    makerId: string,
+    testerName: string,
+    reason: string
+): Promise<void> {
+    await notifyUser(makerId, "testing_rejection",
+        `${testerName} rejected testing for "${itemTitle.slice(0, 60)}": ${reason.slice(0, 100)}`
+    )
+}
+
+/** T9. Testing item becomes delayed → notify all participants */
+export async function notifyTestingDelayed(
+    itemTitle: string,
+    testerId: string,
+    makerId: string
+): Promise<void> {
+    const msg = `Testing task DELAYED: "${itemTitle.slice(0, 60)}" has passed its deadline`
+    await Promise.all([
+        testerId ? notifyUser(testerId, "testing_delay", msg) : Promise.resolve(),
+        makerId ? notifyUser(makerId, "testing_delay", msg) : Promise.resolve(),
+        notifyByRole("testing_checker", "testing_delay", msg),
+        notifyByRole("testing_head", "testing_delay", msg),
+    ])
+}

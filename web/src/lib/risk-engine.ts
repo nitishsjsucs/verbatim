@@ -203,33 +203,50 @@ export function computeResidualScore(item: ActionableItem, documentLikelihoodSco
         )
     }
     const impScore = safeScore(item.impact_dropdown) ** 2
-    const monS = safeScore(item.control_monitoring)
-    const effS = safeScore(item.control_effectiveness)
-    const ctrlScore = monS || effS ? Math.max(monS, effS) : 0
+
+    // Control: for multi-team items, compute max across all team control scores
+    let ctrlScore: number
+    let allControlFilled: boolean
+    const isMulti = (item.assigned_teams?.length ?? 0) > 1 && item.team_workflows
+    if (isMulti && item.team_workflows) {
+        const teamScores: number[] = []
+        let anyTeamMissing = false
+        for (const tw of Object.values(item.team_workflows)) {
+            const tMon = safeScore((tw as any).control_monitoring)
+            const tEff = safeScore((tw as any).control_effectiveness)
+            const tcs = tMon || tEff ? Math.max(tMon, tEff) : 0
+            teamScores.push(tcs)
+            if (!(tw as any).control_monitoring?.label || !(tw as any).control_effectiveness?.label) {
+                anyTeamMissing = true
+            }
+        }
+        ctrlScore = teamScores.length > 0 ? Math.max(...teamScores) : 0
+        allControlFilled = !anyTeamMissing && teamScores.length > 0
+    } else {
+        const monS = safeScore(item.control_monitoring)
+        const effS = safeScore(item.control_effectiveness)
+        ctrlScore = monS || effS ? Math.max(monS, effS) : 0
+        allControlFilled = !!(item.control_monitoring?.label && item.control_effectiveness?.label)
+    }
+
     const inherent = likScore * impScore
     const allFilled = !!(
         item.likelihood_business_volume?.label &&
         item.likelihood_products_processes?.label &&
         item.likelihood_compliance_violations?.label &&
         item.impact_dropdown?.label &&
-        item.control_monitoring?.label &&
-        item.control_effectiveness?.label
+        allControlFilled
     )
     if (!allFilled) return null
     return inherent * ctrlScore
 }
 
 /** Compute residual risk for a multi-team (mixed) actionable.
- *  Combining logic: max likelihood, common impact, max control (worst-case).
- *  Currently risk scores are stored at the actionable level (not per-team),
- *  so this is equivalent to computeResidualScore. If per-team risk scores
- *  are added in the future, this function should aggregate across teams.
+ *  Control score = max of all per-team control scores.
+ *  Likelihood & impact are shared across the actionable.
  */
 export function computeMixedTeamResidualScore(item: ActionableItem): number | null {
-    // Multi-team items share the same risk assessment at the actionable level.
-    // The combining logic (max likelihood, avg control, common impact) is already
-    // baked into computeResidualScore since likelihood = MAX(3 sub-scores),
-    // control = AVG(2 sub-scores), and impact is a single shared value.
+    // computeResidualScore already handles multi-team control aggregation
     return computeResidualScore(item)
 }
 

@@ -1811,9 +1811,23 @@ def _recompute_risk_scores(target, document_likelihood_score: float | None = Non
     target.inherent_risk_label = _classify_inherent_risk(ir)
 
     # Control = MAX (worst-case) of 2 sub-dropdown scores
-    mon = _safe_score(target.control_monitoring)
-    eff = _safe_score(target.control_effectiveness)
-    cs = max(mon, eff) if (mon or eff) else 0
+    # For multi-team items, each team has its own control inputs stored in
+    # team_workflows — the final control score is the MAX across all teams.
+    if hasattr(target, 'is_multi_team') and target.is_multi_team and isinstance(getattr(target, 'team_workflows', None), dict) and target.team_workflows:
+        team_ctrl_scores = []
+        for team_name, tw in target.team_workflows.items():
+            if not isinstance(tw, dict):
+                continue
+            t_mon = _safe_score(tw.get("control_monitoring"))
+            t_eff = _safe_score(tw.get("control_effectiveness"))
+            t_cs = max(t_mon, t_eff) if (t_mon or t_eff) else 0
+            tw["control_score"] = t_cs
+            team_ctrl_scores.append(t_cs)
+        cs = max(team_ctrl_scores) if team_ctrl_scores else 0
+    else:
+        mon = _safe_score(target.control_monitoring)
+        eff = _safe_score(target.control_effectiveness)
+        cs = max(mon, eff) if (mon or eff) else 0
     target.control_score = cs
     target.overall_control_score = cs
 

@@ -209,6 +209,7 @@ class ActionableItem:
         "delay_justification_updated_by", "delay_justification_updated_at",
         "evidence_files", "comments", "completion_date",
         "deadline", "implementation_notes", "evidence_quote",
+        "control_monitoring", "control_effectiveness", "control_score",
     ]
 
     @property
@@ -253,6 +254,9 @@ class ActionableItem:
                     "deadline": "",
                     "implementation_notes": "",
                     "evidence_quote": "",
+                    "control_monitoring": {},
+                    "control_effectiveness": {},
+                    "control_score": 0,
                 }
 
     def compute_aggregate_status(self) -> None:

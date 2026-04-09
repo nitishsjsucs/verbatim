@@ -12,6 +12,16 @@ import {
     submitTesterVerdict,
     addTestingComment,
 } from "./testing-api"
+import {
+    notifyTestingAssigned,
+    notifyTestingForwardedToMaker,
+    notifyTestingMakerOpen,
+    notifyTestingMakerClosed,
+    notifyTestingCheckerConfirmed,
+    notifyTestingCheckerRejected,
+    notifyTestingPassed,
+    notifyTestingRejected,
+} from "./notifications-helper"
 
 interface UseTestingItemsOptions {
     section?: string
@@ -61,12 +71,14 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
             })
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
             toast.success(`Assigned to ${testerName}`)
+            const item = items.find(i => i.id === itemId)
+            notifyTestingAssigned(item?.source_actionable_text || itemId, testerId, deadline).catch(() => {})
             return updated
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Assignment failed")
             throw err
         }
-    }, [])
+    }, [items])
 
     const handleForwardToMaker = React.useCallback(async (
         itemId: string, makerId: string, makerName: string, forwardedBy: string
@@ -77,12 +89,14 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
             })
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
             toast.success(`Forwarded to maker ${makerName}`)
+            const item = items.find(i => i.id === itemId)
+            notifyTestingForwardedToMaker(item?.source_actionable_text || itemId, makerId, forwardedBy).catch(() => {})
             return updated
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Forward failed")
             throw err
         }
-    }, [])
+    }, [items])
 
     const handleMakerDecision = React.useCallback(async (
         itemId: string, decision: "open" | "close", actor: string, makerDeadline?: string
@@ -93,36 +107,57 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
             })
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
             toast.success(`Item marked as ${decision.toUpperCase()}`)
+            const item = items.find(i => i.id === itemId)
+            const title = item?.source_actionable_text || itemId
+            if (decision === "open") {
+                notifyTestingMakerOpen(title, actor).catch(() => {})
+            } else {
+                notifyTestingMakerClosed(title, item?.assigned_tester_id || "", actor).catch(() => {})
+            }
             return updated
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Decision failed")
             throw err
         }
-    }, [])
+    }, [items])
 
     const handleCheckerConfirm = React.useCallback(async (itemId: string, checkerName: string) => {
         try {
             const updated = await checkerConfirmDeadline(itemId, { checker_name: checkerName })
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
             toast.success("Deadline confirmed — item is now active")
+            const item = items.find(i => i.id === itemId)
+            notifyTestingCheckerConfirmed(
+                item?.source_actionable_text || itemId,
+                item?.assigned_tester_id || "",
+                item?.assigned_maker_id || "",
+                checkerName
+            ).catch(() => {})
             return updated
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Confirmation failed")
             throw err
         }
-    }, [])
+    }, [items])
 
     const handleCheckerReject = React.useCallback(async (itemId: string, checkerName: string, reason?: string) => {
         try {
             const updated = await checkerRejectDeadline(itemId, { checker_name: checkerName, reason })
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
             toast.success("Deadline rejected — item sent back to maker")
+            const item = items.find(i => i.id === itemId)
+            notifyTestingCheckerRejected(
+                item?.source_actionable_text || itemId,
+                item?.assigned_maker_id || "",
+                checkerName,
+                reason || "No reason provided"
+            ).catch(() => {})
             return updated
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Rejection failed")
             throw err
         }
-    }, [])
+    }, [items])
 
     const handleTesterVerdict = React.useCallback(async (
         itemId: string, verdict: "pass" | "reject", testerName: string, reason?: string
@@ -133,12 +168,19 @@ export function useTestingItems(opts: UseTestingItemsOptions = {}) {
             })
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...updated } : i))
             toast.success(verdict === "pass" ? "Item PASSED" : "Item REJECTED — sent back to maker")
+            const item = items.find(i => i.id === itemId)
+            const title = item?.source_actionable_text || itemId
+            if (verdict === "pass") {
+                notifyTestingPassed(title, testerName, item?.assigned_maker_id || "").catch(() => {})
+            } else {
+                notifyTestingRejected(title, item?.assigned_maker_id || "", testerName, reason || "No reason provided").catch(() => {})
+            }
             return updated
         } catch (err) {
             toast.error(err instanceof Error ? err.message : "Verdict failed")
             throw err
         }
-    }, [])
+    }, [items])
 
     const handleAddComment = React.useCallback(async (
         itemId: string, author: string, role: string, text: string
