@@ -267,9 +267,25 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
     // INHERENT RISK = likelihood × impact
     const inherentRiskScore = likelihoodScore * impactScore
     // OVERALL CONTROL = MAX (worst-case) of 2 sub-dropdown scores
+    // For multi-team items, control is stored per-team in team_workflows — aggregate MAX across all teams
     const monScore = safeScore(draftCtrlMon)
     const effScore = safeScore(draftCtrlEff)
-    const controlScore = (monScore || effScore) ? Math.max(monScore, effScore) : 0
+    const controlScore = (() => {
+        const teams = item.assigned_teams ?? []
+        if (teams.length > 1 && item.team_workflows && Object.keys(item.team_workflows).length > 0) {
+            const scores: number[] = []
+            for (const tw of Object.values(item.team_workflows)) {
+                if (!tw || typeof tw !== "object") continue
+                const tMon = safeScore((tw as { control_monitoring?: RiskSubDropdown }).control_monitoring)
+                const tEff = safeScore((tw as { control_effectiveness?: RiskSubDropdown }).control_effectiveness)
+                if (tMon || tEff) scores.push(Math.max(tMon, tEff))
+            }
+            if (scores.length > 0) return Math.max(...scores)
+            // Fall back to pre-computed top-level value
+            if (item.control_score && item.control_score > 0) return item.control_score
+        }
+        return (monScore || effScore) ? Math.max(monScore, effScore) : 0
+    })()
     // All 6 risk parameters must be filled for residual to calculate
     const allRiskFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
     // RESIDUAL RISK = inherent risk × control score (only when all params filled)

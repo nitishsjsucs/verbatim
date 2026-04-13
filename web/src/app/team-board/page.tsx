@@ -101,12 +101,15 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
 
     // Draft state for risk dropdowns (Save button pattern like CO actionables page)
     const emptyRSD = {} as RiskSubDropdown
+    // For multi-team items: control is stored per-team in team_workflows; read from the current team's workflow
+    const isMultiTeamItem = (item.assigned_teams?.length ?? 0) > 1
+    const myTeamTW = (isMultiTeamItem && userTeam) ? item.team_workflows?.[userTeam] : undefined
     const [draftLikeBV, setDraftLikeBV] = React.useState<RiskSubDropdown>(item.likelihood_business_volume || emptyRSD)
     const [draftLikePP, setDraftLikePP] = React.useState<RiskSubDropdown>(item.likelihood_products_processes || emptyRSD)
     const [draftLikeCV, setDraftLikeCV] = React.useState<RiskSubDropdown>(item.likelihood_compliance_violations || emptyRSD)
     const [draftImpactDD, setDraftImpactDD] = React.useState<RiskSubDropdown>(item.impact_dropdown || emptyRSD)
-    const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>(item.control_monitoring || emptyRSD)
-    const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>(item.control_effectiveness || emptyRSD)
+    const [draftCtrlMon, setDraftCtrlMon] = React.useState<RiskSubDropdown>((myTeamTW?.control_monitoring ?? item.control_monitoring) || emptyRSD)
+    const [draftCtrlEff, setDraftCtrlEff] = React.useState<RiskSubDropdown>((myTeamTW?.control_effectiveness ?? item.control_effectiveness) || emptyRSD)
     const [draftMemberComment, setDraftMemberComment] = React.useState(item.member_comment || "")
     const [draftDelayJustification, setDraftDelayJustification] = React.useState(item.delay_justification || "")
     const [saving, setSaving] = React.useState(false)
@@ -117,8 +120,9 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
         setDraftLikePP(item.likelihood_products_processes || emptyRSD)
         setDraftLikeCV(item.likelihood_compliance_violations || emptyRSD)
         setDraftImpactDD(item.impact_dropdown || emptyRSD)
-        setDraftCtrlMon(item.control_monitoring || emptyRSD)
-        setDraftCtrlEff(item.control_effectiveness || emptyRSD)
+        const tw = (isMultiTeamItem && userTeam) ? item.team_workflows?.[userTeam] : undefined
+        setDraftCtrlMon((tw?.control_monitoring ?? item.control_monitoring) || emptyRSD)
+        setDraftCtrlEff((tw?.control_effectiveness ?? item.control_effectiveness) || emptyRSD)
         setDraftMemberComment(item.member_comment || "")
         setDraftDelayJustification(item.delay_justification || "")
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,16 +131,20 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const subDiffers = (a: RiskSubDropdown | undefined, b: RiskSubDropdown | undefined) =>
         (a?.label || "") !== (b?.label || "")
 
+    // For multi-team items, compare control drafts against per-team stored values
+    const storedCtrlMon = (isMultiTeamItem && userTeam) ? item.team_workflows?.[userTeam]?.control_monitoring : item.control_monitoring
+    const storedCtrlEff = (isMultiTeamItem && userTeam) ? item.team_workflows?.[userTeam]?.control_effectiveness : item.control_effectiveness
+
     const isDirty = React.useMemo(() => {
         if (subDiffers(draftLikeBV, item.likelihood_business_volume)) return true
         if (subDiffers(draftLikePP, item.likelihood_products_processes)) return true
         if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) return true
         if (subDiffers(draftImpactDD, item.impact_dropdown)) return true
-        if (subDiffers(draftCtrlMon, item.control_monitoring)) return true
-        if (subDiffers(draftCtrlEff, item.control_effectiveness)) return true
+        if (subDiffers(draftCtrlMon, storedCtrlMon)) return true
+        if (subDiffers(draftCtrlEff, storedCtrlEff)) return true
         if (draftMemberComment !== (item.member_comment || "")) return true
         return false
-    }, [draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, draftMemberComment, item])
+    }, [draftLikeBV, draftLikePP, draftLikeCV, draftImpactDD, draftCtrlMon, draftCtrlEff, storedCtrlMon, storedCtrlEff, draftMemberComment, item])
 
     // Compute scores from drafts
     const safeRSD = (d: RiskSubDropdown | undefined) => (d && typeof d.score === "number" ? d.score : 0)
@@ -144,7 +152,19 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
     const draftImpScore = safeRSD(draftImpactDD) ** 2
     const draftMonS = safeRSD(draftCtrlMon)
     const draftEffS = safeRSD(draftCtrlEff)
-    const draftCtrlScore = (draftMonS || draftEffS) ? Math.max(draftMonS, draftEffS) : 0
+    const myCtrlScore = (draftMonS || draftEffS) ? Math.max(draftMonS, draftEffS) : 0
+    // For multi-team: aggregate control score = MAX across this team's draft + all other teams' stored control scores
+    const draftCtrlScore = (() => {
+        if (!isMultiTeamItem || !item.team_workflows) return myCtrlScore
+        const scores: number[] = [myCtrlScore]
+        for (const [t, tw] of Object.entries(item.team_workflows)) {
+            if (t === (userTeam ?? "")) continue
+            const tMon = safeRSD(tw.control_monitoring)
+            const tEff = safeRSD(tw.control_effectiveness)
+            if (tMon || tEff) scores.push(Math.max(tMon, tEff))
+        }
+        return Math.max(...scores)
+    })()
     // All 6 risk parameters must be filled for residual to calculate
     const draftAllFilled = !!(draftLikeBV?.label && draftLikePP?.label && draftLikeCV?.label && draftImpactDD?.label && draftCtrlMon?.label && draftCtrlEff?.label)
     const draftInherent = draftLikScore * draftImpScore
@@ -167,8 +187,8 @@ const TaskRow = React.memo(function TaskRow({ entry, gridCols, onUpdate, onUploa
                 updates.impact_dropdown = draftImpactDD
                 updates.overall_impact_score = Math.round(safeRSD(draftImpactDD) ** 2)
             }
-            if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
-            if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
+            if (subDiffers(draftCtrlMon, storedCtrlMon)) updates.control_monitoring = draftCtrlMon
+            if (subDiffers(draftCtrlEff, storedCtrlEff)) updates.control_effectiveness = draftCtrlEff
             if (draftMemberComment !== (item.member_comment || "")) updates.member_comment = draftMemberComment
             // Always recompute scores
             const interp = !draftAllFilled ? "" : draftResidual < 13 ? "Satisfactory (Low)" : draftResidual < 28 ? "Improvement Needed (Medium)" : "Weak (High)"
