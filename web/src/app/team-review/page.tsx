@@ -501,6 +501,7 @@ function TeamReviewContent() {
                                             expandedRow={expandedRow}
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
+                                            userTeam={userTeam || ""}
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onBypassApprove={handleBypassApprove}
@@ -541,6 +542,7 @@ function TeamReviewContent() {
                                             expandedRow={expandedRow}
                                             setExpandedRow={setExpandedRow}
                                             userName={userName}
+                                            userTeam={userTeam || ""}
                                             onApprove={handleApprove}
                                             onReject={handleReject}
                                             onBypassApprove={handleBypassApprove}
@@ -585,6 +587,7 @@ function ReviewRow({
     expandedRow: string | null
     setExpandedRow: (v: string | null) => void
     userName: string
+    userTeam: string
     onApprove: (docId: string, item: ActionableItem) => Promise<void>
     onReject: (docId: string, item: ActionableItem, reason: string) => Promise<void>
     onBypassApprove: (docId: string, item: ActionableItem) => Promise<void>
@@ -603,6 +606,9 @@ function ReviewRow({
     const isTaggedIncorrectly = taskStatus === "tagged_incorrectly"
     const isReworking = taskStatus === "reworking"
     const isReadOnly = taskStatus === "completed" || taskStatus === "review" || taskStatus === "bypass_approved"
+    // Likelihood ownership: only the designated owner team can edit likelihood fields
+    const likelihoodOwner = (item as any).computed_likelihood_owner_team || (item as any).likelihood_owner_team || ""
+    const isLikelihoodOwner = !likelihoodOwner || (userTeam ? likelihoodOwner === userTeam : true)
 
     const [rejectReason, setRejectReason] = React.useState("")
     const [showRejectInput, setShowRejectInput] = React.useState(false)
@@ -703,9 +709,12 @@ function ReviewRow({
         setSaving(true)
         try {
             const updates: Record<string, unknown> = {}
-            if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
-            if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
-            if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+            // Only save likelihood fields if this team is the designated likelihood owner
+            if (isLikelihoodOwner) {
+                if (subDiffers(draftLikeBV, item.likelihood_business_volume)) updates.likelihood_business_volume = draftLikeBV
+                if (subDiffers(draftLikePP, item.likelihood_products_processes)) updates.likelihood_products_processes = draftLikePP
+                if (subDiffers(draftLikeCV, item.likelihood_compliance_violations)) updates.likelihood_compliance_violations = draftLikeCV
+            }
             if (subDiffers(draftCtrlMon, item.control_monitoring)) updates.control_monitoring = draftCtrlMon
             if (subDiffers(draftCtrlEff, item.control_effectiveness)) updates.control_effectiveness = draftCtrlEff
             if (draftReviewerComment !== (item.reviewer_comment || "")) updates.reviewer_comment = draftReviewerComment
@@ -1127,15 +1136,16 @@ function ReviewRow({
                             </div>
                         </div>
 
-                        {/* Row 2: Likelihood (3 dropdowns) — reviewer override via draft */}
+                        {/* Row 2: Likelihood (3 dropdowns) — reviewer override via draft, gated on likelihood ownership */}
                         <div className="rounded-md border border-border/20 p-2 bg-muted/10">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[10px] font-semibold text-blue-400/80 uppercase tracking-wider">Likelihood Assessment</p>
+                                {!isLikelihoodOwner && likelihoodOwner && <span className="text-[9px] text-amber-400/70 italic">Owned by {likelihoodOwner}</span>}
                             </div>
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_business_volume") || "Business Volumes"}</p>
-                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) && isLikelihoodOwner ? (
                                         <select value={draftLikeBV?.label || ""} onChange={e => setDraftLikeBV(pickSubDropdown("likelihood_business_volume", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_business_volume").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
@@ -1146,7 +1156,7 @@ function ReviewRow({
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_products_processes") || "Products & Processes"}</p>
-                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) && isLikelihoodOwner ? (
                                         <select value={draftLikePP?.label || ""} onChange={e => setDraftLikePP(pickSubDropdown("likelihood_products_processes", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_products_processes").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
@@ -1157,7 +1167,7 @@ function ReviewRow({
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-muted-foreground/40 mb-0.5">{getLabel("likelihood_compliance_violations") || "Compliance Violations"}</p>
-                                    {(isTeamReviewStatus || isTaggedIncorrectly) ? (
+                                    {(isTeamReviewStatus || isTaggedIncorrectly) && isLikelihoodOwner ? (
                                         <select value={draftLikeCV?.label || ""} onChange={e => setDraftLikeCV(pickSubDropdown("likelihood_compliance_violations", e.target.value))} className="w-full bg-muted/30 text-xs rounded px-2 py-1 border border-blue-400/30 focus:border-blue-400 focus:outline-none text-foreground">
                                             <option value="">— Select —</option>
                                             {getSafeOptions("likelihood_compliance_violations").map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
