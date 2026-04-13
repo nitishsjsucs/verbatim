@@ -1,6 +1,6 @@
 const { MongoClient } = require('./web/node_modules/mongodb')
 const { resetActionables } = require('./reset-actionables')
-const { generateSyntheticActionables } = require('./generate-synthetic-actionables')
+const { main: generateSyntheticActionables } = require('./final_generate_actionables')
 
 const DEFAULT_URI = process.env.MONGO_URI
     || process.env.MONGODB_URI
