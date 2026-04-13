@@ -572,6 +572,7 @@ function ReviewRow({
     expandedRow,
     setExpandedRow,
     userName,
+    userTeam,
     onApprove,
     onReject,
     onBypassApprove,
