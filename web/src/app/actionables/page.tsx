@@ -19,6 +19,7 @@ import {
     ActionableWorkstream,
     TeamWorkflow,
     Team,
+    TaskStatus,
     RiskSubDropdown,
 } from "@/lib/types"
 import { useSession } from "@/lib/auth-client"
@@ -37,7 +38,7 @@ import { RoleRedirect } from "@/components/auth/role-redirect"
 import {
     safeStr,
     WORKSTREAM_COLORS, DEFAULT_WORKSTREAM_COLORS, getWorkstreamClass,
-    RESIDUAL_RISK_INTERPRETATION_STYLES, THEME_OPTIONS,
+    RESIDUAL_RISK_INTERPRETATION_STYLES, THEME_OPTIONS, TASK_STATUS_STYLES,
 } from "@/lib/status-config"
 import { useTeams } from "@/lib/use-teams"
 import { DropdownOption, useDropdownConfig } from "@/lib/use-dropdown-config"
@@ -679,25 +680,109 @@ function ActionableCard({ item, docId, docName, onUpdate, onDelete, onSourceClic
                                     {item.source_location || "Source"}
                                 </button>
                             </div>
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
-                                <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes) || "—"}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Team{(item.assigned_teams?.length ?? 0) > 1 ? "s" : ""}</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {((item.assigned_teams?.length ?? 0) > 1 ? item.assigned_teams! : [item.workstream]).map(t => (
-                                            <span key={t} className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(t))}>{t}</span>
-                                        ))}
+                            {/* Aggregated Risk Summary — shown once, common across all teams */}
+                            {(item.residual_risk_score || item.inherent_risk_score || item.control_score || item.likelihood_score) ? (
+                                <div className="rounded-md border border-border/20 p-2.5 bg-background/40">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[10px] font-semibold text-foreground/60 uppercase tracking-wider">Risk Summary</p>
+                                        <span className="text-[10px] text-muted-foreground/40">Aggregated</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Likelihood</p>
+                                            <p className="text-sm font-semibold tabular-nums text-blue-400">{item.likelihood_score && item.likelihood_score > 0 ? item.likelihood_score : "—"}</p>
+                                        </div>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Impact</p>
+                                            <p className="text-sm font-semibold tabular-nums text-pink-400">{item.impact_score && item.impact_score > 0 ? item.impact_score : "—"}</p>
+                                        </div>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Inherent Risk Score</p>
+                                            <p className="text-sm font-semibold tabular-nums text-orange-400">{item.inherent_risk_score && item.inherent_risk_score > 0 ? item.inherent_risk_score.toFixed(0) : "—"}</p>
+                                            {item.inherent_risk_label && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{item.inherent_risk_label}</p>}
+                                        </div>
+                                        <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                            <p className="text-[10px] text-muted-foreground/50 mb-0.5">Overall Control Score</p>
+                                            <p className="text-sm font-semibold tabular-nums text-teal-400">{item.control_score && item.control_score > 0 ? item.control_score.toFixed(1) : "—"}</p>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-md border border-border/30 bg-background/60 p-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground/50 mb-0.5">Residual Risk Score</p>
+                                                <p className="text-sm font-semibold tabular-nums text-foreground">{item.residual_risk_score && item.residual_risk_score > 0 ? item.residual_risk_score.toFixed(1) : "—"}</p>
+                                            </div>
+                                            {item.residual_risk_interpretation ? (
+                                                <span className={cn(
+                                                    "text-xs font-medium px-2 py-0.5 rounded-full",
+                                                    RESIDUAL_RISK_INTERPRETATION_STYLES[item.residual_risk_interpretation]?.bg ?? "bg-muted/30",
+                                                    RESIDUAL_RISK_INTERPRETATION_STYLES[item.residual_risk_interpretation]?.text ?? "text-foreground"
+                                                )}>
+                                                    {item.residual_risk_interpretation}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground/30">—</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            {item.deadline && (
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
-                                    <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
+                            ) : (
+                                <div className="rounded-md border border-dashed border-border/20 p-2 text-center">
+                                    <p className="text-[10px] text-muted-foreground/40 italic">Risk assessment not yet completed by assigned teams</p>
                                 </div>
+                            )}
+
+                            {/* Per-team sections for multi-team items; flat view for single-team */}
+                            {(item.assigned_teams?.length ?? 0) > 1 ? (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground/60 flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        Per-Team Tasks
+                                    </p>
+                                    {item.assigned_teams!.map(team => {
+                                        const tw = item.team_workflows?.[team]
+                                        const teamStatus = (tw?.task_status || "assigned") as TaskStatus
+                                        const statusCfg = TASK_STATUS_STYLES[teamStatus] || TASK_STATUS_STYLES.assigned
+                                        const teamDeadline = tw?.deadline || (team === item.workstream ? item.deadline : undefined)
+                                        const teamImpl = tw?.implementation_notes ?? (team === item.workstream ? item.implementation_notes : undefined)
+                                        const teamColors = WORKSTREAM_COLORS[team] || DEFAULT_WORKSTREAM_COLORS
+                                        return (
+                                            <div key={team} className={cn("rounded-lg p-3 space-y-2 border", teamColors.text.replace("text-", "border-"))}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", getWorkstreamClass(team))}>{team}</span>
+                                                    <span className={cn("ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold", statusCfg.bg, statusCfg.text)}>{statusCfg.label}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground/50 mb-0.5">Implementation</p>
+                                                    <p className="text-xs text-foreground/80">{teamImpl || <span className="text-muted-foreground/40 italic">—</span>}</p>
+                                                </div>
+                                                {teamDeadline && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Calendar className="h-3 w-3 text-muted-foreground/40" />
+                                                        <span className="text-xs text-blue-400 font-mono">{formatDateDMY(teamDeadline)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Implementation</p>
+                                        <p className="text-xs text-foreground/80">{safeStr(item.implementation_notes) || "—"}</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                        <p className="text-xs font-medium text-muted-foreground/60 mr-1">Team:</p>
+                                        <span className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-medium", getWorkstreamClass(item.workstream))}>{item.workstream}</span>
+                                    </div>
+                                    {item.deadline && (
+                                        <div>
+                                            <p className="text-xs font-medium text-muted-foreground/60 mb-0.5">Deadline</p>
+                                            <span className="text-xs text-blue-400 font-mono">{formatDateDMY(item.deadline)}</span>
+                                        </div>
+                                    )}
+                                </>
                             )}
                             {/* Compliance Parameters — read-only for all roles in completed view */}
                             <div className="rounded-md border border-border/20 p-2 bg-muted/5">
