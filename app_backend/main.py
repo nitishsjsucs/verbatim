@@ -60,6 +60,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Actionable Intelligence System (parallel feature layer, additive) ---
+try:
+    from app_backend.services.intelligence_router import router as _intelligence_router
+    app.include_router(_intelligence_router)
+    logger.info("Mounted Actionable Intelligence router at /intelligence/*")
+except Exception as _ais_err:  # non-fatal — existing endpoints remain intact
+    logger.warning("Failed to mount intelligence router: %s", _ais_err)
+
 
 # ---------------------------------------------------------------------------
 # Singleton Initialization (FIX #1: Eliminate Dependency Injection)
