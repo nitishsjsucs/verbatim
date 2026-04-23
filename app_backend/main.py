@@ -1778,7 +1778,7 @@ def _safe_score(d: Optional[dict]) -> float:
         return 0
 
 
-def _recompute_risk_scores(target, document_likelihood_score: float | None = None) -> None:
+def _recompute_risk_scores(target, document_likelihood_score: Optional[float] = None) -> None:
     """Recompute all derived risk scores from sub-dropdown selections.
 
     OVERALL LIKELIHOOD SCORE = MAX(businessVolume, productProcess, complianceViolation)
@@ -4866,7 +4866,7 @@ def _get_likelihood_owner_team() -> str:
 
 
 def _propagate_document_likelihood(doc_id: str, doc_likelihood_score: float,
-                                    breakdown: dict | None = None) -> int:
+                                    breakdown: Optional[dict] = None) -> int:
     """Propagate document-level likelihood to ALL actionables in a document.
 
     Updates every actionable regardless of status (including completed/archived).
