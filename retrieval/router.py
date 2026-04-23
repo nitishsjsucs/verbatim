@@ -16,6 +16,7 @@ This is the single entry point for all retrieval.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Optional
 
@@ -135,6 +136,36 @@ class StructuralRouter:
             else:
                 logger.info("  -> No expansion (query type: %s) (%.1fs)", query.query_type.value, expand_time)
 
+        # Step 2.5: Paragraph-number retrieval boost
+        # When the query references specific paragraph numbers (e.g., "Paragraph 23"),
+        # scan tree nodes to ensure sections containing those paragraphs are in the
+        # candidate set.  This prevents the embedding pre-filter from excluding
+        # sections that are explicitly referenced in the query.
+        _PARA_RE = re.compile(r"[Pp]aragraph\s+(\d+)", re.IGNORECASE)
+        para_nums = set(_PARA_RE.findall(query_text))
+        if para_nums:
+            _para_boost_ids: list[str] = []
+            for node in tree._all_nodes():
+                node_text = (node.text or "") + " " + (node.summary or "")
+                for pnum in para_nums:
+                    # Match "Paragraph 23" or "paragraph 23" in node text
+                    if re.search(rf"\bparagraph\s+{pnum}\b", node_text, re.IGNORECASE):
+                        _para_boost_ids.append(node.node_id)
+                        break
+            if _para_boost_ids:
+                # Merge with existing memory candidates
+                existing = set(self._memory_candidates or [])
+                new_ids = [nid for nid in _para_boost_ids if nid not in existing]
+                if new_ids:
+                    self._memory_candidates = list(existing) + new_ids
+                    logger.info(
+                        "  -> [PARA_BOOST] Query references Paragraph(s) %s — "
+                        "added %d nodes to candidates (total %d)",
+                        ", ".join(sorted(para_nums)),
+                        len(new_ids),
+                        len(self._memory_candidates),
+                    )
+
         # Step 3: Locate relevant nodes (original + expanded queries)
         logger.info("[Retrieval 3/6] Locating relevant nodes...")
         t0 = time.time()
@@ -181,6 +212,34 @@ class StructuralRouter:
                     "  -> QI avoid_nodes: penalized %d/%d located nodes",
                     _penalized, len(located),
                 )
+
+        # Thin-retrieval fallback for single_hop / definitional queries:
+        # When the compressed pre-filter yields too few nodes (<5), do a second
+        # locate pass WITHOUT the pre-filter so the LLM sees the full tree index.
+        # This prevents the 0%-coverage failures we see when the pre-filter
+        # excludes the only relevant sections (e.g. Q13: 2 sections → 0%).
+        _MIN_LOCATED = 5
+        if (
+            len(located) < _MIN_LOCATED
+            and query.query_type in (QueryType.SINGLE_HOP, QueryType.DEFINITIONAL)
+            and (self._memory_candidates or self._embedding_index)
+        ):
+            logger.info(
+                "  -> [THIN_RETRIEVAL] Only %d nodes located — retrying without pre-filter",
+                len(located),
+            )
+            extra = self._locator.locate(
+                query, tree,
+                embedding_index=None,  # disable embedding pre-filter
+                embedding_client=None,
+                memory_candidates=None,  # disable memory compressed index
+                reliability_scores=self._reliability_scores or None,
+            )
+            located = self._merge_located_nodes(located, extra)
+            logger.info(
+                "  -> [THIN_RETRIEVAL] After fallback: %d nodes total",
+                len(located),
+            )
 
         locate_time = time.time() - t0
 

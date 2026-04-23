@@ -1,18 +1,15 @@
 ANOMALY REPORT
 ==================================================
 
-Total query anomalies: 11
-Total theme anomalies: 0
+Total query anomalies: 5
+Total theme anomalies: 3
 
 PER-QUERY ANOMALIES:
-  Q3 (Theme 1): PRECISION_DROP: 0.00 vs Q1's 0.83
-  Q4 (Theme 1): PRECISION_DROP: 0.00 vs Q1's 0.83
-  Q4 (Theme 1): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q5 (Theme 1): PRECISION_DROP: 0.00 vs Q1's 0.83
-  Q5 (Theme 1): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q8 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q9 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q10 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q13 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q14 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
-  Q15 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 0 suggested, 0 total candidates)
+  Q3 (Theme 1): TIME_REGRESSION: Q3 took 233.2s vs Q1's 172.9s (+35%)
+  Q13 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 6 suggested, 15 total candidates)
+  Q14 (Theme 3): STALE_MEMORY: QI suggestions unchanged (still 6 suggested, 15 total candidates)
+  Q15 (Theme 3): TIME_REGRESSION: Q5 took 300.0s vs Q1's 136.0s (+121%)
+  Q15 (Theme 3): PRECISION_DROP: 0.00 vs Q1's 0.17
+
+PER-THEME ANOMALIES:
+  Theme 1: STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)

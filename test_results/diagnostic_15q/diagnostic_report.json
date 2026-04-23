@@ -1,0 +1,1622 @@
+{
+  "meta": {
+    "backend_url": "https://maniacally-unaggravating-delisa.ngrok-free.dev",
+    "alm_doc_id": "doc_c673889cd970",
+    "kyc_doc_id": "doc_3eb3bf739378",
+    "total_questions": 15,
+    "total_themes": 3,
+    "completed": 15,
+    "failed": 0,
+    "elapsed_seconds": 2383.0,
+    "timestamp": "2026-04-03T19:35:53.877403+00:00"
+  },
+  "query_audits": [
+    {
+      "question_number": 1,
+      "question_text": "Explain the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions.",
+      "theme_number": 1,
+      "document": "ALM",
+      "variation_type": "explain",
+      "position_in_theme": 1,
+      "wall_time": 145.43,
+      "server_time": 138.68,
+      "timing_breakdown": {
+        "memory_prequery": 4.736,
+        "load_tree": 0.412,
+        "retrieval": 64.59,
+        "synthesis": 68.94,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What does the ALM Directions state is within the regulatory scope for liquidity risk?",
+          "How do the ALM Directions conceptually define or describe liquidity risk (e.g., causes like maturity mismatch, market/liquidity funding factors)?",
+          "What risk management elements does the ALM Directions require for liquidity risk (policies, measurement, limits, monitoring, reporting)?",
+          "What contingency/CFP requirements are specified under the ALM Directions?",
+          "What governance and Board responsibilities regarding liquidity risk are set out in the ALM Directions?"
+        ],
+        "sub_query_count": 5,
+        "key_terms": [
+          "liquidity risk",
+          "regulatory scope",
+          "conceptual foundation",
+          "ALM Directions",
+          "maturity mismatch",
+          "liquidity risk management policy",
+          "contingency funding plan",
+          "Board responsibilities",
+          "governance"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 16,
+        "reliability_scored_nodes": 50,
+        "user_context_injected": true,
+        "nodes_located": 15,
+        "nodes_read": 23,
+        "sections_count": 23,
+        "tokens_retrieved": 21451,
+        "retrieval_input_tokens": 15703,
+        "retrieval_output_tokens": 5724,
+        "retrieval_llm_calls": 6,
+        "retrieval_duration": 61.897
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 68.94072723388672,
+        "verification_duration": 0.0010044574737548828,
+        "verification_status": "partially_verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 13622,
+        "total_tokens": 43159,
+        "total_llm_calls": 7,
+        "retrieval_tokens_pct": 49.6,
+        "synthesis_tokens_pct": 50.4
+      },
+      "citations_count": 13,
+      "retrieval_precision": 0.5652,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 1,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 1092
+      },
+      "conv_id": "0c75b192-a90b-4dc2-8a03-efc5469e83dd",
+      "record_id": "f1a56ba1-81b1-4cda-aa1f-4944c0c3910f",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 64,
+        "user_sessions": 2,
+        "user_interactions": 57,
+        "user_context_length": 77707,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 65,
+        "user_sessions": 2,
+        "user_interactions": 60,
+        "user_context_length": 78799,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      }
+    },
+    {
+      "question_number": 2,
+      "question_text": "Why does the RBI framework place such emphasis on the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions?",
+      "theme_number": 1,
+      "document": "ALM",
+      "variation_type": "why",
+      "position_in_theme": 2,
+      "wall_time": 154.15,
+      "server_time": 147.72,
+      "timing_breakdown": {
+        "memory_prequery": 0.591,
+        "load_tree": 0.073,
+        "retrieval": 72.57,
+        "synthesis": 74.48,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What does the ALM Directions state as the regulatory scope for liquidity risk?",
+          "How do the ALM Directions define or conceptually frame liquidity risk?",
+          "What objectives and supervisory expectations in the Directions explain the emphasis on scope and conceptual foundation?",
+          "How do governance, Board responsibilities, and contingency planning requirements relate to that emphasis?"
+        ],
+        "sub_query_count": 4,
+        "key_terms": [
+          "RBI framework",
+          "regulatory scope",
+          "conceptual foundation",
+          "liquidity risk",
+          "ALM Directions",
+          "liquidity contingency plan",
+          "liquidity risk management framework",
+          "Board responsibilities",
+          "governance"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 17,
+        "reliability_scored_nodes": 50,
+        "user_context_injected": true,
+        "nodes_located": 16,
+        "nodes_read": 24,
+        "sections_count": 22,
+        "tokens_retrieved": 20628,
+        "retrieval_input_tokens": 21257,
+        "retrieval_output_tokens": 8554,
+        "retrieval_llm_calls": 7,
+        "retrieval_duration": 74.988
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 74.48454070091248,
+        "verification_duration": 0.0005280971527099609,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 10300,
+        "total_tokens": 50024,
+        "total_llm_calls": 8,
+        "retrieval_tokens_pct": 59.6,
+        "synthesis_tokens_pct": 40.4
+      },
+      "citations_count": 11,
+      "retrieval_precision": 0.5,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 0,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2033
+      },
+      "conv_id": "0c75b192-a90b-4dc2-8a03-efc5469e83dd",
+      "record_id": "cd557082-265e-446e-abd4-230d958b0a7a",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 65,
+        "user_sessions": 2,
+        "user_interactions": 60,
+        "user_context_length": 78799,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 67,
+        "user_sessions": 2,
+        "user_interactions": 60,
+        "user_context_length": 80832,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      }
+    },
+    {
+      "question_number": 3,
+      "question_text": "How should a bank operationalise the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions in day-to-day practice?",
+      "theme_number": 1,
+      "document": "ALM",
+      "variation_type": "how",
+      "position_in_theme": 3,
+      "wall_time": 210.52,
+      "server_time": 203.75,
+      "timing_breakdown": {
+        "memory_prequery": 0.777,
+        "load_tree": 0.073,
+        "retrieval": 91.87,
+        "synthesis": 111.03,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What do the ALM Directions state as the regulatory scope and conceptual foundation of liquidity risk?",
+          "What governance and Board responsibilities do the ALM Directions require for liquidity risk management?",
+          "What are the required components of a liquidity risk management framework under the ALM Directions (policies, procedures, roles)?",
+          "What operational tools and metrics (limits, monitoring, reporting, stress testing, contingency funding plan, liquidity buffers) are mandated or recommended for day-to-day liquidity management?",
+          "What documentation, record-keeping and escalation processes does the ALM Directions prescribe for operational implementation?"
+        ],
+        "sub_query_count": 5,
+        "key_terms": [
+          "liquidity risk",
+          "ALM Directions",
+          "operationalise",
+          "regulatory scope",
+          "conceptual foundation",
+          "liquidity contingency plan",
+          "liquidity risk management framework",
+          "Board responsibilities",
+          "governance",
+          "stress testing",
+          "liquidity buffers",
+          "reporting",
+          "limits"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 18,
+        "reliability_scored_nodes": 50,
+        "user_context_injected": true,
+        "nodes_located": 17,
+        "nodes_read": 25,
+        "sections_count": 25,
+        "tokens_retrieved": 22684,
+        "retrieval_input_tokens": 26947,
+        "retrieval_output_tokens": 11021,
+        "retrieval_llm_calls": 8,
+        "retrieval_duration": 87.867
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 111.02592539787292,
+        "verification_duration": 0.0,
+        "verification_status": "partially_verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 22554,
+        "total_tokens": 62974,
+        "total_llm_calls": 9,
+        "retrieval_tokens_pct": 60.3,
+        "synthesis_tokens_pct": 39.7
+      },
+      "citations_count": 19,
+      "retrieval_precision": 0.76,
+      "anomalies": [
+        "TIME_REGRESSION: Q3 took 210.5s vs Q1's 145.4s (+45%)"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2220
+      },
+      "conv_id": "0c75b192-a90b-4dc2-8a03-efc5469e83dd",
+      "record_id": "91dc5978-8fae-444e-9fbd-6c4b26b62218",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 67,
+        "user_sessions": 2,
+        "user_interactions": 60,
+        "user_context_length": 80832,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 69,
+        "user_sessions": 2,
+        "user_interactions": 63,
+        "user_context_length": 83052,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      }
+    },
+    {
+      "question_number": 4,
+      "question_text": "What governance or control failures can arise if the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions is weak or poorly implemented?",
+      "theme_number": 1,
+      "document": "ALM",
+      "variation_type": "governance",
+      "position_in_theme": 4,
+      "wall_time": 172.28,
+      "server_time": 158.11,
+      "timing_breakdown": {
+        "memory_prequery": 0.585,
+        "load_tree": 0.085,
+        "retrieval": 82.0,
+        "synthesis": 75.44,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "Which governance responsibilities and Board/management roles are specified in the ALM Directions?",
+          "What control/process elements (limits, measurement, monitoring, reporting) does the ALM Directions require for liquidity risk?",
+          "What does the ALM Directions require for contingency funding plans and stress testing?",
+          "What are expected escalation, review and independent oversight arrangements under the ALM Directions?",
+          "What failures or gaps arise when each of the above (governance, controls, contingency planning, monitoring, oversight) is weak or missing?"
+        ],
+        "sub_query_count": 5,
+        "key_terms": [
+          "regulatory scope",
+          "conceptual foundation",
+          "liquidity risk",
+          "ALM Directions",
+          "governance failures",
+          "control failures",
+          "contingency funding plan",
+          "Board responsibilities",
+          "liquidity risk management framework",
+          "ALM",
+          "monitoring",
+          "stress testing",
+          "limits",
+          "reporting",
+          "escalation"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 17,
+        "reliability_scored_nodes": 50,
+        "user_context_injected": true,
+        "nodes_located": 16,
+        "nodes_read": 23,
+        "sections_count": 21,
+        "tokens_retrieved": 20605,
+        "retrieval_input_tokens": 27937,
+        "retrieval_output_tokens": 10479,
+        "retrieval_llm_calls": 9,
+        "retrieval_duration": 83.101
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 75.44455289840698,
+        "verification_duration": 0.0,
+        "verification_status": "partially_verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 15954,
+        "total_tokens": 60497,
+        "total_llm_calls": 10,
+        "retrieval_tokens_pct": 63.5,
+        "synthesis_tokens_pct": 36.5
+      },
+      "citations_count": 16,
+      "retrieval_precision": 0.7619,
+      "anomalies": [
+        "LLM_CALLS_INCREASE: 10 vs Q1's 7"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2324
+      },
+      "conv_id": "0c75b192-a90b-4dc2-8a03-efc5469e83dd",
+      "record_id": "b79a2b03-151a-4cea-a60f-0f3c47235ad9",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 69,
+        "user_sessions": 2,
+        "user_interactions": 63,
+        "user_context_length": 83052,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 71,
+        "user_sessions": 2,
+        "user_interactions": 66,
+        "user_context_length": 85376,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      }
+    },
+    {
+      "question_number": 5,
+      "question_text": "In a realistic banking scenario, how would the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions shape management action?",
+      "theme_number": 1,
+      "document": "ALM",
+      "variation_type": "scenario",
+      "position_in_theme": 5,
+      "wall_time": 214.52,
+      "server_time": 199.19,
+      "timing_breakdown": {
+        "memory_prequery": 0.481,
+        "load_tree": 0.071,
+        "retrieval": 90.58,
+        "synthesis": 108.05,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What does the ALM Directions state as the regulatory scope for liquidity risk (which entities, activities, time horizons, and exposures are covered)?",
+          "What is the conceptual foundation of liquidity risk under the ALM Directions (definitions, objectives, principles such as funding stability, cashflow matching, tenor transformation)?",
+          "What specific management actions or controls are required or implied by the ALM Directions (governance, policies, limits, monitoring, reporting, contingency funding plan, stress testing)?",
+          "How do the regulatory scope and conceptual foundation map to operational requirements\u2014i.e., how should those translate into day-to-day risk management, escalation triggers, and remediation actions?"
+        ],
+        "sub_query_count": 4,
+        "key_terms": [
+          "regulatory scope",
+          "conceptual foundation",
+          "liquidity risk",
+          "ALM Directions",
+          "management action",
+          "liquidity contingency plan",
+          "liquidity risk management framework",
+          "governance",
+          "contingency funding plan",
+          "limits",
+          "stress testing",
+          "reporting"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 17,
+        "reliability_scored_nodes": 50,
+        "user_context_injected": true,
+        "nodes_located": 15,
+        "nodes_read": 23,
+        "sections_count": 24,
+        "tokens_retrieved": 22086,
+        "retrieval_input_tokens": 29418,
+        "retrieval_output_tokens": 11834,
+        "retrieval_llm_calls": 9,
+        "retrieval_duration": 90.777
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 108.05333662033081,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 20848,
+        "total_tokens": 64471,
+        "total_llm_calls": 10,
+        "retrieval_tokens_pct": 64.0,
+        "synthesis_tokens_pct": 36.0
+      },
+      "citations_count": 15,
+      "retrieval_precision": 0.625,
+      "anomalies": [
+        "TIME_REGRESSION: Q5 took 214.5s vs Q1's 145.4s (+48%)",
+        "STALE_MEMORY: QI suggestions unchanged (still 10 suggested, 17 total candidates)",
+        "LLM_CALLS_INCREASE: 10 vs Q1's 7"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 0,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2273
+      },
+      "conv_id": "0c75b192-a90b-4dc2-8a03-efc5469e83dd",
+      "record_id": "be0b997e-3c32-4760-b03e-e14aba80421d",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 71,
+        "user_sessions": 2,
+        "user_interactions": 66,
+        "user_context_length": 85376,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 73,
+        "user_sessions": 2,
+        "user_interactions": 66,
+        "user_context_length": 87649,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      }
+    },
+    {
+      "question_number": 6,
+      "question_text": "Explain the Board\u2019s responsibilities for liquidity risk and intraday oversight.",
+      "theme_number": 2,
+      "document": "ALM",
+      "variation_type": "explain",
+      "position_in_theme": 1,
+      "wall_time": 124.91,
+      "server_time": 114.29,
+      "timing_breakdown": {
+        "memory_prequery": 0.528,
+        "load_tree": 0.072,
+        "retrieval": 67.48,
+        "synthesis": 46.21,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What are the Board's responsibilities for overall liquidity risk governance (policy approval, risk appetite, oversight, resources)?",
+          "What are the Board's responsibilities regarding contingency funding plans and preparedness?",
+          "What are the Board's responsibilities for intraday liquidity oversight (limits, monitoring, escalation, operational controls)?",
+          "What reporting, review, and testing responsibilities does the Board have for liquidity and intraday risk (stress testing, periodic review, audit)?"
+        ],
+        "sub_query_count": 4,
+        "key_terms": [
+          "Board responsibilities",
+          "liquidity risk",
+          "intraday oversight",
+          "liquidity risk management framework",
+          "contingency funding plan (CFP)",
+          "ALM Directions",
+          "governance",
+          "limits and tolerances",
+          "reporting and escalation",
+          "stress testing",
+          "intraday liquidity limits",
+          "operational controls"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 17,
+        "reliability_scored_nodes": 50,
+        "user_context_injected": true,
+        "nodes_located": 14,
+        "nodes_read": 22,
+        "sections_count": 25,
+        "tokens_retrieved": 28893,
+        "retrieval_input_tokens": 25951,
+        "retrieval_output_tokens": 8730,
+        "retrieval_llm_calls": 8,
+        "retrieval_duration": 66.481
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 46.207961559295654,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 7872,
+        "total_tokens": 55553,
+        "total_llm_calls": 9,
+        "retrieval_tokens_pct": 62.4,
+        "synthesis_tokens_pct": 37.6
+      },
+      "citations_count": 8,
+      "retrieval_precision": 0.32,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2278
+      },
+      "conv_id": "646c939e-2273-4db2-907d-e8e2e76a05c9",
+      "record_id": "7a5baed8-2298-462f-84bc-96e11e0f3c6d",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 73,
+        "user_sessions": 2,
+        "user_interactions": 66,
+        "user_context_length": 87649,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 75,
+        "user_sessions": 2,
+        "user_interactions": 69,
+        "user_context_length": 89927,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      }
+    },
+    {
+      "question_number": 7,
+      "question_text": "Why does the RBI framework place such emphasis on the Board\u2019s responsibilities for liquidity risk and intraday oversight?",
+      "theme_number": 2,
+      "document": "ALM",
+      "variation_type": "why",
+      "position_in_theme": 2,
+      "wall_time": 131.53,
+      "server_time": 124.68,
+      "timing_breakdown": {
+        "memory_prequery": 0.65,
+        "load_tree": 0.075,
+        "retrieval": 76.08,
+        "synthesis": 47.88,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What specific responsibilities does the Board have for liquidity risk under the RBI framework?",
+          "What requirements or guidance does the RBI give specifically for intraday liquidity oversight?",
+          "How do liquidity contingency plans and ALM directions tie into the Board\u2019s governance role?",
+          "What operational and systemic risks does the RBI aim to mitigate by assigning these responsibilities to the Board?"
+        ],
+        "sub_query_count": 4,
+        "key_terms": [
+          "Board responsibilities",
+          "liquidity risk",
+          "intraday oversight",
+          "liquidity contingency plan",
+          "ALM Directions",
+          "governance",
+          "contingency funding",
+          "risk appetite"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 16,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": true,
+        "nodes_located": 16,
+        "nodes_read": 23,
+        "sections_count": 18,
+        "tokens_retrieved": 18540,
+        "retrieval_input_tokens": 27498,
+        "retrieval_output_tokens": 10151,
+        "retrieval_llm_calls": 9,
+        "retrieval_duration": 68.725
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 47.876137495040894,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 8191,
+        "total_tokens": 57467,
+        "total_llm_calls": 10,
+        "retrieval_tokens_pct": 65.5,
+        "synthesis_tokens_pct": 34.5
+      },
+      "citations_count": 6,
+      "retrieval_precision": 0.3333,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2000
+      },
+      "conv_id": "646c939e-2273-4db2-907d-e8e2e76a05c9",
+      "record_id": "88d9a6b3-25bc-4640-a8ca-ed9b49312643",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 75,
+        "user_sessions": 2,
+        "user_interactions": 69,
+        "user_context_length": 89927,
+        "feedback_scored": 84,
+        "raptor_hot": 36
+      },
+      "memory_after": {
+        "qi_facts": 77,
+        "user_sessions": 2,
+        "user_interactions": 72,
+        "user_context_length": 91927,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 8,
+      "question_text": "How should a bank operationalise the Board\u2019s responsibilities for liquidity risk and intraday oversight in day-to-day practice?",
+      "theme_number": 2,
+      "document": "ALM",
+      "variation_type": "how",
+      "position_in_theme": 3,
+      "wall_time": 172.47,
+      "server_time": 166.58,
+      "timing_breakdown": {
+        "memory_prequery": 0.564,
+        "load_tree": 0.077,
+        "retrieval": 81.88,
+        "synthesis": 84.05,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What specific responsibilities does the Board have for liquidity risk management?",
+          "What governance structures, committees and role definitions should the Board establish to operationalise these responsibilities?",
+          "What policies, limits and delegated authorities should be put in place for day-to-day liquidity management?",
+          "What metrics, reporting frequency and dashboards are needed for intraday and end-of-day liquidity monitoring?",
+          "What operational processes and systems (payments monitoring, treasury operations, intraday limits enforcement) must be implemented?",
+          "What escalation procedures and playbooks (including contingency funding plan activation) should be defined for stress or breach conditions?",
+          "What testing, training, internal audit and documentation practices should the Board require to ensure ongoing effectiveness?"
+        ],
+        "sub_query_count": 7,
+        "key_terms": [
+          "Board responsibilities",
+          "liquidity risk",
+          "intraday oversight",
+          "operationalise",
+          "day-to-day practice",
+          "liquidity contingency plan",
+          "ALM (Asset Liability Management)",
+          "governance",
+          "reporting",
+          "limits",
+          "escalation"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 17,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": true,
+        "nodes_located": 16,
+        "nodes_read": 25,
+        "sections_count": 23,
+        "tokens_retrieved": 22478,
+        "retrieval_input_tokens": 32926,
+        "retrieval_output_tokens": 13228,
+        "retrieval_llm_calls": 10,
+        "retrieval_duration": 85.989
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 84.05305576324463,
+        "verification_duration": 0.0,
+        "verification_status": "partially_verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 13379,
+        "total_tokens": 69786,
+        "total_llm_calls": 11,
+        "retrieval_tokens_pct": 66.1,
+        "synthesis_tokens_pct": 33.9
+      },
+      "citations_count": 15,
+      "retrieval_precision": 0.6522,
+      "anomalies": [
+        "TIME_REGRESSION: Q3 took 172.5s vs Q1's 124.9s (+38%)"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 0,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2023
+      },
+      "conv_id": "646c939e-2273-4db2-907d-e8e2e76a05c9",
+      "record_id": "2bbad598-97cd-4294-8b4c-e3b43886c0d7",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 77,
+        "user_sessions": 2,
+        "user_interactions": 72,
+        "user_context_length": 91927,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 79,
+        "user_sessions": 2,
+        "user_interactions": 72,
+        "user_context_length": 93950,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 9,
+      "question_text": "What governance or control failures can arise if the Board\u2019s responsibilities for liquidity risk and intraday oversight is weak or poorly implemented?",
+      "theme_number": 2,
+      "document": "ALM",
+      "variation_type": "governance",
+      "position_in_theme": 4,
+      "wall_time": 157.52,
+      "server_time": 151.42,
+      "timing_breakdown": {
+        "memory_prequery": 0.887,
+        "load_tree": 0.089,
+        "retrieval": 89.67,
+        "synthesis": 60.77,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What governance failures arise from weak Board oversight of liquidity risk?",
+          "What control failures arise from weak Board oversight of intraday liquidity?",
+          "What operational and escalation shortcomings result from poor implementation of Board responsibilities (e.g., limits, reporting, contingency planning)?",
+          "What are downstream consequences (risk, compliance, reputational, systemic) of these governance/control failures?"
+        ],
+        "sub_query_count": 4,
+        "key_terms": [
+          "Board responsibilities",
+          "liquidity risk",
+          "intraday oversight",
+          "governance failures",
+          "control failures",
+          "liquidity contingency plan",
+          "ALM Directions",
+          "intraday liquidity",
+          "escalation",
+          "limits and triggers",
+          "reporting and MIS"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 16,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": true,
+        "nodes_located": 17,
+        "nodes_read": 23,
+        "sections_count": 22,
+        "tokens_retrieved": 21727,
+        "retrieval_input_tokens": 28203,
+        "retrieval_output_tokens": 11559,
+        "retrieval_llm_calls": 10,
+        "retrieval_duration": 75.935
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 60.77456831932068,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 10746,
+        "total_tokens": 65610,
+        "total_llm_calls": 12,
+        "retrieval_tokens_pct": 60.6,
+        "synthesis_tokens_pct": 39.4
+      },
+      "citations_count": 11,
+      "retrieval_precision": 0.5,
+      "anomalies": [
+        "LLM_CALLS_INCREASE: 12 vs Q1's 9"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 3,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 3315
+      },
+      "conv_id": "646c939e-2273-4db2-907d-e8e2e76a05c9",
+      "record_id": "9daf50b2-7919-4303-9746-4a626acd4a7c",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 79,
+        "user_sessions": 2,
+        "user_interactions": 72,
+        "user_context_length": 93950,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 82,
+        "user_sessions": 2,
+        "user_interactions": 75,
+        "user_context_length": 97265,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 10,
+      "question_text": "In a realistic banking scenario, how would the Board\u2019s responsibilities for liquidity risk and intraday oversight shape management action?",
+      "theme_number": 2,
+      "document": "ALM",
+      "variation_type": "scenario",
+      "position_in_theme": 5,
+      "wall_time": 148.32,
+      "server_time": 138.91,
+      "timing_breakdown": {
+        "memory_prequery": 0.395,
+        "load_tree": 0.085,
+        "retrieval": 81.51,
+        "synthesis": 56.91,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What are the Board\u2019s responsibilities for overall liquidity risk governance?",
+          "What are the Board\u2019s responsibilities specifically for intraday liquidity oversight?",
+          "What management actions typically implement Board-set requirements for liquidity risk (policies, limits, reporting, escalation, contingency plans)?",
+          "How should intraday monitoring and controls be operationalised by management (systems, metrics, limits, intraday funding arrangements, queue management)?",
+          "How do Board responsibilities translate into specific triggers and escalation paths for management during liquidity stress or intraday pressures?"
+        ],
+        "sub_query_count": 5,
+        "key_terms": [
+          "Board responsibilities",
+          "liquidity risk",
+          "intraday oversight",
+          "management action",
+          "liquidity contingency plan",
+          "liquidity risk management framework",
+          "ALM Directions",
+          "governance",
+          "intraday liquidity limits",
+          "escalation"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 16,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": false,
+        "nodes_located": 16,
+        "nodes_read": 22,
+        "sections_count": 21,
+        "tokens_retrieved": 21959,
+        "retrieval_input_tokens": 0,
+        "retrieval_output_tokens": 0,
+        "retrieval_llm_calls": 0,
+        "retrieval_duration": 0.0
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 56.91377329826355,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 10830,
+        "total_tokens": 19688,
+        "total_llm_calls": 2,
+        "retrieval_tokens_pct": 0.0,
+        "synthesis_tokens_pct": 0.0
+      },
+      "citations_count": 11,
+      "retrieval_precision": 0.5238,
+      "anomalies": [
+        "STALE_MEMORY: QI suggestions unchanged (still 10 suggested, 16 total candidates)"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2148
+      },
+      "conv_id": "646c939e-2273-4db2-907d-e8e2e76a05c9",
+      "record_id": "762895dc-d3bc-4fbe-a9ab-37209339bb17",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 82,
+        "user_sessions": 2,
+        "user_interactions": 75,
+        "user_context_length": 97265,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 84,
+        "user_sessions": 2,
+        "user_interactions": 78,
+        "user_context_length": 99413,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 11,
+      "question_text": "Explain the distinct roles of the RMC and ALCO in liquidity governance.",
+      "theme_number": 3,
+      "document": "ALM",
+      "variation_type": "explain",
+      "position_in_theme": 1,
+      "wall_time": 118.96,
+      "server_time": 113.2,
+      "timing_breakdown": {
+        "memory_prequery": 0.596,
+        "load_tree": 0.077,
+        "retrieval": 74.03,
+        "synthesis": 38.5,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What are the prescribed responsibilities of the Risk Management Committee (RMC) regarding liquidity governance?",
+          "What are the prescribed responsibilities of the Asset Liability Committee (ALCO) regarding liquidity governance?",
+          "How do the RMC and ALCO differ in scope, decision-making, and interaction with the Board and senior management?",
+          "What reporting, escalation, and implementation lines connect the Board, RMC, ALCO, and management for liquidity risk and contingency funding?"
+        ],
+        "sub_query_count": 4,
+        "key_terms": [
+          "RMC",
+          "ALCO",
+          "liquidity governance",
+          "liquidity risk",
+          "liquidity contingency funding plan",
+          "ALM Directions",
+          "Board",
+          "risk management framework",
+          "oversight",
+          "governance"
+        ],
+        "qi_suggested_count": 6,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 15,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": false,
+        "nodes_located": 15,
+        "nodes_read": 21,
+        "sections_count": 20,
+        "tokens_retrieved": 20641,
+        "retrieval_input_tokens": 0,
+        "retrieval_output_tokens": 0,
+        "retrieval_llm_calls": 0,
+        "retrieval_duration": 0.0
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 38.50315284729004,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 7015,
+        "total_tokens": 19120,
+        "total_llm_calls": 3,
+        "retrieval_tokens_pct": 0.0,
+        "synthesis_tokens_pct": 0.0
+      },
+      "citations_count": 3,
+      "retrieval_precision": 0.15,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 1967
+      },
+      "conv_id": "366cd81b-3ec1-47b3-84dc-9021544703bb",
+      "record_id": "7e8ad0d9-182d-4982-acf6-c865dc889ed9",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 84,
+        "user_sessions": 2,
+        "user_interactions": 78,
+        "user_context_length": 99413,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 86,
+        "user_sessions": 2,
+        "user_interactions": 81,
+        "user_context_length": 101380,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 12,
+      "question_text": "Why does the RBI framework place such emphasis on the distinct roles of the RMC and ALCO in liquidity governance?",
+      "theme_number": 3,
+      "document": "ALM",
+      "variation_type": "why",
+      "position_in_theme": 2,
+      "wall_time": 126.78,
+      "server_time": 118.25,
+      "timing_breakdown": {
+        "memory_prequery": 0.5,
+        "load_tree": 0.076,
+        "retrieval": 71.24,
+        "synthesis": 46.43,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What responsibilities does the RBI assign to the Risk Management Committee (RMC)?",
+          "What responsibilities does the RBI assign to the Asset Liability Committee (ALCO)?",
+          "What governance principles or objectives does the RBI set for liquidity risk management (e.g., board oversight, segregation of duties, escalation, reporting)?",
+          "What specific operational tasks or decisions are required to be handled by ALCO versus RMC under the RBI guidance?",
+          "What are the regulatory rationales (e.g., independence, challenge function, strategic vs operational) given in the framework for separating these roles?"
+        ],
+        "sub_query_count": 5,
+        "key_terms": [
+          "RMC",
+          "ALCO",
+          "liquidity governance",
+          "RBI framework",
+          "liquidity risk",
+          "Board",
+          "liquidity contingency funding plan",
+          "liquidity risk management"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 16,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": false,
+        "nodes_located": 14,
+        "nodes_read": 21,
+        "sections_count": 20,
+        "tokens_retrieved": 20605,
+        "retrieval_input_tokens": 0,
+        "retrieval_output_tokens": 0,
+        "retrieval_llm_calls": 0,
+        "retrieval_duration": 0.0
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 46.429219245910645,
+        "verification_duration": 0.0005068778991699219,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 8134,
+        "total_tokens": 21054,
+        "total_llm_calls": 3,
+        "retrieval_tokens_pct": 0.0,
+        "synthesis_tokens_pct": 0.0
+      },
+      "citations_count": 8,
+      "retrieval_precision": 0.4,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 0,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 1879
+      },
+      "conv_id": "366cd81b-3ec1-47b3-84dc-9021544703bb",
+      "record_id": "40484057-8683-4c9c-8615-6119ec2b586d",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 86,
+        "user_sessions": 2,
+        "user_interactions": 81,
+        "user_context_length": 101380,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 88,
+        "user_sessions": 2,
+        "user_interactions": 81,
+        "user_context_length": 103259,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 13,
+      "question_text": "How should a bank operationalise the distinct roles of the RMC and ALCO in liquidity governance in day-to-day practice?",
+      "theme_number": 3,
+      "document": "ALM",
+      "variation_type": "how",
+      "position_in_theme": 3,
+      "wall_time": 174.39,
+      "server_time": 166.59,
+      "timing_breakdown": {
+        "memory_prequery": 0.436,
+        "load_tree": 0.076,
+        "retrieval": 79.21,
+        "synthesis": 86.87,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What are the distinct governance/mandate differences between the RMC and ALCO?",
+          "Which day-to-day tasks/decisions should ALCO perform (pricing, gap management, intraday liquidity, funding mix, tactical balance sheet actions)?",
+          "Which oversight, policy-setting and risk appetite tasks should RMC perform (policy approval, risk appetite, limit framework, stress testing oversight)?",
+          "How should responsibilities be divided and handoffs managed between RMC and ALCO (escalation paths, delegation, delegated authorities)?",
+          "What MIS, reporting cadence and KPIs support day-to-day operationalisation (frequency, content, thresholds, dashboards)?",
+          "What controls, documentation and review processes should be in place (meeting minutes, policy reviews, internal audit, contingency plan triggers)?"
+        ],
+        "sub_query_count": 6,
+        "key_terms": [
+          "RMC",
+          "ALCO",
+          "liquidity governance",
+          "operationalise",
+          "day-to-day practice",
+          "liquidity risk",
+          "contingency funding plan",
+          "limits",
+          "MIS",
+          "escalation"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 15,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": false,
+        "nodes_located": 15,
+        "nodes_read": 22,
+        "sections_count": 21,
+        "tokens_retrieved": 21126,
+        "retrieval_input_tokens": 0,
+        "retrieval_output_tokens": 0,
+        "retrieval_llm_calls": 0,
+        "retrieval_duration": 0.0
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 86.86702418327332,
+        "verification_duration": 0.0005159378051757812,
+        "verification_status": "partially_verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 12130,
+        "total_tokens": 28263,
+        "total_llm_calls": 4,
+        "retrieval_tokens_pct": 0.0,
+        "synthesis_tokens_pct": 0.0
+      },
+      "citations_count": 10,
+      "retrieval_precision": 0.4762,
+      "anomalies": [
+        "TIME_REGRESSION: Q3 took 174.4s vs Q1's 119.0s (+47%)"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2115
+      },
+      "conv_id": "366cd81b-3ec1-47b3-84dc-9021544703bb",
+      "record_id": "3c6052ab-09f5-414a-a435-ef0b54ea2407",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 88,
+        "user_sessions": 2,
+        "user_interactions": 81,
+        "user_context_length": 103259,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 90,
+        "user_sessions": 2,
+        "user_interactions": 84,
+        "user_context_length": 105374,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 14,
+      "question_text": "What governance or control failures can arise if the distinct roles of the RMC and ALCO in liquidity governance is weak or poorly implemented?",
+      "theme_number": 3,
+      "document": "ALM",
+      "variation_type": "governance",
+      "position_in_theme": 4,
+      "wall_time": 146.91,
+      "server_time": 135.24,
+      "timing_breakdown": {
+        "memory_prequery": 0.51,
+        "load_tree": 0.088,
+        "retrieval": 84.22,
+        "synthesis": 50.42,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What are the prescribed responsibilities of the RMC with respect to liquidity risk and governance?",
+          "What are the prescribed responsibilities of the ALCO with respect to liquidity management and tactical balance-sheet decisions?",
+          "What controls, reporting lines, and segregation-of-duties expectations does the regulatory framework set for liquidity governance?",
+          "What specific failures arise when oversight (Board/RMC) is weak?",
+          "What specific failures arise when front-office/ALCO decision controls are weak or insufficiently independent?",
+          "How do failures in escalation, reporting, and contingency planning manifest when RMC and ALCO roles overlap or are unclear?"
+        ],
+        "sub_query_count": 6,
+        "key_terms": [
+          "RMC",
+          "Risk Management Committee",
+          "ALCO",
+          "Asset Liability Committee",
+          "liquidity governance",
+          "roles and responsibilities",
+          "governance failures",
+          "control failures",
+          "segregation of duties",
+          "conflict of interest",
+          "escalation",
+          "reporting",
+          "contingency funding plan",
+          "liquidity risk management framework"
+        ],
+        "qi_suggested_count": 10,
+        "qi_avoid_count": 6,
+        "raptor_candidates": 15,
+        "total_memory_candidates": 16,
+        "reliability_scored_nodes": 51,
+        "user_context_injected": false,
+        "nodes_located": 14,
+        "nodes_read": 20,
+        "sections_count": 19,
+        "tokens_retrieved": 18861,
+        "retrieval_input_tokens": 0,
+        "retrieval_output_tokens": 0,
+        "retrieval_llm_calls": 0,
+        "retrieval_duration": 0.0
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 50.41979169845581,
+        "verification_duration": 0.0005216598510742188,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 10558,
+        "total_tokens": 23244,
+        "total_llm_calls": 3,
+        "retrieval_tokens_pct": 0.0,
+        "synthesis_tokens_pct": 0.0
+      },
+      "citations_count": 7,
+      "retrieval_precision": 0.3684,
+      "anomalies": [],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 3,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2274
+      },
+      "conv_id": "366cd81b-3ec1-47b3-84dc-9021544703bb",
+      "record_id": "30a66c7f-c1e8-49ac-b466-2100bae5577d",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 90,
+        "user_sessions": 2,
+        "user_interactions": 84,
+        "user_context_length": 105374,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 92,
+        "user_sessions": 2,
+        "user_interactions": 87,
+        "user_context_length": 107648,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    },
+    {
+      "question_number": 15,
+      "question_text": "In a realistic banking scenario, how would the distinct roles of the RMC and ALCO in liquidity governance shape management action?",
+      "theme_number": 3,
+      "document": "ALM",
+      "variation_type": "scenario",
+      "position_in_theme": 5,
+      "wall_time": 129.38,
+      "server_time": 122.11,
+      "timing_breakdown": {
+        "memory_prequery": 0.49,
+        "load_tree": 0.073,
+        "retrieval": 72.12,
+        "synthesis": 49.42,
+        "verification": 0.0
+      },
+      "retrieval_decisions": {
+        "query_type": "single_hop",
+        "sub_queries": [
+          "What are the formal responsibilities of the RMC with respect to liquidity governance?",
+          "What are the formal responsibilities of the ALCO with respect to liquidity and balance sheet management?",
+          "How should RMC and ALCO interact (reporting lines, escalation, information flows)?",
+          "What kinds of management actions fall under RMC oversight versus ALCO execution?",
+          "How do contingency funding plan triggers and execution map to RMC and ALCO roles?",
+          "What governance or control mechanisms ensure clear separation of RMC and ALCO roles?"
+        ],
+        "sub_query_count": 6,
+        "key_terms": [
+          "RMC",
+          "ALCO",
+          "liquidity governance",
+          "liquidity risk",
+          "contingency funding plan",
+          "management action",
+          "Board responsibilities",
+          "liquidity risk management framework",
+          "governance"
+        ],
+        "qi_suggested_count": 0,
+        "qi_avoid_count": 0,
+        "raptor_candidates": 0,
+        "total_memory_candidates": 0,
+        "reliability_scored_nodes": 0,
+        "user_context_injected": false,
+        "nodes_located": 13,
+        "nodes_read": 19,
+        "sections_count": 18,
+        "tokens_retrieved": 19586,
+        "retrieval_input_tokens": 0,
+        "retrieval_output_tokens": 0,
+        "retrieval_llm_calls": 0,
+        "retrieval_duration": 0.0
+      },
+      "synthesis_decisions": {
+        "synthesis_duration": 49.423115491867065,
+        "verification_duration": 0.0,
+        "verification_status": "verified",
+        "verification_skipped_by_qi": false,
+        "answer_length": 9526,
+        "total_tokens": 73722,
+        "total_llm_calls": 11,
+        "retrieval_tokens_pct": 0.0,
+        "synthesis_tokens_pct": 0.0
+      },
+      "citations_count": 6,
+      "retrieval_precision": 0.3333,
+      "anomalies": [
+        "TOKEN_SPIKE: 73,722 tokens vs median 23,244 (3.2x)",
+        "LLM_CALLS_INCREASE: 11 vs Q1's 3"
+      ],
+      "memory_delta": {
+        "qi_facts_added": 2,
+        "user_sessions_added": 0,
+        "user_interactions_added": 0,
+        "feedback_nodes_added": 0,
+        "user_context_growth": 2108
+      },
+      "conv_id": "366cd81b-3ec1-47b3-84dc-9021544703bb",
+      "record_id": "339ab440-2783-4147-bfdc-4ab99037660f",
+      "success": true,
+      "error": "",
+      "memory_before": {
+        "qi_facts": 92,
+        "user_sessions": 2,
+        "user_interactions": 87,
+        "user_context_length": 107648,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      },
+      "memory_after": {
+        "qi_facts": 94,
+        "user_sessions": 2,
+        "user_interactions": 87,
+        "user_context_length": 109756,
+        "feedback_scored": 84,
+        "raptor_hot": 37
+      }
+    }
+  ],
+  "theme_audits": [
+    {
+      "theme_number": 1,
+      "theme_title": "The regulatory scope and conceptual foundation of liquidity risk under the ALM Directions",
+      "document": "ALM",
+      "time_trend": [
+        145.4,
+        154.2,
+        210.5,
+        172.3,
+        214.5
+      ],
+      "token_trend": [
+        43159,
+        50024,
+        62974,
+        60497,
+        64471
+      ],
+      "precision_trend": [
+        0.565,
+        0.5,
+        0.76,
+        0.762,
+        0.625
+      ],
+      "retrieval_input_token_trend": [
+        15703,
+        21257,
+        26947,
+        27937,
+        29418
+      ],
+      "sub_query_counts": [
+        5,
+        4,
+        5,
+        5,
+        4
+      ],
+      "qi_suggested_stable": true,
+      "memory_candidates_stable": false,
+      "anomalies": [
+        "STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)",
+        "TIME_DEGRADATION: Q1=145.4s \u2192 Q5=214.5s"
+      ]
+    },
+    {
+      "theme_number": 2,
+      "theme_title": "The Board\u2019s responsibilities for liquidity risk and intraday oversight",
+      "document": "ALM",
+      "time_trend": [
+        124.9,
+        131.5,
+        172.5,
+        157.5,
+        148.3
+      ],
+      "token_trend": [
+        55553,
+        57467,
+        69786,
+        65610,
+        19688
+      ],
+      "precision_trend": [
+        0.32,
+        0.333,
+        0.652,
+        0.5,
+        0.524
+      ],
+      "retrieval_input_token_trend": [
+        25951,
+        27498,
+        32926,
+        28203,
+        0
+      ],
+      "sub_query_counts": [
+        4,
+        4,
+        7,
+        4,
+        5
+      ],
+      "qi_suggested_stable": true,
+      "memory_candidates_stable": false,
+      "anomalies": [
+        "STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)"
+      ]
+    },
+    {
+      "theme_number": 3,
+      "theme_title": "The distinct roles of the RMC and ALCO in liquidity governance",
+      "document": "ALM",
+      "time_trend": [
+        119.0,
+        126.8,
+        174.4,
+        146.9,
+        129.4
+      ],
+      "token_trend": [
+        19120,
+        21054,
+        28263,
+        23244,
+        73722
+      ],
+      "precision_trend": [
+        0.15,
+        0.4,
+        0.476,
+        0.368,
+        0.333
+      ],
+      "retrieval_input_token_trend": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "sub_query_counts": [
+        4,
+        5,
+        6,
+        6,
+        6
+      ],
+      "qi_suggested_stable": false,
+      "memory_candidates_stable": false,
+      "anomalies": []
+    }
+  ],
+  "root_cause_analysis": {
+    "findings": [
+      {
+        "id": "F4_UNIFORM_CLASSIFICATION",
+        "severity": "medium",
+        "description": "All 15 queries classified as 'single_hop'. No query was classified as single_hop or definitional, despite variation types including simple 'explain' and 'why' questions.",
+        "root_cause": "The QueryClassifier's prompt or thresholds are too aggressive \u2014 complex regulatory questions with multiple key terms always trigger multi_hop. This forces every query through the expensive Planner path."
+      }
+    ],
+    "recommendations": [
+      {
+        "for": "F4_UNIFORM_CLASSIFICATION",
+        "action": "Add classification feedback from QI: if a theme has been answered as multi_hop before and precision was high, downgrade subsequent variations to single_hop.",
+        "priority": "medium"
+      }
+    ]
+  }
+}

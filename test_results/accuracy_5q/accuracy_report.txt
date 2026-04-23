@@ -1,0 +1,81 @@
+======================================================================
+GOVINDA ACCURACY DIAGNOSTIC REPORT
+======================================================================
+
+Date: 2026-04-04T21:01:15.710856+00:00
+Questions: 5/5 completed
+Time: 742s
+
+──────────────────────────────────────────────────────────────────────
+SUMMARY
+──────────────────────────────────────────────────────────────────────
+  Mean fact coverage:   45.0%
+  Median fact coverage: 50.0%
+  Min:                  25.0%
+  Max:                  50.0%
+  Hallucinations:       0
+
+  By Category:
+    conceptual                45.0%
+
+──────────────────────────────────────────────────────────────────────
+MEMORY ↔ ACCURACY CORRELATION
+──────────────────────────────────────────────────────────────────────
+  early_mean_coverage: 0.25
+  late_mean_coverage: 0.5
+  accuracy_trend: improving
+  early_qi_facts: 3
+  late_qi_facts: 7
+  qi_growth: 4
+  data_points: 5
+
+──────────────────────────────────────────────────────────────────────
+PER-QUESTION DETAILS
+──────────────────────────────────────────────────────────────────────
+
+  Q1 [conceptual] ✓
+  How does the 2025 Direction fundamentally redefine the concept of a 'Customer' a...
+  Coverage: 2/8 (25%) | 141s | 177844 tokens | 7 citations
+  MISSED FACTS:
+    - Paragraph 5(2)(iii) defines Customer broadly
+    - Includes persons on whose behalf transactions are conducted
+    - Walk-in Customers defined in Paragraph 5(2)(iv)
+    - Banks must look through to ultimate initiator
+    - CDD becomes relational not just transactional
+    - Every touchpoint is a potential KYC event
+
+  Q2 [conceptual] ✓
+  Analyze the role of the 'Risk Based Approach' (RBA) in the 2025 Directions. How ...
+  Coverage: 4/8 (50%) | 130s | 91881 tokens | 5 citations
+  MISSED FACTS:
+    - Prevents one-size-fits-all compliance
+    - Higher-risk areas get Enhanced Due Diligence
+    - Paragraph 12 links to Senior Management definition
+    - Cross-border correspondent banking is higher risk
+
+  Q3 [conceptual] ✓
+  What is the conceptual significance of identifying the 'Beneficial Owner' (BO) i...
+  Coverage: 4/8 (50%) | 173s | 78162 tokens | 5 citations
+  MISSED FACTS:
+    - BO identification peels back corporate layers
+    - Paragraph 5(1)(iv) establishes hierarchy
+    - Protects against shell structures
+    - Fulfills FATF mandate for transparency
+
+  Q4 [conceptual] ✓
+  Distinguish between 'Digital KYC' and the 'Video-based Customer Identification P...
+  Coverage: 4/8 (50%) | 130s | 82495 tokens | 9 citations
+  MISSED FACTS:
+    - Digital KYC defined in Paragraph 5(1)(viii)
+    - Digital KYC captures live photos with geo-tagging (lat/long)
+    - V-CIP defined in Paragraph 5(2)(xvi)
+    - V-CIP uses liveness checks and AI face matching
+
+  Q5 [conceptual] ✓
+  How does the 2025 Direction conceptualize 'Ongoing Due Diligence' differently fr...
+  Coverage: 4/8 (50%) | 153s | 94271 tokens | 6 citations
+  MISSED FACTS:
+    - ODD under Paragraph 39 is continuous behavioral analysis
+    - ODD protects against sudden behavioral shifts
+    - Money Mules as example of behavioral risk
+    - Shift from manual oversight to automated surveillance

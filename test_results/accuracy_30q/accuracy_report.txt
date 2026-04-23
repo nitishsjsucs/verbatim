@@ -1,0 +1,534 @@
+======================================================================
+GOVINDA ACCURACY DIAGNOSTIC REPORT
+======================================================================
+
+Date: 2026-04-04T22:08:10.364850+00:00
+Questions: 28/30 completed
+Time: 3396s
+
+──────────────────────────────────────────────────────────────────────
+SUMMARY
+──────────────────────────────────────────────────────────────────────
+  Mean fact coverage:   61.4%
+  Median fact coverage: 62.5%
+  Min:                  0.0%
+  Max:                  100.0%
+  Hallucinations:       0
+
+  By Category:
+    clause_interpretation     59.4%
+    conceptual                65.3%
+    regulatory_update         75.0%
+    scenario                  57.1%
+
+──────────────────────────────────────────────────────────────────────
+MEMORY ↔ ACCURACY CORRELATION
+──────────────────────────────────────────────────────────────────────
+  early_mean_coverage: 0.651
+  late_mean_coverage: 0.5907
+  accuracy_trend: declining
+  early_qi_facts: 8
+  late_qi_facts: 37
+  qi_growth: 29
+  data_points: 28
+
+──────────────────────────────────────────────────────────────────────
+PER-QUESTION DETAILS
+──────────────────────────────────────────────────────────────────────
+
+  Q1 [conceptual] ✓
+  How does the 2025 Direction fundamentally redefine the concept of a 'Customer' a...
+  Coverage: 4/8 (50%) | 173s | 101928 tokens | 8 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=5 | sections=23 (32315 tok) | verification=verified | inferences=4
+  KEY TERMS: Customer, Customer Due Diligence, CDD, 2025 Direction, banking activities, Ongoing Due Diligence, Beneficial Owner, scope
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - C. Definitions (p.13)
+    - C. Definitions (p.12)
+    - E. On-going Due Diligence
+    - D. Identification of Beneficial Owner
+    - F.1 Enhanced Due Diligence
+    - F.2 Simplified Due Diligence
+    - Chapter V – Customer Identification Procedure (CIP)
+  MISSED FACTS:
+    - Banks must look through to ultimate initiator
+    - CDD becomes relational not just transactional
+    - Every touchpoint is a potential KYC event
+    - Structuring patterns must be monitored
+
+  Q2 [conceptual] ✓
+  Analyze the role of the 'Risk Based Approach' (RBA) in the 2025 Directions. How ...
+  Coverage: 5/8 (62%) | 127s | 92071 tokens | 5 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=5 | sections=23 (31939 tok) | verification=verified | inferences=3
+  KEY TERMS: Risk Based Approach, RBA, Paragraph 11, operational execution, regulatory intent, proportionality, banks, sizes and complexities
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - C. Definitions (p.12)
+    - C. Definitions (p.7)
+    - Chapter IV – Risk Management
+    - Chapter V – Customer Identification Procedure (CIP)
+    - A. Board of Directors / Policies related guidelines:
+    - B. Other General Guidelines:
+    - E. On-going Due Diligence
+  MISSED FACTS:
+    - Higher-risk areas get Enhanced Due Diligence
+    - Paragraph 12 links to Senior Management definition
+    - Cross-border correspondent banking is higher risk
+
+  Q3 [conceptual] ✓
+  What is the conceptual significance of identifying the 'Beneficial Owner' (BO) i...
+  Coverage: 7/8 (88%) | 117s | 78623 tokens | 5 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=5 | sections=18 (23843 tok) | verification=verified | inferences=3
+  KEY TERMS: Beneficial Owner, BO, hierarchy of identification, ownership, control, senior official, opaque legal arrangements, 2025 framework
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.11)
+    - C. Definitions (p.9)
+    - C. Definitions (p.12)
+    - F.1 Enhanced Due Diligence
+    - F.2 Simplified Due Diligence
+    - E. On-going Due Diligence
+    - D. Identification of Beneficial Owner
+    - Chapter IV – Risk Management
+  MISSED FACTS:
+    - Fulfills FATF mandate for transparency
+
+  Q4 [conceptual] ✓
+  Distinguish between 'Digital KYC' and the 'Video-based Customer Identification P...
+  Coverage: 7/8 (88%) | 119s | 69508 tokens | 6 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=5 | sections=15 (13829 tok) | verification=verified | inferences=2
+  KEY TERMS: Digital KYC, Video-based Customer Identification Process, V-CIP, face-to-face identification standards, customer identification, e-KYC, authentication
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.6)
+    - C. Definitions (p.13)
+    - C. Definitions (p.11)
+    - Chapter V – Customer Identification Procedure (CIP)
+    - Chapter IV – Risk Management
+    - A. CDD Procedure in case of Individuals (p.31)
+    - A. CDD Procedure in case of Individuals (p.30)
+    - A. CDD Procedure in case of Individuals (p.33)
+  MISSED FACTS:
+    - V-CIP defined in Paragraph 5(2)(xvi)
+
+  Q5 [conceptual] ✓
+  How does the 2025 Direction conceptualize 'Ongoing Due Diligence' differently fr...
+  Coverage: 5/8 (62%) | 127s | 91006 tokens | 6 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=4 | sections=16 (34262 tok) | verification=verified | inferences=5
+  KEY TERMS: Ongoing Due Diligence, Periodic Updation, Paragraph 39, Paragraph 42, systemic implications, CDD, Risk Based Approach, ongoing monitoring
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.12)
+    - C. Definitions (p.11)
+    - E. On-going Due Diligence
+    - D. Identification of Beneficial Owner
+    - Chapter IV – Risk Management
+    - Chapter V – Customer Identification Procedure (CIP)
+    - B. Other General Guidelines:
+    - A. Board of Directors / Policies related guidelines:
+  MISSED FACTS:
+    - ODD protects against sudden behavioral shifts
+    - Money Mules as example of behavioral risk
+    - Shift from manual oversight to automated surveillance
+
+  Q6 [conceptual] ✓
+  Examine the concept of 'Money Mules' within the framework of Paragraph 68. Why i...
+  Coverage: 3/8 (38%) | 65s | 15420 tokens | 5 citations
+  DECISION CHAIN: type=single_hop | sub_queries=3 | sections=8 (4508 tok) | verification=partially_verified | inferences=3
+  KEY TERMS: Money Mules, Paragraph 68, STR, Suspicious Transaction Report, Directions, bank's failure to file, AML/CFT obligations
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - Chapter VIII – Reporting Requirements to Financial Intelligence Unit – India
+    - Chapter VII – Record Management
+    - Chapter X – Other Instructions (p.64)
+    - Chapter X – Other Instructions (p.63)
+    - Chapter X – Other Instructions (p.68)
+    - Chapter X – Other Instructions (p.67)
+    - Chapter X – Other Instructions (p.69)
+  MISSED FACTS:
+    - Paragraph 68 defines bank as proactive guardian
+    - Indicates breakdown in monitoring systems
+    - Mules may be unwitting participants
+    - Requires behavioral analysis beyond identity verification
+    - High-turnover in low-balance accounts is a red flag
+
+  Q7 [conceptual] ✓
+  What are the foundational elements of a 'Customer Acceptance Policy' (CAP) as pe...
+  Coverage: 6/6 (100%) | 138s | 85600 tokens | 4 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=3 | sections=23 (28517 tok) | verification=verified | inferences=2
+  KEY TERMS: Customer Acceptance Policy, CAP, Chapter III, anonymous entities, onboarding, Customer Due Diligence, CDD, risk-based approach
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.11)
+    - C. Definitions (p.12)
+    - C. Definitions (p.5)
+    - A. Board of Directors / Policies related guidelines:
+    - B. Other General Guidelines:
+    - E. On-going Due Diligence
+    - D. Identification of Beneficial Owner
+    - F.1 Enhanced Due Diligence
+
+  Q8 [conceptual] ✓
+  Explain the significance of 'Group-wide' AML/CFT programs as mandated in Paragra...
+  Coverage: 3/7 (43%) | 101s | 72992 tokens | 7 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=4 | sections=10 (21974 tok) | verification=verified | inferences=3
+  KEY TERMS: Group-wide AML/CFT programs, Paragraph 8, information sharing, intra-group arrangements, AML/CFT, 2025 Directions, confidentiality, data protection
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.13)
+    - A. Board of Directors / Policies related guidelines:
+    - B. Other General Guidelines:
+    - Chapter IV – Risk Management
+    - Chapter V – Customer Identification Procedure (CIP)
+    - Chapter VIII – Reporting Requirements to Financial Intelligence Unit – India
+    - Chapter VII – Record Management
+    - Chapter IX – Requirements/obligations under International Agreements - Communica
+  MISSED FACTS:
+    - Information sharing enables holistic customer view
+    - Customers may have relationships across subsidiaries
+    - Challenge: unified risk profile vs jurisdictional firewalls
+    - Customer privacy across regulated entities must be protected
+
+  Q9 [conceptual] ✓
+  How does the 2025 framework define 'Shell Banks' and why are correspondent banki...
+  Coverage: 5/9 (56%) | 82s | 66711 tokens | 3 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=2 | sections=16 (29870 tok) | verification=verified | inferences=1
+  KEY TERMS: Shell Banks, correspondent banking, correspondent banking relationships, prohibition, AML/CFT, 2025 framework
+  SECTIONS RETRIEVED:
+    - Chapter X – Other Instructions (p.65)
+    - Chapter X – Other Instructions (p.64)
+    - A. Board of Directors / Policies related guidelines:
+    - B. Other General Guidelines:
+    - C. Definitions (p.13)
+    - C. Definitions (p.12)
+    - Chapter IV – Risk Management
+    - Chapter V – Customer Identification Procedure (CIP)
+  MISSED FACTS:
+    - Defined in Paragraph 5(2)(xv)
+    - Used to layer and integrate illicit funds
+    - No regulatory oversight possible
+    - Clean chain requirement
+
+  Q10 [conceptual] ✓
+  Analyze the concept of 'Tipping-off' in the context of CDD procedures. When does...
+  Coverage: 4/6 (67%) | 100s | 86654 tokens | 8 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=4 | sections=17 (25168 tok) | verification=verified | inferences=3
+  KEY TERMS: tipping-off, customer due diligence, CDD, bypass CDD, simplified due diligence, suspicious transaction reporting, FIU (Financial Intelligence Unit), law enforcement/cooperation
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.13)
+    - C. Definitions (p.12)
+    - B. Other General Guidelines:
+    - A. Board of Directors / Policies related guidelines:
+    - Chapter VIII – Reporting Requirements to Financial Intelligence Unit – India
+    - Chapter VII – Record Management
+    - Chapter IV – Risk Management
+    - Chapter V – Customer Identification Procedure (CIP)
+  MISSED FACTS:
+    - Investigation integrity over procedural CDD
+    - Visible compliance can be counter-productive
+
+  Q11 [clause_interpretation] ✓
+  Under Paragraph 4(2), if there is a variance between the KYC/AML standards presc...
+  Coverage: 3/5 (60%) | 30s | 11410 tokens | 2 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=5 (2375 tok) | verification=verified | inferences=2
+  KEY TERMS: Paragraph 4(2), KYC/AML standards, RBI, host country, branch, regulation to be adopted, exception
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - C. Definitions (p.12)
+    - C. Definitions (p.6)
+    - A. Short Title and Commencement.
+    - B. Applicability
+  MISSED FACTS:
+    - Small accounts are Indian-specific inclusion measure
+    - Not exported to foreign branches
+
+  Q12 [clause_interpretation] ✓
+  Analyze the proviso to Paragraph 23 regarding Non-Resident Indians (NRIs) and Pe...
+  Coverage: 7/8 (88%) | 34s | 10118 tokens | 1 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=2 (1022 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: Paragraph 23 proviso, Non-Resident Indians, Persons of Indian Origin, NRIs, PIOs, authorized certifying authorities, certification of documents
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.6)
+    - C. Definitions (p.5)
+  MISSED FACTS:
+    - Delegated verification for international onboarding
+
+  Q13 [clause_interpretation] ✓
+  Explain the 'Exception Handling' mechanism in Paragraph 23 for individuals unabl...
+  Coverage: 0/8 (0%) | 46s | 14121 tokens | 1 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=2 (3748 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: Paragraph 23, Exception Handling, e-KYC authentication, injury, illness, infirmity on account of old age, documentation requirements, attestation
+  SECTIONS RETRIEVED:
+    - F.1 Enhanced Due Diligence
+    - F.2 Simplified Due Diligence
+  MISSED FACTS:
+    - Must still obtain Aadhaar number
+    - Use offline verification or certified OVD copy
+    - Bank official must invariably carry out CDD
+    - Centralized exception database required
+    - Database must detail grounds for exception
+    - Must include customer details and authorizing official
+    - Subject to periodic internal audit
+    - Available for supervisory review
+
+  Q14 [clause_interpretation] ✓
+  Interpret Paragraph 5(1)(xiv) regarding 'Deemed to be OVD' for address proof. Wh...
+  Coverage: 3/6 (50%) | 35s | 10848 tokens | 1 citations
+  DECISION CHAIN: type=single_hop | sub_queries=3 | sections=3 (1586 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: Paragraph 5(1)(xiv), Deemed to be OVD, OVD, address proof, three-month rule, customer fails to comply
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.6)
+    - C. Definitions (p.8)
+    - C. Definitions (p.7)
+  MISSED FACTS:
+    - Non-compliance leads to restrictive measures
+    - Account may be frozen
+    - Updated OVD prerequisite for long-term maintenance
+
+  Q15 [clause_interpretation] ✓
+  Paragraph 25(6) discusses the conversion of OTP-based e-KYC accounts. What is th...
+  Coverage: 7/7 (100%) | 112s | 59132 tokens | 5 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=2 | sections=12 (14443 tok) | verification=verified | inferences=3
+  KEY TERMS: Paragraph 25(6), OTP-based e-KYC, one-year limitation, customer due diligence, CDD, account continuation, full KYC
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.11)
+    - C. Definitions (p.12)
+    - A. CDD Procedure in case of Individuals (p.30)
+    - A. CDD Procedure in case of Individuals (p.29)
+    - A. CDD Procedure in case of Individuals (p.31)
+    - A. CDD Procedure in case of Individuals (p.28)
+    - A. CDD Procedure in case of Individuals (p.33)
+    - A. CDD Procedure in case of Individuals (p.32)
+
+  Q16 [clause_interpretation] ✗
+  What is the significance of the 'Senior Managing Official' fallback in Paragraph...
+  ERROR: HTTPSConnectionPool(host='maniacally-unaggravating-delisa.ngrok-free.dev', port=443): Read timed out. (read timeout=300)
+
+  Q17 [clause_interpretation] ✓
+  Interpret the requirements for 'Small Accounts' under Paragraph 28(4)(v). How do...
+  Coverage: 2/6 (33%) | 35s | 12979 tokens | 1 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=7 (3759 tok) | verification=partially_verified | inferences=1
+  KEY TERMS: Small Accounts, Paragraph 28(4)(v), 12+12 month, extension, validity, KYC
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - C. Definitions (p.6)
+    - A. CDD Procedure in case of Individuals (p.30)
+    - A. CDD Procedure in case of Individuals (p.29)
+    - A. CDD Procedure in case of Individuals (p.31)
+    - A. CDD Procedure in case of Individuals (p.25)
+    - A. CDD Procedure in case of Individuals (p.26)
+  MISSED FACTS:
+    - Must furnish evidence of OVD application
+    - Enrollment slip as evidence
+    - Reviewed after 24 months total
+    - Bridge to full KYC not permanent alternative
+
+  Q18 [clause_interpretation] ✓
+  Analyze Paragraph 65(10) regarding the use of 'KYC Identifiers'. When is a bank ...
+  Coverage: 1/5 (20%) | 52s | 17144 tokens | 4 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=13 (7013 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: Paragraph 65(10), KYC Identifiers, CKYCR, downloaded CKYCR record, rely solely, bank forbidden
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.7)
+    - A. CDD Procedure in case of Individuals (p.25)
+    - A. CDD Procedure in case of Individuals (p.26)
+    - C. Definitions (p.6)
+    - C. Definitions (p.5)
+    - Chapter V – Customer Identification Procedure (CIP)
+    - Chapter IV – Risk Management
+    - C. Definitions (p.11)
+  MISSED FACTS:
+    - When retrieved info is incomplete
+    - When document validity has lapsed
+    - When needed for EDD or risk profile
+    - CKYCR is repository not substitute for judgment
+
+  Q19 [clause_interpretation] ✓
+  Paragraph 74(1)(vi) lists exceptions for wire transfer information requirements....
+  Coverage: 5/6 (83%) | 46s | 22122 tokens | 2 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=11 (21130 tok) | verification=verified | inferences=2
+  KEY TERMS: Paragraph 74(1)(vi), wire transfer information requirements, person-to-person proviso, credit/debit card transfers, proviso
+  SECTIONS RETRIEVED:
+    - Chapter X – Other Instructions (p.67)
+    - Chapter X – Other Instructions (p.66)
+    - Chapter X – Other Instructions (p.70)
+    - Chapter X – Other Instructions (p.69)
+    - C. Definitions (p.13)
+    - C. Definitions (p.12)
+    - C. Definitions (p.11)
+    - C. Definitions (p.10)
+  MISSED FACTS:
+    - Prevents bypassing traceability requirements
+
+  Q20 [clause_interpretation] ✓
+  How does Paragraph 63 define the 'Secrecy Obligations' of a bank? What are the f...
+  Coverage: 6/6 (100%) | 28s | 10122 tokens | 1 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=3 (1509 tok) | verification=verified | inferences=3
+  KEY TERMS: Paragraph 63, Secrecy Obligations, bank, disclosure, exceptions
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - Chapter X – Other Instructions (p.60)
+    - Chapter X – Other Instructions (p.61)
+
+  Q21 [scenario] ✓
+  In a partnership firm where five partners each own exactly 10% of the capital, a...
+  Coverage: 5/6 (83%) | 50s | 16871 tokens | 4 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=9 (7391 tok) | verification=verified | inferences=2
+  KEY TERMS: Beneficial Owner, BO, partnership firm, ownership percentage, management control, KYC, RBI Directions
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.11)
+    - C. Definitions (p.7)
+    - C. Definitions (p.5)
+    - C. Definitions (p.4)
+    - C. Definitions (p.6)
+    - D. Identification of Beneficial Owner
+    - E. On-going Due Diligence
+    - C. CDD Measures for Legal Entities
+  MISSED FACTS:
+    - Exactly 10% does not meet threshold
+
+  Q22 [scenario] ✓
+  A trust has ten beneficiaries, each with a 10% interest. Who must the bank ident...
+  Coverage: 2/5 (40%) | 34s | 15222 tokens | 2 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=8 (6613 tok) | verification=verified | inferences=2
+  KEY TERMS: trust, beneficiary, beneficial owner, 10% interest, bank identification, BO
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.8)
+    - C. Definitions (p.13)
+    - C. Definitions (p.11)
+    - C. Definitions (p.6)
+    - C. Definitions (p.5)
+    - C. Definitions (p.4)
+    - D. Identification of Beneficial Owner
+    - E. On-going Due Diligence
+  MISSED FACTS:
+    - All ten beneficiaries qualify as BOs
+    - Trustees must also be identified
+    - Different threshold from companies/partnerships
+
+  Q23 [scenario] ✗
+  Compare the '12-month' rule for OTP-based e-KYC accounts with the '12+12 month' ...
+  ERROR: HTTPSConnectionPool(host='maniacally-unaggravating-delisa.ngrok-free.dev', port=443): Read timed out. (read timeout=300)
+
+  Q24 [scenario] ✓
+  A bank official captures a Digital KYC photo but forgets to include the GPS long...
+  Coverage: 5/6 (83%) | 42s | 32043 tokens | 3 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=10 (5583 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: Digital KYC, digital KYC photo, GPS longitude, geo-tag, Customer Due Diligence, CDD, photo metadata, KYC capture requirements
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.6)
+    - C. Definitions (p.11)
+    - C. Definitions (p.12)
+    - A. CDD Procedure in case of Individuals (p.27)
+    - A. CDD Procedure in case of Individuals (p.26)
+    - A. CDD Procedure in case of Individuals (p.31)
+    - A. CDD Procedure in case of Individuals (p.30)
+    - A. CDD Procedure in case of Individuals (p.28)
+  MISSED FACTS:
+    - Must link official, customer, and physical location
+
+  Q25 [scenario] ✓
+  Analyze the 'Senior Managing Official' rule as a fallback mechanism. If a bank u...
+  Coverage: 5/6 (83%) | 107s | 85955 tokens | 5 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=4 | sections=20 (30813 tok) | verification=verified | inferences=3
+  KEY TERMS: Senior Managing Official, fallback, control through other means, beneficial owner, high-risk corporate client, identification, violation
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.11)
+    - C. Definitions (p.8)
+    - C. Definitions (p.6)
+    - C. Definitions (p.5)
+    - C. Definitions (p.4)
+    - D. Identification of Beneficial Owner
+    - E. On-going Due Diligence
+    - F.1 Enhanced Due Diligence
+  MISSED FACTS:
+    - Must demonstrate reasonable effort
+
+  Q26 [scenario] ✓
+  A customer opens a Small Account in January 2026. By June 2026, their aggregate ...
+  Coverage: 1/6 (17%) | 61s | 14737 tokens | 3 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=6 (3129 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: Small Account, aggregate credits, ₹95,000, credit of ₹10,000, threshold, immediate procedural obligation, KYC, full KYC
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - C. Definitions (p.5)
+    - C. Definitions (p.6)
+    - A. CDD Procedure in case of Individuals (p.30)
+    - A. CDD Procedure in case of Individuals (p.29)
+    - A. CDD Procedure in case of Individuals (p.31)
+  MISSED FACTS:
+    - Total becomes 1,05,000 breaching limit
+    - Must trigger OVD request for account upgrade
+    - Restrict further credits until full KYC
+    - May allow withdrawals within monthly 10,000 limit
+    - Prevent hardship while enforcing compliance
+
+  Q27 [scenario] ✓
+  How does the 'Unique Customer Identification Code' (UCIC) facilitate the 'portab...
+  Coverage: 2/6 (33%) | 49s | 24515 tokens | 3 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=14 (23663 tok) | verification=partially_verified | inferences=4
+  KEY TERMS: Unique Customer Identification Code, UCIC, portability, KYC records, branches, inter-branch portability
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.7)
+    - C. Definitions (p.4)
+    - B. Other General Guidelines:
+    - A. Board of Directors / Policies related guidelines:
+    - C. Definitions (p.6)
+    - C. Definitions (p.5)
+    - A. CDD Procedure in case of Individuals (p.25)
+    - A. CDD Procedure in case of Individuals (p.26)
+  MISSED FACTS:
+    - No repeat verification needed for new accounts
+    - KYC-compliant status is systemic attribute
+    - Not branch-specific
+    - Reduces friction and operational costs
+
+  Q28 [regulatory_update] ✓
+  Analyze the impact of Kuwait and Papua New Guinea being added to the FATF Grey L...
+  Coverage: 6/8 (75%) | 123s | 100355 tokens | 3 citations
+  DECISION CHAIN: type=multi_hop | sub_queries=5 | sections=22 (39557 tok) | verification=verified | inferences=4
+  KEY TERMS: Kuwait, Papua New Guinea, FATF Grey List, Enhanced Due Diligence, EDD, Indian commercial banks, AML/CFT, high-risk jurisdictions
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.4)
+    - C. Definitions (p.12)
+    - F.1 Enhanced Due Diligence
+    - F.2 Simplified Due Diligence
+    - A. Board of Directors / Policies related guidelines:
+    - B. Other General Guidelines:
+    - D. Identification of Beneficial Owner
+    - E. On-going Due Diligence
+  MISSED FACTS:
+    - Jurisdictions under Increased Monitoring
+    - Enhanced monitoring with increased controls
+
+  Q29 [scenario] ✓
+  A bank receives a request for a domestic wire transfer of ₹45,000 from a walk-in...
+  Coverage: 5/6 (83%) | 59s | 24301 tokens | 4 citations
+  DECISION CHAIN: type=single_hop | sub_queries=0 | sections=13 (22309 tok) | verification=verified | inferences=4
+  KEY TERMS: Originator Information, domestic wire transfer, walk-in customer, without account, ₹45,000, threshold, customer due diligence, remittance
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.14)
+    - C. Definitions (p.5)
+    - C. Definitions (p.13)
+    - Chapter X – Other Instructions (p.67)
+    - Chapter X – Other Instructions (p.66)
+    - C. Definitions (p.11)
+    - C. Definitions (p.10)
+    - Chapter X – Other Instructions (p.65)
+  MISSED FACTS:
+    - Must check for structuring patterns
+
+  Q30 [scenario] ✓
+  Analyze the 2025 Direction's stance on 'DigiLocker'. When is a document from Dig...
+  Coverage: 2/6 (33%) | 60s | 26620 tokens | 7 citations
+  DECISION CHAIN: type=definitional | sub_queries=0 | sections=19 (15835 tok) | verification=partially_verified | inferences=2
+  KEY TERMS: DigiLocker, on par with the original, electronic document, e-document, original document, 2025 Directions, digital signature, issuer authentication
+  SECTIONS RETRIEVED:
+    - C. Definitions (p.7)
+    - C. Definitions (p.8)
+    - C. Definitions (p.6)
+    - C. Definitions (p.5)
+    - C. Definitions (p.4)
+    - A. CDD Procedure in case of Individuals (p.29)
+    - A. CDD Procedure in case of Individuals (p.28)
+    - A. CDD Procedure in case of Individuals (p.30)
+  MISSED FACTS:
+    - Retrieved through DigiLocker API
+    - Requires customer consent
+    - Uploaded PDF does not equal original
+    - Distinction between issued and uploaded documents

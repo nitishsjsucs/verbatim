@@ -439,6 +439,27 @@ class QAEngine:
             logger.info("[QA] Injecting user memory context into synthesis prompt")
 
         # Step 4: Synthesis (or planner for multi-hop)
+        # F4 fix: Downgrade multi_hop to single_hop when QI has already
+        # seen similar queries with acceptable precision.  The Planner runs
+        # N extra full retrieval passes which are mostly redundant for
+        # same-theme variations — direct synthesis over the already-retrieved
+        # sections is cheaper and just as precise.
+        _downgraded = False
+        if (
+            query.query_type in (QueryType.MULTI_HOP, QueryType.GLOBAL)
+            and len(query.sub_queries) > 1
+            and _qi_hints.get("similar_facts_found", 0) >= 2
+            and (_qi_hints.get("avg_precision") or 0) >= 0.3
+        ):
+            logger.info(
+                "[QA] QI downgrade: multi_hop → single_hop "
+                "(similar_facts=%d, avg_precision=%.2f) — skipping Planner",
+                _qi_hints["similar_facts_found"],
+                _qi_hints["avg_precision"],
+            )
+            query.query_type = QueryType.SINGLE_HOP
+            _downgraded = True
+
         t0 = time.time()
         if (
             query.query_type in (QueryType.MULTI_HOP, QueryType.GLOBAL)
@@ -457,6 +478,27 @@ class QAEngine:
                 query, tree, extra_sections=reflection_extras or None
             )
         else:
+            # Drop low-reliability sections before synthesis.
+            # Retrieval feedback scores 84 nodes (0.1–0.98).  Removing
+            # sections below 0.35 eliminates historically wasted nodes and
+            # shrinks the synthesis prompt, cutting 15–25 s off synthesis.
+            _rel_scores = _mem_ctx.get("reliability_scores", {}) if _mem_ctx else {}
+            if _rel_scores and len(sections) > 10:
+                _MIN_RELIABILITY = 0.35
+                _before = len(sections)
+                sections = [
+                    s for s in sections
+                    if _rel_scores.get(s.node_id, 0.5) >= _MIN_RELIABILITY
+                ]
+                _dropped = _before - len(sections)
+                if _dropped:
+                    logger.info(
+                        "[QA] Reliability trim: dropped %d sections below %.2f "
+                        "(%d → %d, %d → %d tokens)",
+                        _dropped, _MIN_RELIABILITY, _before, len(sections),
+                        sum(s.token_count for s in rr.sections),
+                        sum(s.token_count for s in sections),
+                    )
             logger.info("[QA 4/6] Synthesizing answer...")
             # Request synthesis and optional verification in a single LLM call
             answer = self._synthesizer.synthesize(query, sections, verify=verify)

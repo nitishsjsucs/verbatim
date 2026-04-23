@@ -250,13 +250,24 @@ class QueryIntelligence:
             hints["similar_facts_found"] = len(similar_facts)
 
             # 2. Extract suggested nodes from similar successful queries
+            # F3 fix: Weight by key_term overlap so different themes get
+            # different suggestions instead of always returning the same
+            # globally popular nodes.
             if similar_facts:
+                # Extract key terms from current query for overlap scoring
+                _q_lower = query_text.lower()
                 node_scores: dict[str, float] = defaultdict(float)
                 for fact in similar_facts:
+                    # Compute term overlap between this fact and the query
+                    _overlap = sum(
+                        1 for t in fact.key_terms
+                        if t.lower() in _q_lower
+                    ) if fact.key_terms else 0
+                    _weight = 1.0 + 0.5 * _overlap  # Boost by overlap
                     for nid in fact.cited_nodes:
-                        node_scores[nid] += 1.0
+                        node_scores[nid] += _weight
                     for nid in fact.wasted_nodes:
-                        node_scores[nid] -= 0.3  # Penalize wasted nodes
+                        node_scores[nid] -= 0.3
 
                 ranked = sorted(node_scores.items(), key=lambda x: -x[1])
                 hints["suggested_nodes"] = [

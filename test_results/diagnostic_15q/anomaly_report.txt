@@ -1,0 +1,23 @@
+ANOMALY REPORT
+==================================================
+
+Total query anomalies: 11
+Total theme anomalies: 3
+
+PER-QUERY ANOMALIES:
+  Q3 (Theme 1): TIME_REGRESSION: Q3 took 210.5s vs Q1's 145.4s (+45%)
+  Q4 (Theme 1): LLM_CALLS_INCREASE: 10 vs Q1's 7
+  Q5 (Theme 1): TIME_REGRESSION: Q5 took 214.5s vs Q1's 145.4s (+48%)
+  Q5 (Theme 1): STALE_MEMORY: QI suggestions unchanged (still 10 suggested, 17 total candidates)
+  Q5 (Theme 1): LLM_CALLS_INCREASE: 10 vs Q1's 7
+  Q8 (Theme 2): TIME_REGRESSION: Q3 took 172.5s vs Q1's 124.9s (+38%)
+  Q9 (Theme 2): LLM_CALLS_INCREASE: 12 vs Q1's 9
+  Q10 (Theme 2): STALE_MEMORY: QI suggestions unchanged (still 10 suggested, 16 total candidates)
+  Q13 (Theme 3): TIME_REGRESSION: Q3 took 174.4s vs Q1's 119.0s (+47%)
+  Q15 (Theme 3): TOKEN_SPIKE: 73,722 tokens vs median 23,244 (3.2x)
+  Q15 (Theme 3): LLM_CALLS_INCREASE: 11 vs Q1's 3
+
+PER-THEME ANOMALIES:
+  Theme 1: STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)
+  Theme 1: TIME_DEGRADATION: Q1=145.4s → Q5=214.5s
+  Theme 2: STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)

@@ -1,0 +1,9 @@
+ANOMALY REPORT
+==================================================
+
+Total query anomalies: 0
+Total theme anomalies: 1
+
+
+PER-THEME ANOMALIES:
+  Theme 1: STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)

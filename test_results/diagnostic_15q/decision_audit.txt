@@ -1,0 +1,913 @@
+======================================================================
+GOVINDA PIPELINE — DECISION AUDIT REPORT
+======================================================================
+
+Generated: 2026-04-03T19:35:53.883544+00:00
+Questions: 15
+Themes: 3
+
+──────────────────────────────────────────────────────────────────────
+THEME 1: The regulatory scope and conceptual foundation of liquidity risk under the ALM Directions
+Document: ALM
+──────────────────────────────────────────────────────────────────────
+
+  Q1 [explain] (position 1/5)
+  Question: Explain the regulatory scope and conceptual foundation of liquidity risk under the ALM Directions....
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 5
+      1. What does the ALM Directions state is within the regulatory scope for liquidity risk?
+      2. How do the ALM Directions conceptually define or describe liquidity risk (e.g., causes lik
+      3. What risk management elements does the ALM Directions require for liquidity risk (policies
+      4. What contingency/CFP requirements are specified under the ALM Directions?
+      5. What governance and Board responsibilities regarding liquidity risk are set out in the ALM
+    Key terms: liquidity risk, regulatory scope, conceptual foundation, ALM Directions, maturity mismatch, liquidity risk management policy, contingency funding plan, Board responsibilities, governance
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 15,703
+    Output tokens from LLM: 5,724
+    LLM calls: 6
+    Nodes located: 15
+    Sections read: 23
+    Tokens retrieved: 21,451
+
+  SYNTHESIS:
+    Total tokens used: 43,159
+    Total LLM calls: 7
+    Answer length: 13,622 chars
+    Verification: partially_verified
+
+  TIMING:
+    Wall time: 145.4s
+    Server time: 138.7s
+    Memory pre-query: 4.74s
+    Retrieval: 64.6s
+    Synthesis: 68.9s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 13
+    Precision: 0.57
+
+  MEMORY CHANGES:
+    qi_facts_added: +1
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +1092
+
+  Q2 [why] (position 2/5)
+  Question: Why does the RBI framework place such emphasis on the regulatory scope and conceptual foundation of ...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 4
+      1. What does the ALM Directions state as the regulatory scope for liquidity risk?
+      2. How do the ALM Directions define or conceptually frame liquidity risk?
+      3. What objectives and supervisory expectations in the Directions explain the emphasis on sco
+      4. How do governance, Board responsibilities, and contingency planning requirements relate to
+    Key terms: RBI framework, regulatory scope, conceptual foundation, liquidity risk, ALM Directions, liquidity contingency plan, liquidity risk management framework, Board responsibilities, governance
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 17
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 21,257
+    Output tokens from LLM: 8,554
+    LLM calls: 7
+    Nodes located: 16
+    Sections read: 22
+    Tokens retrieved: 20,628
+
+  SYNTHESIS:
+    Total tokens used: 50,024
+    Total LLM calls: 8
+    Answer length: 10,300 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 154.2s
+    Server time: 147.7s
+    Memory pre-query: 0.59s
+    Retrieval: 72.6s
+    Synthesis: 74.5s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 11
+    Precision: 0.50
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +2033
+
+  Q3 [how] (position 3/5)
+  Question: How should a bank operationalise the regulatory scope and conceptual foundation of liquidity risk un...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 5
+      1. What do the ALM Directions state as the regulatory scope and conceptual foundation of liqu
+      2. What governance and Board responsibilities do the ALM Directions require for liquidity ris
+      3. What are the required components of a liquidity risk management framework under the ALM Di
+      4. What operational tools and metrics (limits, monitoring, reporting, stress testing, conting
+      5. What documentation, record-keeping and escalation processes does the ALM Directions prescr
+    Key terms: liquidity risk, ALM Directions, operationalise, regulatory scope, conceptual foundation, liquidity contingency plan, liquidity risk management framework, Board responsibilities, governance, stress testing, liquidity buffers, reporting, limits
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 18
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 26,947
+    Output tokens from LLM: 11,021
+    LLM calls: 8
+    Nodes located: 17
+    Sections read: 25
+    Tokens retrieved: 22,684
+
+  SYNTHESIS:
+    Total tokens used: 62,974
+    Total LLM calls: 9
+    Answer length: 22,554 chars
+    Verification: partially_verified
+
+  TIMING:
+    Wall time: 210.5s
+    Server time: 203.8s
+    Memory pre-query: 0.78s
+    Retrieval: 91.9s
+    Synthesis: 111.0s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 19
+    Precision: 0.76
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2220
+
+  ⚠ ANOMALIES:
+    - TIME_REGRESSION: Q3 took 210.5s vs Q1's 145.4s (+45%)
+
+  Q4 [governance] (position 4/5)
+  Question: What governance or control failures can arise if the regulatory scope and conceptual foundation of l...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 5
+      1. Which governance responsibilities and Board/management roles are specified in the ALM Dire
+      2. What control/process elements (limits, measurement, monitoring, reporting) does the ALM Di
+      3. What does the ALM Directions require for contingency funding plans and stress testing?
+      4. What are expected escalation, review and independent oversight arrangements under the ALM 
+      5. What failures or gaps arise when each of the above (governance, controls, contingency plan
+    Key terms: regulatory scope, conceptual foundation, liquidity risk, ALM Directions, governance failures, control failures, contingency funding plan, Board responsibilities, liquidity risk management framework, ALM, monitoring, stress testing, limits, reporting, escalation
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 17
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 27,937
+    Output tokens from LLM: 10,479
+    LLM calls: 9
+    Nodes located: 16
+    Sections read: 21
+    Tokens retrieved: 20,605
+
+  SYNTHESIS:
+    Total tokens used: 60,497
+    Total LLM calls: 10
+    Answer length: 15,954 chars
+    Verification: partially_verified
+
+  TIMING:
+    Wall time: 172.3s
+    Server time: 158.1s
+    Memory pre-query: 0.58s
+    Retrieval: 82.0s
+    Synthesis: 75.4s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 16
+    Precision: 0.76
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2324
+
+  ⚠ ANOMALIES:
+    - LLM_CALLS_INCREASE: 10 vs Q1's 7
+
+  Q5 [scenario] (position 5/5)
+  Question: In a realistic banking scenario, how would the regulatory scope and conceptual foundation of liquidi...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 4
+      1. What does the ALM Directions state as the regulatory scope for liquidity risk (which entit
+      2. What is the conceptual foundation of liquidity risk under the ALM Directions (definitions,
+      3. What specific management actions or controls are required or implied by the ALM Directions
+      4. How do the regulatory scope and conceptual foundation map to operational requirements—i.e.
+    Key terms: regulatory scope, conceptual foundation, liquidity risk, ALM Directions, management action, liquidity contingency plan, liquidity risk management framework, governance, contingency funding plan, limits, stress testing, reporting
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 17
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 29,418
+    Output tokens from LLM: 11,834
+    LLM calls: 9
+    Nodes located: 15
+    Sections read: 24
+    Tokens retrieved: 22,086
+
+  SYNTHESIS:
+    Total tokens used: 64,471
+    Total LLM calls: 10
+    Answer length: 20,848 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 214.5s
+    Server time: 199.2s
+    Memory pre-query: 0.48s
+    Retrieval: 90.6s
+    Synthesis: 108.1s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 15
+    Precision: 0.62
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +2273
+
+  ⚠ ANOMALIES:
+    - TIME_REGRESSION: Q5 took 214.5s vs Q1's 145.4s (+48%)
+    - STALE_MEMORY: QI suggestions unchanged (still 10 suggested, 17 total candidates)
+    - LLM_CALLS_INCREASE: 10 vs Q1's 7
+
+  THEME TRENDS:
+    Time:      145s → 154s → 211s → 172s → 215s
+    Tokens:    43,159 → 50,024 → 62,974 → 60,497 → 64,471
+    Precision: 0.57 → 0.50 → 0.76 → 0.76 → 0.62
+    Ret Input: 15,703 → 21,257 → 26,947 → 27,937 → 29,418
+
+  THEME ANOMALIES:
+    ⚠ STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)
+    ⚠ TIME_DEGRADATION: Q1=145.4s → Q5=214.5s
+
+
+──────────────────────────────────────────────────────────────────────
+THEME 2: The Board’s responsibilities for liquidity risk and intraday oversight
+Document: ALM
+──────────────────────────────────────────────────────────────────────
+
+  Q6 [explain] (position 1/5)
+  Question: Explain the Board’s responsibilities for liquidity risk and intraday oversight....
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 4
+      1. What are the Board's responsibilities for overall liquidity risk governance (policy approv
+      2. What are the Board's responsibilities regarding contingency funding plans and preparedness
+      3. What are the Board's responsibilities for intraday liquidity oversight (limits, monitoring
+      4. What reporting, review, and testing responsibilities does the Board have for liquidity and
+    Key terms: Board responsibilities, liquidity risk, intraday oversight, liquidity risk management framework, contingency funding plan (CFP), ALM Directions, governance, limits and tolerances, reporting and escalation, stress testing, intraday liquidity limits, operational controls
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 17
+    Reliability scored: 50
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 25,951
+    Output tokens from LLM: 8,730
+    LLM calls: 8
+    Nodes located: 14
+    Sections read: 25
+    Tokens retrieved: 28,893
+
+  SYNTHESIS:
+    Total tokens used: 55,553
+    Total LLM calls: 9
+    Answer length: 7,872 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 124.9s
+    Server time: 114.3s
+    Memory pre-query: 0.53s
+    Retrieval: 67.5s
+    Synthesis: 46.2s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 8
+    Precision: 0.32
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2278
+
+  Q7 [why] (position 2/5)
+  Question: Why does the RBI framework place such emphasis on the Board’s responsibilities for liquidity risk an...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 4
+      1. What specific responsibilities does the Board have for liquidity risk under the RBI framew
+      2. What requirements or guidance does the RBI give specifically for intraday liquidity oversi
+      3. How do liquidity contingency plans and ALM directions tie into the Board’s governance role
+      4. What operational and systemic risks does the RBI aim to mitigate by assigning these respon
+    Key terms: Board responsibilities, liquidity risk, intraday oversight, liquidity contingency plan, ALM Directions, governance, contingency funding, risk appetite
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 51
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 27,498
+    Output tokens from LLM: 10,151
+    LLM calls: 9
+    Nodes located: 16
+    Sections read: 18
+    Tokens retrieved: 18,540
+
+  SYNTHESIS:
+    Total tokens used: 57,467
+    Total LLM calls: 10
+    Answer length: 8,191 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 131.5s
+    Server time: 124.7s
+    Memory pre-query: 0.65s
+    Retrieval: 76.1s
+    Synthesis: 47.9s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 6
+    Precision: 0.33
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2000
+
+  Q8 [how] (position 3/5)
+  Question: How should a bank operationalise the Board’s responsibilities for liquidity risk and intraday oversi...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 7
+      1. What specific responsibilities does the Board have for liquidity risk management?
+      2. What governance structures, committees and role definitions should the Board establish to 
+      3. What policies, limits and delegated authorities should be put in place for day-to-day liqu
+      4. What metrics, reporting frequency and dashboards are needed for intraday and end-of-day li
+      5. What operational processes and systems (payments monitoring, treasury operations, intraday
+      6. What escalation procedures and playbooks (including contingency funding plan activation) s
+      7. What testing, training, internal audit and documentation practices should the Board requir
+    Key terms: Board responsibilities, liquidity risk, intraday oversight, operationalise, day-to-day practice, liquidity contingency plan, ALM (Asset Liability Management), governance, reporting, limits, escalation
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 17
+    Reliability scored: 51
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 32,926
+    Output tokens from LLM: 13,228
+    LLM calls: 10
+    Nodes located: 16
+    Sections read: 23
+    Tokens retrieved: 22,478
+
+  SYNTHESIS:
+    Total tokens used: 69,786
+    Total LLM calls: 11
+    Answer length: 13,379 chars
+    Verification: partially_verified
+
+  TIMING:
+    Wall time: 172.5s
+    Server time: 166.6s
+    Memory pre-query: 0.56s
+    Retrieval: 81.9s
+    Synthesis: 84.1s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 15
+    Precision: 0.65
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +2023
+
+  ⚠ ANOMALIES:
+    - TIME_REGRESSION: Q3 took 172.5s vs Q1's 124.9s (+38%)
+
+  Q9 [governance] (position 4/5)
+  Question: What governance or control failures can arise if the Board’s responsibilities for liquidity risk and...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 4
+      1. What governance failures arise from weak Board oversight of liquidity risk?
+      2. What control failures arise from weak Board oversight of intraday liquidity?
+      3. What operational and escalation shortcomings result from poor implementation of Board resp
+      4. What are downstream consequences (risk, compliance, reputational, systemic) of these gover
+    Key terms: Board responsibilities, liquidity risk, intraday oversight, governance failures, control failures, liquidity contingency plan, ALM Directions, intraday liquidity, escalation, limits and triggers, reporting and MIS
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 51
+    User context injected: True
+
+  RETRIEVAL:
+    Input tokens to LLM: 28,203
+    Output tokens from LLM: 11,559
+    LLM calls: 10
+    Nodes located: 17
+    Sections read: 22
+    Tokens retrieved: 21,727
+
+  SYNTHESIS:
+    Total tokens used: 65,610
+    Total LLM calls: 12
+    Answer length: 10,746 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 157.5s
+    Server time: 151.4s
+    Memory pre-query: 0.89s
+    Retrieval: 89.7s
+    Synthesis: 60.8s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 11
+    Precision: 0.50
+
+  MEMORY CHANGES:
+    qi_facts_added: +3
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +3315
+
+  ⚠ ANOMALIES:
+    - LLM_CALLS_INCREASE: 12 vs Q1's 9
+
+  Q10 [scenario] (position 5/5)
+  Question: In a realistic banking scenario, how would the Board’s responsibilities for liquidity risk and intra...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 5
+      1. What are the Board’s responsibilities for overall liquidity risk governance?
+      2. What are the Board’s responsibilities specifically for intraday liquidity oversight?
+      3. What management actions typically implement Board-set requirements for liquidity risk (pol
+      4. How should intraday monitoring and controls be operationalised by management (systems, met
+      5. How do Board responsibilities translate into specific triggers and escalation paths for ma
+    Key terms: Board responsibilities, liquidity risk, intraday oversight, management action, liquidity contingency plan, liquidity risk management framework, ALM Directions, governance, intraday liquidity limits, escalation
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 51
+    User context injected: False
+
+  RETRIEVAL:
+    Input tokens to LLM: 0
+    Output tokens from LLM: 0
+    LLM calls: 0
+    Nodes located: 16
+    Sections read: 21
+    Tokens retrieved: 21,959
+
+  SYNTHESIS:
+    Total tokens used: 19,688
+    Total LLM calls: 2
+    Answer length: 10,830 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 148.3s
+    Server time: 138.9s
+    Memory pre-query: 0.40s
+    Retrieval: 81.5s
+    Synthesis: 56.9s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 11
+    Precision: 0.52
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2148
+
+  ⚠ ANOMALIES:
+    - STALE_MEMORY: QI suggestions unchanged (still 10 suggested, 16 total candidates)
+
+  THEME TRENDS:
+    Time:      125s → 132s → 172s → 158s → 148s
+    Tokens:    55,553 → 57,467 → 69,786 → 65,610 → 19,688
+    Precision: 0.32 → 0.33 → 0.65 → 0.50 → 0.52
+    Ret Input: 25,951 → 27,498 → 32,926 → 28,203 → 0
+
+  THEME ANOMALIES:
+    ⚠ STALE_QI: QI suggestions never changed across 5 queries (always 10 suggested)
+
+
+──────────────────────────────────────────────────────────────────────
+THEME 3: The distinct roles of the RMC and ALCO in liquidity governance
+Document: ALM
+──────────────────────────────────────────────────────────────────────
+
+  Q11 [explain] (position 1/5)
+  Question: Explain the distinct roles of the RMC and ALCO in liquidity governance....
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 4
+      1. What are the prescribed responsibilities of the Risk Management Committee (RMC) regarding 
+      2. What are the prescribed responsibilities of the Asset Liability Committee (ALCO) regarding
+      3. How do the RMC and ALCO differ in scope, decision-making, and interaction with the Board a
+      4. What reporting, escalation, and implementation lines connect the Board, RMC, ALCO, and man
+    Key terms: RMC, ALCO, liquidity governance, liquidity risk, liquidity contingency funding plan, ALM Directions, Board, risk management framework, oversight, governance
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 6
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 15
+    Reliability scored: 51
+    User context injected: False
+
+  RETRIEVAL:
+    Input tokens to LLM: 0
+    Output tokens from LLM: 0
+    LLM calls: 0
+    Nodes located: 15
+    Sections read: 20
+    Tokens retrieved: 20,641
+
+  SYNTHESIS:
+    Total tokens used: 19,120
+    Total LLM calls: 3
+    Answer length: 7,015 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 119.0s
+    Server time: 113.2s
+    Memory pre-query: 0.60s
+    Retrieval: 74.0s
+    Synthesis: 38.5s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 3
+    Precision: 0.15
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +1967
+
+  Q12 [why] (position 2/5)
+  Question: Why does the RBI framework place such emphasis on the distinct roles of the RMC and ALCO in liquidit...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 5
+      1. What responsibilities does the RBI assign to the Risk Management Committee (RMC)?
+      2. What responsibilities does the RBI assign to the Asset Liability Committee (ALCO)?
+      3. What governance principles or objectives does the RBI set for liquidity risk management (e
+      4. What specific operational tasks or decisions are required to be handled by ALCO versus RMC
+      5. What are the regulatory rationales (e.g., independence, challenge function, strategic vs o
+    Key terms: RMC, ALCO, liquidity governance, RBI framework, liquidity risk, Board, liquidity contingency funding plan, liquidity risk management
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 51
+    User context injected: False
+
+  RETRIEVAL:
+    Input tokens to LLM: 0
+    Output tokens from LLM: 0
+    LLM calls: 0
+    Nodes located: 14
+    Sections read: 20
+    Tokens retrieved: 20,605
+
+  SYNTHESIS:
+    Total tokens used: 21,054
+    Total LLM calls: 3
+    Answer length: 8,134 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 126.8s
+    Server time: 118.2s
+    Memory pre-query: 0.50s
+    Retrieval: 71.2s
+    Synthesis: 46.4s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 8
+    Precision: 0.40
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +1879
+
+  Q13 [how] (position 3/5)
+  Question: How should a bank operationalise the distinct roles of the RMC and ALCO in liquidity governance in d...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 6
+      1. What are the distinct governance/mandate differences between the RMC and ALCO?
+      2. Which day-to-day tasks/decisions should ALCO perform (pricing, gap management, intraday li
+      3. Which oversight, policy-setting and risk appetite tasks should RMC perform (policy approva
+      4. How should responsibilities be divided and handoffs managed between RMC and ALCO (escalati
+      5. What MIS, reporting cadence and KPIs support day-to-day operationalisation (frequency, con
+      6. What controls, documentation and review processes should be in place (meeting minutes, pol
+    Key terms: RMC, ALCO, liquidity governance, operationalise, day-to-day practice, liquidity risk, contingency funding plan, limits, MIS, escalation
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 15
+    Reliability scored: 51
+    User context injected: False
+
+  RETRIEVAL:
+    Input tokens to LLM: 0
+    Output tokens from LLM: 0
+    LLM calls: 0
+    Nodes located: 15
+    Sections read: 21
+    Tokens retrieved: 21,126
+
+  SYNTHESIS:
+    Total tokens used: 28,263
+    Total LLM calls: 4
+    Answer length: 12,130 chars
+    Verification: partially_verified
+
+  TIMING:
+    Wall time: 174.4s
+    Server time: 166.6s
+    Memory pre-query: 0.44s
+    Retrieval: 79.2s
+    Synthesis: 86.9s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 10
+    Precision: 0.48
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2115
+
+  ⚠ ANOMALIES:
+    - TIME_REGRESSION: Q3 took 174.4s vs Q1's 119.0s (+47%)
+
+  Q14 [governance] (position 4/5)
+  Question: What governance or control failures can arise if the distinct roles of the RMC and ALCO in liquidity...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 6
+      1. What are the prescribed responsibilities of the RMC with respect to liquidity risk and gov
+      2. What are the prescribed responsibilities of the ALCO with respect to liquidity management 
+      3. What controls, reporting lines, and segregation-of-duties expectations does the regulatory
+      4. What specific failures arise when oversight (Board/RMC) is weak?
+      5. What specific failures arise when front-office/ALCO decision controls are weak or insuffic
+      6. How do failures in escalation, reporting, and contingency planning manifest when RMC and A
+    Key terms: RMC, Risk Management Committee, ALCO, Asset Liability Committee, liquidity governance, roles and responsibilities, governance failures, control failures, segregation of duties, conflict of interest, escalation, reporting, contingency funding plan, liquidity risk management framework
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 10
+    QI avoid nodes: 6
+    RAPTOR candidates: 15
+    Total memory candidates: 16
+    Reliability scored: 51
+    User context injected: False
+
+  RETRIEVAL:
+    Input tokens to LLM: 0
+    Output tokens from LLM: 0
+    LLM calls: 0
+    Nodes located: 14
+    Sections read: 19
+    Tokens retrieved: 18,861
+
+  SYNTHESIS:
+    Total tokens used: 23,244
+    Total LLM calls: 3
+    Answer length: 10,558 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 146.9s
+    Server time: 135.2s
+    Memory pre-query: 0.51s
+    Retrieval: 84.2s
+    Synthesis: 50.4s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 7
+    Precision: 0.37
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +3
+    feedback_nodes_added: +0
+    user_context_growth: +2274
+
+  Q15 [scenario] (position 5/5)
+  Question: In a realistic banking scenario, how would the distinct roles of the RMC and ALCO in liquidity gover...
+  Status: ✓
+
+  DECISIONS:
+    Query classified as: single_hop
+    Sub-queries generated: 6
+      1. What are the formal responsibilities of the RMC with respect to liquidity governance?
+      2. What are the formal responsibilities of the ALCO with respect to liquidity and balance she
+      3. How should RMC and ALCO interact (reporting lines, escalation, information flows)?
+      4. What kinds of management actions fall under RMC oversight versus ALCO execution?
+      5. How do contingency funding plan triggers and execution map to RMC and ALCO roles?
+      6. What governance or control mechanisms ensure clear separation of RMC and ALCO roles?
+    Key terms: RMC, ALCO, liquidity governance, liquidity risk, contingency funding plan, management action, Board responsibilities, liquidity risk management framework, governance
+
+  MEMORY INFLUENCE:
+    QI suggested nodes: 0
+    QI avoid nodes: 0
+    RAPTOR candidates: 0
+    Total memory candidates: 0
+    Reliability scored: 0
+    User context injected: False
+
+  RETRIEVAL:
+    Input tokens to LLM: 0
+    Output tokens from LLM: 0
+    LLM calls: 0
+    Nodes located: 13
+    Sections read: 18
+    Tokens retrieved: 19,586
+
+  SYNTHESIS:
+    Total tokens used: 73,722
+    Total LLM calls: 11
+    Answer length: 9,526 chars
+    Verification: verified
+
+  TIMING:
+    Wall time: 129.4s
+    Server time: 122.1s
+    Memory pre-query: 0.49s
+    Retrieval: 72.1s
+    Synthesis: 49.4s
+    Verification: 0.0s
+
+  RESULTS:
+    Citations: 6
+    Precision: 0.33
+
+  MEMORY CHANGES:
+    qi_facts_added: +2
+    user_sessions_added: +0
+    user_interactions_added: +0
+    feedback_nodes_added: +0
+    user_context_growth: +2108
+
+  ⚠ ANOMALIES:
+    - TOKEN_SPIKE: 73,722 tokens vs median 23,244 (3.2x)
+    - LLM_CALLS_INCREASE: 11 vs Q1's 3
+
+  THEME TRENDS:
+    Time:      119s → 127s → 174s → 147s → 129s
+    Tokens:    19,120 → 21,054 → 28,263 → 23,244 → 73,722
+    Precision: 0.15 → 0.40 → 0.48 → 0.37 → 0.33
+    Ret Input: 0 → 0 → 0 → 0 → 0
+
+
+======================================================================
+ROOT CAUSE ANALYSIS
+======================================================================
+
+[MEDIUM] F4_UNIFORM_CLASSIFICATION
+  All 15 queries classified as 'single_hop'. No query was classified as single_hop or definitional, despite variation types including simple 'explain' and 'why' questions.
+  ROOT CAUSE: The QueryClassifier's prompt or thresholds are too aggressive — complex regulatory questions with multiple key terms always trigger multi_hop. This forces every query through the expensive Planner path.
+
+
+RECOMMENDATIONS:
+  [MEDIUM] F4_UNIFORM_CLASSIFICATION: Add classification feedback from QI: if a theme has been answered as multi_hop before and precision was high, downgrade subsequent variations to single_hop.

@@ -1,0 +1,405 @@
+{
+  "meta": {
+    "total_questions": 5,
+    "completed": 5,
+    "failed": 0,
+    "elapsed_seconds": 742.2,
+    "timestamp": "2026-04-04T21:01:15.710856+00:00"
+  },
+  "summary": {
+    "mean_fact_coverage": 0.45,
+    "median_fact_coverage": 0.5,
+    "min_fact_coverage": 0.25,
+    "max_fact_coverage": 0.5,
+    "hallucination_count": 0,
+    "category_scores": {
+      "conceptual": 0.45
+    }
+  },
+  "memory_correlation": {
+    "early_mean_coverage": 0.25,
+    "late_mean_coverage": 0.5,
+    "accuracy_trend": "improving",
+    "early_qi_facts": 3,
+    "late_qi_facts": 7,
+    "qi_growth": 4,
+    "data_points": 5
+  },
+  "scores": [
+    {
+      "question_id": 1,
+      "question_text": "How does the 2025 Direction fundamentally redefine the concept of a 'Customer' and how does this breadth impact the implementation of Customer Due Diligence (CDD) across different banking activities?",
+      "category": "conceptual",
+      "fact_coverage": 0.25,
+      "facts_hit": 2,
+      "facts_total": 8,
+      "fact_verdicts": [
+        {
+          "fact": "Paragraph 5(2)(iii) defines Customer broadly",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Includes persons on whose behalf transactions are conducted",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Walk-in Customers defined in Paragraph 5(2)(iv)",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Walk-in threshold is ₹50,000",
+          "found": true,
+          "evidence": "matched terms: walk, threshold, ₹50, 000"
+        },
+        {
+          "fact": "Banks must look through to ultimate initiator",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "CDD becomes relational not just transactional",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Every touchpoint is a potential KYC event",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Structuring patterns must be monitored",
+          "found": true,
+          "evidence": "matched terms: structuring, patterns, must"
+        }
+      ],
+      "hallucination_detected": false,
+      "hallucination_details": "",
+      "wall_time": 140.985675573349,
+      "total_tokens": 177844,
+      "llm_calls": 11,
+      "citations_count": 7,
+      "memory_before": {
+        "timestamp": "2026-04-04T21:01:15.713072+00:00",
+        "qi_facts": 3,
+        "user_interactions": 87,
+        "user_context_len": 0,
+        "feedback_nodes": 32
+      },
+      "memory_after": {
+        "timestamp": "2026-04-04T21:03:37.187147+00:00",
+        "qi_facts": 4,
+        "user_interactions": 90,
+        "user_context_len": 0,
+        "feedback_nodes": 35
+      },
+      "system_answer": "## 1) Whether the 2025 Directions “redefine” ‘Customer’ (and what is explicitly available vs missing)\n\nThe retrieved extracts **do not include the definition of “customer”** from the Definitions clause (“C. Definitions”)—the text stops at “the following meanings” without providing the actual definition. Accordingly, **an explicit, textual statement of how the 2025 Directions “redefine” the term ‘Customer’ is not available in the provided sections**, and any definition-level comparison cannot be made from this record alone. [Chapter I – Preliminary: A. Short Title and Commencement / B. Applicability / C. Definitions, p.4]\n\nHowever, the 2025 Directions **operationally broaden the population treated as ‘customers’ for identification / CDD purposes** by specifying multiple circumstances in which the bank “shall undertake identification of customers,” including **persons who are not account-holders and walk-in (non-account-based) customers**. This functional breadth directly expands where CDD must be implemented across banking activities. [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n---\n\n## 2) The functional breadth of ‘Customer’ under the 2025 Directions (as evidenced by CIP triggers)\n\nUnder the Customer Identification Procedure, the bank must undertake customer identification not only at account opening, but also across several non-account situations and product/service interactions:\n\n### A. Account-based relationship (traditional onboarding)\n- Identification is required at the **“Commencement of an account-based relationship with the customer.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n### B. Non-account-holder persons and walk-in customers (expands ‘customer’ beyond account holders)\n- Identification is required for **“any international money transfer operations for a person who is not an account holder of the bank.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n- Identification is required when carrying out transactions for **“a non-account-based customer, i.e., a walk-in customer,”** where the amount is **“equal to or exceeds ₹50,000”** (single or apparently connected). [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n- Identification is required where the bank believes a customer is **“intentionally structuring a transaction into a series of transactions below the threshold of ₹50,000.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n### C. Product/service purchase and payment activities (CDD reaches beyond “account opening”)\n- Identification is required when **“Selling third-party products as agents, selling its own products, payment of dues of credit cards / sale and reloading of prepaid / travel cards and any other product for more than ₹50,000.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n### D. Data-quality and suspicion triggers\n- Identification is required **“When there is a doubt about the authenticity or adequacy of the customer identification data it has obtained.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n### E. Account-opening process constraint\n- The bank must ensure **“it does not seek introductions while opening accounts.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n**Resulting breadth (grounded in the above):** For the purposes of identification/CIP execution, the bank must treat as “customers” not only account-holders, but also non-account-holders engaging in specified transactions (e.g., international money transfer) and walk-in customers above threshold, as well as persons engaging in specified product/payment activities above threshold. [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n---\n\n## 3) How this breadth impacts implementation of Customer Due Diligence (CDD) across banking activities\n\nThe broadened operational scope affects CDD in three major ways: (i) **more touchpoints trigger identification/CDD**, (ii) **CDD must be adapted to the type of customer (individual vs legal person vs specific entity type)**, and (iii) **CDD becomes lifecycle-based through ongoing due diligence and periodic updating**.\n\n### 3.1 CDD is triggered across a wider range of banking activities (not only onboarding)\nBecause CIP requires identification for (a) account opening, (b) international remittance for non-account holders, (c) walk-in transactions ≥ ₹50,000 (including connected transactions), and (d) high-value product/payment interactions > ₹50,000 (credit card dues, prepaid/travel card reload, third-party products, etc.), the bank’s CDD controls must be embedded into:\n- Branch and digital workflows for onboarding; and\n- Transaction and sales/payment workflows for occasional customers and non-account holders (including threshold and anti-structuring detection). [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n### 3.2 CDD must cover different “customer types” and legal forms, including beneficial ownership\nWhere the customer is not a natural person, the Directions require customer-type-specific CDD documentation and beneficial ownership measures.\n\n#### A. Sole proprietary firms\n- For a sole proprietary firm, the bank must **“carry out the CDD of the individual (proprietor)”** and also obtain **“any two”** specified documents as proof of business/activity in the firm’s name. [B. CDD Measures for Sole Proprietary firms, p.36]\n\n#### B. Companies, partnership firms, trusts, unincorporated associations/body of individuals\n- For a **company**, the bank must obtain certified copies/e-documents including certificate of incorporation, constitutional documents, **PAN**, board resolution/power of attorney, documents for persons acting on its behalf, senior management names, and addresses. [C. CDD Measures for Legal Entities, pp.37-38]\n- For a **partnership firm**, the bank must obtain certified copies/e-documents including registration certificate, partnership deed, **PAN**, beneficial-owner/authorised-person documents, partner names, and addresses. [C. CDD Measures for Legal Entities, pp.37-38]\n- For a **trust**, the bank must obtain certified copies/e-documents including registration certificate, trust deed, **PAN or Form No.60**, beneficial-owner/authorised-person documents, names of beneficiaries/trustees/settlor/protector/authors, address, and trustee list plus trustee KYC documents. [C. CDD Measures for Legal Entities, pp.37-38]\n- For an **unincorporated association or a body of individuals**, the bank must obtain certified copies/e-documents including managing body resolution, **PAN or Form No. 60**, power of attorney, and documents relating to beneficial owner/managers/officers/employees/attorney holders. [C. CDD Measures for Legal Entities, pp.37-38; D. Identification of Beneficial Owner, p.39]\n\n#### C. Juridical persons not otherwise covered and persons acting on their behalf\n- For opening an account of a **juridical person** not otherwise covered (e.g., “societies, universities and local bodies like village panchayats”), or a person purporting to act on behalf of such entity/individual/trust, the bank must obtain/verify certified copies/e-documents showing the authorised person, documents of the attorney holder, and documents to establish legal existence. [D. Identification of Beneficial Owner, p.39]\n- For trusts, the bank must ensure **“trustees disclose their status”** at commencement of an account-based relationship or when carrying out certain transaction types referenced in CIP. [D. Identification of Beneficial Owner, p.39]\n\n#### D. Beneficial ownership and intermediary relationships (core expansion of CDD scope)\n- For opening an account of a legal person, the bank must **“identify the beneficial owner(s)”** and take **“all reasonable steps… to verify their identity.”** [D. Identification of Beneficial Owner, p.39]\n- For “trust / nominee or fiduciary accounts,” the bank must determine if the customer acts for another person and obtain evidence of identity of intermediaries and persons on whose behalf they act, plus details of the arrangement. [E. On-going Due Diligence, pp.40-44]\n\n**Impact:** The breadth of “customer” interactions (including legal persons and intermediated relationships) means CDD implementation cannot be limited to the transacting individual; it must extend to authorised signatories/attorney holders and beneficial owners, and to the persons behind trustees/nominees/intermediaries where applicable. [C. CDD Measures for Legal Entities, pp.37-38; D. Identification of Beneficial Owner, p.39; E. On-going Due Diligence, pp.40-44]\n\n### 3.3 CDD becomes ongoing and risk-calibrated across the customer lifecycle\nThe breadth of customer touchpoints is paired with explicit ongoing due diligence and periodic updating requirements:\n\n#### A. Ongoing due diligence and transaction monitoring\n- Banks must undertake **“ongoing due diligence of customers to ensure that their transactions are consistent”** with knowledge of the customer, business, risk profile, and “source of funds / wealth.” [E. On-going Due Diligence, pp.40-44]\n- Banks must necessarily monitor, inter alia, “large and complex transactions including RTGS,” unusual patterns with “no apparent economic rationale,” transactions exceeding thresholds for account categories, high turnover inconsistent with balance, and third-party instrument deposits followed by large cash withdrawals. [E. On-going Due Diligence, pp.40-44]\n- Banks must align monitoring with the customer’s risk category and review risk categorisation **“at least once in every six months.”** [E. On-going Due Diligence, pp.40-44]\n\n#### B. Periodic updation of KYC (risk-based minimum frequencies)\n- Periodic updation must be at least: **once in every two years for high-risk**, **once in every eight years for medium risk**, and **once in every 10 years for low-risk** customers. [E. On-going Due Diligence, pp.40-44]\n- Special rule for low-risk individuals: the bank must “allow all transactions” and ensure KYC updation **“within one year of its falling due for KYC or up to June 30, 2026, whichever is later,”** with regular monitoring. [E. On-going Due Diligence, pp.40-44]\n\n#### C. Risk management framework that drives CDD intensity\n- Banks must adopt a risk-based approach and categorise customers into **“low, medium, and high-risk categories,”** using parameters including “identity,” “nature of business activity,” “geographical risk… customers as well as transactions,” “type of products / services,” “delivery channel,” and “types of transactions… cash… wire transfers, forex transactions.” [Chapter IV – Risk Management, p.22]\n\n**Impact:** Because “customer” interactions extend to occasional/walk-in customers and non-account holders in specific activities, risk categorisation and monitoring logic must also be capable of operating in those workflows (e.g., for high-value walk-in transactions, international remittance for non-account holders, and high-value product purchases). This is operationally supported by the Directions’ explicit risk-based monitoring and periodic update requirements. [Chapter V – Customer Identification Procedure (CIP), pp.23-24; Chapter IV – Risk Management, p.22; E. On-going Due Diligence, pp.40-44]\n\n### 3.4 Reliance on third-party CDD does not remove the bank’s responsibility\n- The bank may “rely on customer due diligence done by a third party” in specified situations, but **“will have the ultimate responsibility for customer due diligence and undertaking enhanced due diligence measures, as applicable.”** [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\n---\n\n## 4) What cannot be concluded from the provided sections\n- The **exact definitional wording** of “Customer” in the 2025 Directions is not present in the retrieved extracts (Definitions section is incomplete). Therefore, a definitive statement that the Directions “fundamentally redefine” ‘Customer’ as a matter of definition (as opposed to operational scope) cannot be quoted from the provided material. [Chapter I – Preliminary: A. Short Title and Commencement / B. Applicability / C. Definitions, p.4]\n",
+      "reference_answer": "The definition of a 'Customer' under Paragraph 5(2)(iii) is remarkably broad, encompassing any person engaged in a financial transaction or activity with the bank, including those on whose behalf the transaction is being conducted. This conceptualization moves beyond simple account-holders to include 'Walk-in Customers' (Paragraph 5(2)(iv)) who may only interact with the bank for occasional transactions exceeding ₹50,000. By including persons acting on behalf of others, the Direction forces banks to look through the immediate transactor to identify the ultimate initiator. This necessitates a multi-layered CDD process that is not just transactional but also relational, requiring the bank to understand the 'intended nature of the business relationship' even for non-account-based interactions. The impact is a systemic shift where every touchpoint—whether it be a wire transfer, a foreign exchange transaction, or a simple deposit—becomes a potential KYC event if it crosses specific thresholds or suggests a pattern of 'structuring'.",
+      "conv_id": "56ba7d42-a3d1-4100-9d03-800cde77ffd9",
+      "success": true,
+      "error": ""
+    },
+    {
+      "question_id": 2,
+      "question_text": "Analyze the role of the 'Risk Based Approach' (RBA) in the 2025 Directions. How does Paragraph 11 bridge the gap between regulatory intent and operational execution for banks of varying sizes and complexities?",
+      "category": "conceptual",
+      "fact_coverage": 0.5,
+      "facts_hit": 4,
+      "facts_total": 8,
+      "fact_verdicts": [
+        {
+          "fact": "RBA is the cornerstone of AML/CFT framework",
+          "found": true,
+          "evidence": "matched terms: rba, the, aml/cft, framework"
+        },
+        {
+          "fact": "Paragraph 11 mandates proportionate mitigation",
+          "found": true,
+          "evidence": "matched terms: paragraph, mandates, proportionate, mitigation"
+        },
+        {
+          "fact": "Internal ML/TF Risk Assessment required",
+          "found": true,
+          "evidence": "matched terms: internal, ml/tf, risk, assessment, required"
+        },
+        {
+          "fact": "CDD must regard ML/TF risks and size of business",
+          "found": true,
+          "evidence": "matched terms: cdd, must, regard, ml/tf, risks"
+        },
+        {
+          "fact": "Prevents one-size-fits-all compliance",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Higher-risk areas get Enhanced Due Diligence",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Paragraph 12 links to Senior Management definition",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Cross-border correspondent banking is higher risk",
+          "found": false,
+          "evidence": ""
+        }
+      ],
+      "hallucination_detected": false,
+      "hallucination_details": "",
+      "wall_time": 129.8791835308075,
+      "total_tokens": 91881,
+      "llm_calls": 12,
+      "citations_count": 5,
+      "memory_before": {
+        "timestamp": "2026-04-04T21:03:40.700220+00:00",
+        "qi_facts": 4,
+        "user_interactions": 90,
+        "user_context_len": 0,
+        "feedback_nodes": 35
+      },
+      "memory_after": {
+        "timestamp": "2026-04-04T21:05:51.068137+00:00",
+        "qi_facts": 5,
+        "user_interactions": 90,
+        "user_context_len": 0,
+        "feedback_nodes": 35
+      },
+      "system_answer": "## 1) Role of the Risk Based Approach (RBA) in the 2025 Directions\n\n### RBA is a mandatory organising principle for AML/CFT controls\n- The Directions require each bank to **“apply a Risk Based Approach (RBA) for mitigation and management of the risks (identified on its own or through national risk assessment)”** and to back this with **“Board-approved policies, controls and procedures”**. This positions RBA as the core method by which the bank designs and runs its KYC/AML framework, rather than a standalone exercise. [B. Other General Guidelines, pp.18-21]\n\n### RBA connects risk identification to the design of CDD and monitoring\n- The bank must **“implement a CDD programme, having regard to the ML / TF risks identified and the size of business”**—i.e., the CDD programme is explicitly required to be calibrated to risk and scale. [B. Other General Guidelines, pp.18-21]\n- The Directions embed risk-based thinking into:\n  - **Customer risk categorisation**: the bank must categorise customers into **“low, medium, and high-risk categories”** based on its assessment, using parameters spanning identity, business activity, geography, products, delivery channels, and transaction types. [Chapter IV – Risk Management, p.22]\n  - **Ongoing due diligence and monitoring intensity**: the bank must perform ongoing due diligence so transactions remain consistent with the bank’s knowledge of the customer and their risk profile, and must **“align the extent of monitoring with the risk category of the customer.”** [E. On-going Due Diligence, pp.40-44]\n  - **Risk-based periodic updation of KYC** with minimum frequencies linked to risk category: **“at least once in every two years for high-risk customers, once in every eight years for medium risk customers and once in every 10 years for low-risk customers.”** [E. On-going Due Diligence, pp.40-44]\n\n### RBA is operationally reinforced through governance and technology expectations\n- The KYC policy must include **“Risk Management”** and **“Monitoring of Transactions”** as key elements, indicating RBA is intended to be embedded in the bank’s Board-approved KYC policy architecture. [A. Board of Directors / Policies related guidelines, pp.16-17]\n- To support detection/reporting, the bank must implement **“robust software that generates alerts when transactions are inconsistent with a customer's risk categorisation and updated profile.”** This is a direct operationalisation of risk-based monitoring. [Chapter VIII – Reporting Requirements to Financial Intelligence Unit – India, pp.54-55]\n\n\n## 2) How Paragraph 11 bridges regulatory intent and operational execution (especially across banks of varying sizes/complexities)\n\nParagraph 11 functions as a bridge in three linked ways: **(i) it anchors intent in risk mitigation, (ii) it mandates governance-owned implementation mechanics, and (iii) it requires proportional execution calibrated to ML/TF risk and the bank’s scale.**\n\n### (A) It translates “manage ML/TF risk” into concrete, bank-owned control obligations\n- Regulatory intent (mitigate/manage ML/TF risks) is made executable because Paragraph 11 does not stop at requiring risk awareness; it requires banks to put in place **“Board-approved policies, controls and procedures”** for RBA-based risk mitigation and management. [B. Other General Guidelines, pp.18-21]\n\n### (B) It directly incorporates proportionality for banks of different sizes and operating models\n- Paragraph 11 explicitly requires the bank to implement a CDD programme **“having regard to the ML / TF risks identified and the size of business.”** This is the key proportionality lever that allows the same regulatory intent to be implemented appropriately by:\n  - banks with simpler structures/smaller footprints, and\n  - banks with wider geographic presence, more delivery channels, and higher product complexity,\n  while still remaining within a common regulatory framework. [B. Other General Guidelines, pp.18-21]\n\n### (C) It connects to the Directions’ broader proportional risk assessment design\n- The bank’s internal ML/TF risk assessment must be **“proportionate to the nature, size, geographical presence, complexity of activities / structure, etc. of the bank”** and must be reviewed **“at least annually.”** This aligns the “inputs” (risk assessment outputs) with Paragraph 11’s “outputs” (CDD programme and controls calibrated by risk and size). [A. Board of Directors / Policies related guidelines, pp.16-17]\n\n### (D) It creates a monitoring-and-enhancement feedback loop (closing the execution gap)\n- Paragraph 11 requires the bank to **“monitor the implementation of the controls and enhance them if necessary.”** This converts regulatory expectations into a continuous operational cycle: design controls (via Board approval) → implement risk-calibrated CDD → monitor effectiveness → enhance as needed. [B. Other General Guidelines, pp.18-21]\n- This feedback loop is reinforced by other operational requirements, such as periodic review of risk categorisation **“at least once in every six months”** and intensified monitoring for high-risk accounts. [E. On-going Due Diligence, pp.40-44]\n\n\n## 3) What this means in practice (within the four corners of the retrieved text)\n\nWithin the retrieved provisions, Paragraph 11’s “bridge” can be seen as enabling operational choices while preserving outcomes:\n- **Risk identification sources**: banks must manage risks they identify themselves and those arising from the **“national risk assessment.”** [B. Other General Guidelines, pp.18-21]\n- **Board ownership**: the RBA must be implemented through Board-approved policies/controls/procedures (governance-led execution). [B. Other General Guidelines, pp.18-21]\n- **Scaled implementation**: the CDD programme must reflect both the ML/TF risk identified and **“the size of business”** (proportionate operationalisation across banks). [B. Other General Guidelines, pp.18-21]\n- **Operational risk differentiation**: risk categories (low/medium/high) drive the intensity of monitoring and the periodicity of KYC updation. [Chapter IV – Risk Management, p.22; E. On-going Due Diligence, pp.40-44]\n- **Technology enablement**: robust alert-generating software must support risk-category based transaction monitoring. [Chapter VIII – Reporting Requirements to Financial Intelligence Unit – India, pp.54-55]\n\n\n## What is not available in the retrieved sections\n- The retrieved text does not provide a dedicated definition of “Risk Based Approach (RBA)” beyond the mandate to apply it for mitigation/management of identified risks, nor does it enumerate specific mandatory “RBA models” or quantitative scoring methodologies. [B. Other General Guidelines, pp.18-21]\n",
+      "reference_answer": "The Risk Based Approach (RBA) is the cornerstone of the modern AML/CFT framework, as articulated in Paragraph 11. It requires banks to apply mitigation measures that are strictly proportionate to the risks identified through their internal 'Money Laundering and Terrorist Financing Risk Assessment' exercises. Conceptually, Paragraph 11 bridges the gap between intent and execution by mandating that the CDD program must have 'regard to the ML/TF risks identified and the size of business'. For a large, internationally active bank, this implies highly sophisticated, automated monitoring and a granular categorization of risks across different geographies and products. For a smaller bank, it allows for a more focused but still documented risk assessment. This conceptual flexibility prevents a 'one-size-fits-all' compliance burden while ensuring that higher-risk areas—such as cross-border correspondent banking—are subjected to 'Enhanced Due Diligence' (EDD). The execution is further reinforced by Paragraph 12, which requires the bank to specify who constitutes 'Senior Management' for the purpose of KYC compliance, thereby linking the RBA directly to internal corporate governance.",
+      "conv_id": "56ba7d42-a3d1-4100-9d03-800cde77ffd9",
+      "success": true,
+      "error": ""
+    },
+    {
+      "question_id": 3,
+      "question_text": "What is the conceptual significance of identifying the 'Beneficial Owner' (BO) in the 2025 framework, and how does the hierarchy of identification (ownership vs. control vs. senior official) protect the financial system from opaque legal arrangements?",
+      "category": "conceptual",
+      "fact_coverage": 0.5,
+      "facts_hit": 4,
+      "facts_total": 8,
+      "fact_verdicts": [
+        {
+          "fact": "BO identification peels back corporate layers",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Paragraph 5(1)(iv) establishes hierarchy",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "First: controlling ownership interest >10% shares/capital",
+          "found": true,
+          "evidence": "matched terms: first, controlling, ownership, interest, >10%"
+        },
+        {
+          "fact": "Second: control through management rights or voting",
+          "found": true,
+          "evidence": "matched terms: second, control, through, management, rights"
+        },
+        {
+          "fact": "Third: senior managing official as fallback",
+          "found": true,
+          "evidence": "matched terms: third, senior, managing, official, fallback"
+        },
+        {
+          "fact": "Always ensures a natural person is accountable",
+          "found": true,
+          "evidence": "matched terms: ensures, natural, person, accountable"
+        },
+        {
+          "fact": "Protects against shell structures",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Fulfills FATF mandate for transparency",
+          "found": false,
+          "evidence": ""
+        }
+      ],
+      "hallucination_detected": false,
+      "hallucination_details": "",
+      "wall_time": 172.62126874923706,
+      "total_tokens": 78162,
+      "llm_calls": 12,
+      "citations_count": 5,
+      "memory_before": {
+        "timestamp": "2026-04-04T21:05:54.551888+00:00",
+        "qi_facts": 5,
+        "user_interactions": 90,
+        "user_context_len": 0,
+        "feedback_nodes": 35
+      },
+      "memory_after": {
+        "timestamp": "2026-04-04T21:08:47.654550+00:00",
+        "qi_facts": 6,
+        "user_interactions": 90,
+        "user_context_len": 0,
+        "feedback_nodes": 37
+      },
+      "system_answer": "## 1) Conceptual significance of identifying the ‘Beneficial Owner’ (BO) in the 2025 framework\n\n### A. BO identification “looks through” a legal customer to the relevant natural person(s)\n- The 2025 Directions define the BO (for non-natural-person customers) as **“the natural person(s)”** who ultimately stand behind the legal person—either by **ownership** or by **control** (including through layered/juridical structures), rather than stopping at the entity name on the account. For a **company**, the BO is the natural person(s) who “has / have a controlling ownership interest or who exercises control through other means,” including where the person acts “through one or more juridical persons.” [C. Definitions, p.5]\n- This “natural person” focus is carried through across legal forms, including partnerships and unincorporated associations/bodies of individuals, and for trusts the BO identification must include key trust roles and “any other natural person exercising ultimate effective control over the trust through a chain of control or ownership.” [C. Definitions, pp.5-6]\n\n### B. BO identification is operationalised as a CDD obligation at onboarding (and maintained thereafter)\n- At account opening for a legal person, the bank has an explicit obligation: **“the bank shall identify the beneficial owner(s) and shall undertake all reasonable steps… to verify their identity.”** [D. Identification of Beneficial Owner, p.39]\n- For legal-entity onboarding, banks must collect documents “relating to beneficial owner” for companies, partnerships and trusts, linking BO identification directly to the bank’s customer due diligence file. [C. CDD Measures for Legal Entities, pp.37-38]\n- BO identification is not treated as a one-time exercise: during periodic updation of KYC for customers other than individuals, the bank must “ensure during this process that Beneficial Ownership (BO) information available with them is accurate and shall update the same, if required, to keep it as up-to-date as possible.” [E. On-going Due Diligence, pp.40-44]\n\n### C. BO identification is also a mechanism to pierce fiduciary/nominee opacity\n- The framework specifically addresses situations where legal arrangements are used to obscure who is really being represented: “In cases of trust / nominee or fiduciary accounts, the bank determines whether the customer is acting on behalf of another person as trustee / nominee or any other intermediary,” and must obtain “satisfactory evidence of the identity of the intermediaries and of the persons on whose behalf they are acting, as well as details of the nature of the trust or other arrangements in place.” [E. On-going Due Diligence, pp.40-44]\n\n### D. A calibrated exemption indicates a risk-sensitive design\n- Where the customer or controlling-interest owner is a listed entity (or certain listed-entity subsidiaries), “it is not necessary to identify and verify the identity of any shareholder or beneficial owner of such entities.” This indicates BO identification is targeted at opacity risk and is reduced where public listing provides transparency. [E. On-going Due Diligence, pp.40-44]\n\n## 2) How the hierarchy (ownership → control → senior managing official) protects the system from opaque legal arrangements\n\n### A. First line: Ownership threshold forces identification of meaningful owners\n- For **companies**, the BO test starts with **“controlling ownership interest,”** defined as “ownership of / entitlement to **more than 10 percent** of the shares or capital or profits of the company.” [C. Definitions, p.5]\n- For **partnership firms**, it similarly captures natural persons with “ownership of / entitlement to **more than 10 percent** of capital or profits of the partnership.” [C. Definitions, p.5]\n- For **unincorporated associations / bodies of individuals**, it captures natural persons with “ownership of / entitlement to **more than 15 percent** of the property or capital or profits.” [C. Definitions, p.6]\n\n**Protective effect (regulatory logic grounded in the text):** By explicitly tying BO to >10% (or >15%) economic interest, the framework reduces the ability to hide behind the legal entity by compelling the bank to identify natural persons with significant economic entitlement. [C. Definitions, pp.5-6]\n\n### B. Second line: Control test prevents circumvention via dispersed holdings or contractual control\n- Even if ownership is structured to avoid thresholds, the BO remains the natural person(s) who “exercises control through other means.” For companies, “Control” is defined broadly to include “the right to appoint the majority of the directors or to control the management or policy decisions including by virtue of their shareholding or management rights or shareholders agreements or voting agreements.” [C. Definitions, p.5]\n- For partnerships, the definition likewise captures those who “exercise control through other means,” where “control” includes “the right to control the management or policy decision.” [C. Definitions, p.5]\n\n**Protective effect:** This control limb directly targets opaque arrangements where legal ownership is fragmented or layered but real decision-making power is retained via governance rights, shareholder agreements, or voting arrangements—closing a common structuring gap. [C. Definitions, p.5]\n\n### C. Third line (fallback): Senior managing official ensures an accountable natural person is identified when ownership/control cannot be pinned down\n- The Directions provide a clear fallback where ownership/control identification fails (for the company/partnership/unincorporated association categories): “Where no natural person is identified under (a), (b) or (c) above, the beneficial owner is the relevant natural person who holds the position of senior managing official.” [C. Definitions, p.6]\n\n**Protective effect:** This hierarchy prevents a “no-BO-found” outcome in opaque structures by ensuring that, even where ultimate ownership/control cannot be established, the bank still identifies a responsible natural person at senior management level for KYC/CDD purposes. [C. Definitions, p.6]\n\n### D. Trust-specific completeness: mandatory identification of key roles + ultimate effective control through a chain\n- For trusts, BO identification “shall include identification of the author of the trust, the trustee, the beneficiaries with **10 percent or more interest** in the trust and any other natural person exercising ultimate effective control over the trust through a chain of control or ownership.” [C. Definitions, p.6]\n- Separately, for trust accounts, banks must ensure trustees “disclose their status at the time of commencement of an account-based relationship” (in the specified circumstances referenced in the Directions), reinforcing transparency of the capacity in which the customer acts. [D. Identification of Beneficial Owner, p.39]\n\n**Protective effect:** This design addresses the risk of trusts being used as opaque vehicles by requiring identification not only of economic beneficiaries (≥10%) but also of persons exercising “ultimate effective control” through chains, plus explicit identification of core roles (author, trustee). [C. Definitions, p.6]\n\n## 3) Link to broader financial-system protection in the Directions (within provided text)\n- BO identification supports ongoing monitoring obligations: banks must conduct “ongoing due diligence… to ensure that their transactions are consistent with their knowledge about the customers, customers’ business and risk profile, the source of funds / wealth.” Identifying the correct natural person(s) behind a legal customer strengthens the bank’s ability to apply this consistency test and risk profiling. [E. On-going Due Diligence, pp.40-44]\n\n## What the provided sections do NOT specify\n- The retrieved sections do not explicitly state the policy rationale in terms of “protecting the financial system” or explicitly describe BO identification as an anti-opaque-arrangements principle; that linkage can only be made indirectly from the CDD/ongoing due diligence structure and the BO definitions/obligations shown above. [C. Definitions, pp.5-6; D. Identification of Beneficial Owner, p.39; E. On-going Due Diligence, pp.40-44]\n- The retrieved sections reference “all reasonable steps in terms of sub-rule (3) of Rule 9 of the Rules” but do not reproduce Rule 9; therefore, the precise content of those “reasonable steps” is not available in the provided text. [D. Identification of Beneficial Owner, p.39]\n",
+      "reference_answer": "The identification of the Beneficial Owner (BO) is conceptually designed to peel back the layers of corporate and legal structures to find the natural person who ultimately owns or controls the entity. Under Paragraph 5(1)(iv), the framework establishes a clear hierarchy of identification. First, it looks for 'controlling ownership interest'—defined as ownership of more than 10 percent of shares or capital in companies and partnerships. Second, if ownership is fragmented, it looks for 'control' through management rights or voting agreements. Finally, if no natural person is identifiable through these means, the 'senior managing official' is deemed the BO. This conceptual progression is critical because it ensures there is always a natural person accountable for the entity's actions. It specifically protects against the use of 'shell' structures where legal ownership might be hidden behind a chain of juridical persons, thereby fulfilling the FATF's mandate for transparency in the financial system.",
+      "conv_id": "56ba7d42-a3d1-4100-9d03-800cde77ffd9",
+      "success": true,
+      "error": ""
+    },
+    {
+      "question_id": 4,
+      "question_text": "Distinguish between 'Digital KYC' and the 'Video-based Customer Identification Process' (V-CIP) in terms of their conceptual alignment with face-to-face identification standards.",
+      "category": "conceptual",
+      "fact_coverage": 0.5,
+      "facts_hit": 4,
+      "facts_total": 8,
+      "fact_verdicts": [
+        {
+          "fact": "Digital KYC defined in Paragraph 5(1)(viii)",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Digital KYC requires authorized officer physically present",
+          "found": true,
+          "evidence": "matched terms: digital, kyc, requires, officer, physically"
+        },
+        {
+          "fact": "Digital KYC captures live photos with geo-tagging (lat/long)",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "V-CIP defined in Paragraph 5(2)(xvi)",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "V-CIP is a remote audio-visual interaction",
+          "found": true,
+          "evidence": "matched terms: cip, remote, audio, interaction"
+        },
+        {
+          "fact": "V-CIP treated as on par with face-to-face CIP",
+          "found": true,
+          "evidence": "matched terms: cip, treated, par, with, face"
+        },
+        {
+          "fact": "V-CIP uses liveness checks and AI face matching",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "V-CIP requires end-to-end encryption",
+          "found": true,
+          "evidence": "matched terms: cip, requires, end, end, encryption"
+        }
+      ],
+      "hallucination_detected": false,
+      "hallucination_details": "",
+      "wall_time": 129.6103367805481,
+      "total_tokens": 82495,
+      "llm_calls": 12,
+      "citations_count": 9,
+      "memory_before": {
+        "timestamp": "2026-04-04T21:08:51.068481+00:00",
+        "qi_facts": 6,
+        "user_interactions": 90,
+        "user_context_len": 0,
+        "feedback_nodes": 37
+      },
+      "memory_after": {
+        "timestamp": "2026-04-04T21:11:01.091656+00:00",
+        "qi_facts": 7,
+        "user_interactions": 93,
+        "user_context_len": 0,
+        "feedback_nodes": 37
+      },
+      "system_answer": "## Regulatory context: what “identification standards” are being compared against\n- The Directions require the bank to “undertake identification of customers” at (among other triggers) the “commencement of an account-based relationship with the customer” and for specified occasional transactions/IMT operations. [Chapter V – Customer Identification Procedure (CIP), pp.23-24]\n\nWithin the CDD framework for individuals, **Digital KYC** and **V-CIP** are two distinct RBI-specified processes that achieve customer identification with different conceptual proximity to traditional in-person (face-to-face) assurance.\n\n---\n\n## 1) Digital KYC: conceptually anchored in physical co-presence (face-to-face style assurance)\n**Key conceptual feature:** Digital KYC is an *application-based* process, but it is structured around the customer and the authorised official being physically at the same location (customer visits official or official visits customer), with the customer holding the original document.\n\nRegulatory design elements evidencing face-to-face style assurance:\n- **Bank-controlled, authenticated application at touch points:** The bank must “develop an application for digital KYC process and make it available at customer touch points” and must undertake KYC “only through this authenticated application.” [CDD Procedure in case of Individuals, p.27]\n- **Controlled access by authorised officials:** Access must be controlled so “unauthorised persons do not use it,” with authorised access via “login-id and password or a Live OTP or Time OTP controlled mechanism.” [CDD Procedure in case of Individuals, p.27]\n- **Physical meeting + original document present:** “The customer, for the purpose of KYC, shall visit the location of the authorised official of the bank or vice-versa. The original OVD shall be in possession of the customer.” [CDD Procedure in case of Individuals, p.27]\n- **Live photo capture and strong audit trail:** The authorised officer must take a “Live photograph of the customer” and the system must watermark it with “CAF number, GPS coordinates, authorised official’s name, unique employee code… date… and time stamp.” [CDD Procedure in case of Individuals, p.27]\n- **Live capture constraints that reduce spoofing risk:** The Application must “capture only a live photograph of the customer and does not capture any printed or video graphed photograph,” with a controlled background and no other person in frame. [CDD Procedure in case of Individuals, p.28]\n\n**Conceptual alignment with face-to-face standards (based on the text):** Digital KYC preserves the core assurance logic of in-person verification—customer and authorised official meet physically and the customer possesses the original OVD—while digitising capture, watermarking, and workflow controls. [CDD Procedure in case of Individuals, p.27]\n\n---\n\n## 2) V-CIP: conceptually designed to replicate “beyond doubt” assurance via real-time video controls (technology-mediated, not physically co-present)\n**Key conceptual feature:** V-CIP is expressly a **video-based** identification method with mandated security, liveness, and process controls intended to allow reliable identification without physical co-presence.\n\nRegulatory design elements showing “beyond doubt” identification intent:\n- **Permitted use-cases:** The bank “may undertake V-CIP to carry out” CDD for “new customer onboarding” (including individuals, proprietor, authorised signatories and BOs for LE customers), and also for “Conversion of existing accounts opened in non-face-to-face mode using Aadhaar OTP based e-KYC authentication,” and for “Updation / Periodic updation of KYC for eligible customers.” [CDD Procedure in case of Individuals, p.30-31]\n- **Bank-owned/controlled secure setup and recordings:** V-CIP must originate from the bank’s “own secured network domain,” with end-to-end encryption, restrictions on foreign/spoofed IPs, and video-recording governance (including immediate transfer so third parties “retain no data”). [CDD Procedure in case of Individuals, p.31]\n- **Geo-tagging + time stamping and quality standard:** “The video recordings shall contain the live GPS co-ordinates (geo-tagging)… and date and time stamp.” Critically, “The quality of the live video in the V-CIP shall be adequate to allow identification of the customer beyond doubt.” [CDD Procedure in case of Individuals, p.31]\n- **Liveness/spoof detection and face matching technology:** The application must have “face liveness / spoof detection as well as face matching technology with high degree of accuracy,” while clarifying that “ultimate responsibility… rests with the bank.” [CDD Procedure in case of Individuals, p.31]\n- **Trained officials + real-time interaction controls:** V-CIP must be “operated only by officials… specially trained,” capable of liveness check and fraud detection, and the bank must use indicators “to establish that the interactions are real-time and not pre-recorded,” and must “reject the account opening process” if it observes “any prompting at the customer end.” [CDD Procedure in case of Individuals, pp.32-33]\n- **How identification information is obtained during V-CIP:** The authorised official must record audio/video and capture a photograph, and obtain identification information using one of: “OTP based Aadhaar e-KYC authentication,” “Offline Verification of Aadhaar,” “KYC records downloaded from CKYCR… using the KYC identifier,” or “Equivalent e-document of… OVDs including documents issued through DigiLocker.” [CDD Procedure in case of Individuals, p.33]\n\n**Conceptual alignment with face-to-face standards (based on the text):** V-CIP does not rely on physical co-presence; instead, it is structured to achieve a face-to-face-like level of confidence through real-time interaction, mandated liveness/spoof controls, geo-tagging/time-stamping, and an explicit sufficiency standard—identification “beyond doubt.” [CDD Procedure in case of Individuals, p.31; CDD Procedure in case of Individuals, pp.32-33]\n\n---\n\n## 3) Direct comparison: “face-to-face alignment” lens\n- **Digital KYC is operationally closer to traditional face-to-face identification** because the customer must visit the authorised official (or vice-versa) and the original OVD remains with the customer at that physical interaction point. [CDD Procedure in case of Individuals, p.27]\n- **V-CIP is operationally remote but evidences a design goal of equivalent assurance**, as RBI hard-codes controls (real-time, liveness/spoof detection, geo-tagging/time stamping) and requires that video quality be sufficient to identify the customer “beyond doubt.” [CDD Procedure in case of Individuals, p.31; CDD Procedure in case of Individuals, pp.32-33]\n\n---\n\n## What is NOT explicitly stated in the provided sections (gap statement)\n- The retrieved text does **not** explicitly define “face-to-face identification standards,” nor does it explicitly state that **V-CIP** (or **Digital KYC**) “shall be treated on par with face-to-face” identification. Therefore, any categorical labeling of V-CIP as “face-to-face” (or “non-face-to-face”) cannot be asserted as an explicit regulatory classification from the provided extracts alone. [CDD Procedure in case of Individuals, pp.27-33]\n",
+      "reference_answer": "Digital KYC and V-CIP are conceptually distinct yet complementary processes in the digital onboarding ecosystem. Digital KYC, as defined in Paragraph 5(1)(viii), is essentially an electronic version of a face-to-face interaction where an 'authorized officer' of the bank is physically present with the customer to capture live photos and documents along with geo-tagging (latitude and longitude). In contrast, V-CIP, defined in Paragraph 5(2)(xvi), is a remote process involving a seamless, informed-consent-based audio-visual interaction. While both utilize facial recognition, V-CIP is conceptually treated as 'on par with face-to-face CIP' despite the absence of physical proximity. This parity is achieved through stringent technical standards, including liveness checks, AI-driven face matching, and end-to-end encryption, which are designed to provide the same level of assurance—if not higher—than a traditional physical meeting.",
+      "conv_id": "56ba7d42-a3d1-4100-9d03-800cde77ffd9",
+      "success": true,
+      "error": ""
+    },
+    {
+      "question_id": 5,
+      "question_text": "How does the 2025 Direction conceptualize 'Ongoing Due Diligence' differently from 'Periodic Updation'? Explain the systemic implications of Paragraph 39 and 42.",
+      "category": "conceptual",
+      "fact_coverage": 0.5,
+      "facts_hit": 4,
+      "facts_total": 8,
+      "fact_verdicts": [
+        {
+          "fact": "ODD under Paragraph 39 is continuous behavioral analysis",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Periodic Updation under Paragraph 42 is time-bound structural review",
+          "found": true,
+          "evidence": "matched terms: periodic, updation, under, paragraph, time"
+        },
+        {
+          "fact": "High-risk updation every 2 years",
+          "found": true,
+          "evidence": "matched terms: high, risk, updation, every, years"
+        },
+        {
+          "fact": "Low-risk updation every 10 years",
+          "found": true,
+          "evidence": "matched terms: low, risk, updation, every, years"
+        },
+        {
+          "fact": "ODD protects against sudden behavioral shifts",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Money Mules as example of behavioral risk",
+          "found": false,
+          "evidence": ""
+        },
+        {
+          "fact": "Paragraph 39 encourages AI and ML for monitoring",
+          "found": true,
+          "evidence": "matched terms: paragraph, and, for, monitoring"
+        },
+        {
+          "fact": "Shift from manual oversight to automated surveillance",
+          "found": false,
+          "evidence": ""
+        }
+      ],
+      "hallucination_detected": false,
+      "hallucination_details": "",
+      "wall_time": 152.6430947780609,
+      "total_tokens": 94271,
+      "llm_calls": 12,
+      "citations_count": 6,
+      "memory_before": {
+        "timestamp": "2026-04-04T21:11:04.495032+00:00",
+        "qi_facts": 7,
+        "user_interactions": 93,
+        "user_context_len": 0,
+        "feedback_nodes": 37
+      },
+      "memory_after": {
+        "timestamp": "2026-04-04T21:13:37.550596+00:00",
+        "qi_facts": 8,
+        "user_interactions": 93,
+        "user_context_len": 0,
+        "feedback_nodes": 38
+      },
+      "system_answer": "## 1) Conceptual distinction in the 2025 Direction\n\n### A. “Ongoing Due Diligence” (Paragraph 39) is **transaction-behaviour consistency control**\n- Paragraph 39 conceptualises ongoing due diligence as a **continuous monitoring obligation** aimed at ensuring that a customer’s *transactions* remain consistent with the bank’s *knowledge of the customer* (including business and risk profile) and with the *source of funds / wealth*: “**undertake ongoing due diligence of customers to ensure that their transactions are consistent with their knowledge about the customers, customers’ business and risk profile, the source of funds / wealth**.” [E. On-going Due Diligence, pp.40-44]\n- This is operationalised through **mandatory monitoring focus areas** (Paragraph 40), including:\n  - “**Large and complex transactions including RTGS transactions, and those with unusual patterns… which have no apparent economic rationale or legitimate purpose**.” [E. On-going Due Diligence, pp.40-44]\n  - “**Transactions which exceed the thresholds prescribed for specific categories of accounts**.” [E. On-going Due Diligence, pp.40-44]\n  - “**High account turnover inconsistent with the size of the balance maintained**.” [E. On-going Due Diligence, pp.40-44]\n  - “**Deposit of third-party cheques… followed by cash withdrawals for large amounts**.” [E. On-going Due Diligence, pp.40-44]\n- The Direction explicitly recognises a **systems/technology dimension** to ongoing monitoring: “**the bank may consider adopting appropriate innovations including artificial intelligence and machine learning (AI and ML) technologies to support effective monitoring**.” [E. On-going Due Diligence, pp.40-44]\n- Ongoing monitoring intensity must be **risk-aligned**: “**align the extent of monitoring with the risk category of the customer**.” [E. On-going Due Diligence, pp.40-44]\n\n### B. “Periodic Updation” (Paragraph 42) is **customer information (CDD/KYC) currency control**\n- Paragraph 42 conceptualises periodic updation as a **risk-based, time-bound refresh** ensuring that customer information/data collected under CDD is “**kept up-to-date and relevant**,” “**particularly where there is high risk**.” [E. On-going Due Diligence, pp.40-44]\n- It imposes **minimum periodicities** (from account opening / last KYC updation):\n  - “**at least once in every two years for high-risk customers**” [E. On-going Due Diligence, pp.40-44]\n  - “**once in every eight years for medium risk customers**” [E. On-going Due Diligence, pp.40-44]\n  - “**once in every 10 years for low-risk customers**” [E. On-going Due Diligence, pp.40-44]\n- The Direction makes periodic updation a **governance-controlled programme**: the bank “**shall document its policy in this regard as part of the bank’s internal KYC policy duly approved by the Board of Directors**…” [E. On-going Due Diligence, pp.40-44]\n- Periodic updation is operationally detailed as an **information/document refresh workflow**, e.g.:\n  - Individuals (no change): obtain “**self-declaration**” through registered email/mobile/ATMs/digital channels/letter etc. [E. On-going Due Diligence, pp.40-44]\n  - Change in address: obtain self-declaration and “**verify the declared address through positive confirmation within two months**…” [E. On-going Due Diligence, pp.40-44]\n  - “**Customers other than individuals**”: even if no change, the bank must ensure “**Beneficial Ownership (BO) information… is accurate and shall update the same, if required**.” [E. On-going Due Diligence, pp.40-44]\n  - Additional measures include ensuring KYC documents meet “**current CDD standards**,” and if document validity has expired, undertake KYC “**equivalent to that applicable for onboarding a new customer**.” [E. On-going Due Diligence, pp.40-44]\n  - At periodic updation, verify “**PAN details… from the database of the issuing authority**.” [E. On-going Due Diligence, pp.40-44]\n  - Provide an “**acknowledgment**” and “**promptly update**” records and “**provide an intimation**” to the customer mentioning the date of updation. [E. On-going Due Diligence, pp.40-44]\n  - Customer-triggered updates: customers must submit updates “**within 30 days of the update to the documents**.” [E. On-going Due Diligence, pp.40-44]\n  - Due notices: at least “**three advance intimations, including at least one intimation by letter**” prior to the due date, and at least “**three reminders, including at least one reminder by letter**” after the due date for non-compliant customers. [E. On-going Due Diligence, pp.40-44]\n\n## 2) Systemic implications of Paragraph 39 (Ongoing Due Diligence)\n\n### A. A bank-wide **dynamic transaction-monitoring system** becomes mandatory in scope\n- Because Paragraph 39 is framed as ensuring transaction consistency with “**knowledge about the customers… business and risk profile… source of funds / wealth**,” the system implication is that monitoring must be capable of **testing transaction behaviour against customer profile attributes** (business/risk/source). [E. On-going Due Diligence, pp.40-44]\n- Paragraph 40’s “**shall necessarily monitor**” list forces banks to embed **scenario/typology-driven detection** for the specified classes of transactions (large/complex, unusual patterns without economic rationale, threshold breaches, turnover anomalies, third-party instruments followed by large cash withdrawals). [E. On-going Due Diligence, pp.40-44]\n\n### B. Monitoring must be **risk-differentiated** and supported by periodic risk re-assessment\n- The Direction requires: “**align the extent of monitoring with the risk category**.” [E. On-going Due Diligence, pp.40-44]\n- It also mandates a “**system of periodic review of risk categorisation… at least once in every six months**” and to “**establish the need for applying enhanced due diligence measures**.” [E. On-going Due Diligence, pp.40-44]\n- This links ongoing due diligence to the broader risk framework in which the bank “**shall categorise customers into low, medium, and high-risk categories**” based on parameters like products, delivery channels, transaction types, geography, etc. [Chapter IV – Risk Management, p.22]\n\n### C. It pushes **technology enablement** and **reporting connectivity**\n- Paragraph 40 explicitly permits AI/ML “**to support effective monitoring**,” implying monitoring is expected to be scalable and analytic. [E. On-going Due Diligence, pp.40-44]\n- Separately, to identify and report suspicious transactions, the Direction requires the bank to “**implement robust software that generates alerts when transactions are inconsistent with a customer's risk categorisation and updated profile**.” [Chapter VIII – Reporting Requirements to Financial Intelligence Unit – India, pp.54-55]\n\n### D. It creates recordkeeping implications for monitoring outputs\n- Record management must include “**results of any analysis undertaken**,” and “updated records of the identification data, account files, business correspondence and results of any analysis undertaken” are included within “records pertaining to the identification.” [Chapter VII – Record Management, pp.52-53]\n- Given Paragraph 39/40’s monitoring and analysis expectation, this necessitates that ongoing due diligence generates auditable analysis outputs that can be preserved and made available. [Chapter VII – Record Management, pp.52-53; E. On-going Due Diligence, pp.40-44]\n\n## 3) Systemic implications of Paragraph 42 (Periodic Updation)\n\n### A. A separate **KYC refresh operating model** with minimum cadences and Board-approved policy\n- Paragraph 42 imposes hard minimum refresh cycles (2/8/10 years by risk), and requires the policy to be captured in the internal KYC policy “**duly approved by the Board of Directors**…” [E. On-going Due Diligence, pp.40-44]\n- This dovetails with the requirement that the bank’s KYC policy (Board/Board committee approved) must include “**Periodic updation of KYC**” and “**any exceptional measures for KYC updation**…” [A. Board of Directors / Policies related guidelines, pp.16-17]\n\n### B. Channel architecture and customer experience are regulated components\n- The Direction explicitly enables multiple channels (registered email/mobile, ATMs, digital channels, letter, etc.) for self-declarations, and prescribes positive confirmation timelines for address change (“**within two months**”). [E. On-going Due Diligence, pp.40-44]\n- It allows use of authorised Business Correspondents (BCs) with requirements for electronic capture, biometric e-KYC authentication, acknowledgement issuance, and reiterates that the “**bank retains the ultimate responsibility for periodic updation of KYC**.” [E. On-going Due Diligence, pp.40-44]\n- It also permits “**Aadhaar OTP based e-KYC in non-face-to-face mode for updation / periodic updation**” with specific clarifications on applicability of conditions. [E. On-going Due Diligence, pp.40-44]\n\n### C. Compliance evidence, audit trail, and controlled customer communications become mandatory\n- Periodic updation requires acknowledgements and customer intimations (date of receipt and date of updation), creating a formal evidence trail. [E. On-going Due Diligence, pp.40-44]\n- For due notices, the Direction requires multiple advance intimations and reminders with at least one letter each. [E. On-going Due Diligence, pp.40-44]\n- Additionally, the Direction requires that issue of intimation/reminder “**shall be duly recorded in the bank’s system against each customer for audit trail**,” with implementation timeline “**not later than January 01, 2026**.” [F.1 Enhanced Due Diligence, pp.45-47]\n\n### D. “Periodic updation” is also a control to keep CDD standards current (not merely to reconfirm no change)\n- Even where there is no change in customer information, the bank must ensure it holds documents “**as per the current CDD standards**,” and if expired, undertake onboarding-equivalent KYC. [E. On-going Due Diligence, pp.40-44]\n\n## 4) What is not available in the retrieved text\n- The retrieved sections do not provide any additional formal definitions distinguishing “ongoing due diligence” vs “periodic updation” beyond Paragraphs 39–42, nor do they specify explicit internal governance artefacts (e.g., specific MIS, KPIs, or Board reporting formats) for these two processes. (No further text provided in the retrieved sections.)\n",
+      "reference_answer": "'Ongoing Due Diligence' (ODD) and 'Periodic Updation' represent two different dimensions of risk monitoring. ODD, under Paragraph 39, is a continuous, behavioral analysis of transactions to ensure they are consistent with the bank's knowledge of the customer's business and risk profile. It is reactive to transaction patterns. Periodic Updation, under Paragraph 42, is a time-bound, structural review of the customer's identity and address documents at specific intervals (e.g., every 2 years for high-risk, 10 years for low-risk). Systemically, ODD provides real-time protection against sudden shifts in behavior (such as money laundering through 'Money Mules'), while Periodic Updation ensures the bank's records remain legally and administratively current. Paragraph 39 specifically encourages the use of artificial intelligence and machine learning (AI and ML) to support this continuous monitoring, marking a shift from manual oversight to automated systemic surveillance.",
+      "conv_id": "56ba7d42-a3d1-4100-9d03-800cde77ffd9",
+      "success": true,
+      "error": ""
+    }
+  ]
+}

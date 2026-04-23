@@ -1,0 +1,472 @@
+[
+  {
+    "id": 1,
+    "category": "conceptual",
+    "question": "How does the 2025 Direction fundamentally redefine the concept of a 'Customer' and how does this breadth impact the implementation of Customer Due Diligence (CDD) across different banking activities?",
+    "reference_answer": "The definition of a 'Customer' under Paragraph 5(2)(iii) is remarkably broad, encompassing any person engaged in a financial transaction or activity with the bank, including those on whose behalf the transaction is being conducted. This conceptualization moves beyond simple account-holders to include 'Walk-in Customers' (Paragraph 5(2)(iv)) who may only interact with the bank for occasional transactions exceeding \u20b950,000. By including persons acting on behalf of others, the Direction forces banks to look through the immediate transactor to identify the ultimate initiator. This necessitates a multi-layered CDD process that is not just transactional but also relational, requiring the bank to understand the 'intended nature of the business relationship' even for non-account-based interactions. The impact is a systemic shift where every touchpoint\u2014whether it be a wire transfer, a foreign exchange transaction, or a simple deposit\u2014becomes a potential KYC event if it crosses specific thresholds or suggests a pattern of 'structuring'.",
+    "key_facts": [
+      "Paragraph 5(2)(iii) defines Customer broadly",
+      "Includes persons on whose behalf transactions are conducted",
+      "Walk-in Customers defined in Paragraph 5(2)(iv)",
+      "Walk-in threshold is \u20b950,000",
+      "Banks must look through to ultimate initiator",
+      "CDD becomes relational not just transactional",
+      "Every touchpoint is a potential KYC event",
+      "Structuring patterns must be monitored"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 2,
+    "category": "conceptual",
+    "question": "Analyze the role of the 'Risk Based Approach' (RBA) in the 2025 Directions. How does Paragraph 11 bridge the gap between regulatory intent and operational execution for banks of varying sizes and complexities?",
+    "reference_answer": "The Risk Based Approach (RBA) is the cornerstone of the modern AML/CFT framework, as articulated in Paragraph 11. It requires banks to apply mitigation measures that are strictly proportionate to the risks identified through their internal 'Money Laundering and Terrorist Financing Risk Assessment' exercises. Conceptually, Paragraph 11 bridges the gap between intent and execution by mandating that the CDD program must have 'regard to the ML/TF risks identified and the size of business'. For a large, internationally active bank, this implies highly sophisticated, automated monitoring and a granular categorization of risks across different geographies and products. For a smaller bank, it allows for a more focused but still documented risk assessment. This conceptual flexibility prevents a 'one-size-fits-all' compliance burden while ensuring that higher-risk areas\u2014such as cross-border correspondent banking\u2014are subjected to 'Enhanced Due Diligence' (EDD). The execution is further reinforced by Paragraph 12, which requires the bank to specify who constitutes 'Senior Management' for the purpose of KYC compliance, thereby linking the RBA directly to internal corporate governance.",
+    "key_facts": [
+      "RBA is the cornerstone of AML/CFT framework",
+      "Paragraph 11 mandates proportionate mitigation",
+      "Internal ML/TF Risk Assessment required",
+      "CDD must regard ML/TF risks and size of business",
+      "Prevents one-size-fits-all compliance",
+      "Higher-risk areas get Enhanced Due Diligence",
+      "Paragraph 12 links to Senior Management definition",
+      "Cross-border correspondent banking is higher risk"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 3,
+    "category": "conceptual",
+    "question": "What is the conceptual significance of identifying the 'Beneficial Owner' (BO) in the 2025 framework, and how does the hierarchy of identification (ownership vs. control vs. senior official) protect the financial system from opaque legal arrangements?",
+    "reference_answer": "The identification of the Beneficial Owner (BO) is conceptually designed to peel back the layers of corporate and legal structures to find the natural person who ultimately owns or controls the entity. Under Paragraph 5(1)(iv), the framework establishes a clear hierarchy of identification. First, it looks for 'controlling ownership interest'\u2014defined as ownership of more than 10 percent of shares or capital in companies and partnerships. Second, if ownership is fragmented, it looks for 'control' through management rights or voting agreements. Finally, if no natural person is identifiable through these means, the 'senior managing official' is deemed the BO. This conceptual progression is critical because it ensures there is always a natural person accountable for the entity's actions. It specifically protects against the use of 'shell' structures where legal ownership might be hidden behind a chain of juridical persons, thereby fulfilling the FATF's mandate for transparency in the financial system.",
+    "key_facts": [
+      "BO identification peels back corporate layers",
+      "Paragraph 5(1)(iv) establishes hierarchy",
+      "First: controlling ownership interest >10% shares/capital",
+      "Second: control through management rights or voting",
+      "Third: senior managing official as fallback",
+      "Always ensures a natural person is accountable",
+      "Protects against shell structures",
+      "Fulfills FATF mandate for transparency"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 4,
+    "category": "conceptual",
+    "question": "Distinguish between 'Digital KYC' and the 'Video-based Customer Identification Process' (V-CIP) in terms of their conceptual alignment with face-to-face identification standards.",
+    "reference_answer": "Digital KYC and V-CIP are conceptually distinct yet complementary processes in the digital onboarding ecosystem. Digital KYC, as defined in Paragraph 5(1)(viii), is essentially an electronic version of a face-to-face interaction where an 'authorized officer' of the bank is physically present with the customer to capture live photos and documents along with geo-tagging (latitude and longitude). In contrast, V-CIP, defined in Paragraph 5(2)(xvi), is a remote process involving a seamless, informed-consent-based audio-visual interaction. While both utilize facial recognition, V-CIP is conceptually treated as 'on par with face-to-face CIP' despite the absence of physical proximity. This parity is achieved through stringent technical standards, including liveness checks, AI-driven face matching, and end-to-end encryption, which are designed to provide the same level of assurance\u2014if not higher\u2014than a traditional physical meeting.",
+    "key_facts": [
+      "Digital KYC defined in Paragraph 5(1)(viii)",
+      "Digital KYC requires authorized officer physically present",
+      "Digital KYC captures live photos with geo-tagging (lat/long)",
+      "V-CIP defined in Paragraph 5(2)(xvi)",
+      "V-CIP is a remote audio-visual interaction",
+      "V-CIP treated as on par with face-to-face CIP",
+      "V-CIP uses liveness checks and AI face matching",
+      "V-CIP requires end-to-end encryption"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 5,
+    "category": "conceptual",
+    "question": "How does the 2025 Direction conceptualize 'Ongoing Due Diligence' differently from 'Periodic Updation'? Explain the systemic implications of Paragraph 39 and 42.",
+    "reference_answer": "'Ongoing Due Diligence' (ODD) and 'Periodic Updation' represent two different dimensions of risk monitoring. ODD, under Paragraph 39, is a continuous, behavioral analysis of transactions to ensure they are consistent with the bank's knowledge of the customer's business and risk profile. It is reactive to transaction patterns. Periodic Updation, under Paragraph 42, is a time-bound, structural review of the customer's identity and address documents at specific intervals (e.g., every 2 years for high-risk, 10 years for low-risk). Systemically, ODD provides real-time protection against sudden shifts in behavior (such as money laundering through 'Money Mules'), while Periodic Updation ensures the bank's records remain legally and administratively current. Paragraph 39 specifically encourages the use of artificial intelligence and machine learning (AI and ML) to support this continuous monitoring, marking a shift from manual oversight to automated systemic surveillance.",
+    "key_facts": [
+      "ODD under Paragraph 39 is continuous behavioral analysis",
+      "Periodic Updation under Paragraph 42 is time-bound structural review",
+      "High-risk updation every 2 years",
+      "Low-risk updation every 10 years",
+      "ODD protects against sudden behavioral shifts",
+      "Money Mules as example of behavioral risk",
+      "Paragraph 39 encourages AI and ML for monitoring",
+      "Shift from manual oversight to automated surveillance"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 6,
+    "category": "conceptual",
+    "question": "Examine the concept of 'Money Mules' within the framework of Paragraph 68. Why is the bank's failure to file an STR for a suspected money mule deemed a specific violation of these Directions?",
+    "reference_answer": "Money Mules are individuals recruited to launder proceeds of fraud (like phishing) by providing access to their deposit accounts. Paragraph 68 conceptualizes the bank's role as a proactive guardian. The failure to file a Suspicious Transaction Report (STR) for a mule account is treated as a deemed non-compliance with the Directions because it indicates a breakdown in the bank's monitoring systems. Conceptually, this places the onus on banks not just to identify criminals, but to identify the conduits they use\u2014who may often be unwitting participants. This requires banks to move beyond simple identity verification to complex behavioral analysis of 'walk-in' and 'low-balance' accounts that suddenly exhibit high-turnover patterns.",
+    "key_facts": [
+      "Money Mules launder fraud proceeds via deposit accounts",
+      "Paragraph 68 defines bank as proactive guardian",
+      "Failure to file STR is deemed non-compliance",
+      "Indicates breakdown in monitoring systems",
+      "Banks must identify conduits not just criminals",
+      "Mules may be unwitting participants",
+      "Requires behavioral analysis beyond identity verification",
+      "High-turnover in low-balance accounts is a red flag"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 7,
+    "category": "conceptual",
+    "question": "What are the foundational elements of a 'Customer Acceptance Policy' (CAP) as per Chapter III, and how do they interact to prevent the onboarding of anonymous entities?",
+    "reference_answer": "The CAP must ensure that no account is opened in anonymous or fictitious/benami names (Paragraph 17(1)) and that no account is opened where the bank cannot apply appropriate CDD measures due to customer non-cooperation (Paragraph 17(2)). These elements interact by creating a 'stop-go' gate at the point of entry. Furthermore, Paragraph 17(9) requires the bank to verify that the customer's identity does not match any person or entity in the UN Sanctions Lists. This interaction ensures that anonymity is precluded not just at a local name level but also at an international security level.",
+    "key_facts": [
+      "Paragraph 17(1) prohibits anonymous/fictitious/benami accounts",
+      "Paragraph 17(2) requires CDD cooperation",
+      "Creates stop-go gate at entry point",
+      "Paragraph 17(9) requires UN Sanctions List screening",
+      "Anonymity precluded at local and international level",
+      "Non-cooperation blocks account opening"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 8,
+    "category": "conceptual",
+    "question": "Explain the significance of 'Group-wide' AML/CFT programs as mandated in Paragraph 8. Why is information sharing within a group both a necessity and a risk under the 2025 Directions?",
+    "reference_answer": "Paragraph 8 requires every bank that is part of a corporate group to implement group-wide programs against ML/TF. Information sharing is a necessity because it allows for a holistic view of a customer who may have relationships with different subsidiaries of the same parent company. However, it is a risk because it must include 'adequate safeguards on the confidentiality and use of information exchanged,' including the prevention of 'tipping-off'. The conceptual challenge for banks is to build a unified risk profile without compromising the legal and jurisdictional firewalls that protect customer privacy across different regulated entities.",
+    "key_facts": [
+      "Paragraph 8 mandates group-wide AML/CFT programs",
+      "Information sharing enables holistic customer view",
+      "Customers may have relationships across subsidiaries",
+      "Must have adequate safeguards on confidentiality",
+      "Must prevent tipping-off",
+      "Challenge: unified risk profile vs jurisdictional firewalls",
+      "Customer privacy across regulated entities must be protected"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 9,
+    "category": "conceptual",
+    "question": "How does the 2025 framework define 'Shell Banks' and why are correspondent banking relationships with such entities strictly prohibited?",
+    "reference_answer": "A shell bank is a bank that has no physical presence (meaningful mind and management) in the country where it is incorporated and is unaffiliated with a regulated financial group (Paragraph 5(2)(xv)). Correspondent relationships with shell banks are prohibited under Paragraph 73(7) because such entities are inherently high-risk. Without a physical presence or consolidated supervision, shell banks can easily be used to layer and integrate illicit funds with zero regulatory oversight. The prohibition extends to ensuring that respondent banks do not allow their own accounts to be used by shell banks, creating a 'clean chain' requirement in international banking.",
+    "key_facts": [
+      "Shell bank: no physical presence in incorporation country",
+      "No meaningful mind and management",
+      "Unaffiliated with regulated financial group",
+      "Defined in Paragraph 5(2)(xv)",
+      "Prohibited under Paragraph 73(7)",
+      "Used to layer and integrate illicit funds",
+      "No regulatory oversight possible",
+      "Respondent banks must not allow shell bank use of accounts",
+      "Clean chain requirement"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 10,
+    "category": "conceptual",
+    "question": "Analyze the concept of 'Tipping-off' in the context of CDD procedures. When does the regulator permit a bank to bypass the CDD process?",
+    "reference_answer": "Under Paragraph 19, if a bank forms a suspicion of money laundering or terrorist financing and reasonably believes that performing the CDD process will tip-off the customer, it shall not pursue the CDD process and instead file an STR with FIU-IND. This is a critical exception where the regulator prioritizes the integrity of an investigation over the procedural requirement of identity verification. Conceptually, it acknowledges that a visible compliance process can sometimes be counter-productive to the goal of law enforcement.",
+    "key_facts": [
+      "Paragraph 19 allows CDD bypass",
+      "Triggered when CDD would tip-off customer",
+      "Bank must form suspicion of ML/TF first",
+      "Must file STR with FIU-IND instead",
+      "Investigation integrity over procedural CDD",
+      "Visible compliance can be counter-productive"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 11,
+    "category": "clause_interpretation",
+    "question": "Under Paragraph 4(2), if there is a variance between the KYC/AML standards prescribed by the RBI and those of a host country where a branch is located, which regulation must be adopted? Provide the specific exception mentioned in the Direction.",
+    "reference_answer": "Paragraph 4(2) mandates that branches and majority-owned subsidiaries located abroad shall adopt the more stringent regulation of the two (RBI vs. Host Country). The specific exception provided is for 'small accounts' referred to in Paragraph 28 of Chapter VI. This means that the simplified, limited-operation regime for small accounts is an Indian-specific inclusion measure and is not exported to foreign branches where local AML laws must strictly apply.",
+    "key_facts": [
+      "Paragraph 4(2) governs this",
+      "More stringent of RBI vs Host Country applies",
+      "Exception for small accounts (Paragraph 28)",
+      "Small accounts are Indian-specific inclusion measure",
+      "Not exported to foreign branches"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 12,
+    "category": "clause_interpretation",
+    "question": "Analyze the proviso to Paragraph 23 regarding Non-Resident Indians (NRIs) and Persons of Indian Origin (PIOs). Who are the authorized certifying authorities for their documents?",
+    "reference_answer": "For NRIs and PIOs, if the bank cannot compare the OVD copy with the original, it can accept an 'original certified copy'. The certifying authorities include: (a) officials of overseas branches of Scheduled Commercial Banks registered in India; (b) branches of overseas banks with which Indian banks have relationships; (c) Notary Public abroad; (d) Court Magistrate; (e) Judge; or (f) the Indian Embassy/Consulate General in the resident country. This clause effectively creates a delegated verification mechanism for international onboarding where physical presence at an Indian branch is impossible.",
+    "key_facts": [
+      "NRIs/PIOs can use original certified copy",
+      "Overseas branches of Indian SCBs can certify",
+      "Overseas banks with Indian bank relationships can certify",
+      "Notary Public abroad can certify",
+      "Court Magistrate can certify",
+      "Judge can certify",
+      "Indian Embassy/Consulate General can certify",
+      "Delegated verification for international onboarding"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 13,
+    "category": "clause_interpretation",
+    "question": "Explain the 'Exception Handling' mechanism in Paragraph 23 for individuals unable to perform e-KYC authentication due to 'injury, illness or infirmity on account of old age.' What are the documentation requirements for such cases?",
+    "reference_answer": "In such cases, banks must still obtain the Aadhaar number but perform identification via offline verification or by obtaining a certified copy of another OVD. A critical procedural requirement is that a bank official must 'invariably' carry out this CDD. Furthermore, the bank must maintain a 'centralized exception database' detailing the grounds for the exception, customer details, and the name of the designated official authorising it. This database is subject to periodic internal audit and must be available for supervisory review, ensuring that 'infirmity' is not used as a systemic loophole for circumventing biometric standards.",
+    "key_facts": [
+      "Must still obtain Aadhaar number",
+      "Use offline verification or certified OVD copy",
+      "Bank official must invariably carry out CDD",
+      "Centralized exception database required",
+      "Database must detail grounds for exception",
+      "Must include customer details and authorizing official",
+      "Subject to periodic internal audit",
+      "Available for supervisory review"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 14,
+    "category": "clause_interpretation",
+    "question": "Interpret Paragraph 5(1)(xiv) regarding 'Deemed to be OVD' for address proof. What is the 'three-month' rule, and what happens if the customer fails to comply?",
+    "reference_answer": "If an OVD (like a passport) contains an old address, a customer can submit a 'Deemed OVD' (like a utility bill not more than two months old) to open an account. However, under clause (c), the customer shall submit an OVD with the current address within three months of submitting the 'Deemed OVD'. If the customer fails to do so, the account remains in a state of partial non-compliance, and the bank's internal KYC policy must dictate the restrictive measures (such as freezing) to be taken, as the Directions mandate the updated OVD as a prerequisite for long-term account maintenance.",
+    "key_facts": [
+      "Paragraph 5(1)(xiv) governs Deemed OVD",
+      "Utility bill not more than two months old accepted",
+      "Must submit OVD with current address within three months",
+      "Non-compliance leads to restrictive measures",
+      "Account may be frozen",
+      "Updated OVD prerequisite for long-term maintenance"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 15,
+    "category": "clause_interpretation",
+    "question": "Paragraph 25(6) discusses the conversion of OTP-based e-KYC accounts. What is the 'one-year' limitation, and what specific CDD must be performed to allow the account to continue beyond this period?",
+    "reference_answer": "Accounts opened via Aadhaar OTP-based e-KYC (non-face-to-face) are valid for only one year. To continue beyond this, the bank must carry out full identification as per Paragraph 23 (face-to-face or Digital KYC) or Paragraph 26/27 (V-CIP). If full CDD is not completed within a year, deposit accounts must be closed immediately, and borrowal accounts must allow no further debits (Paragraph 25(7)).",
+    "key_facts": [
+      "OTP-based e-KYC accounts valid for one year only",
+      "Must complete full identification per Paragraph 23",
+      "Face-to-face or Digital KYC required",
+      "Or V-CIP per Paragraph 26/27",
+      "Deposit accounts closed if not completed",
+      "Borrowal accounts allow no further debits",
+      "Paragraph 25(7) governs non-compliance"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 16,
+    "category": "clause_interpretation",
+    "question": "What is the significance of the 'Senior Managing Official' fallback in Paragraph 5(1)(iv)(c) for companies and partnerships?",
+    "reference_answer": "This is a 'rule of last resort.' If no natural person is identified as a BO through the primary ownership threshold (10%) or through other means of control, the bank must identify the 'relevant natural person who holds the position of senior managing official'. This ensures that legal entities cannot remain 'faceless' even if their ownership is perfectly dispersed among thousands of shareholders.",
+    "key_facts": [
+      "Rule of last resort",
+      "Primary ownership threshold is 10%",
+      "Applies when no BO identified through ownership or control",
+      "Must identify senior managing official",
+      "Ensures entities cannot remain faceless",
+      "Applies even with dispersed ownership"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 17,
+    "category": "clause_interpretation",
+    "question": "Interpret the requirements for 'Small Accounts' under Paragraph 28(4)(v). How does the '12+12 month' extension logic work?",
+    "reference_answer": "A small account is initially operational for 12 months. It can be extended for a further 12 months if and only if the account holder furnishes evidence (like an enrollment slip) of having applied for any OVD during the initial 12 months. The entire relaxation provision is reviewed after 24 months. This interpretation shows that the small account is meant to be a bridge to full KYC, not a permanent alternative for unverified individuals.",
+    "key_facts": [
+      "Small account operational for 12 months initially",
+      "Extension of 12 more months possible",
+      "Must furnish evidence of OVD application",
+      "Enrollment slip as evidence",
+      "Reviewed after 24 months total",
+      "Bridge to full KYC not permanent alternative"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 18,
+    "category": "clause_interpretation",
+    "question": "Analyze Paragraph 65(10) regarding the use of 'KYC Identifiers'. When is a bank forbidden from relying solely on a downloaded CKYCR record?",
+    "reference_answer": "A bank cannot rely solely on a CKYCR record and must seek fresh documents if: (i) there is a change in the customer's information; (ii) the retrieved information is incomplete or not as per current norms; (iii) the validity of downloaded documents has lapsed; or (iv) the bank considers it necessary for EDD or to build a risk profile. This clause ensures that the CKYCR is a repository of data, not a substitute for the bank's judgment.",
+    "key_facts": [
+      "Cannot rely solely on CKYCR when customer info changed",
+      "When retrieved info is incomplete",
+      "When document validity has lapsed",
+      "When needed for EDD or risk profile",
+      "CKYCR is repository not substitute for judgment"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 19,
+    "category": "clause_interpretation",
+    "question": "Paragraph 74(1)(vi) lists exceptions for wire transfer information requirements. Explain the 'person-to-person' proviso for credit/debit card transfers.",
+    "reference_answer": "Wire transfer rules generally do not apply to transfers resulting from credit/debit/PPI card transactions for the purchase of goods and services. However, if the card is used as a payment system to effect a person-to-person (P2P) wire transfer, the wire transfer instructions (originator and beneficiary information) must apply. This prevents card-based systems from being used to bypass the traceability requirements of traditional wire transfers.",
+    "key_facts": [
+      "Wire transfer rules exempted for goods/services card transactions",
+      "Exception does not apply to P2P transfers",
+      "Card used for P2P must include originator info",
+      "Must include beneficiary information",
+      "Prevents bypassing traceability requirements",
+      "Covers credit/debit/PPI cards"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 20,
+    "category": "clause_interpretation",
+    "question": "How does Paragraph 63 define the 'Secrecy Obligations' of a bank? What are the four specific exceptions where disclosure is permitted?",
+    "reference_answer": "Banks must maintain secrecy regarding customer information arising from the contractual relationship. Disclosure is prohibited for cross-selling or other purposes without express permission. The four exceptions are: (i) disclosure under compulsion of law; (ii) duty to the public to disclose; (iii) where the interest of the bank requires disclosure; and (iv) disclosure made with the express or implied consent of the customer.",
+    "key_facts": [
+      "Secrecy regarding customer information from contractual relationship",
+      "Cross-selling disclosure prohibited without permission",
+      "Exception 1: compulsion of law",
+      "Exception 2: duty to public to disclose",
+      "Exception 3: interest of the bank",
+      "Exception 4: express or implied customer consent"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 21,
+    "category": "scenario",
+    "question": "In a partnership firm where five partners each own exactly 10% of the capital, and no single partner has management control, who must the bank identify as the Beneficial Owner (BO)?",
+    "reference_answer": "Under the 2025 Directions, the threshold for BO identification in a partnership is ownership of more than 10 percent. Since all partners own exactly 10%, none meet the primary ownership threshold. If no other means of control (like management rights) exist, the bank must identify the 'senior managing official' of the firm as the BO.",
+    "key_facts": [
+      "Partnership BO threshold is more than 10%",
+      "Exactly 10% does not meet threshold",
+      "No partner qualifies through ownership",
+      "Must check for management control",
+      "Fallback to senior managing official",
+      "Senior managing official becomes BO"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 22,
+    "category": "scenario",
+    "question": "A trust has ten beneficiaries, each with a 10% interest. Who must the bank identify as the BOs?",
+    "reference_answer": "For trusts, the identification threshold for beneficiaries is 10 percent or more. Therefore, in this case, the bank must identify all ten beneficiaries as BOs, in addition to the author of the trust and the trustee(s).",
+    "key_facts": [
+      "Trust BO threshold is 10% or more (not more than 10%)",
+      "All ten beneficiaries qualify as BOs",
+      "Author of trust must also be identified",
+      "Trustees must also be identified",
+      "Different threshold from companies/partnerships"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 23,
+    "category": "scenario",
+    "question": "Compare the '12-month' rule for OTP-based e-KYC accounts with the '12+12 month' rule for Small Accounts. Why is the logic different?",
+    "reference_answer": "The OTP-based e-KYC account is a digital onboarding method for customers who have an Aadhaar but are not physically present; the one-year limit is a security buffer to force a face-to-face or V-CIP verification eventually. In contrast, a Small Account is for customers who do not have any OVD at all. The '12+12' logic (extension granted if an OVD application is made) is an inclusion measure, giving the most marginalized citizens two full years to obtain formal documentation while still participating in the financial system.",
+    "key_facts": [
+      "OTP e-KYC: customer has Aadhaar but not physically present",
+      "One-year limit forces face-to-face/V-CIP verification",
+      "Small Account: customer has no OVD at all",
+      "12+12 extension if OVD application made",
+      "Inclusion measure for marginalized citizens",
+      "Two years to obtain formal documentation"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 24,
+    "category": "scenario",
+    "question": "A bank official captures a Digital KYC photo but forgets to include the GPS longitude. Is this a valid CDD?",
+    "reference_answer": "No. The definition of Digital KYC explicitly requires the capture of both latitude and longitude coordinates along with the live photo and OVD. Failure to include geo-tagging invalidates the Digital KYC process as it removes the verifiable link between the official, the customer, and a physical location.",
+    "key_facts": [
+      "Not valid CDD",
+      "Both latitude and longitude required",
+      "Live photo and OVD required",
+      "Geo-tagging is mandatory",
+      "Missing longitude invalidates process",
+      "Must link official, customer, and physical location"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 25,
+    "category": "scenario",
+    "question": "Analyze the 'Senior Managing Official' rule as a fallback mechanism. If a bank uses this fallback for a high-risk corporate client without attempting to identify 'control through other means,' is it in violation?",
+    "reference_answer": "Yes, it is a violation. The senior managing official is a 'rule of last resort' to be used only where no natural person is identified through ownership or control mechanisms. The bank must demonstrate a 'reasonable effort' to identify the real owners/controllers before defaulting to the official.",
+    "key_facts": [
+      "Yes it is a violation",
+      "Senior managing official is rule of last resort",
+      "Must attempt ownership identification first",
+      "Must attempt control identification second",
+      "Must demonstrate reasonable effort",
+      "Cannot skip to fallback directly"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 26,
+    "category": "scenario",
+    "question": "A customer opens a Small Account in January 2026. By June 2026, their aggregate credits reach \u20b995,000. In July, they receive a credit of \u20b910,000. What is the immediate procedural obligation of the bank?",
+    "reference_answer": "The aggregate credit limit for a financial year is \u20b91,00,000. The July credit of \u20b910,000 brings the total to \u20b91,05,000, breaching the limit. The bank must: (i) immediately trigger a request for OVDs to upgrade the account; and (ii) restrict further credits until the full KYC is completed. However, they may allow withdrawals within the monthly \u20b910,000 limit to prevent hardship.",
+    "key_facts": [
+      "Aggregate credit limit is 1,00,000 per financial year",
+      "Total becomes 1,05,000 breaching limit",
+      "Must trigger OVD request for account upgrade",
+      "Restrict further credits until full KYC",
+      "May allow withdrawals within monthly 10,000 limit",
+      "Prevent hardship while enforcing compliance"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 27,
+    "category": "scenario",
+    "question": "How does the 'Unique Customer Identification Code' (UCIC) facilitate the 'portability' of KYC records across different branches of the same bank?",
+    "reference_answer": "Since CDD is performed at the UCIC level, once a customer is verified, the bank does not need to repeat the process for additional accounts opened at any of its branches. This ensures that the customer's 'KYC-compliant' status is a systemic attribute rather than a branch-specific one, reducing friction for the customer and operational costs for the bank.",
+    "key_facts": [
+      "CDD performed at UCIC level",
+      "No repeat verification needed for new accounts",
+      "Works across all branches of same bank",
+      "KYC-compliant status is systemic attribute",
+      "Not branch-specific",
+      "Reduces friction and operational costs"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 28,
+    "category": "regulatory_update",
+    "question": "Analyze the impact of Kuwait and Papua New Guinea being added to the FATF Grey List in February 2026. What specific 'Enhanced Due Diligence' (EDD) steps must Indian commercial banks now apply to transactions involving these jurisdictions?",
+    "reference_answer": "Under the FATF's February 2026 update, Kuwait and Papua New Guinea are classified as 'Jurisdictions under Increased Monitoring' (Grey List). For Indian banks, this triggers a mandate to apply EDD to any business relationships or transactions involving these countries. This includes: (i) obtaining additional information on the customer and the beneficial owner; (ii) obtaining additional information on the intended nature of the business relationship; (iii) obtaining information on the source of funds and source of wealth; (iv) obtaining the approval of senior management to commence or continue the relationship; and (v) conducting enhanced monitoring by increasing the number and timing of controls applied.",
+    "key_facts": [
+      "Kuwait and PNG added to FATF Grey List Feb 2026",
+      "Jurisdictions under Increased Monitoring",
+      "EDD triggered for all transactions with these countries",
+      "Additional info on customer and BO required",
+      "Info on intended business relationship nature",
+      "Source of funds and wealth information",
+      "Senior management approval required",
+      "Enhanced monitoring with increased controls"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 29,
+    "category": "scenario",
+    "question": "A bank receives a request for a domestic wire transfer of \u20b945,000 from a walk-in customer who does not have an account. Is the bank required to obtain 'Originator Information'?",
+    "reference_answer": "No. For domestic wire transfers where the originator is a non-account holder, the full 'Originator Information' (Name, ID, Address) is only mandatory for transactions of \u20b950,000 and above. For \u20b945,000, the bank may process it without full CDD, though it must still ensure the transfer is not being 'structured' to avoid the threshold.",
+    "key_facts": [
+      "Full originator info not required for under 50,000",
+      "Threshold is 50,000 for non-account holders",
+      "45,000 is below the threshold",
+      "Bank may process without full CDD",
+      "Must check for structuring patterns",
+      "Name, ID, Address are the originator information elements"
+    ],
+    "doc_type": "KYC"
+  },
+  {
+    "id": 30,
+    "category": "scenario",
+    "question": "Analyze the 2025 Direction's stance on 'DigiLocker'. When is a document from DigiLocker considered 'on par with the original'?",
+    "reference_answer": "A document is considered on par with the original if it is 'issued' to the customer's DigiLocker account by the issuing authority and is retrieved by the bank through the DigiLocker API using the customer's consent. A simple PDF 'upload' by the customer to their DigiLocker does not carry the same weight as an 'issued' document.",
+    "key_facts": [
+      "Must be issued to DigiLocker by issuing authority",
+      "Retrieved through DigiLocker API",
+      "Requires customer consent",
+      "Issued document equals original",
+      "Uploaded PDF does not equal original",
+      "Distinction between issued and uploaded documents"
+    ],
+    "doc_type": "KYC"
+  }
+]

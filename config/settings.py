@@ -170,7 +170,7 @@ class OptimizationConfig(BaseSettings):
 
     # Fast synthesis settings (Phase 2 optimization)
     enable_fast_synthesis: bool = Field(default=True, alias="OPT_FAST_SYNTHESIS")
-    synthesis_token_budget: int = 25000  # Max section tokens sent to synthesizer
+    synthesis_token_budget: int = 18000  # Max section tokens sent to synthesizer (lowered from 25K)
     synthesis_reasoning_effort: str = "medium"  # Override reasoning effort in optimized mode
 
     # ── Per-stage model overrides (optimized mode only) ──────────────

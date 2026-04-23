@@ -183,7 +183,7 @@ class ThemeAudit:
 class MemoryInspector:
     """Directly queries MongoDB to capture memory subsystem state."""
 
-    def __init__(self, mongo_uri: str, db_name: str = "govinda"):
+    def __init__(self, mongo_uri: str, db_name: str = "govinda_v2"):
         self._uri = mongo_uri
         self._db_name = db_name
         self._client = None
@@ -241,13 +241,16 @@ class MemoryInspector:
                 }
 
             # RAPTOR Index
-            raptor_col = self._db.get_collection("raptor_index")
+            raptor_col = self._db.get_collection("raptor_indexes")
             raptor_doc = raptor_col.find_one({"doc_id": doc_id})
             if raptor_doc:
-                heats = raptor_doc.get("node_heats", {})
-                snap.raptor_hot_nodes = sum(1 for v in heats.values() if v > 1.0)
+                heats = raptor_doc.get("heat_map", {})
+                snap.raptor_hot_nodes = sum(
+                    1 for v in heats.values()
+                    if (v.get("citations", 0) if isinstance(v, dict) else v) > 1
+                )
                 snap.raptor_total_citations = sum(
-                    h.get("citation_count", 0) if isinstance(h, dict) else 0
+                    (h.get("citations", 0) if isinstance(h, dict) else 0)
                     for h in heats.values()
                 )
                 snap.raw["raptor"] = {
@@ -257,13 +260,21 @@ class MemoryInspector:
 
             # User Memory
             um_col = self._db.get_collection("user_memory")
-            um_doc = um_col.find_one({"user_id": "default"})
+            um_doc = um_col.find_one({"_id": "default"})
+            if not um_doc:
+                um_doc = um_col.find_one({"user_id": "default"})
             if um_doc:
-                sessions = um_doc.get("sessions", [])
-                snap.user_memory_sessions = len(sessions)
-                snap.user_memory_interactions = sum(
-                    len(s.get("interactions", [])) for s in sessions
-                )
+                sessions = um_doc.get("sessions", {})
+                if isinstance(sessions, list):
+                    snap.user_memory_sessions = len(sessions)
+                    snap.user_memory_interactions = sum(
+                        len(s.get("interactions", s.get("entries", []))) for s in sessions
+                    )
+                else:
+                    snap.user_memory_sessions = len(sessions)
+                    snap.user_memory_interactions = sum(
+                        len(s.get("entries", [])) for s in sessions.values()
+                    )
                 # Estimate context size
                 profile = um_doc.get("profile", {})
                 prefs = profile.get("preferences", {})
@@ -272,21 +283,23 @@ class MemoryInspector:
                     "sessions": len(sessions),
                     "interactions": snap.user_memory_interactions,
                     "profile_keys": list(profile.keys()) if profile else [],
-                    "recent_interactions": [
-                        {
-                            "query": i.get("query", "")[:80],
-                            "timestamp": i.get("timestamp", ""),
-                        }
-                        for s in sessions[-2:]
-                        for i in s.get("interactions", [])[-3:]
-                    ]
+                    "recent_interactions": (
+                        [
+                            {
+                                "query": i.get("user_input", "")[:80],
+                                "timestamp": i.get("timestamp", ""),
+                            }
+                            for s in (list(sessions.values())[-2:] if isinstance(sessions, dict) else sessions[-2:])
+                            for i in s.get("entries", s.get("interactions", []))[-3:]
+                        ]
+                    )
                 }
 
             # Retrieval Feedback
             fb_col = self._db.get_collection("retrieval_feedback")
             fb_doc = fb_col.find_one({"doc_id": doc_id})
             if fb_doc:
-                nodes = fb_doc.get("node_scores", {})
+                nodes = fb_doc.get("nodes", fb_doc.get("node_scores", {}))
                 snap.feedback_scored_nodes = len(nodes)
                 snap.feedback_boosted_nodes = sum(
                     1 for v in nodes.values()
@@ -1290,7 +1303,7 @@ class DiagnosticRunner:
             for anom in ta.anomalies:
                 theme_anomalies.append((ta.theme_number, anom))
 
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write("ANOMALY REPORT\n")
             f.write("=" * 50 + "\n\n")
             f.write(f"Total query anomalies: {len(all_anomalies)}\n")
