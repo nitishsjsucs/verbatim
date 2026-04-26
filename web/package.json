@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "npm install --prefix ../convex_qwerty --no-audit --no-fund --ignore-scripts"
   },
   "dependencies": {
     "better-auth": "^1.4.19",
