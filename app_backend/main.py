@@ -68,6 +68,14 @@ try:
 except Exception as _ais_err:  # non-fatal — existing endpoints remain intact
     logger.warning("Failed to mount intelligence router: %s", _ais_err)
 
+# --- Qwerty Mode (parallel RAG pipeline, additive, isolated) ---
+try:
+    from qwerty_mode.api import router as _qwerty_router
+    app.include_router(_qwerty_router)
+    logger.info("Mounted Qwerty Mode router at /qwerty/*")
+except Exception as _qwerty_err:  # non-fatal — legacy/optimized stay intact
+    logger.warning("Failed to mount qwerty_mode router: %s", _qwerty_err)
+
 
 # ---------------------------------------------------------------------------
 # Singleton Initialization (FIX #1: Eliminate Dependency Injection)

@@ -12,6 +12,7 @@
     "better-auth": "^1.4.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "convex": "^1.36.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.564.0",
     "mongodb": "^7.1.0",
@@ -21,13 +22,14 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "react-pdf": "^10.4.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.1",
     "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.39",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
