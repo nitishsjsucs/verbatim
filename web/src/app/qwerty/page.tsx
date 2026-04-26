@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,7 +19,7 @@ import {
     type QwertyAnswer,
     type QwertyCitation,
 } from "@/lib/qwerty/api";
-import QwertyViewer from "./QwertyViewer";
+const QwertyViewer = dynamic(() => import("./QwertyViewer"), { ssr: false });
 
 interface ChatTurn {
     question: string;
