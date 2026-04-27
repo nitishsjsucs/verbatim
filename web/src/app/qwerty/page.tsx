@@ -2,8 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { useMutation, useQuery } from "convex/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
+
+import AnnotatedAnswer from "./AnnotatedAnswer";
 
 // IMPORTANT: this import resolves only after running `npx convex dev` (or
 // `npx convex codegen`) inside the convex_qwerty/ folder. See
@@ -45,6 +47,8 @@ export default function QwertyPage() {
 
     const [viewerUrl, setViewerUrl] = useState<string | null>(null);
     const [viewerPage, setViewerPage] = useState(1);
+    const [viewerQuote, setViewerQuote] = useState<string | null>(null);
+    const [activeCitationKey, setActiveCitationKey] = useState<string | null>(null);
 
     async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -81,15 +85,20 @@ export default function QwertyPage() {
         }
     }
 
-    async function handleCitation(c: QwertyCitation) {
-        try {
-            const url = await qwertyFileUrl(c.file_id, c.filename);
-            setViewerUrl(url);
-            setViewerPage(c.page_start || 1);
-        } catch (err) {
-            toast.error((err as Error).message);
-        }
-    }
+    const handleCitation = useCallback(
+        async (turnIdx: number, n: number, c: QwertyCitation) => {
+            setActiveCitationKey(`${turnIdx}:${n}`);
+            try {
+                const url = await qwertyFileUrl(c.file_id, c.filename);
+                setViewerUrl(url);
+                setViewerPage(c.page_start || 1);
+                setViewerQuote(c.excerpt || null);
+            } catch (err) {
+                toast.error((err as Error).message);
+            }
+        },
+        [],
+    );
 
     return (
         <div style={{ display: "grid", gridTemplateColumns: "260px 1fr 1fr", height: "100vh" }}>
@@ -148,16 +157,25 @@ export default function QwertyPage() {
                             {t.error && <div style={{ color: "#b91c1c" }}>{t.error}</div>}
                             {t.answer && (
                                 <>
-                                    <div style={{ whiteSpace: "pre-wrap", marginBottom: 12 }}>
-                                        {t.answer.text}
+                                    <div style={{ marginBottom: 12 }}>
+                                        <AnnotatedAnswer
+                                            text={t.answer.text}
+                                            citations={t.answer.citations}
+                                            activeCitationNumber={
+                                                activeCitationKey?.startsWith(`${i}:`)
+                                                    ? Number(activeCitationKey.split(":")[1])
+                                                    : null
+                                            }
+                                            onCitationClick={(n, c) => handleCitation(i, n, c)}
+                                        />
                                     </div>
                                     {t.answer.citations.length > 0 && (
-                                        <ol style={{ paddingLeft: 20, fontSize: 13, color: "#374151" }}>
-                                            {t.answer.citations.map((c) => (
-                                                <li key={c.chunk_id} style={{ marginBottom: 6 }}>
+                                        <ol style={{ paddingLeft: 20, fontSize: 12, color: "#6b7280" }}>
+                                            {t.answer.citations.map((c, ci) => (
+                                                <li key={c.chunk_id} style={{ marginBottom: 4 }}>
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleCitation(c)}
+                                                        onClick={() => handleCitation(i, ci + 1, c)}
                                                         style={{
                                                             background: "none",
                                                             border: 0,
@@ -168,11 +186,8 @@ export default function QwertyPage() {
                                                             textAlign: "left",
                                                         }}
                                                     >
-                                                        {c.citation_id} {c.filename} · p.{c.page_start}
+                                                        [{ci + 1}] {c.filename} · p.{c.page_start}
                                                     </button>
-                                                    <div style={{ color: "#6b7280", fontSize: 12 }}>
-                                                        {c.excerpt}
-                                                    </div>
                                                 </li>
                                             ))}
                                         </ol>
@@ -221,7 +236,7 @@ export default function QwertyPage() {
 
             {/* Right: PDF viewer */}
             <section>
-                <QwertyViewer url={viewerUrl} page={viewerPage} />
+                <QwertyViewer url={viewerUrl} page={viewerPage} quote={viewerQuote} />
             </section>
         </div>
     );
