@@ -20,6 +20,7 @@ import {
     Zap,
 } from "lucide-react";
 
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,6 +29,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { ImportCsvModal } from "@/components/intelligence/import-csv-modal";
 import {
     buildCsv,
     extractIntelligence,
@@ -38,6 +40,8 @@ import {
 } from "@/lib/intelligence-api";
 import type {
     EnrichedActionable,
+    ImportMode,
+    ImportResult,
     IntelPriority,
     IntelRunPayload,
 } from "@/lib/intelligence-types";
@@ -121,9 +125,8 @@ export default function IntelligenceDocPage({
     const [run, setRun] = useState<IntelRunPayload | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
-    const [importing, setImporting] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
     const [editTeams, setEditTeams] = useState(false);
-    const importFileRef = useRef<HTMLInputElement>(null);
 
     // filters
     const [search, setSearch] = useState("");
@@ -168,22 +171,12 @@ export default function IntelligenceDocPage({
         void load();
     }, [load]);
 
-    const onImportActionables = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        e.target.value = "";
-        setImporting(true);
-        try {
-            const result = await importIntelActionables(decodedId, file);
-            toast.success(`Updated ${result.updated} actionable(s)${result.skipped > 0 ? `, ${result.skipped} skipped (unknown IDs)` : ""}`);
-            // Reload to reflect changes
-            const payload = await getIntelRun(decodedId);
-            setRun(payload);
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Import failed");
-        } finally {
-            setImporting(false);
-        }
+    const handleImport = async (file: File, mode: ImportMode): Promise<ImportResult> => {
+        const result = await importIntelActionables(decodedId, file, mode);
+        // Reload run to reflect changes
+        const payload = await getIntelRun(decodedId);
+        setRun(payload);
+        return result;
     };
 
     const reExtract = async () => {
@@ -273,12 +266,13 @@ export default function IntelligenceDocPage({
 
     return (
         <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-            <input
-                ref={importFileRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={onImportActionables}
+            <ImportCsvModal
+                section="Actionables"
+                open={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onImport={handleImport}
+                onDownloadTemplate={downloadActionablesTemplate}
+                disableAddOnly
             />
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
@@ -308,11 +302,10 @@ export default function IntelligenceDocPage({
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => importFileRef.current?.click()}
-                        disabled={importing}
+                        onClick={() => setImportModalOpen(true)}
                         title="Import a CSV to bulk-update actionables"
                     >
-                        {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        <Upload className="h-3.5 w-3.5" />
                         Import CSV
                     </Button>
                     <Button

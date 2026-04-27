@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Tag, Save, X, Download, Upload, FileDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImportCsvModal } from "@/components/intelligence/import-csv-modal";
 import {
     buildCsv,
     createIntelCategory,
@@ -16,7 +17,7 @@ import {
     triggerCsvDownload,
     updateIntelCategory,
 } from "@/lib/intelligence-api";
-import type { IntelCategory } from "@/lib/intelligence-types";
+import type { ImportMode, ImportResult, IntelCategory } from "@/lib/intelligence-types";
 
 const CATS_TEMPLATE_HEADERS = ["name", "description"];
 const CATS_TEMPLATE_EXAMPLE = [
@@ -46,11 +47,10 @@ export default function IntelligenceCategoriesPage() {
     const [categories, setCategories] = useState<IntelCategory[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [importing, setImporting] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
     const [form, setForm] = useState<FormState>(EMPTY);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<FormState>(EMPTY);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -116,20 +116,10 @@ export default function IntelligenceCategoriesPage() {
         }
     };
 
-    const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        e.target.value = "";
-        setImporting(true);
-        try {
-            const result = await importIntelCategories(file);
-            toast.success(`Imported ${result.imported} categor${result.imported === 1 ? "y" : "ies"}`);
-            await refresh();
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Import failed");
-        } finally {
-            setImporting(false);
-        }
+    const handleImport = async (file: File, mode: ImportMode): Promise<ImportResult> => {
+        const result = await importIntelCategories(file, mode);
+        await refresh();
+        return result;
     };
 
     const onDelete = async (c: IntelCategory) => {
@@ -147,12 +137,12 @@ export default function IntelligenceCategoriesPage() {
 
     return (
         <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={onImport}
+            <ImportCsvModal
+                section="Categories"
+                open={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onImport={handleImport}
+                onDownloadTemplate={downloadCategoriesTemplate}
             />
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -173,10 +163,9 @@ export default function IntelligenceCategoriesPage() {
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={importing}
+                        onClick={() => setImportModalOpen(true)}
                     >
-                        {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        <Upload className="h-3.5 w-3.5" />
                         Import CSV
                     </Button>
                     <Button

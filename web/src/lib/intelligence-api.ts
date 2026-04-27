@@ -9,6 +9,8 @@
 import { API_BASE_URL } from "./api";
 import type {
     EnrichedActionable,
+    ImportMode,
+    ImportResult,
     IntelCategory,
     IntelDashboardPayload,
     IntelDocumentMeta,
@@ -196,30 +198,33 @@ export async function getIntelDashboard(): Promise<IntelDashboardPayload> {
 // ---------------------------------------------------------------------------
 export async function importIntelTeams(
     file: File,
-): Promise<{ imported: number; teams: IntelTeam[] }> {
+    mode: ImportMode = "upsert",
+): Promise<ImportResult> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await intelFetch("/teams/import", { method: "POST", body: fd });
+    const res = await intelFetch(`/teams/import?mode=${mode}`, { method: "POST", body: fd });
     return parseOrThrow(res, "Teams import failed");
 }
 
 export async function importIntelCategories(
     file: File,
-): Promise<{ imported: number; categories: IntelCategory[] }> {
+    mode: ImportMode = "upsert",
+): Promise<ImportResult> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await intelFetch("/categories/import", { method: "POST", body: fd });
+    const res = await intelFetch(`/categories/import?mode=${mode}`, { method: "POST", body: fd });
     return parseOrThrow(res, "Categories import failed");
 }
 
 export async function importIntelActionables(
     docId: string,
     file: File,
-): Promise<{ updated: number; skipped: number }> {
+    mode: ImportMode = "upsert",
+): Promise<ImportResult> {
     const fd = new FormData();
     fd.append("file", file);
     const res = await intelFetch(
-        `/documents/${encodeURIComponent(docId)}/actionables/import`,
+        `/documents/${encodeURIComponent(docId)}/actionables/import?mode=${mode}`,
         { method: "POST", body: fd },
     );
     return parseOrThrow(res, "Actionables import failed");

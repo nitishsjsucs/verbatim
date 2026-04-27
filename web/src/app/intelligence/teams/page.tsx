@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Users as UsersIcon, Save, X, Download, Upload, FileDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { ImportCsvModal } from "@/components/intelligence/import-csv-modal";
 import {
     buildCsv,
     createIntelTeam,
@@ -16,7 +17,7 @@ import {
     triggerCsvDownload,
     updateIntelTeam,
 } from "@/lib/intelligence-api";
-import type { IntelTeam } from "@/lib/intelligence-types";
+import type { ImportMode, ImportResult, IntelTeam } from "@/lib/intelligence-types";
 
 const TEAMS_TEMPLATE_HEADERS = ["name", "function", "department"];
 const TEAMS_TEMPLATE_EXAMPLE = [
@@ -47,11 +48,10 @@ export default function IntelligenceTeamsPage() {
     const [teams, setTeams] = useState<IntelTeam[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [importing, setImporting] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
     const [form, setForm] = useState<FormState>(EMPTY);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<FormState>(EMPTY);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -123,20 +123,10 @@ export default function IntelligenceTeamsPage() {
         }
     };
 
-    const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        e.target.value = "";
-        setImporting(true);
-        try {
-            const result = await importIntelTeams(file);
-            toast.success(`Imported ${result.imported} team(s)`);
-            await refresh();
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Import failed");
-        } finally {
-            setImporting(false);
-        }
+    const handleImport = async (file: File, mode: ImportMode): Promise<ImportResult> => {
+        const result = await importIntelTeams(file, mode);
+        await refresh();
+        return result;
     };
 
     const onDelete = async (team: IntelTeam) => {
@@ -154,12 +144,12 @@ export default function IntelligenceTeamsPage() {
 
     return (
         <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={onImport}
+            <ImportCsvModal
+                section="Teams"
+                open={importModalOpen}
+                onClose={() => setImportModalOpen(false)}
+                onImport={handleImport}
+                onDownloadTemplate={downloadTeamsTemplate}
             />
             <div className="flex items-start justify-between gap-4">
                 <div>
@@ -178,10 +168,9 @@ export default function IntelligenceTeamsPage() {
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={importing}
+                        onClick={() => setImportModalOpen(true)}
                     >
-                        {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        <Upload className="h-3.5 w-3.5" />
                         Import CSV
                     </Button>
                     <Button

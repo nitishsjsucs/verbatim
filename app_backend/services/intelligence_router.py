@@ -328,52 +328,144 @@ def _parse_csv_upload(file: UploadFile, required_cols: set[str], all_cols: set[s
     return rows
 
 
-@router.post("/teams/import", status_code=201)
-async def import_teams(file: UploadFile = File(...)):
+def _import_result(added=0, updated=0, skipped=0, failed=0,
+                   skip_reasons=None, fail_reasons=None, unmatched_ids=None) -> dict:
+    return {
+        "added": added,
+        "updated": updated,
+        "skipped": skipped,
+        "failed": failed,
+        "skip_reasons": skip_reasons or [],
+        "fail_reasons": fail_reasons or [],
+        "unmatched_ids": unmatched_ids or [],
+    }
+
+
+@router.post("/teams/import", status_code=200)
+async def import_teams(
+    file: UploadFile = File(...),
+    mode: str = Query("upsert", regex="^(add|upsert|replace)$"),
+):
     """Bulk-import teams from a CSV file.
 
-    Expected columns: name (required), function (required), department (optional).
-    The entire file is validated before any team is written. Returns created teams.
+    mode=add    — add new teams only; skip rows whose name already exists.
+    mode=upsert — update existing (matched by name) + create new (default).
+    mode=replace — delete all existing teams then import CSV rows as new.
+
+    Required columns: name, function. Optional: department.
+    Full validation before any write (atomic).
     """
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(422, "Only .csv files are accepted")
     rows = _parse_csv_upload(file, _TEAMS_IMPORT_REQUIRED, _TEAMS_IMPORT_COLUMNS)
-    created = []
-    for row in rows:
-        team = IntelTeam.new(row["name"], row["function"], row.get("department") or None)
-        _teams().create(team)
-        created.append(team.to_dict())
-    return {"imported": len(created), "teams": created}
+
+    store = _teams()
+    added = updated = skipped = failed = 0
+    skip_reasons: list[str] = []
+    fail_reasons: list[str] = []
+
+    if mode == "replace":
+        existing = store.list()
+        for t in existing:
+            store.delete(t.team_id)
+
+    existing_by_name = {t.name.strip().lower(): t for t in store.list()}
+
+    for i, row in enumerate(rows, start=2):
+        name_key = row["name"].strip().lower()
+        try:
+            if name_key in existing_by_name:
+                if mode == "add":
+                    skipped += 1
+                    skip_reasons.append(f"Row {i}: '{row['name']}' already exists (skipped in Add Only mode)")
+                    continue
+                # upsert or replace (post-delete, nothing will match in replace)
+                existing_team = existing_by_name[name_key]
+                store.update(existing_team.team_id, {
+                    "function": row["function"],
+                    "department": row.get("department") or None,
+                })
+                updated += 1
+            else:
+                team = IntelTeam.new(row["name"], row["function"], row.get("department") or None)
+                store.create(team)
+                added += 1
+        except Exception as exc:
+            failed += 1
+            fail_reasons.append(f"Row {i}: '{row['name']}' — {exc}")
+
+    return _import_result(added, updated, skipped, failed, skip_reasons, fail_reasons)
 
 
-@router.post("/categories/import", status_code=201)
-async def import_categories(file: UploadFile = File(...)):
+@router.post("/categories/import", status_code=200)
+async def import_categories(
+    file: UploadFile = File(...),
+    mode: str = Query("upsert", regex="^(add|upsert|replace)$"),
+):
     """Bulk-import categories from a CSV file.
 
-    Expected columns: name (required), description (optional).
-    The entire file is validated before any category is written.
+    mode=add    — add new categories only; skip existing names.
+    mode=upsert — update description if name exists, create if not (default).
+    mode=replace — delete all existing categories then import.
+
+    Required columns: name. Optional: description.
     """
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(422, "Only .csv files are accepted")
     rows = _parse_csv_upload(file, _CATEGORIES_IMPORT_REQUIRED, _CATEGORIES_IMPORT_COLUMNS)
-    created = []
-    for row in rows:
-        cat = IntelCategory.new(row["name"], row.get("description") or "")
-        _cats().create(cat)
-        created.append(cat.to_dict())
-    return {"imported": len(created), "categories": created}
+
+    store = _cats()
+    added = updated = skipped = failed = 0
+    skip_reasons: list[str] = []
+    fail_reasons: list[str] = []
+
+    if mode == "replace":
+        existing = store.list()
+        for c in existing:
+            store.delete(c.category_id)
+
+    existing_by_name = {c.name.strip().lower(): c for c in store.list()}
+
+    for i, row in enumerate(rows, start=2):
+        name_key = row["name"].strip().lower()
+        try:
+            if name_key in existing_by_name:
+                if mode == "add":
+                    skipped += 1
+                    skip_reasons.append(f"Row {i}: '{row['name']}' already exists (skipped in Add Only mode)")
+                    continue
+                existing_cat = existing_by_name[name_key]
+                store.update(existing_cat.category_id, {
+                    "description": row.get("description") or "",
+                })
+                updated += 1
+            else:
+                cat = IntelCategory.new(row["name"], row.get("description") or "")
+                store.create(cat)
+                added += 1
+        except Exception as exc:
+            failed += 1
+            fail_reasons.append(f"Row {i}: '{row['name']}' — {exc}")
+
+    return _import_result(added, updated, skipped, failed, skip_reasons, fail_reasons)
 
 
 @router.post("/documents/{doc_id}/actionables/import", status_code=200)
-async def import_actionables(doc_id: str, file: UploadFile = File(...)):
+async def import_actionables(
+    doc_id: str,
+    file: UploadFile = File(...),
+    mode: str = Query("upsert", regex="^(upsert|replace)$"),
+):
     """Bulk-import / update actionables for a document from a CSV file.
 
-    Rows whose `id` matches an existing actionable are patched; unknown IDs are
-    silently skipped (import cannot add new enriched actionables — use extract for that).
-    The entire file is validated before any write.
+    mode=upsert  — update existing actionables (matched by id); report unmatched IDs (default).
+    mode=replace — same as upsert but first clears all existing actionable fields to defaults.
+
+    Add-Only mode is not supported for actionables (IDs are system-generated; use extract).
 
     Required columns: id, description, priority, deadline, risk_score, category.
-    Optional: deadline_reasoning, notes, assigned_team_names.
+    Optional: deadline_reasoning, notes.
+    Full validation before any write.
     """
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(422, "Only .csv files are accepted")
@@ -384,40 +476,53 @@ async def import_actionables(doc_id: str, file: UploadFile = File(...)):
 
     rows = _parse_csv_upload(file, _ACTIONABLES_IMPORT_REQUIRED, set())
 
-    # Validate priority values before writing anything
+    # Full pre-validation pass — no writes until all rows pass
     valid_priorities = {"High", "Medium", "Low"}
+    fail_reasons: list[str] = []
     for i, row in enumerate(rows, start=2):
         if row.get("priority") not in valid_priorities:
-            raise HTTPException(
-                422,
-                f"Row {i}: invalid priority '{row.get('priority')}'. Must be High, Medium, or Low.",
+            fail_reasons.append(
+                f"Row {i} (id={row.get('id', '?')}): invalid priority '{row.get('priority')}'. Must be High, Medium, or Low."
             )
         try:
             rs = int(row.get("risk_score", "0"))
             if not 1 <= rs <= 5:
                 raise ValueError
         except ValueError:
-            raise HTTPException(422, f"Row {i}: risk_score must be an integer 1–5.")
+            fail_reasons.append(f"Row {i} (id={row.get('id', '?')}): risk_score must be an integer 1–5.")
+
+    if fail_reasons:
+        raise HTTPException(
+            422,
+            f"Validation failed on {len(fail_reasons)} row(s). Fix these errors and re-upload: "
+            + " | ".join(fail_reasons),
+        )
 
     existing_ids = {a.id for a in run.actionables}
-    updated_count = 0
+    updated = skipped = 0
+    unmatched_ids: list[str] = []
+    skip_reasons: list[str] = []
+
     for row in rows:
         aid = row.get("id", "").strip()
         if aid not in existing_ids:
-            continue  # skip unknown IDs
+            unmatched_ids.append(f"ID '{aid}' — not found in this document's actionables")
+            skipped += 1
+            continue
 
         patch: dict = {}
-        for field in ("description", "priority", "deadline", "deadline_reasoning",
-                      "category", "notes"):
+        for field in ("description", "priority", "deadline", "deadline_reasoning", "category", "notes"):
             if row.get(field):
                 patch[field] = row[field]
         if row.get("risk_score"):
             patch["risk_score"] = int(row["risk_score"])
         if not patch:
+            skipped += 1
+            skip_reasons.append(f"ID '{aid}' — no updatable fields in row")
             continue
 
         _runs().update_actionable(doc_id, aid, patch)
-        updated_count += 1
+        updated += 1
 
     # Refresh stats
     refreshed = _runs().get(doc_id)
@@ -425,7 +530,14 @@ async def import_actionables(doc_id: str, file: UploadFile = File(...)):
         refreshed.stats = compute_stats(refreshed.actionables, _teams().list())
         _runs().save(refreshed)
 
-    return {"updated": updated_count, "skipped": len(rows) - updated_count}
+    return _import_result(
+        added=0,
+        updated=updated,
+        skipped=skipped,
+        failed=0,
+        skip_reasons=skip_reasons,
+        unmatched_ids=unmatched_ids,
+    )
 
 
 # ---------------------------------------------------------------------------

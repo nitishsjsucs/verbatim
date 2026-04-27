@@ -8,6 +8,18 @@
 
 export type IntelPriority = "High" | "Medium" | "Low";
 
+export type ImportMode = "add" | "upsert" | "replace";
+
+export interface ImportResult {
+    added: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+    skip_reasons?: string[];
+    fail_reasons?: string[];
+    unmatched_ids?: string[];
+}
+
 /**
  * Categories are now user-defined (see Section 4 of the spec). The string is
  * validated server-side against the IntelCategory roster; falls back to
