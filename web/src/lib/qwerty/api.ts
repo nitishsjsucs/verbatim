@@ -68,11 +68,18 @@ export async function qwertyQuery(question: string, fileIds?: string[]): Promise
     return res.json();
 }
 
+const blobUrlCache = new Map<string, string>();
+
 export async function qwertyFileUrl(fileId: string, filename: string): Promise<string> {
+    const key = `${fileId}/${filename}`;
+    const cached = blobUrlCache.get(key);
+    if (cached) return cached;
     const res = await qwertyFetch(
         `/qwerty/files/${fileId}/download?filename=${encodeURIComponent(filename)}`,
     );
     if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status})`);
     const blob = await res.blob();
-    return URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    blobUrlCache.set(key, url);
+    return url;
 }

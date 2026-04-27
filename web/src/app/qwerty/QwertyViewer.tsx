@@ -58,7 +58,18 @@ function buildHighlightRegex(quote: string | null | undefined): RegExp | null {
 
 export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
     const [numPages, setNumPages] = useState<number>(0);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [currentPage, setCurrentPage] = useState<number>(Math.max(1, page));
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Sync incoming citation page (and reset on file change).
+    useEffect(() => {
+        setCurrentPage(Math.max(1, page));
+    }, [page, url]);
+
+    // Snap to top whenever the visible page changes.
+    useEffect(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    }, [currentPage, url]);
 
     const highlightRegex = useMemo(() => buildHighlightRegex(quote), [quote]);
 
@@ -75,14 +86,6 @@ export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
         [highlightRegex],
     );
 
-    useEffect(() => {
-        if (!containerRef.current || page < 1) return;
-        const target = containerRef.current.querySelector<HTMLElement>(`[data-page="${page}"]`);
-        if (target) {
-            target.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-    }, [page, numPages, quote]);
-
     if (!url) {
         return (
             <div style={{ padding: 24, color: "#6b7280" }}>
@@ -91,21 +94,66 @@ export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
         );
     }
 
+    const goPrev = () => setCurrentPage((p) => Math.max(1, p - 1));
+    const goNext = () => setCurrentPage((p) => (numPages ? Math.min(numPages, p + 1) : p + 1));
+
+    const btnStyle: React.CSSProperties = {
+        padding: "4px 10px",
+        borderRadius: 6,
+        border: "1px solid #d1d5db",
+        background: "white",
+        cursor: "pointer",
+        font: "inherit",
+        fontSize: 13,
+    };
+
     return (
-        <div ref={containerRef} style={{ height: "100%", overflowY: "auto", background: "#f3f4f6" }}>
+        <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#f3f4f6" }}>
             <style>{`.qwerty-highlight { background: #fde68a; color: inherit; border-radius: 2px; padding: 0 1px; }`}</style>
-            <Document
-                file={url}
-                onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-                loading={<div style={{ padding: 16 }}>Loading PDF…</div>}
-                error={<div style={{ padding: 16, color: "#b91c1c" }}>Failed to load PDF</div>}
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    padding: "8px 12px",
+                    borderBottom: "1px solid #e5e7eb",
+                    background: "white",
+                    fontSize: 13,
+                }}
             >
-                {Array.from({ length: numPages }, (_, i) => i + 1).map((p) => (
-                    <div key={p} data-page={p} style={{ margin: "8px auto", width: "fit-content" }}>
-                        <Page pageNumber={p} width={720} customTextRenderer={renderText} />
+                <button type="button" onClick={goPrev} disabled={currentPage <= 1} style={btnStyle}>
+                    ‹ Prev
+                </button>
+                <span style={{ color: "#374151" }}>
+                    Page {currentPage}
+                    {numPages ? ` of ${numPages}` : ""}
+                </span>
+                <button
+                    type="button"
+                    onClick={goNext}
+                    disabled={!!numPages && currentPage >= numPages}
+                    style={btnStyle}
+                >
+                    Next ›
+                </button>
+            </div>
+            <div ref={scrollRef} style={{ flex: 1, overflowY: "auto" }}>
+                <Document
+                    file={url}
+                    onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+                    loading={<div style={{ padding: 16 }}>Loading PDF…</div>}
+                    error={<div style={{ padding: 16, color: "#b91c1c" }}>Failed to load PDF</div>}
+                >
+                    <div style={{ margin: "8px auto", width: "fit-content" }}>
+                        <Page
+                            pageNumber={currentPage}
+                            width={720}
+                            customTextRenderer={renderText}
+                        />
                     </div>
-                ))}
-            </Document>
+                </Document>
+            </div>
         </div>
     );
 }
