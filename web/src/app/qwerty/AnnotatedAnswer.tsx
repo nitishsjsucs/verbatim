@@ -137,9 +137,10 @@ export default function AnnotatedAnswer({
                     <span key={idx}>
                         <span
                             style={{
-                                background: isActive ? "#fde68a" : "transparent",
+                                background: isActive ? "rgba(226,232,240,0.9)" : "transparent",
+                                color: isActive ? "#0f172a" : "inherit",
                                 borderRadius: 4,
-                                padding: isActive ? "1px 2px" : 0,
+                                padding: isActive ? "1px 3px" : 0,
                                 transition: "background-color 120ms",
                             }}
                         >

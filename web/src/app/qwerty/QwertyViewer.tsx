@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -73,18 +73,18 @@ export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
 
     const highlightRegex = useMemo(() => buildHighlightRegex(quote), [quote]);
 
-    const renderText = useCallback(
-        ({ str }: { str: string }) => {
+    const renderText = useMemo(() => {
+        if (!highlightRegex) return undefined;
+        return ({ str }: { str: string }) => {
             const safe = escapeHtml(str);
-            if (!highlightRegex) return safe;
             highlightRegex.lastIndex = 0;
             return safe.replace(
                 highlightRegex,
-                (m) => `<mark class="qwerty-highlight">${m}</mark>`,
+                (m) =>
+                    `<mark style="background:#fde047;color:#18181b;padding:1px 2px;border-radius:2px;font-weight:600">${m}</mark>`,
             );
-        },
-        [highlightRegex],
-    );
+        };
+    }, [highlightRegex]);
 
     if (!url) {
         return (
@@ -109,7 +109,6 @@ export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
 
     return (
         <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#f3f4f6" }}>
-            <style>{`.qwerty-highlight { background: #fde68a; color: inherit; border-radius: 2px; padding: 0 1px; }`}</style>
             <div
                 style={{
                     display: "flex",
@@ -150,6 +149,8 @@ export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
                             pageNumber={currentPage}
                             width={720}
                             customTextRenderer={renderText}
+                            renderTextLayer={Boolean(highlightRegex)}
+                            renderAnnotationLayer={false}
                         />
                     </div>
                 </Document>
