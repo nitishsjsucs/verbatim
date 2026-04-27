@@ -12,6 +12,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from qwerty_mode import ingestion, qa, r2 as r2_client
@@ -72,6 +73,22 @@ def query_endpoint(req: QueryRequest) -> dict:
         logger.exception("[QWERTY] query failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
     return qa.answer_to_dict(ans)
+
+
+@router.get("/files/{file_id}/download")
+def download_file(file_id: str, filename: str):
+    """Proxy the original PDF through the backend to avoid R2 CORS issues."""
+    key = f"qwerty/{file_id}/{filename}"
+    try:
+        data = r2_client.get_object_bytes(key)
+    except Exception as e:
+        logger.exception("[QWERTY] download failed")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    return StreamingResponse(
+        iter([data]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={filename}"},
+    )
 
 
 @router.get("/files/{file_id}/url")

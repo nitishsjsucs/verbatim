@@ -70,9 +70,9 @@ export async function qwertyQuery(question: string, fileIds?: string[]): Promise
 
 export async function qwertyFileUrl(fileId: string, filename: string): Promise<string> {
     const res = await qwertyFetch(
-        `/qwerty/files/${fileId}/url?filename=${encodeURIComponent(filename)}`,
+        `/qwerty/files/${fileId}/download?filename=${encodeURIComponent(filename)}`,
     );
-    if (!res.ok) throw new Error(`Failed to get file URL (${res.status})`);
-    const data = await res.json();
-    return data.url as string;
+    if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status})`);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
 }

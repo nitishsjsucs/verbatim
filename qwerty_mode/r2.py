@@ -53,6 +53,12 @@ def presigned_get_url(key: str, expires_in: int = 3600) -> str:
     )
 
 
+def get_object_bytes(key: str) -> bytes:
+    cfg = get_qwerty_config()
+    resp = _client().get_object(Bucket=cfg.r2_bucket, Key=key)
+    return resp["Body"].read()
+
+
 def delete_object(key: str) -> None:
     cfg = get_qwerty_config()
     _client().delete_object(Bucket=cfg.r2_bucket, Key=key)
