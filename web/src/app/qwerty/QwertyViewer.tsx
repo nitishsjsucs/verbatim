@@ -19,14 +19,6 @@ export interface QwertyViewerProps {
     quote?: string | null;
 }
 
-const STOP_WORDS = new Set([
-    "which", "their", "there", "these", "those", "being", "between",
-    "should", "would", "could", "about", "after", "before", "under",
-    "above", "other", "every", "through", "during", "against", "further",
-    "however", "whereas", "section", "sections", "mentioned", "present",
-    "having", "matter", "regard", "respect",
-]);
-
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -41,19 +33,38 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Build a regex from significant words (>=6 chars, non-stopword) of the
- * cited excerpt. Word-level matching is robust to whitespace, hyphenation,
- * and line-break differences between the stored excerpt and rendered PDF.
+ * Build a regex matching distinctive phrases from the excerpt.
+ *
+ * Word-level matching produced too many false positives because legal
+ * documents repeat terms like "customer", "account", "procedure" on every
+ * page. Instead we match contiguous runs of 4+ words from the excerpt as
+ * single phrases. Each text-layer fragment in pdfjs is typically a single
+ * line, so any line of the cited paragraph that survived chunking will be
+ * highlighted in one piece, while neighbouring paragraphs that just happen
+ * to share vocabulary won't.
  */
 function buildHighlightRegex(quote: string | null | undefined): RegExp | null {
     if (!quote) return null;
-    const words = quote
-        .split(/[\s,.:;·\-–—"'()[\]{}]+/)
-        .filter((w) => w.length >= 6 && !STOP_WORDS.has(w.toLowerCase()))
-        .map(escapeRegExp);
-    const unique = [...new Set(words)].slice(0, 15);
-    if (unique.length === 0) return null;
-    return new RegExp(`(${unique.join("|")})`, "gi");
+    // Normalise excerpt into runs separated by sentence-level punctuation.
+    const runs = quote
+        .split(/[\.\?!\n\r\u2022·]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+    const phrases: string[] = [];
+    for (const run of runs) {
+        const words = run.split(/\s+/).filter((w) => w.length > 0);
+        if (words.length < 4) continue;
+        // Use up to 8-word slices so the phrase is distinctive but still
+        // likely to fall within a single text-layer fragment.
+        const slice = words.slice(0, Math.min(words.length, 8)).join("\\s+");
+        phrases.push(slice);
+        if (phrases.length >= 5) break;
+    }
+    if (phrases.length === 0) return null;
+    // Sort longest first so longer phrases win when they share a prefix.
+    phrases.sort((a, b) => b.length - a.length);
+    return new RegExp(`(${phrases.map(escapeRegExp).join("|")})`, "gi");
 }
 
 export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
