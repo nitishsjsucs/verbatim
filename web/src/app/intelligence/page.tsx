@@ -11,6 +11,7 @@ import {
     CheckCircle2,
     ArrowRight,
     RefreshCw,
+    Download,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,25 @@ import {
 } from "@/components/ui/card";
 import { UploadModal } from "@/components/dashboard/upload-modal";
 import {
+    buildCsv,
     listIntelDocuments,
     extractIntelligence,
+    triggerCsvDownload,
 } from "@/lib/intelligence-api";
 import type { IntelDocumentMeta } from "@/lib/intelligence-types";
+
+function exportDocumentsCsv(docs: IntelDocumentMeta[]) {
+    const rows = docs.map((d) => [
+        d.name,
+        String(d.pages),
+        String(d.nodes),
+        d.has_intel_run ? "Intelligence ready" : "Not extracted",
+        d.ingested_at || "",
+        d.id,
+    ]);
+    const csv = buildCsv(["Document", "Pages", "Nodes", "Status", "Ingested At", "ID"], rows);
+    triggerCsvDownload(csv, `workspace_documents_${new Date().toISOString().slice(0, 10)}.csv`);
+}
 
 export default function IntelligenceWorkspacePage() {
     const [docs, setDocs] = useState<IntelDocumentMeta[]>([]);
@@ -94,10 +110,20 @@ export default function IntelligenceWorkspacePage() {
                         insights. Ingestion, chunking, and raw extraction reuse the existing system.
                     </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                    Refresh
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportDocumentsCsv(docs)}
+                        disabled={docs.length === 0}
+                    >
+                        <Download className="h-3.5 w-3.5" /> Export CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                        Refresh
+                    </Button>
+                </div>
             </div>
 
             <Card>

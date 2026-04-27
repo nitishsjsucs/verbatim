@@ -10,10 +10,12 @@ import {
     CalendarClock,
     ChevronDown,
     Download,
+    FileDown,
     Info,
     Loader2,
     RefreshCw,
     Shield,
+    Upload,
     Users as UsersIcon,
     Zap,
 } from "lucide-react";
@@ -27,9 +29,12 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {
+    buildCsv,
     extractIntelligence,
     getIntelRun,
+    importIntelActionables,
     patchIntelActionable,
+    triggerCsvDownload,
 } from "@/lib/intelligence-api";
 import type {
     EnrichedActionable,
@@ -57,21 +62,21 @@ const RISK_STYLES = (score: number) => {
 };
 
 const CSV_FIELDS: Array<{ key: string; label: string }> = [
-    { key: "id", label: "ID" },
-    { key: "description", label: "Description" },
-    { key: "source", label: "Source" },
-    { key: "priority", label: "Priority" },
-    { key: "category", label: "Category" },
-    { key: "risk_score", label: "Risk Score" },
-    { key: "deadline", label: "Deadline" },
-    { key: "deadline_phrase", label: "Deadline Phrase" },
-    { key: "deadline_reasoning", label: "Deadline Reasoning" },
-    { key: "timeline_bucket", label: "Timeline Bucket" },
-    { key: "assigned_team_names", label: "Assigned Teams" },
-    { key: "notes", label: "Notes" },
+    { key: "id", label: "id" },
+    { key: "description", label: "description" },
+    { key: "source", label: "source" },
+    { key: "priority", label: "priority" },
+    { key: "category", label: "category" },
+    { key: "risk_score", label: "risk_score" },
+    { key: "deadline", label: "deadline" },
+    { key: "deadline_phrase", label: "deadline_phrase" },
+    { key: "deadline_reasoning", label: "deadline_reasoning" },
+    { key: "timeline_bucket", label: "timeline_bucket" },
+    { key: "assigned_team_names", label: "assigned_team_names" },
+    { key: "notes", label: "notes" },
 ];
 
-function csvEscape(v: unknown): string {
+function csvEscapeLocal(v: unknown): string {
     if (v === null || v === undefined) return "";
     const s = Array.isArray(v) ? v.join("; ") : String(v);
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
@@ -79,9 +84,9 @@ function csvEscape(v: unknown): string {
 }
 
 function downloadCsv(actionables: EnrichedActionable[], docName: string) {
-    const header = CSV_FIELDS.map((f) => csvEscape(f.label)).join(",");
+    const header = CSV_FIELDS.map((f) => csvEscapeLocal(f.label)).join(",");
     const rows = actionables.map((a) =>
-        CSV_FIELDS.map((f) => csvEscape((a as unknown as Record<string, unknown>)[f.key])).join(","),
+        CSV_FIELDS.map((f) => csvEscapeLocal((a as unknown as Record<string, unknown>)[f.key])).join(","),
     );
     const csv = [header, ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -96,6 +101,15 @@ function downloadCsv(actionables: EnrichedActionable[], docName: string) {
     URL.revokeObjectURL(url);
 }
 
+function downloadActionablesTemplate() {
+    const headers = ["id", "description", "priority", "deadline", "risk_score", "category", "deadline_reasoning", "notes"];
+    const example = [
+        ["ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "2025-06-30", "4", "Compliance & Regulatory Implementation", "Explicit deadline from circular", ""],
+    ];
+    const csv = buildCsv(headers, example);
+    triggerCsvDownload(csv, "actionables_import_template.csv");
+}
+
 export default function IntelligenceDocPage({
     params,
 }: {
@@ -107,7 +121,9 @@ export default function IntelligenceDocPage({
     const [run, setRun] = useState<IntelRunPayload | null>(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
+    const [importing, setImporting] = useState(false);
     const [editTeams, setEditTeams] = useState(false);
+    const importFileRef = useRef<HTMLInputElement>(null);
 
     // filters
     const [search, setSearch] = useState("");
@@ -151,6 +167,24 @@ export default function IntelligenceDocPage({
     useEffect(() => {
         void load();
     }, [load]);
+
+    const onImportActionables = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = "";
+        setImporting(true);
+        try {
+            const result = await importIntelActionables(decodedId, file);
+            toast.success(`Updated ${result.updated} actionable(s)${result.skipped > 0 ? `, ${result.skipped} skipped (unknown IDs)` : ""}`);
+            // Reload to reflect changes
+            const payload = await getIntelRun(decodedId);
+            setRun(payload);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Import failed");
+        } finally {
+            setImporting(false);
+        }
+    };
 
     const reExtract = async () => {
         const ok = window.confirm(
@@ -239,6 +273,13 @@ export default function IntelligenceDocPage({
 
     return (
         <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+            <input
+                ref={importFileRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={onImportActionables}
+            />
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -256,6 +297,24 @@ export default function IntelligenceDocPage({
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={downloadActionablesTemplate}
+                        title="Download the CSV template for bulk import"
+                    >
+                        <FileDown className="h-3.5 w-3.5" /> Template
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => importFileRef.current?.click()}
+                        disabled={importing}
+                        title="Import a CSV to bulk-update actionables"
+                    >
+                        {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        Import CSV
+                    </Button>
                     <Button
                         size="sm"
                         variant="outline"

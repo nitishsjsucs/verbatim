@@ -1,19 +1,39 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Users as UsersIcon, Save, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users as UsersIcon, Save, X, Download, Upload, FileDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+    buildCsv,
     createIntelTeam,
     deleteIntelTeam,
+    importIntelTeams,
     listIntelTeams,
+    triggerCsvDownload,
     updateIntelTeam,
 } from "@/lib/intelligence-api";
 import type { IntelTeam } from "@/lib/intelligence-types";
+
+const TEAMS_TEMPLATE_HEADERS = ["name", "function", "department"];
+const TEAMS_TEMPLATE_EXAMPLE = [
+    ["KYC Operations", "Handles customer due-diligence and identity verification processes", "Operations"],
+    ["Compliance Team", "Ensures adherence to regulatory guidelines and policy implementation", "Legal & Compliance"],
+];
+
+function downloadTeamsTemplate() {
+    const csv = buildCsv(TEAMS_TEMPLATE_HEADERS, TEAMS_TEMPLATE_EXAMPLE);
+    triggerCsvDownload(csv, "teams_import_template.csv");
+}
+
+function exportTeamsCsv(teams: IntelTeam[]) {
+    const rows = teams.map((t) => [t.name, t.function, t.department || "", t.team_id, t.created_at || ""]);
+    const csv = buildCsv(["name", "function", "department", "team_id", "created_at"], rows);
+    triggerCsvDownload(csv, `teams_export_${new Date().toISOString().slice(0, 10)}.csv`);
+}
 
 interface FormState {
     name: string;
@@ -27,9 +47,11 @@ export default function IntelligenceTeamsPage() {
     const [teams, setTeams] = useState<IntelTeam[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [importing, setImporting] = useState(false);
     const [form, setForm] = useState<FormState>(EMPTY);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<FormState>(EMPTY);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -101,6 +123,22 @@ export default function IntelligenceTeamsPage() {
         }
     };
 
+    const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = "";
+        setImporting(true);
+        try {
+            const result = await importIntelTeams(file);
+            toast.success(`Imported ${result.imported} team(s)`);
+            await refresh();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Import failed");
+        } finally {
+            setImporting(false);
+        }
+    };
+
     const onDelete = async (team: IntelTeam) => {
         if (!confirm(`Delete team "${team.name}"? Actionables assigned only to this team will become unassigned.`)) {
             return;
@@ -116,14 +154,45 @@ export default function IntelligenceTeamsPage() {
 
     return (
         <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-            <div>
-                <h1 className="text-xl font-semibold flex items-center gap-2">
-                    <UsersIcon className="h-5 w-5 text-primary" /> Teams Configuration
-                </h1>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Teams defined here drive the semantic team-assignment engine. Each actionable
-                    is matched to the most relevant team(s) based on their function description.
-                </p>
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={onImport}
+            />
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="text-xl font-semibold flex items-center gap-2">
+                        <UsersIcon className="h-5 w-5 text-primary" /> Teams Configuration
+                    </h1>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Teams defined here drive the semantic team-assignment engine. Each actionable
+                        is matched to the most relevant team(s) based on their function description.
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Button size="sm" variant="outline" onClick={downloadTeamsTemplate}>
+                        <FileDown className="h-3.5 w-3.5" /> Template
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={importing}
+                    >
+                        {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        Import CSV
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => exportTeamsCsv(teams)}
+                        disabled={teams.length === 0}
+                    >
+                        <Download className="h-3.5 w-3.5" /> Export CSV
+                    </Button>
+                </div>
             </div>
 
             <Card>

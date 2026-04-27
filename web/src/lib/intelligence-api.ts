@@ -190,3 +190,65 @@ export async function getIntelDashboard(): Promise<IntelDashboardPayload> {
     const res = await intelFetch("/dashboard");
     return parseOrThrow(res, "Failed to load dashboard");
 }
+
+// ---------------------------------------------------------------------------
+// Bulk import helpers
+// ---------------------------------------------------------------------------
+export async function importIntelTeams(
+    file: File,
+): Promise<{ imported: number; teams: IntelTeam[] }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await intelFetch("/teams/import", { method: "POST", body: fd });
+    return parseOrThrow(res, "Teams import failed");
+}
+
+export async function importIntelCategories(
+    file: File,
+): Promise<{ imported: number; categories: IntelCategory[] }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await intelFetch("/categories/import", { method: "POST", body: fd });
+    return parseOrThrow(res, "Categories import failed");
+}
+
+export async function importIntelActionables(
+    docId: string,
+    file: File,
+): Promise<{ updated: number; skipped: number }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await intelFetch(
+        `/documents/${encodeURIComponent(docId)}/actionables/import`,
+        { method: "POST", body: fd },
+    );
+    return parseOrThrow(res, "Actionables import failed");
+}
+
+// ---------------------------------------------------------------------------
+// Shared CSV / download utilities (used by multiple pages)
+// ---------------------------------------------------------------------------
+export function csvEscapeValue(v: unknown): string {
+    if (v === null || v === undefined) return "";
+    const s = Array.isArray(v) ? v.join("; ") : String(v);
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+}
+
+export function buildCsv(headers: string[], rows: string[][]): string {
+    const header = headers.map(csvEscapeValue).join(",");
+    const body = rows.map((r) => r.map(csvEscapeValue).join(",")).join("\n");
+    return "\uFEFF" + header + "\n" + body;
+}
+
+export function triggerCsvDownload(csv: string, filename: string): void {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}

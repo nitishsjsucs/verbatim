@@ -7,6 +7,7 @@ import {
     AlertTriangle,
     FileText,
     Loader2,
+    Printer,
     RefreshCw,
     Shield,
     Users as UsersIcon,
@@ -25,6 +26,86 @@ const RISK_COLORS: Record<string, string> = {
     "4": "bg-red-500",
     "5": "bg-red-600",
 };
+
+function exportDashboardReport(data: IntelDashboardPayload) {
+    const s = data.summary;
+    const now = new Date().toLocaleString();
+    const priorityRows = Object.entries(s.priority_counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+        .join("");
+    const categoryRows = Object.entries(s.category_counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+        .join("");
+    const riskRows = Object.entries(s.risk_counts)
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([k, v]) => `<tr><td>Risk ${k}</td><td>${v}</td></tr>`)
+        .join("");
+    const teamRows = Object.entries(s.team_workload)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+        .join("");
+    const docRows = data.per_document
+        .map((d) => `<tr><td>${d.doc_name}</td><td>${d.stats.total}</td><td>${d.stats.high_priority}</td><td>${d.stats.unassigned}</td><td>${d.stats.upcoming_deadlines}</td><td>${d.updated_at ? new Date(d.updated_at).toLocaleDateString() : "—"}</td></tr>`)
+        .join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Intelligence Dashboard Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 32px; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    h2 { font-size: 14px; margin: 24px 0 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+    .meta { font-size: 11px; color: #666; margin-bottom: 24px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px; }
+    .kpi { border: 1px solid #ddd; border-radius: 6px; padding: 12px; }
+    .kpi-label { font-size: 10px; text-transform: uppercase; color: #888; }
+    .kpi-value { font-size: 26px; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+    th { background: #f3f3f3; text-align: left; padding: 6px 8px; border: 1px solid #ddd; }
+    td { padding: 5px 8px; border: 1px solid #ddd; vertical-align: top; }
+    tr:nth-child(even) td { background: #fafafa; }
+    @media print { body { margin: 16px; } }
+  </style>
+</head>
+<body>
+  <h1>Intelligence Dashboard Report</h1>
+  <div class="meta">Generated: ${now} &nbsp;|&nbsp; Documents: ${s.documents} &nbsp;|&nbsp; Teams configured: ${data.team_roster_size}</div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total Actionables</div><div class="kpi-value">${s.total_actionables}</div></div>
+    <div class="kpi"><div class="kpi-label">Unassigned</div><div class="kpi-value" style="color:#d97706">${s.unassigned}</div></div>
+    <div class="kpi"><div class="kpi-label">High Priority</div><div class="kpi-value" style="color:#dc2626">${s.priority_counts["High"] || 0}</div></div>
+    <div class="kpi"><div class="kpi-label">Documents</div><div class="kpi-value">${s.documents}</div></div>
+  </div>
+
+  <h2>Priority Breakdown</h2>
+  <table><thead><tr><th>Priority</th><th>Count</th></tr></thead><tbody>${priorityRows}</tbody></table>
+
+  <h2>Category Breakdown</h2>
+  <table><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody>${categoryRows}</tbody></table>
+
+  <h2>Risk Distribution</h2>
+  <table><thead><tr><th>Level</th><th>Count</th></tr></thead><tbody>${riskRows}</tbody></table>
+
+  <h2>Team Workload</h2>
+  <table><thead><tr><th>Team</th><th>Assigned Actionables</th></tr></thead><tbody>${teamRows}</tbody></table>
+
+  <h2>Per-Document Breakdown</h2>
+  <table><thead><tr><th>Document</th><th>Total</th><th>High</th><th>Unassigned</th><th>Upcoming Deadlines</th><th>Last Updated</th></tr></thead><tbody>${docRows}</tbody></table>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
+}
 
 export default function IntelligenceDashboardPage() {
     const [data, setData] = useState<IntelDashboardPayload | null>(null);
@@ -67,9 +148,14 @@ export default function IntelligenceDashboardPage() {
                         run.
                     </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={refresh}>
-                    <RefreshCw className="h-3.5 w-3.5" /> Refresh
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => exportDashboardReport(data)}>
+                        <Printer className="h-3.5 w-3.5" /> Export Report
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={refresh}>
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

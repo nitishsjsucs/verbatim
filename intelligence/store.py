@@ -55,6 +55,35 @@ class IntelTeamStore:
         return res.deleted_count > 0
 
 
+# Predefined category roster as per integration spec.
+PREDEFINED_CATEGORIES: list[tuple[str, str]] = [
+    (
+        "Compliance & Regulatory Implementation",
+        "This category includes all actionables that arise directly from regulatory mandates issued by governing bodies such as RBI, SEBI, or other financial authorities. These actionables require the bank to implement, modify, or enforce rules, policies, or controls to remain compliant with external regulations. This may involve updating internal policies, ensuring adherence to new guidelines, implementing mandated checks, or aligning existing practices with revised regulatory expectations. These tasks often carry strict deadlines, are subject to audits and inspections, and may have legal or financial consequences if not executed correctly. They typically require coordination between compliance, legal, and operational teams to interpret the regulation accurately and translate it into actionable steps within the organization.",
+    ),
+    (
+        "Process & Operational Changes",
+        "This category covers actionables that require changes to the bank's internal processes, workflows, and standard operating procedures (SOPs). These may include modifications in how transactions are processed, how branches operate, how approvals are handled, or how internal coordination between departments is executed. Such actionables are focused on improving, correcting, or standardizing day-to-day operations in response to the circular. They often require retraining staff, updating internal guidelines, and ensuring consistent adoption across branches or departments. These changes are critical for smooth execution on the ground and typically involve operations teams, branch management, and process owners to ensure proper implementation and minimal disruption.",
+    ),
+    (
+        "Technology & System Updates",
+        "This category includes all actionables that require changes to the bank's technology infrastructure, systems, or digital platforms. This may involve updates to core banking systems, implementation of new features, changes in data capture or validation logic, system integrations, or modifications to existing applications. These actionables often require detailed technical analysis, development effort, testing, and deployment cycles. They may also include data migration, automation of manual processes, or enabling system-level compliance checks. Coordination between product, engineering, and IT teams is essential, and these tasks often have dependencies that impact timelines and execution sequencing.",
+    ),
+    (
+        "Risk Management & Controls",
+        "This category includes actionables focused on identifying, mitigating, and managing various types of risks, including operational risk, credit risk, fraud risk, and compliance risk. These tasks involve implementing or strengthening internal controls, monitoring mechanisms, alert systems, or risk assessment frameworks. Examples include introducing new fraud detection rules, tightening approval thresholds, enhancing due diligence processes, or setting exposure limits. These actionables are critical for maintaining the financial and operational stability of the bank and often require continuous monitoring even after implementation. They typically involve risk, compliance, audit, and sometimes technology teams working together to ensure that risks are proactively managed and controlled.",
+    ),
+    (
+        "Customer Impact & Communication",
+        "This category includes all actionables that have a direct or indirect impact on customers and therefore require clear communication, disclosure, or experience-related changes. This may involve updating terms and conditions, notifying customers about policy changes, modifying product features, changing fee structures, or altering service processes. It also includes any requirement to issue official communications through channels such as email, SMS, website updates, or branch notices. These actionables require coordination between customer service, marketing, legal, and operations teams to ensure that messaging is accurate, timely, and compliant. The goal is to maintain transparency, avoid customer confusion, and ensure a smooth transition when changes are implemented.",
+    ),
+    (
+        "Documentation & Reporting",
+        "This category includes actionables related to maintaining proper records, generating reports, updating documentation, and ensuring audit readiness. This may involve submitting reports to regulatory authorities, maintaining logs of specific activities, updating internal documentation, or creating evidence trails for compliance purposes. These tasks are essential for governance, traceability, and future audits or inspections. They often require precise data handling, adherence to specific formats or timelines, and coordination between multiple departments to gather and validate information. While these actionables may not directly change operations, they play a critical role in ensuring that all actions taken by the bank are properly recorded and can be verified when required.",
+    ),
+]
+
+
 class IntelCategoryStore:
     """CRUD for AIS categories (Section 4 of the spec).
 
@@ -69,6 +98,22 @@ class IntelCategoryStore:
             self._col.create_index("name")
         except Exception as e:  # non-fatal
             logger.warning("intel_categories index init failed: %s", e)
+
+    def seed_defaults(self) -> None:
+        """Initialize the category roster with predefined defaults if empty.
+
+        Called automatically during router startup to ensure the 6 base
+        categories exist. Names and descriptions are preserved exactly as
+        provided in the integration spec.
+        """
+        if self._col.count_documents({}) > 0:
+            return  # Already seeded or user has created custom categories
+        for name, description in PREDEFINED_CATEGORIES:
+            cat = IntelCategory.new(name, description)
+            doc = cat.to_dict()
+            doc["_id"] = cat.category_id
+            self._col.insert_one(doc)
+            logger.info("Seeded default category: %s", name)
 
     def list(self) -> list[IntelCategory]:
         cursor = self._col.find({}).sort("name", 1)

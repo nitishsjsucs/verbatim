@@ -12,13 +12,15 @@ Reuses (does not duplicate):
 
 from __future__ import annotations
 
+import csv
+import io
 import logging
 import shutil
 import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Body, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
@@ -27,11 +29,9 @@ from ingestion.pipeline import IngestionPipeline
 from agents.actionable_extractor import ActionableExtractor
 
 from intelligence.models import (
-    EnrichedActionable,
     IntelCategory,
     IntelRun,
     IntelTeam,
-    NoticeItem,
 )
 from intelligence.store import IntelCategoryStore, IntelRunStore, IntelTeamStore
 from intelligence.enrichment_service import IntelligenceEnricher
@@ -110,6 +110,7 @@ def _cats() -> IntelCategoryStore:
     global _category_store
     if _category_store is None:
         _category_store = IntelCategoryStore()
+        _category_store.seed_defaults()
     return _category_store
 
 
@@ -266,6 +267,168 @@ def delete_category(category_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Bulk import endpoints (CSV → structured data)
+# All imports are atomic: the file is fully validated before any write.
+# ---------------------------------------------------------------------------
+
+_TEAMS_IMPORT_COLUMNS = {"name", "function", "department"}
+_TEAMS_IMPORT_REQUIRED = {"name", "function"}
+
+_CATEGORIES_IMPORT_COLUMNS = {"name", "description"}
+_CATEGORIES_IMPORT_REQUIRED = {"name"}
+
+_ACTIONABLES_IMPORT_REQUIRED = {"id", "description", "priority", "deadline",
+                                 "risk_score", "category"}
+
+
+def _parse_csv_upload(file: UploadFile, required_cols: set[str], all_cols: set[str]) -> list[dict]:
+    """Read an uploaded CSV, validate columns, return list of row dicts.
+
+    Raises HTTP 422 with a descriptive message if:
+      * file is empty
+      * required columns are missing
+      * any row has an unexpected column structure
+    All rows are parsed before any data is written (atomic validation).
+    """
+    raw = file.file.read()
+    if not raw:
+        raise HTTPException(422, "Uploaded file is empty")
+    try:
+        text = raw.decode("utf-8-sig")  # strip BOM if present
+    except UnicodeDecodeError:
+        raise HTTPException(422, "File must be UTF-8 encoded")
+
+    reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames is None:
+        raise HTTPException(422, "CSV has no header row")
+
+    actual_cols = {c.strip().lower() for c in reader.fieldnames}
+    missing = required_cols - actual_cols
+    if missing:
+        raise HTTPException(
+            422,
+            f"CSV is missing required column(s): {', '.join(sorted(missing))}. "
+            f"Required: {', '.join(sorted(required_cols))}.",
+        )
+
+    rows = []
+    for i, row in enumerate(reader, start=2):
+        normalised = {k.strip().lower(): (v or "").strip() for k, v in row.items() if k}
+        for col in required_cols:
+            if not normalised.get(col):
+                raise HTTPException(
+                    422,
+                    f"Row {i}: required column '{col}' is empty.",
+                )
+        rows.append(normalised)
+
+    if not rows:
+        raise HTTPException(422, "CSV contains no data rows (only a header).")
+
+    return rows
+
+
+@router.post("/teams/import", status_code=201)
+async def import_teams(file: UploadFile = File(...)):
+    """Bulk-import teams from a CSV file.
+
+    Expected columns: name (required), function (required), department (optional).
+    The entire file is validated before any team is written. Returns created teams.
+    """
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(422, "Only .csv files are accepted")
+    rows = _parse_csv_upload(file, _TEAMS_IMPORT_REQUIRED, _TEAMS_IMPORT_COLUMNS)
+    created = []
+    for row in rows:
+        team = IntelTeam.new(row["name"], row["function"], row.get("department") or None)
+        _teams().create(team)
+        created.append(team.to_dict())
+    return {"imported": len(created), "teams": created}
+
+
+@router.post("/categories/import", status_code=201)
+async def import_categories(file: UploadFile = File(...)):
+    """Bulk-import categories from a CSV file.
+
+    Expected columns: name (required), description (optional).
+    The entire file is validated before any category is written.
+    """
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(422, "Only .csv files are accepted")
+    rows = _parse_csv_upload(file, _CATEGORIES_IMPORT_REQUIRED, _CATEGORIES_IMPORT_COLUMNS)
+    created = []
+    for row in rows:
+        cat = IntelCategory.new(row["name"], row.get("description") or "")
+        _cats().create(cat)
+        created.append(cat.to_dict())
+    return {"imported": len(created), "categories": created}
+
+
+@router.post("/documents/{doc_id}/actionables/import", status_code=200)
+async def import_actionables(doc_id: str, file: UploadFile = File(...)):
+    """Bulk-import / update actionables for a document from a CSV file.
+
+    Rows whose `id` matches an existing actionable are patched; unknown IDs are
+    silently skipped (import cannot add new enriched actionables — use extract for that).
+    The entire file is validated before any write.
+
+    Required columns: id, description, priority, deadline, risk_score, category.
+    Optional: deadline_reasoning, notes, assigned_team_names.
+    """
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(422, "Only .csv files are accepted")
+
+    run = _runs().get(doc_id)
+    if not run:
+        raise HTTPException(404, "No intelligence run for this document. Extract first.")
+
+    rows = _parse_csv_upload(file, _ACTIONABLES_IMPORT_REQUIRED, set())
+
+    # Validate priority values before writing anything
+    valid_priorities = {"High", "Medium", "Low"}
+    for i, row in enumerate(rows, start=2):
+        if row.get("priority") not in valid_priorities:
+            raise HTTPException(
+                422,
+                f"Row {i}: invalid priority '{row.get('priority')}'. Must be High, Medium, or Low.",
+            )
+        try:
+            rs = int(row.get("risk_score", "0"))
+            if not 1 <= rs <= 5:
+                raise ValueError
+        except ValueError:
+            raise HTTPException(422, f"Row {i}: risk_score must be an integer 1–5.")
+
+    existing_ids = {a.id for a in run.actionables}
+    updated_count = 0
+    for row in rows:
+        aid = row.get("id", "").strip()
+        if aid not in existing_ids:
+            continue  # skip unknown IDs
+
+        patch: dict = {}
+        for field in ("description", "priority", "deadline", "deadline_reasoning",
+                      "category", "notes"):
+            if row.get(field):
+                patch[field] = row[field]
+        if row.get("risk_score"):
+            patch["risk_score"] = int(row["risk_score"])
+        if not patch:
+            continue
+
+        _runs().update_actionable(doc_id, aid, patch)
+        updated_count += 1
+
+    # Refresh stats
+    refreshed = _runs().get(doc_id)
+    if refreshed:
+        refreshed.stats = compute_stats(refreshed.actionables, _teams().list())
+        _runs().save(refreshed)
+
+    return {"updated": updated_count, "skipped": len(rows) - updated_count}
+
+
+# ---------------------------------------------------------------------------
 # Extract + enrich + assign (the AIS pipeline)
 # ---------------------------------------------------------------------------
 def _load_doc_effective_date(doc_id: str) -> str:
@@ -418,7 +581,6 @@ def delete_run(doc_id: str):
 def dashboard():
     summaries = _runs().list_summaries()
     teams = _teams().list()
-    team_name_by_id = {t.team_id: t.name for t in teams}
 
     agg = {
         "total_actionables": 0,
