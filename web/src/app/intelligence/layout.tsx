@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, FolderOpen, Users, LayoutDashboard } from "lucide-react";
+import { Brain, FolderOpen, Users, LayoutDashboard, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
     { href: "/intelligence", label: "Workspace", icon: FolderOpen, match: (p: string) => p === "/intelligence" || p.startsWith("/intelligence/workspace") },
     { href: "/intelligence/teams", label: "Teams", icon: Users, match: (p: string) => p.startsWith("/intelligence/teams") },
+    { href: "/intelligence/categories", label: "Categories", icon: Tag, match: (p: string) => p.startsWith("/intelligence/categories") },
     { href: "/intelligence/dashboard", label: "Dashboard", icon: LayoutDashboard, match: (p: string) => p.startsWith("/intelligence/dashboard") },
 ];
 

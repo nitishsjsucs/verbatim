@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -22,9 +22,9 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { UploadModal } from "@/components/dashboard/upload-modal";
 import {
     listIntelDocuments,
-    ingestIntelDocument,
     extractIntelligence,
 } from "@/lib/intelligence-api";
 import type { IntelDocumentMeta } from "@/lib/intelligence-types";
@@ -32,10 +32,8 @@ import type { IntelDocumentMeta } from "@/lib/intelligence-types";
 export default function IntelligenceWorkspacePage() {
     const [docs, setDocs] = useState<IntelDocumentMeta[]>([]);
     const [loading, setLoading] = useState(true);
-    const [uploading, setUploading] = useState(false);
     const [extractingId, setExtractingId] = useState<string | null>(null);
     const [query, setQuery] = useState("");
-    const fileRef = useRef<HTMLInputElement>(null);
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -53,21 +51,21 @@ export default function IntelligenceWorkspacePage() {
         void refresh();
     }, [refresh]);
 
-    const onUpload = async (file: File) => {
-        setUploading(true);
-        try {
-            await ingestIntelDocument(file);
-            toast.success(`Ingested ${file.name}`);
-            await refresh();
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Ingestion failed");
-        } finally {
-            setUploading(false);
-            if (fileRef.current) fileRef.current.value = "";
-        }
-    };
+    // The main UploadModal dispatches "document-uploaded" when ingestion completes.
+    // Listen for that event so the workspace table re-syncs after a unified upload.
+    useEffect(() => {
+        const handler = () => void refresh();
+        window.addEventListener("document-uploaded", handler);
+        return () => window.removeEventListener("document-uploaded", handler);
+    }, [refresh]);
 
     const onExtract = async (docId: string, force = false) => {
+        if (force) {
+            const ok = window.confirm(
+                "Re-extracting will run the AI/ML enrichment + assignment pipeline. This may take some time and will overwrite the existing run. Do you want to proceed?",
+            );
+            if (!ok) return;
+        }
         setExtractingId(docId);
         try {
             const run = await extractIntelligence(docId, force);
@@ -79,6 +77,8 @@ export default function IntelligenceWorkspacePage() {
             setExtractingId(null);
         }
     };
+
+    void Upload; // upload icon retained for design parity inside header CTA
 
     const filtered = docs.filter((d) =>
         query.trim() ? d.name.toLowerCase().includes(query.toLowerCase()) : true,
@@ -106,33 +106,19 @@ export default function IntelligenceWorkspacePage() {
                         <Upload className="h-4 w-4" /> Upload a PDF
                     </CardTitle>
                     <CardDescription className="text-xs">
-                        The file flows through the existing ingestion pipeline — chunking and tree
-                        construction are identical to the main app.
+                        Uses the same ingestion pipeline as the rest of the app — circular title,
+                        issue date, effective date, and regulator are captured here and become
+                        document metadata downstream (including the deadline-fallback used by
+                        intelligence extraction).
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap items-center gap-3">
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        accept="application/pdf"
-                        className="hidden"
-                        onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) void onUpload(f);
-                        }}
-                    />
-                    <Button
-                        onClick={() => fileRef.current?.click()}
-                        disabled={uploading}
-                        size="sm"
-                    >
-                        {uploading ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
+                    <UploadModal>
+                        <Button size="sm">
                             <Upload className="h-3.5 w-3.5" />
-                        )}
-                        {uploading ? "Uploading..." : "Choose PDF"}
-                    </Button>
+                            Upload PDF
+                        </Button>
+                    </UploadModal>
                     <Input
                         placeholder="Search documents..."
                         value={query}

@@ -30,7 +30,12 @@ from models.document import DocumentTree
 from utils.llm_client import LLMClient
 from config.settings import get_settings
 
-from intelligence.models import EnrichedActionable, NoticeItem
+from intelligence.models import (
+    DEFAULT_CATEGORY,
+    EnrichedActionable,
+    IntelCategory,
+    NoticeItem,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -117,33 +122,25 @@ def _norm_priority(p: str, modality: str, deadline_bucket: Optional[str]) -> str
     return base
 
 
-def _norm_category(c: str) -> str:
+def _norm_category(c: str, allowed_names: list[str]) -> str:
+    """Validate `c` against the user-defined category list. Falls back to
+    `DEFAULT_CATEGORY` when unrecognized or no roster is configured."""
     c = (c or "").strip()
-    allowed = {
-        "Compliance",
-        "Risk",
-        "Operations",
-        "IT / Systems",
-        "Reporting",
-        "Customer Impact",
-        "Other",
-    }
-    if c in allowed:
+    if not c:
+        return DEFAULT_CATEGORY
+    if not allowed_names:
+        # No user-defined roster yet — keep whatever the LLM produced so users
+        # can re-classify after defining categories. Treat empty as default.
+        return c or DEFAULT_CATEGORY
+    # exact match
+    if c in allowed_names:
         return c
+    # case-insensitive match
     lc = c.lower()
-    if "it" in lc or "system" in lc or "technolog" in lc or "cyber" in lc:
-        return "IT / Systems"
-    if "report" in lc or "disclos" in lc or "filing" in lc:
-        return "Reporting"
-    if "customer" in lc or "consumer" in lc or "client" in lc:
-        return "Customer Impact"
-    if "risk" in lc:
-        return "Risk"
-    if "operation" in lc or "process" in lc:
-        return "Operations"
-    if "compliance" in lc or "regulator" in lc or "legal" in lc:
-        return "Compliance"
-    return "Other"
+    for name in allowed_names:
+        if name.lower() == lc:
+            return name
+    return DEFAULT_CATEGORY
 
 
 def _timeline_bucket_from_deadline(iso_date: str, hint: Optional[str]) -> str:
@@ -166,23 +163,33 @@ def _timeline_bucket_from_deadline(iso_date: str, hint: Optional[str]) -> str:
 
 SYSTEM_PROMPT = """You are a compliance-intelligence enricher for financial-sector regulatory circulars.
 
-You will receive a list of candidate actionables extracted from a regulatory document. For EACH candidate you must:
+You will receive:
+  * CATEGORIES — a user-defined list of categories (name + description). The category set is fixed; do NOT invent new categories.
+  * DOCUMENT_EFFECTIVE_DATE — the document-level execution / implementation date (may be empty).
+  * INPUTS — candidate actionables to enrich.
+
+For EACH candidate you must:
 
 1. Decide `kind`:
-   - "actionable": the item expresses a concrete obligation, prohibition, or required step someone in the regulated entity must execute.
-   - "notice": the item is informational, contextual, definitional, or advisory and does not require a specific execution step.
+   - "actionable": expresses a concrete obligation, prohibition, or required step someone in the regulated entity must execute.
+   - "notice": informational, contextual, definitional, or advisory — no execution step.
 
 2. If `kind == "actionable"`:
-   a. Rewrite `description` as a crisp, imperative, execution-ready sentence (max ~30 words). No citations. No hedging.
-   b. Fill `priority` ∈ {"High","Medium","Low"} based on regulatory keywords (must/shall/mandatory → higher), deadlines (tight → higher), and risk impact.
-   c. Fill `deadline` either as an ISO date "YYYY-MM-DD" if explicit, else "Not Specified".
-   d. Fill `deadline_phrase` with the raw natural-language phrase from the source (e.g. "within 30 days", "by 31 March 2025"), or "" if none.
-   e. Fill `risk_score` as an integer 1..5 (1=trivial, 5=severe legal/financial/operational exposure).
-   f. Fill `category` ∈ {"Compliance","Risk","Operations","IT / Systems","Reporting","Customer Impact","Other"}.
+   a. Rewrite `description` as a crisp, imperative, execution-ready sentence (≤30 words). No citations, no hedging.
+   b. `priority` ∈ {"High","Medium","Low"} based on regulatory keywords (must/shall/mandatory → higher), tight deadlines, and risk impact.
+   c. `deadline`: ISO date "YYYY-MM-DD" if explicit in the source. If no specific deadline is found AND DOCUMENT_EFFECTIVE_DATE is provided, you MAY use that as a default fallback. Otherwise "Not Specified".
+   d. `deadline_phrase`: raw natural-language phrase from the source (e.g. "within 30 days", "by 31 March 2025"), or "" if none.
+   e. `deadline_reasoning`: ONE sentence explaining how `deadline` was derived. Examples:
+        - "Explicit ISO date in source: 2025-03-31."
+        - "'within 30 days' from issue date."
+        - "No specific deadline; defaulted to document effective date YYYY-MM-DD."
+        - "No deadline could be derived."
+   f. `risk_score` ∈ 1..5 (1=trivial, 5=severe legal/financial/operational exposure).
+   g. `category`: choose EXACTLY ONE name from the CATEGORIES list whose description best matches the actionable. If none clearly match, return "Uncategorized".
 
 3. If `kind == "notice"`:
-   a. Fill `tag` ∈ {"Informational","Contextual","Advisory"}.
-   b. Fill `text` with a one-line summary of the informational point.
+   a. `tag` ∈ {"Informational","Contextual","Advisory"}.
+   b. `text`: one-line summary.
 
 Return STRICT JSON:
 {
@@ -190,19 +197,23 @@ Return STRICT JSON:
     {
       "input_id": "<id from input>",
       "kind": "actionable" | "notice",
-      "description": "...",        // for actionable
+      "description": "...",
       "priority": "High|Medium|Low",
       "deadline": "YYYY-MM-DD|Not Specified",
       "deadline_phrase": "...",
+      "deadline_reasoning": "...",
       "risk_score": 1-5,
-      "category": "...",
-      "text": "...",                 // for notice
-      "tag": "Informational|Contextual|Advisory"  // for notice
+      "category": "<one of the provided category names, or 'Uncategorized'>",
+      "text": "...",
+      "tag": "Informational|Contextual|Advisory"
     }
   ]
 }
 
-Do NOT invent items. Do NOT drop items — every input must have exactly one output entry."""
+Do NOT invent inputs. Do NOT drop inputs. Do NOT invent categories."""
+
+
+NO_CATS_NOTE = '(none defined — use "Uncategorized")'
 
 
 class IntelligenceEnricher:
@@ -218,21 +229,28 @@ class IntelligenceEnricher:
         self,
         raw_actionables: list[ActionableItem],
         tree: DocumentTree,
+        categories: Optional[list[IntelCategory]] = None,
+        doc_effective_date: str = "",
     ) -> tuple[list[EnrichedActionable], list[NoticeItem]]:
         if not raw_actionables:
             return [], []
 
+        categories = list(categories or [])
         enriched: list[EnrichedActionable] = []
         notices: list[NoticeItem] = []
 
         for start in range(0, len(raw_actionables), self.BATCH_SIZE):
             batch = raw_actionables[start : start + self.BATCH_SIZE]
             try:
-                batch_enriched, batch_notices = self._enrich_batch(batch, tree)
+                batch_enriched, batch_notices = self._enrich_batch(
+                    batch, tree, categories, doc_effective_date,
+                )
             except Exception as e:
                 logger.error("Enrichment batch failed: %s", e)
                 # graceful fallback: treat all as actionables with heuristics only
-                batch_enriched = [self._heuristic_enrich(item) for item in batch]
+                batch_enriched = [
+                    self._heuristic_enrich(item, doc_effective_date) for item in batch
+                ]
                 batch_notices = []
             enriched.extend(batch_enriched)
             notices.extend(batch_notices)
@@ -283,10 +301,17 @@ class IntelligenceEnricher:
         self,
         items: list[ActionableItem],
         tree: DocumentTree,
+        categories: list[IntelCategory],
+        doc_effective_date: str,
     ) -> tuple[list[EnrichedActionable], list[NoticeItem]]:
         payload = self._input_payload(items)
+        category_payload = [
+            {"name": c.name, "description": c.description or ""} for c in categories
+        ]
         user_msg = (
-            f"DOCUMENT: {tree.doc_name}\n\n"
+            f"DOCUMENT: {tree.doc_name}\n"
+            f"DOCUMENT_EFFECTIVE_DATE: {doc_effective_date or '(not provided)'}\n\n"
+            f"CATEGORIES:\n{(json.dumps(category_payload, indent=2) if category_payload else NO_CATS_NOTE)}\n\n"
             f"Enrich the following {len(payload)} candidate actionables. "
             f"Return one output entry per input_id in the same order.\n\n"
             f"INPUTS:\n{json.dumps(payload, indent=2)}"
@@ -303,7 +328,7 @@ class IntelligenceEnricher:
             )
         except Exception as e:
             logger.warning("LLM enrichment failed: %s — falling back to heuristics", e)
-            return [self._heuristic_enrich(it) for it in items], []
+            return [self._heuristic_enrich(it, doc_effective_date) for it in items], []
 
         rows = result.get("items", []) if isinstance(result, dict) else []
         by_id: dict[str, dict] = {}
@@ -312,6 +337,7 @@ class IntelligenceEnricher:
             if key:
                 by_id[key] = row
 
+        category_names = [c.name for c in categories]
         enriched: list[EnrichedActionable] = []
         notices: list[NoticeItem] = []
         for it in items:
@@ -326,11 +352,19 @@ class IntelligenceEnricher:
                     tag=row.get("tag", "Informational"),
                 ))
                 continue
-            enriched.append(self._merge_enriched(it, row))
+            enriched.append(
+                self._merge_enriched(it, row, category_names, doc_effective_date)
+            )
 
         return enriched, notices
 
-    def _merge_enriched(self, it: ActionableItem, row: dict) -> EnrichedActionable:
+    def _merge_enriched(
+        self,
+        it: ActionableItem,
+        row: dict,
+        category_names: list[str],
+        doc_effective_date: str,
+    ) -> EnrichedActionable:
         stmt = self._action_statement(it)
         raw_text = it.evidence_quote or stmt or ""
         heur_iso, heur_phrase, bucket_hint = _heuristic_deadline(
@@ -340,9 +374,26 @@ class IntelligenceEnricher:
         llm_deadline = (row.get("deadline") or "").strip()
         if llm_deadline and llm_deadline.lower() != "not specified" and _ISO_DATE_PAT.fullmatch(llm_deadline):
             iso = llm_deadline
-        else:
+            reasoning_default = f"Explicit deadline in source: {iso}."
+        elif heur_iso:
             iso = heur_iso
+            reasoning_default = f"Extracted from source text ({heur_phrase or heur_iso})."
+        elif heur_phrase:
+            iso = ""
+            reasoning_default = f"Phrase '{heur_phrase}' detected; no explicit ISO date."
+        else:
+            iso = ""
+            reasoning_default = ""
         phrase = (row.get("deadline_phrase") or heur_phrase or "").strip()
+
+        # Section 7: fallback to document-level execution/implementation date
+        used_doc_fallback = False
+        if not iso and doc_effective_date and _ISO_DATE_PAT.fullmatch(doc_effective_date):
+            iso = doc_effective_date
+            used_doc_fallback = True
+            reasoning_default = (
+                f"No specific deadline in source; defaulted to document effective date {iso}."
+            )
 
         priority = _norm_priority(
             row.get("priority", ""),
@@ -350,12 +401,19 @@ class IntelligenceEnricher:
             bucket_hint,
         )
         risk = _clamp_risk(row.get("risk_score", 3))
-        category = _norm_category(row.get("category", ""))
+        category = _norm_category(row.get("category", ""), category_names)
         description = (row.get("description") or stmt or raw_text or "").strip()
         if len(description) > 600:
             description = description[:600].rstrip() + "…"
 
         bucket = _timeline_bucket_from_deadline(iso, bucket_hint)
+
+        # Prefer LLM-supplied reasoning; otherwise use derived default.
+        reasoning = (row.get("deadline_reasoning") or "").strip() or reasoning_default
+        if used_doc_fallback and "effective date" not in reasoning.lower():
+            reasoning = (
+                f"No specific deadline in source; defaulted to document effective date {iso}."
+            )
 
         return EnrichedActionable(
             id=f"A-{uuid.uuid4().hex[:8].upper()}",
@@ -371,11 +429,15 @@ class IntelligenceEnricher:
             timeline_bucket=bucket,
             assigned_teams=[],
             assigned_team_names=[],
-            status="Pending",
+            deadline_reasoning=reasoning,
             notes="",
         )
 
-    def _heuristic_enrich(self, it: ActionableItem) -> EnrichedActionable:
+    def _heuristic_enrich(
+        self,
+        it: ActionableItem,
+        doc_effective_date: str = "",
+    ) -> EnrichedActionable:
         """Pure-regex fallback used when the LLM call fails."""
         stmt = self._action_statement(it)
         raw_text = it.evidence_quote or stmt or ""
@@ -389,7 +451,20 @@ class IntelligenceEnricher:
             priority, risk = "Low", 2
         else:
             priority, risk = "Medium", 3
-        bucket = _timeline_bucket_from_deadline(heur_iso, bucket_hint)
+
+        iso = heur_iso
+        reasoning = ""
+        if iso:
+            reasoning = f"Extracted from source text ({heur_phrase or iso})."
+        elif heur_phrase:
+            reasoning = f"Phrase '{heur_phrase}' detected; no explicit ISO date."
+        if not iso and doc_effective_date and _ISO_DATE_PAT.fullmatch(doc_effective_date):
+            iso = doc_effective_date
+            reasoning = (
+                f"No specific deadline in source; defaulted to document effective date {iso}."
+            )
+
+        bucket = _timeline_bucket_from_deadline(iso, bucket_hint)
         description = (stmt or raw_text or "").strip()[:500]
         return EnrichedActionable(
             id=f"A-{uuid.uuid4().hex[:8].upper()}",
@@ -398,9 +473,10 @@ class IntelligenceEnricher:
             source_node_id=it.source_node_id or "",
             original_text=raw_text[:1000],
             priority=priority,
-            deadline=heur_iso or "Not Specified",
+            deadline=iso or "Not Specified",
             deadline_phrase=heur_phrase,
             risk_score=risk,
-            category="Other",
+            category=DEFAULT_CATEGORY,
             timeline_bucket=bucket,
+            deadline_reasoning=reasoning,
         )

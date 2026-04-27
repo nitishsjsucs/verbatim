@@ -8,14 +8,12 @@
 
 export type IntelPriority = "High" | "Medium" | "Low";
 
-export type IntelCategory =
-    | "Compliance"
-    | "Risk"
-    | "Operations"
-    | "IT / Systems"
-    | "Reporting"
-    | "Customer Impact"
-    | "Other";
+/**
+ * Categories are now user-defined (see Section 4 of the spec). The string is
+ * validated server-side against the IntelCategory roster; falls back to
+ * "Uncategorized" when no match is found.
+ */
+export type IntelCategoryName = string;
 
 export type IntelTimelineBucket =
     | "Immediate"
@@ -25,13 +23,19 @@ export type IntelTimelineBucket =
 
 export type IntelNoticeTag = "Informational" | "Contextual" | "Advisory";
 
-export type IntelStatus = "Pending" | "In Progress" | "Completed";
-
 export interface IntelTeam {
     team_id: string;
     name: string;
     function: string;
     department?: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface IntelCategory {
+    category_id: string;
+    name: string;
+    description: string;
     created_at?: string;
     updated_at?: string;
 }
@@ -46,11 +50,11 @@ export interface EnrichedActionable {
     deadline: string; // "YYYY-MM-DD" | "Not Specified"
     deadline_phrase?: string;
     risk_score: number; // 1..5
-    category: IntelCategory;
+    category: IntelCategoryName;
     timeline_bucket: IntelTimelineBucket;
     assigned_teams: string[]; // team_ids
     assigned_team_names: string[];
-    status: IntelStatus;
+    deadline_reasoning?: string;
     notes?: string;
 }
 
@@ -88,6 +92,7 @@ export interface IntelRunPayload {
     actionables: EnrichedActionable[];
     notice_board: NoticeItem[];
     team_snapshot: IntelTeam[];
+    categories: IntelCategory[];
     groupings: IntelGroupings;
     stats: IntelStats;
     created_at: string;

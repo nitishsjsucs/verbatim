@@ -26,8 +26,14 @@ from tree.tree_store import TreeStore
 from ingestion.pipeline import IngestionPipeline
 from agents.actionable_extractor import ActionableExtractor
 
-from intelligence.models import EnrichedActionable, IntelRun, IntelTeam, NoticeItem
-from intelligence.store import IntelRunStore, IntelTeamStore
+from intelligence.models import (
+    EnrichedActionable,
+    IntelCategory,
+    IntelRun,
+    IntelTeam,
+    NoticeItem,
+)
+from intelligence.store import IntelCategoryStore, IntelRunStore, IntelTeamStore
 from intelligence.enrichment_service import IntelligenceEnricher
 from intelligence.assignment_service import IntelligenceAssigner
 from intelligence.grouping_service import build_groupings, compute_stats
@@ -48,6 +54,7 @@ _enricher: Optional[IntelligenceEnricher] = None
 _assigner: Optional[IntelligenceAssigner] = None
 _run_store: Optional[IntelRunStore] = None
 _team_store: Optional[IntelTeamStore] = None
+_category_store: Optional["IntelCategoryStore"] = None
 
 
 def _ts() -> TreeStore:
@@ -99,6 +106,13 @@ def _teams() -> IntelTeamStore:
     return _team_store
 
 
+def _cats() -> IntelCategoryStore:
+    global _category_store
+    if _category_store is None:
+        _category_store = IntelCategoryStore()
+    return _category_store
+
+
 # ---------------------------------------------------------------------------
 # Pydantic request bodies
 # ---------------------------------------------------------------------------
@@ -114,11 +128,21 @@ class TeamPatch(BaseModel):
     department: Optional[str] = None
 
 
+class CategoryIn(BaseModel):
+    name: str = Field(..., min_length=1)
+    description: str = ""
+
+
+class CategoryPatch(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
 class ActionablePatch(BaseModel):
-    status: Optional[str] = None
     assigned_teams: Optional[list[str]] = None
     priority: Optional[str] = None
     deadline: Optional[str] = None
+    deadline_reasoning: Optional[str] = None
     risk_score: Optional[int] = None
     category: Optional[str] = None
     notes: Optional[str] = None
@@ -210,11 +234,74 @@ def delete_team(team_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Categories CRUD (Section 4 — user-defined classification roster)
+# ---------------------------------------------------------------------------
+@router.get("/categories")
+def list_categories():
+    return [c.to_dict() for c in _cats().list()]
+
+
+@router.post("/categories", status_code=201)
+def create_category(body: CategoryIn):
+    cat = IntelCategory.new(body.name, body.description)
+    _cats().create(cat)
+    return cat.to_dict()
+
+
+@router.patch("/categories/{category_id}")
+def update_category(category_id: str, body: CategoryPatch):
+    patch = {k: v for k, v in body.model_dump().items() if v is not None}
+    cat = _cats().update(category_id, patch)
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    return cat.to_dict()
+
+
+@router.delete("/categories/{category_id}")
+def delete_category(category_id: str):
+    ok = _cats().delete(category_id)
+    if not ok:
+        raise HTTPException(404, "Category not found")
+    return {"status": "deleted", "category_id": category_id}
+
+
+# ---------------------------------------------------------------------------
 # Extract + enrich + assign (the AIS pipeline)
 # ---------------------------------------------------------------------------
-def _build_run(tree, raw_actionables, teams: list[IntelTeam]) -> IntelRun:
+def _load_doc_effective_date(doc_id: str) -> str:
+    """Best-effort fetch of the document-level execution / implementation date
+    captured by the main ingestion metadata flow (Section 7 fallback)."""
+    try:
+        from tree.actionable_store import ActionableStore  # local import to avoid cycles
+
+        result = ActionableStore().load(doc_id)
+        if result is None:
+            return ""
+        # Prefer effective date; fall back to issue date if unset.
+        return (
+            getattr(result, "circular_effective_date", "")
+            or getattr(result, "regulation_issue_date", "")
+            or ""
+        )
+    except Exception as e:  # pragma: no cover - non-fatal
+        logger.debug("Could not load doc effective date for %s: %s", doc_id, e)
+        return ""
+
+
+def _build_run(
+    tree,
+    raw_actionables,
+    teams: list[IntelTeam],
+    categories: list[IntelCategory],
+    doc_effective_date: str,
+) -> IntelRun:
     enricher = _en()
-    enriched, notices = enricher.enrich(raw_actionables, tree)
+    enriched, notices = enricher.enrich(
+        raw_actionables,
+        tree,
+        categories=categories,
+        doc_effective_date=doc_effective_date,
+    )
     _asg().assign(enriched, teams)
 
     run = IntelRun(
@@ -256,7 +343,15 @@ def extract_for_document(doc_id: str, force: bool = Query(False)):
         raise HTTPException(500, f"Raw extraction failed: {e}")
 
     teams = _teams().list()
-    run = _build_run(tree, raw_result.actionables, teams)
+    categories = _cats().list()
+    doc_effective_date = _load_doc_effective_date(doc_id)
+    run = _build_run(
+        tree,
+        raw_result.actionables,
+        teams,
+        categories,
+        doc_effective_date,
+    )
     _runs().save(run)
 
     return _run_payload(run)
@@ -375,6 +470,7 @@ def dashboard():
 # ---------------------------------------------------------------------------
 def _run_payload(run: IntelRun) -> dict:
     teams = _teams().list()
+    categories = _cats().list()
     groupings = build_groupings(run.actionables, teams)
     # always refresh stats on read to reflect latest patches
     stats = compute_stats(run.actionables, teams)
@@ -385,6 +481,7 @@ def _run_payload(run: IntelRun) -> dict:
         "actionables": [a.to_dict() for a in run.actionables],
         "notice_board": [n.to_dict() for n in run.notice_board],
         "team_snapshot": run.team_snapshot,
+        "categories": [c.to_dict() for c in categories],
         "groupings": groupings,
         "stats": stats,
         "created_at": run.created_at,

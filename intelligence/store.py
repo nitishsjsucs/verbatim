@@ -7,12 +7,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from utils.mongo import get_db
-from intelligence.models import IntelRun, IntelTeam
+from intelligence.models import IntelCategory, IntelRun, IntelTeam
 
 logger = logging.getLogger(__name__)
 
 TEAMS_COLLECTION = "intel_teams"
 RUNS_COLLECTION = "intel_runs"
+CATEGORIES_COLLECTION = "intel_categories"
 
 
 class IntelTeamStore:
@@ -51,6 +52,48 @@ class IntelTeamStore:
 
     def delete(self, team_id: str) -> bool:
         res = self._col.delete_one({"team_id": team_id})
+        return res.deleted_count > 0
+
+
+class IntelCategoryStore:
+    """CRUD for AIS categories (Section 4 of the spec).
+
+    Categories are user-defined classifications used by the enricher to
+    classify each actionable. Stored separately from `intel_teams`.
+    """
+
+    def __init__(self) -> None:
+        self._col = get_db()[CATEGORIES_COLLECTION]
+        try:
+            self._col.create_index("category_id", unique=True)
+            self._col.create_index("name")
+        except Exception as e:  # non-fatal
+            logger.warning("intel_categories index init failed: %s", e)
+
+    def list(self) -> list[IntelCategory]:
+        cursor = self._col.find({}).sort("name", 1)
+        return [IntelCategory.from_dict(d) for d in cursor]
+
+    def get(self, category_id: str) -> Optional[IntelCategory]:
+        d = self._col.find_one({"category_id": category_id})
+        return IntelCategory.from_dict(d) if d else None
+
+    def create(self, category: IntelCategory) -> IntelCategory:
+        doc = category.to_dict()
+        doc["_id"] = category.category_id
+        self._col.insert_one(doc)
+        return category
+
+    def update(self, category_id: str, patch: dict) -> Optional[IntelCategory]:
+        patch = {k: v for k, v in patch.items() if k in {"name", "description"}}
+        if not patch:
+            return self.get(category_id)
+        patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+        self._col.update_one({"category_id": category_id}, {"$set": patch})
+        return self.get(category_id)
+
+    def delete(self, category_id: str) -> bool:
+        res = self._col.delete_one({"category_id": category_id})
         return res.deleted_count > 0
 
 
@@ -106,11 +149,11 @@ class IntelRunStore:
     def update_actionable(self, doc_id: str, item_id: str, patch: dict) -> Optional[dict]:
         """Patch a single enriched actionable by id. Returns the updated item or None."""
         allowed = {
-            "status",
             "assigned_teams",
             "assigned_team_names",
             "priority",
             "deadline",
+            "deadline_reasoning",
             "risk_score",
             "category",
             "notes",

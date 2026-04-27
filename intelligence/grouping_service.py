@@ -21,7 +21,7 @@ from intelligence.models import EnrichedActionable, IntelTeam
 def group_by_category(items: list[EnrichedActionable]) -> dict[str, list[str]]:
     out: dict[str, list[str]] = defaultdict(list)
     for a in items:
-        out[a.category or "Other"].append(a.id)
+        out[a.category or "Uncategorized"].append(a.id)
     return dict(out)
 
 
