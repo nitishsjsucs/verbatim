@@ -8,6 +8,16 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
 
+function qwertyFetch(path: string, options: RequestInit = {}): Promise<Response> {
+    return fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+            "ngrok-skip-browser-warning": "1",
+            ...(options.headers || {}),
+        },
+    });
+}
+
 export interface QwertyIngestResult {
     file_id: string;
     filename: string;
@@ -37,7 +47,7 @@ export interface QwertyAnswer {
 export async function qwertyIngest(file: File): Promise<QwertyIngestResult> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`${API_BASE}/qwerty/ingest`, { method: "POST", body: fd });
+    const res = await qwertyFetch("/qwerty/ingest", { method: "POST", body: fd });
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || `Ingest failed (${res.status})`);
@@ -46,7 +56,7 @@ export async function qwertyIngest(file: File): Promise<QwertyIngestResult> {
 }
 
 export async function qwertyQuery(question: string, fileIds?: string[]): Promise<QwertyAnswer> {
-    const res = await fetch(`${API_BASE}/qwerty/query`, {
+    const res = await qwertyFetch("/qwerty/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, file_ids: fileIds }),
@@ -59,8 +69,8 @@ export async function qwertyQuery(question: string, fileIds?: string[]): Promise
 }
 
 export async function qwertyFileUrl(fileId: string, filename: string): Promise<string> {
-    const res = await fetch(
-        `${API_BASE}/qwerty/files/${fileId}/url?filename=${encodeURIComponent(filename)}`,
+    const res = await qwertyFetch(
+        `/qwerty/files/${fileId}/url?filename=${encodeURIComponent(filename)}`,
     );
     if (!res.ok) throw new Error(`Failed to get file URL (${res.status})`);
     const data = await res.json();
