@@ -55,16 +55,20 @@ function buildHighlightRegex(quote: string | null | undefined): RegExp | null {
     for (const run of runs) {
         const words = run.split(/\s+/).filter((w) => w.length > 0);
         if (words.length < 4) continue;
-        // Use up to 8-word slices so the phrase is distinctive but still
-        // likely to fall within a single text-layer fragment.
-        const slice = words.slice(0, Math.min(words.length, 8)).join("\\s+");
+        // Escape each word as a regex literal first, then join with \s+ so
+        // we tolerate the line-break/whitespace differences between the
+        // stored excerpt and pdfjs's text-layer fragments.
+        const slice = words
+            .slice(0, Math.min(words.length, 8))
+            .map(escapeRegExp)
+            .join("\\s+");
         phrases.push(slice);
         if (phrases.length >= 5) break;
     }
     if (phrases.length === 0) return null;
-    // Sort longest first so longer phrases win when they share a prefix.
+    // Longest first so a longer phrase wins over its shorter prefixes.
     phrases.sort((a, b) => b.length - a.length);
-    return new RegExp(`(${phrases.map(escapeRegExp).join("|")})`, "gi");
+    return new RegExp(`(${phrases.join("|")})`, "gi");
 }
 
 export default function QwertyViewer({ url, page, quote }: QwertyViewerProps) {
