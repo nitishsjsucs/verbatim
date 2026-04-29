@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Upload, X, Loader2, CheckCircle2, FileText, Pencil } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Upload, X, Loader2, CheckCircle2, FileText, Pencil, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Markdown } from "@/components/ui/markdown"
@@ -22,8 +22,11 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
     const [open, setOpen] = useState(false)
     const [file, setFile] = useState<File | null>(null)
     const [uploading, setUploading] = useState(false)
+    const [confirming, setConfirming] = useState(false)
     const [force, setForce] = useState(false)
     const [result, setResult] = useState<IngestResponse | null>(null)
+    const [stageLabel, setStageLabel] = useState("")
+    const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null)
     const [customName, setCustomName] = useState("")
     const [editingName, setEditingName] = useState(false)
     const [circularTitle, setCircularTitle] = useState("")
@@ -65,10 +68,31 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         }
     }
 
-    const handleUpload = async () => {
+    const handleConfirm = () => {
         if (!file) return
+        setConfirming(true)
+    }
 
+    const handleAcceptAndUpload = async () => {
+        if (!file) return
+        setConfirming(false)
         setUploading(true)
+
+        // Staged progress labels
+        const stages = [
+            "Uploading PDF to server",
+            "Parsing document structure",
+            "Chunking into nodes",
+            "Building search index",
+            "Saving document metadata",
+            "Finalizing ingestion",
+        ]
+        let idx = 0
+        setStageLabel(stages[0])
+        stageTimer.current = setInterval(() => {
+            idx = Math.min(idx + 1, stages.length - 1)
+            setStageLabel(stages[idx])
+        }, 3000)
 
         try {
             const response = await ingestDocument(file, force)
@@ -93,7 +117,9 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Upload failed")
         } finally {
+            if (stageTimer.current) { clearInterval(stageTimer.current); stageTimer.current = null }
             setUploading(false)
+            setStageLabel("")
         }
     }
 
@@ -102,6 +128,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
         setFile(null)
         setResult(null)
         setForce(false)
+        setConfirming(false)
         setCustomName("")
         setEditingName(false)
         setCircularTitle("")
@@ -118,7 +145,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
     }
 
     return (
-        <Dialog open={open} onOpenChange={(v) => { if (!v && !uploading) { handleClose(); } else if (v) { setOpen(true) } }}>
+        <Dialog open={open} onOpenChange={(v) => { if (!v && !uploading && !confirming) { handleClose(); } else if (v) { setOpen(true) } }}>
             <DialogTrigger asChild>
                 {children || (
                     <Button variant="outline" size="sm" className="h-7 gap-1.5 px-2.5 text-xs">
@@ -127,7 +154,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-hidden flex flex-col" showCloseButton={!uploading} onInteractOutside={(e) => { if (uploading) e.preventDefault() }} onEscapeKeyDown={(e) => { if (uploading) e.preventDefault() }}>
+            <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-hidden flex flex-col" showCloseButton={!uploading && !confirming} onInteractOutside={(e) => { if (uploading) e.preventDefault() }} onEscapeKeyDown={(e) => { if (uploading) e.preventDefault() }}>
                 <DialogHeader>
                     <DialogTitle>{result ? "Ingestion Complete" : "Upload Document"}</DialogTitle>
                     <DialogDescription>
@@ -192,6 +219,28 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             </Button>
                         </div>
                     </div>
+                ) : confirming ? (
+                    /* Confirmation step before ingestion */
+                    <div className="mt-4 space-y-5">
+                        <div className="flex items-center gap-4">
+                            <div className="h-14 w-14 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <AlertTriangle className="h-7 w-7 text-amber-500" />
+                            </div>
+                            <div>
+                                <h2 className="text-xs font-semibold text-foreground">Confirm Ingestion</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">{customName || file?.name}</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-foreground/80">
+                            This will run the full ingestion pipeline: parsing, chunking, and indexing.
+                            The dialog will become blocking and cannot be dismissed while the pipeline is running.
+                            This may take upwards of 10 minutes.
+                        </p>
+                        <div className="flex gap-2">
+                            <Button variant="outline" className="flex-1" onClick={() => setConfirming(false)}>Back</Button>
+                            <Button className="flex-1" onClick={handleAcceptAndUpload}>Accept &amp; Ingest</Button>
+                        </div>
+                    </div>
                 ) : uploading ? (
                     /* Uploading state — progress bar matching Extract Actionable style */
                     <div className="mt-4 space-y-5">
@@ -205,15 +254,16 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
                             </div>
                         </div>
 
-                        <p className="text-xs text-foreground/80 font-medium">Parsing, chunking, and indexing document...</p>
+                        <p className="text-xs text-foreground/80 font-medium">{stageLabel || "Parsing, chunking, and indexing document..."}</p>
 
                         {/* Indeterminate progress bar */}
                         <div className="space-y-1.5">
-                            <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden">
-                                <div className="h-full bg-purple-500/70 rounded-full animate-pulse w-full" />
+                            <div className="w-full h-3 bg-muted/50 rounded-full overflow-hidden relative">
+                                <div className="absolute inset-y-0 left-0 w-1/3 bg-purple-500/70 rounded-full" style={{animation: 'indeterminate 1.4s ease-in-out infinite'}} />
+                                <style>{`@keyframes indeterminate { 0% { transform: translateX(-100%); } 50% { transform: translateX(150%); } 100% { transform: translateX(350%); } }`}</style>
                             </div>
                             <div className="text-xs text-muted-foreground text-center">
-                                This may take upwards of 10 minutes depending on document size.
+                                Please wait. Do not close this window or navigate away.
                             </div>
                         </div>
                     </div>
@@ -325,7 +375,7 @@ export function UploadModal({ children }: { children?: React.ReactNode }) {
 
                                     <Button
                                         className="w-full"
-                                        onClick={handleUpload}
+                                        onClick={handleConfirm}
                                         disabled={uploading}
                                     >
                                         Upload & Process

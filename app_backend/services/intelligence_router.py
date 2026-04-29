@@ -171,9 +171,13 @@ def health():
 def list_documents():
     """List all documents with an AIS-run indicator."""
     docs = _ts().list_documents_summary()
-    run_ids = {s["doc_id"] for s in _runs().list_summaries()}
+    summaries = _runs().list_summaries()
+    run_ids = {s["doc_id"] for s in summaries}
+    actionable_counts = {s["doc_id"]: s.get("actionable_count", 0) for s in summaries}
     for d in docs:
-        d["has_intel_run"] = d.get("id") in run_ids
+        doc_id = d.get("id")
+        d["has_intel_run"] = doc_id in run_ids
+        d["has_actionables"] = actionable_counts.get(doc_id, 0) > 0
     return docs
 
 

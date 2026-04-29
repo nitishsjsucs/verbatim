@@ -93,17 +93,38 @@ class TreeStore:
         
         docs = []
         for doc in cursor:
+            node_count = doc.get("node_count") or 0
+            # Backfill: if node_count is missing/zero, compute from structure
+            # and persist so future reads are fast.
+            if not node_count:
+                node_count = self._compute_and_backfill_node_count(
+                    doc.get("_id", doc.get("doc_id", ""))
+                )
             docs.append({
                 "id": doc.get("_id", doc.get("doc_id", "")),
                 "name": doc.get("doc_name", ""),
                 "pages": doc.get("total_pages", 0),
-                "nodes": doc.get("node_count", 0),
+                "nodes": node_count,
                 "description": doc.get("doc_description", ""),
                 "ingested_at": doc.get("ingested_at", ""),
             })
         
         logger.info("Fetched summaries for %d documents in single batch query", len(docs))
         return docs
+
+    def _compute_and_backfill_node_count(self, doc_id: str) -> int:
+        """Load a tree, compute its node_count, persist it, and return the value."""
+        tree = self.load(doc_id)
+        if not tree:
+            return 0
+        nc = tree.node_count
+        if nc > 0:
+            self._collection.update_one(
+                {"_id": doc_id},
+                {"$set": {"node_count": nc}},
+            )
+            logger.info("Backfilled node_count=%d for %s", nc, doc_id)
+        return nc
 
     def delete(self, doc_id: str) -> bool:
         """Delete a tree."""

@@ -34,6 +34,7 @@ import {
     PipelineActionDialog,
     usePipelineAction,
 } from "@/components/intelligence/pipeline-action-dialog";
+import { PdfViewerPanel } from "@/components/intelligence/pdf-viewer-panel";
 import {
     API_BASE_URL,
 } from "@/lib/api";
@@ -141,6 +142,7 @@ export default function IntelligenceDocPage({
     const [busy, setBusy] = useState(false);
     const [importModalOpen, setImportModalOpen] = useState(false);
     const [editTeams, setEditTeams] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
     // Pipeline dialogs (custom blocking pop-ups for ALL ML/AI pipeline calls)
     const extractDialog = usePipelineAction({
@@ -243,7 +245,7 @@ export default function IntelligenceDocPage({
         const m = (source || "").match(/p\.?\s*(\d+)/i);
         const page = m ? Math.max(1, parseInt(m[1], 10)) : 1;
         const url = `${API_BASE_URL}/documents/${encodeURIComponent(decodedId)}/raw#page=${page}`;
-        window.open(url, "_blank", "noopener,noreferrer");
+        setPdfUrl(url);
     }, [decodedId]);
 
     const patchItem = async (itemId: string, patch: Partial<EnrichedActionable>) => {
@@ -319,6 +321,7 @@ export default function IntelligenceDocPage({
         return (
             <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
                 <PipelineActionDialog {...extractDialog} />
+                <PdfViewerPanel url={pdfUrl} onClose={() => setPdfUrl(null)} />
                 <Link
                     href="/intelligence"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -361,6 +364,7 @@ export default function IntelligenceDocPage({
             {/* Custom blocking pipeline dialogs */}
             <PipelineActionDialog {...extractDialog} />
             <PipelineActionDialog {...reExtractDialog} />
+            <PdfViewerPanel url={pdfUrl} onClose={() => setPdfUrl(null)} />
             <ImportCsvModal
                 section="Actionables"
                 open={importModalOpen}

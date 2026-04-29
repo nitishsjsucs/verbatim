@@ -420,6 +420,7 @@ class DocumentTree:
             "doc_name": self.doc_name,
             "doc_description": self.doc_description,
             "total_pages": self.total_pages,
+            "node_count": self.node_count,
             "structure": [self._node_to_dict(n) for n in self.structure],
         }
 
