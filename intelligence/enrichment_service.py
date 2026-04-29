@@ -374,26 +374,17 @@ class IntelligenceEnricher:
         llm_deadline = (row.get("deadline") or "").strip()
         if llm_deadline and llm_deadline.lower() != "not specified" and _ISO_DATE_PAT.fullmatch(llm_deadline):
             iso = llm_deadline
-            reasoning_default = f"Explicit deadline in source: {iso}."
         elif heur_iso:
             iso = heur_iso
-            reasoning_default = f"Extracted from source text ({heur_phrase or heur_iso})."
         elif heur_phrase:
             iso = ""
-            reasoning_default = f"Phrase '{heur_phrase}' detected; no explicit ISO date."
         else:
             iso = ""
-            reasoning_default = ""
         phrase = (row.get("deadline_phrase") or heur_phrase or "").strip()
 
         # Section 7: fallback to document-level execution/implementation date
-        used_doc_fallback = False
         if not iso and doc_effective_date and _ISO_DATE_PAT.fullmatch(doc_effective_date):
             iso = doc_effective_date
-            used_doc_fallback = True
-            reasoning_default = (
-                f"No specific deadline in source; defaulted to document effective date {iso}."
-            )
 
         priority = _norm_priority(
             row.get("priority", ""),
@@ -407,13 +398,6 @@ class IntelligenceEnricher:
             description = description[:600].rstrip() + "…"
 
         bucket = _timeline_bucket_from_deadline(iso, bucket_hint)
-
-        # Prefer LLM-supplied reasoning; otherwise use derived default.
-        reasoning = (row.get("deadline_reasoning") or "").strip() or reasoning_default
-        if used_doc_fallback and "effective date" not in reasoning.lower():
-            reasoning = (
-                f"No specific deadline in source; defaulted to document effective date {iso}."
-            )
 
         return EnrichedActionable(
             id=f"A-{uuid.uuid4().hex[:8].upper()}",
@@ -429,7 +413,7 @@ class IntelligenceEnricher:
             timeline_bucket=bucket,
             assigned_teams=[],
             assigned_team_names=[],
-            deadline_reasoning=reasoning,
+            team_specific_tasks=[],
             notes="",
         )
 
@@ -453,16 +437,8 @@ class IntelligenceEnricher:
             priority, risk = "Medium", 3
 
         iso = heur_iso
-        reasoning = ""
-        if iso:
-            reasoning = f"Extracted from source text ({heur_phrase or iso})."
-        elif heur_phrase:
-            reasoning = f"Phrase '{heur_phrase}' detected; no explicit ISO date."
         if not iso and doc_effective_date and _ISO_DATE_PAT.fullmatch(doc_effective_date):
             iso = doc_effective_date
-            reasoning = (
-                f"No specific deadline in source; defaulted to document effective date {iso}."
-            )
 
         bucket = _timeline_bucket_from_deadline(iso, bucket_hint)
         description = (stmt or raw_text or "").strip()[:500]
@@ -478,5 +454,6 @@ class IntelligenceEnricher:
             risk_score=risk,
             category=DEFAULT_CATEGORY,
             timeline_bucket=bucket,
-            deadline_reasoning=reasoning,
+            team_specific_tasks=[],
+            notes="",
         )

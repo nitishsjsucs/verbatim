@@ -139,11 +139,17 @@ class CategoryPatch(BaseModel):
     description: Optional[str] = None
 
 
+class TeamTaskAssignmentIn(BaseModel):
+    team_id: str
+    team_name: str
+    team_specific_task: str = ""
+
+
 class ActionablePatch(BaseModel):
     assigned_teams: Optional[list[str]] = None
+    team_specific_tasks: Optional[list[TeamTaskAssignmentIn]] = None
     priority: Optional[str] = None
     deadline: Optional[str] = None
-    deadline_reasoning: Optional[str] = None
     risk_score: Optional[int] = None
     category: Optional[str] = None
     notes: Optional[str] = None
@@ -464,7 +470,7 @@ async def import_actionables(
     Add-Only mode is not supported for actionables (IDs are system-generated; use extract).
 
     Required columns: id, description, priority, deadline, risk_score, category.
-    Optional: deadline_reasoning, notes.
+    Optional: team_specific_tasks, notes.
     Full validation before any write.
     """
     if not (file.filename or "").lower().endswith(".csv"):
@@ -511,11 +517,29 @@ async def import_actionables(
             continue
 
         patch: dict = {}
-        for field in ("description", "priority", "deadline", "deadline_reasoning", "category", "notes"):
-            if row.get(field):
-                patch[field] = row[field]
+        for fld in ("description", "priority", "deadline", "category", "notes"):
+            if row.get(fld):
+                patch[fld] = row[fld]
         if row.get("risk_score"):
             patch["risk_score"] = int(row["risk_score"])
+        # Parse team_specific_tasks from CSV if present (format: "team_name:task; team_name:task")
+        if row.get("team_specific_tasks"):
+            try:
+                import json as _json
+                parsed = _json.loads(row["team_specific_tasks"])
+                if isinstance(parsed, list):
+                    patch["team_specific_tasks"] = parsed
+            except (ValueError, TypeError):
+                # Fallback: parse "TeamName: Task; TeamName: Task" format
+                tasks_raw = row["team_specific_tasks"]
+                task_list = []
+                for pair in tasks_raw.split(";"):
+                    pair = pair.strip()
+                    if ":" in pair:
+                        tname, ttask = pair.split(":", 1)
+                        task_list.append({"team_id": "", "team_name": tname.strip(), "team_specific_task": ttask.strip()})
+                if task_list:
+                    patch["team_specific_tasks"] = task_list
         if not patch:
             skipped += 1
             skip_reasons.append(f"ID '{aid}' — no updatable fields in row")
@@ -661,10 +685,33 @@ def patch_actionable(doc_id: str, item_id: str, body: ActionablePatch):
     if not run:
         raise HTTPException(404, "No intelligence run for this document")
 
-    # denormalize team names if assigned_teams changed
+    # denormalize team names and sync team_specific_tasks if assigned_teams changed
     if "assigned_teams" in patch:
         team_map = {t.team_id: t.name for t in _teams().list()}
         patch["assigned_team_names"] = [team_map[t] for t in patch["assigned_teams"] if t in team_map]
+        # If team_specific_tasks not explicitly provided, build from assigned_teams
+        if "team_specific_tasks" not in patch:
+            # Preserve existing tasks if available, add empty for new teams
+            existing_tasks_by_id = {}
+            existing_run = _runs().get(doc_id)
+            if existing_run:
+                for ea in existing_run.actionables:
+                    if ea.id == item_id:
+                        for tsa in (ea.team_specific_tasks or []):
+                            tid = tsa.team_id if hasattr(tsa, 'team_id') else tsa.get('team_id', '')
+                            task = tsa.team_specific_task if hasattr(tsa, 'team_specific_task') else tsa.get('team_specific_task', '')
+                            existing_tasks_by_id[tid] = task
+                        break
+            patch["team_specific_tasks"] = [
+                {"team_id": tid, "team_name": team_map.get(tid, ""), "team_specific_task": existing_tasks_by_id.get(tid, "")}
+                for tid in patch["assigned_teams"] if tid in team_map
+            ]
+    # Serialize team_specific_tasks if provided as Pydantic models
+    if "team_specific_tasks" in patch and patch["team_specific_tasks"] is not None:
+        patch["team_specific_tasks"] = [
+            t.model_dump() if hasattr(t, 'model_dump') else (t.dict() if hasattr(t, 'dict') else t)
+            for t in patch["team_specific_tasks"]
+        ]
 
     updated = _runs().update_actionable(doc_id, item_id, patch)
     if not updated:

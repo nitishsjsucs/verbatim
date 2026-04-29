@@ -20,7 +20,7 @@ from typing import Optional
 from utils.llm_client import LLMClient
 from config.settings import get_settings
 
-from intelligence.models import EnrichedActionable, IntelTeam
+from intelligence.models import EnrichedActionable, IntelTeam, TeamTaskAssignment
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +43,19 @@ You will receive:
   * TEAMS: a list of teams with id, name, function description, department.
   * ACTIONABLES: a list of compliance actionables with id, description, category, risk_score, priority.
 
-For EACH actionable, assign the MOST RELEVANT subset of teams (1–3 team ids, ideally 1–2). Only assign a team if its function is a clear semantic match to the actionable. If no team fits, return an empty array.
+For EACH actionable:
+1. Assign the MOST RELEVANT subset of teams (1–3 team ids, ideally 1–2). Only assign a team if its function is a clear semantic match to the actionable. If no team fits, return an empty array.
+2. For EACH assigned team, provide a team_specific_task: a concise description of what that specific team needs to do for this actionable. The task should be tailored to the team's function.
 
 Return STRICT JSON:
 {
   "assignments": [
-    {"actionable_id": "<id>", "team_ids": ["<team_id>", ...]}
+    {
+      "actionable_id": "<id>",
+      "team_tasks": [
+        {"team_id": "<team_id>", "task": "<what this team specifically needs to do>"}
+      ]
+    }
   ]
 }
 
@@ -73,6 +80,7 @@ class IntelligenceAssigner:
             for a in actionables:
                 a.assigned_teams = []
                 a.assigned_team_names = []
+                a.team_specific_tasks = []
             return actionables
 
         for start in range(0, len(actionables), self.BATCH_SIZE):
@@ -85,9 +93,19 @@ class IntelligenceAssigner:
 
             team_by_id = {t.team_id: t for t in teams}
             for a in batch:
-                team_ids = [tid for tid in mapping.get(a.id, []) if tid in team_by_id]
-                a.assigned_teams = team_ids
-                a.assigned_team_names = [team_by_id[tid].name for tid in team_ids]
+                raw_tasks = mapping.get(a.id, [])
+                # raw_tasks is a list of {"team_id": ..., "task": ...}
+                valid_tasks = [t for t in raw_tasks if t.get("team_id") in team_by_id]
+                a.assigned_teams = [t["team_id"] for t in valid_tasks]
+                a.assigned_team_names = [team_by_id[t["team_id"]].name for t in valid_tasks]
+                a.team_specific_tasks = [
+                    TeamTaskAssignment(
+                        team_id=t["team_id"],
+                        team_name=team_by_id[t["team_id"]].name,
+                        team_specific_task=t.get("task", ""),
+                    )
+                    for t in valid_tasks
+                ]
 
         return actionables
 
@@ -96,7 +114,7 @@ class IntelligenceAssigner:
         self,
         actionables: list[EnrichedActionable],
         teams: list[IntelTeam],
-    ) -> dict[str, list[str]]:
+    ) -> dict[str, list[dict]]:
         teams_payload = [
             {
                 "id": t.team_id,
@@ -121,7 +139,7 @@ class IntelligenceAssigner:
             f"{json.dumps(teams_payload, indent=2)}\n\n"
             "ACTIONABLES:\n"
             f"{json.dumps(acts_payload, indent=2)}\n\n"
-            "Assign relevant team ids per actionable."
+            "Assign relevant teams and team-specific tasks per actionable."
         )
         result = self._llm.chat_json(
             messages=[
@@ -132,22 +150,27 @@ class IntelligenceAssigner:
             max_tokens=self._settings.llm.max_tokens_long,
             reasoning_effort="low",
         )
-        mapping: dict[str, list[str]] = {}
+        mapping: dict[str, list[dict]] = {}
         rows = result.get("assignments", []) if isinstance(result, dict) else []
         for row in rows:
             aid = str(row.get("actionable_id", "")).strip()
-            ids = [str(x).strip() for x in (row.get("team_ids") or []) if str(x).strip()]
+            team_tasks = row.get("team_tasks") or []
+            parsed = [
+                {"team_id": str(tt.get("team_id", "")).strip(), "task": str(tt.get("task", "")).strip()}
+                for tt in team_tasks
+                if str(tt.get("team_id", "")).strip()
+            ]
             if aid:
-                mapping[aid] = ids
+                mapping[aid] = parsed
         return mapping
 
     def _heuristic_assign(
         self,
         actionables: list[EnrichedActionable],
         teams: list[IntelTeam],
-    ) -> dict[str, list[str]]:
+    ) -> dict[str, list[dict]]:
         team_toks = [(t, _tokens(t.function + " " + t.name + " " + (t.department or ""))) for t in teams]
-        out: dict[str, list[str]] = {}
+        out: dict[str, list[dict]] = {}
         for a in actionables:
             atoks = _tokens(a.description + " " + a.category)
             ranked: list[tuple[int, IntelTeam]] = []
@@ -156,5 +179,8 @@ class IntelligenceAssigner:
                 if overlap >= 2:
                     ranked.append((overlap, t))
             ranked.sort(key=lambda x: -x[0])
-            out[a.id] = [t.team_id for _, t in ranked[:2]]
+            out[a.id] = [
+                {"team_id": t.team_id, "task": f"Handle {a.category.lower()} aspects related to: {a.description[:100]}"}
+                for _, t in ranked[:2]
+            ]
         return out

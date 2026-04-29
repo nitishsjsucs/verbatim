@@ -57,12 +57,10 @@ const PRIORITY_STYLES: Record<IntelPriority, string> = {
     Low: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
 };
 
-const RISK_STYLES = (score: number) => {
-    if (score >= 5) return "bg-red-600 text-white";
-    if (score >= 4) return "bg-red-500 text-white";
-    if (score >= 3) return "bg-amber-500 text-white";
-    if (score >= 2) return "bg-yellow-500 text-black";
-    return "bg-emerald-500 text-white";
+const RISK_STAR_COLOR = (score: number) => {
+    if (score >= 4) return "text-red-500";
+    if (score >= 2) return "text-yellow-500";
+    return "text-green-500";
 };
 
 const CSV_FIELDS: Array<{ key: string; label: string }> = [
@@ -74,9 +72,9 @@ const CSV_FIELDS: Array<{ key: string; label: string }> = [
     { key: "risk_score", label: "risk_score" },
     { key: "deadline", label: "deadline" },
     { key: "deadline_phrase", label: "deadline_phrase" },
-    { key: "deadline_reasoning", label: "deadline_reasoning" },
     { key: "timeline_bucket", label: "timeline_bucket" },
     { key: "assigned_team_names", label: "assigned_team_names" },
+    { key: "team_specific_tasks", label: "team_specific_tasks" },
     { key: "notes", label: "notes" },
 ];
 
@@ -87,10 +85,18 @@ function csvEscapeLocal(v: unknown): string {
     return s;
 }
 
+function serializeCsvField(a: EnrichedActionable, key: string): unknown {
+    if (key === "team_specific_tasks") {
+        const tasks = a.team_specific_tasks || [];
+        return tasks.map((t) => `${t.team_name}: ${t.team_specific_task}`).join("; ");
+    }
+    return (a as unknown as Record<string, unknown>)[key];
+}
+
 function downloadCsv(actionables: EnrichedActionable[], docName: string) {
     const header = CSV_FIELDS.map((f) => csvEscapeLocal(f.label)).join(",");
     const rows = actionables.map((a) =>
-        CSV_FIELDS.map((f) => csvEscapeLocal((a as unknown as Record<string, unknown>)[f.key])).join(","),
+        CSV_FIELDS.map((f) => csvEscapeLocal(serializeCsvField(a, f.key))).join(","),
     );
     const csv = [header, ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -106,9 +112,9 @@ function downloadCsv(actionables: EnrichedActionable[], docName: string) {
 }
 
 function downloadActionablesTemplate() {
-    const headers = ["id", "description", "priority", "deadline", "risk_score", "category", "deadline_reasoning", "notes"];
+    const headers = ["id", "description", "priority", "deadline", "risk_score", "category", "team_specific_tasks", "notes"];
     const example = [
-        ["ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "2025-06-30", "4", "Compliance & Regulatory Implementation", "Explicit deadline from circular", ""],
+        ["ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "2025-06-30", "4", "Compliance & Regulatory Implementation", "Compliance: Verify KYC norms; Operations: Update branch processes", ""],
     ];
     const csv = buildCsv(headers, example);
     triggerCsvDownload(csv, "actionables_import_template.csv");
@@ -572,16 +578,18 @@ function Select({
     );
 }
 
-// Multi-select team picker — purely manual; dispatches an `assigned_teams`
-// patch only when the user changes the selection. Section 5 of the spec.
+// Multi-select team picker with per-team task editing.
+// Each selected team gets an input for "Task for this team".
 function TeamMultiSelect({
     teams,
     selected,
+    teamTasks,
     onChange,
 }: {
     teams: IntelRunPayload["team_snapshot"];
     selected: string[];
-    onChange: (next: string[]) => void;
+    teamTasks: { team_id: string; team_name: string; team_specific_task: string }[];
+    onChange: (next: string[], tasks: { team_id: string; team_name: string; team_specific_task: string }[]) => void;
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -595,12 +603,27 @@ function TeamMultiSelect({
         return () => document.removeEventListener("mousedown", handler);
     }, [open]);
 
+    const taskMap = new Map(teamTasks.map((t) => [t.team_id, t.team_specific_task]));
+
     const toggle = (tid: string) => {
+        const teamObj = teams.find((t) => t.team_id === tid);
+        const tname = teamObj?.name || "";
         if (selected.includes(tid)) {
-            onChange(selected.filter((x) => x !== tid));
+            const nextSelected = selected.filter((x) => x !== tid);
+            const nextTasks = teamTasks.filter((t) => t.team_id !== tid);
+            onChange(nextSelected, nextTasks);
         } else {
-            onChange([...selected, tid]);
+            const nextSelected = [...selected, tid];
+            const nextTasks = [...teamTasks, { team_id: tid, team_name: tname, team_specific_task: "" }];
+            onChange(nextSelected, nextTasks);
         }
+    };
+
+    const updateTask = (tid: string, task: string) => {
+        const nextTasks = teamTasks.map((t) =>
+            t.team_id === tid ? { ...t, team_specific_task: task } : t,
+        );
+        onChange(selected, nextTasks);
     };
 
     const selectedNames = teams
@@ -624,7 +647,7 @@ function TeamMultiSelect({
                 <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
             </button>
             {open && (
-                <div className="absolute z-20 mt-1 w-64 max-h-64 overflow-y-auto rounded-md border border-border bg-popover shadow-md p-1">
+                <div className="absolute z-20 mt-1 w-80 max-h-80 overflow-y-auto rounded-md border border-border bg-popover shadow-md p-1">
                     {teams.length === 0 ? (
                         <div className="px-2 py-2 text-[11px] text-muted-foreground">
                             No teams defined. Add teams under the Teams tab.
@@ -633,35 +656,79 @@ function TeamMultiSelect({
                         teams.map((t) => {
                             const on = selected.includes(t.team_id);
                             return (
-                                <button
-                                    key={t.team_id}
-                                    type="button"
-                                    onClick={() => toggle(t.team_id)}
-                                    className={cn(
-                                        "w-full flex items-center gap-2 rounded px-2 py-1.5 text-[11px] text-left",
-                                        on ? "bg-primary/10 text-primary" : "hover:bg-accent",
-                                    )}
-                                >
-                                    <input
-                                        readOnly
-                                        type="checkbox"
-                                        checked={on}
-                                        className="pointer-events-none accent-primary"
-                                    />
-                                    <span className="truncate">
-                                        {t.name}
-                                        {t.department && (
-                                            <span className="ml-1 text-muted-foreground">
-                                                · {t.department}
-                                            </span>
+                                <div key={t.team_id} className="space-y-1 mb-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggle(t.team_id)}
+                                        className={cn(
+                                            "w-full flex items-center gap-2 rounded px-2 py-1.5 text-[11px] text-left",
+                                            on ? "bg-primary/10 text-primary" : "hover:bg-accent",
                                         )}
-                                    </span>
-                                </button>
+                                    >
+                                        <input
+                                            readOnly
+                                            type="checkbox"
+                                            checked={on}
+                                            className="pointer-events-none accent-primary"
+                                        />
+                                        <span className="truncate">
+                                            {t.name}
+                                            {t.department && (
+                                                <span className="ml-1 text-muted-foreground">
+                                                    · {t.department}
+                                                </span>
+                                            )}
+                                        </span>
+                                    </button>
+                                    {on && (
+                                        <input
+                                            type="text"
+                                            value={taskMap.get(t.team_id) || ""}
+                                            onChange={(e) => updateTask(t.team_id, e.target.value)}
+                                            placeholder={`Task for ${t.name}...`}
+                                            className="w-full ml-6 mr-2 rounded border border-border bg-background px-2 py-1 text-[10px]"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    )}
+                                </div>
                             );
                         })
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+// Star-based risk rating component
+function RiskStars({
+    score,
+    onRate,
+}: {
+    score: number;
+    onRate: (s: number) => void;
+}) {
+    const [hover, setHover] = useState(0);
+    const colorClass = RISK_STAR_COLOR(hover || score);
+
+    return (
+        <div className="flex items-center gap-0.5" onMouseLeave={() => setHover(0)}>
+            {[1, 2, 3, 4, 5].map((s) => (
+                <button
+                    key={s}
+                    type="button"
+                    onClick={() => onRate(s)}
+                    onMouseEnter={() => setHover(s)}
+                    className={cn(
+                        "h-4 w-4 transition-colors",
+                        s <= (hover || score) ? colorClass : "text-muted-foreground/30",
+                    )}
+                >
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-full w-full">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                </button>
+            ))}
         </div>
     );
 }
@@ -692,12 +759,7 @@ function ActionableRow({
     const commitDeadline = (next: string) => {
         const value = next || "Not Specified";
         if (value === a.deadline) return;
-        onPatch({
-            deadline: value,
-            deadline_reasoning: next
-                ? "Manually set by user."
-                : "Cleared by user.",
-        });
+        onPatch({ deadline: value });
     };
 
     return (
@@ -720,7 +782,13 @@ function ActionableRow({
                         <TeamMultiSelect
                             teams={teams}
                             selected={a.assigned_teams}
-                            onChange={(next) => onPatch({ assigned_teams: next })}
+                            teamTasks={a.team_specific_tasks || []}
+                            onChange={(nextTeams, nextTasks) =>
+                                onPatch({
+                                    assigned_teams: nextTeams,
+                                    team_specific_tasks: nextTasks,
+                                })
+                            }
                         />
                     ) : (
                         <div className="flex flex-wrap gap-1">
@@ -763,15 +831,7 @@ function ActionableRow({
                     />
                     {a.deadline_phrase && (
                         <div className="text-[10px] text-muted-foreground italic truncate" title={a.deadline_phrase}>
-                            “{a.deadline_phrase}”
-                        </div>
-                    )}
-                    {a.deadline_reasoning && (
-                        <div
-                            className="text-[10px] text-muted-foreground line-clamp-2"
-                            title={a.deadline_reasoning}
-                        >
-                            {a.deadline_reasoning}
+                            &ldquo;{a.deadline_phrase}&rdquo;
                         </div>
                     )}
                 </div>
@@ -786,16 +846,10 @@ function ActionableRow({
                         </option>
                     ))}
                 </select>
-                <div className="flex items-center gap-1">
-                    <span
-                        className={cn(
-                            "inline-flex items-center justify-center h-5 min-w-5 rounded text-[10px] font-bold px-1.5",
-                            RISK_STYLES(a.risk_score),
-                        )}
-                    >
-                        {a.risk_score}/5
-                    </span>
-                </div>
+                <RiskStars
+                    score={a.risk_score}
+                    onRate={(s) => onPatch({ risk_score: s })}
+                />
             </div>
             {expanded && (
                 <div className="px-4 pb-3 text-[11px] space-y-2 bg-muted/10">
@@ -805,19 +859,24 @@ function ActionableRow({
                             <p className="italic border-l-2 border-border pl-2">{a.original_text}</p>
                         </div>
                     )}
-                    <div>
-                        <div className="text-muted-foreground mb-1">Deadline reasoning</div>
-                        <textarea
-                            defaultValue={a.deadline_reasoning || ""}
-                            onBlur={(e) => {
-                                if (e.target.value !== (a.deadline_reasoning || "")) {
-                                    onPatch({ deadline_reasoning: e.target.value });
-                                }
-                            }}
-                            className="w-full h-14 rounded border border-border bg-background p-2 text-[11px]"
-                            placeholder="Explain how this deadline was derived..."
-                        />
-                    </div>
+                    {(a.team_specific_tasks || []).length > 0 && (
+                        <div>
+                            <div className="text-muted-foreground mb-1">Team-Specific Tasks</div>
+                            <div className="space-y-1.5">
+                                {a.team_specific_tasks.map((t) => (
+                                    <div
+                                        key={t.team_id}
+                                        className="flex items-start gap-2 rounded border border-border p-2 bg-background"
+                                    >
+                                        <span className="shrink-0 rounded bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 font-medium">
+                                            {t.team_name}
+                                        </span>
+                                        <span className="text-foreground">{t.team_specific_task || "No task defined"}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <div className="text-muted-foreground mb-1">Notes</div>
                         <textarea

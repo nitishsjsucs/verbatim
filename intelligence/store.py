@@ -196,9 +196,9 @@ class IntelRunStore:
         allowed = {
             "assigned_teams",
             "assigned_team_names",
+            "team_specific_tasks",
             "priority",
             "deadline",
-            "deadline_reasoning",
             "risk_score",
             "category",
             "notes",

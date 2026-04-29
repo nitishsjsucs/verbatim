@@ -95,6 +95,26 @@ class IntelTeam:
 
 
 @dataclass
+class TeamTaskAssignment:
+    """Maps a team to its specific task for a given actionable."""
+
+    team_id: str
+    team_name: str
+    team_specific_task: str = ""
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @staticmethod
+    def from_dict(d: dict) -> "TeamTaskAssignment":
+        return TeamTaskAssignment(
+            team_id=d.get("team_id", ""),
+            team_name=d.get("team_name", ""),
+            team_specific_task=d.get("team_specific_task", ""),
+        )
+
+
+@dataclass
 class EnrichedActionable:
     """A single enriched actionable produced by the AIS pipeline."""
 
@@ -111,14 +131,21 @@ class EnrichedActionable:
     timeline_bucket: TimelineBucket = "Not Specified"
     assigned_teams: list[str] = field(default_factory=list)  # team_ids
     assigned_team_names: list[str] = field(default_factory=list)  # denormalized
-    deadline_reasoning: str = ""  # how the deadline was derived (or fallback notice)
+    team_specific_tasks: list[TeamTaskAssignment] = field(default_factory=list)  # per-team task mapping
     notes: str = ""
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d["team_specific_tasks"] = [t.to_dict() if isinstance(t, TeamTaskAssignment) else t for t in (self.team_specific_tasks or [])]
+        return d
 
     @staticmethod
     def from_dict(d: dict) -> "EnrichedActionable":
+        raw_tasks = d.get("team_specific_tasks", []) or []
+        tasks = [
+            TeamTaskAssignment.from_dict(t) if isinstance(t, dict) else t
+            for t in raw_tasks
+        ]
         return EnrichedActionable(
             id=d.get("id") or f"A-{uuid.uuid4().hex[:8].upper()}",
             description=d.get("description", ""),
@@ -133,7 +160,7 @@ class EnrichedActionable:
             timeline_bucket=d.get("timeline_bucket", "Not Specified"),
             assigned_teams=list(d.get("assigned_teams", []) or []),
             assigned_team_names=list(d.get("assigned_team_names", []) or []),
-            deadline_reasoning=d.get("deadline_reasoning", "") or "",
+            team_specific_tasks=tasks,
             notes=d.get("notes", ""),
         )
 

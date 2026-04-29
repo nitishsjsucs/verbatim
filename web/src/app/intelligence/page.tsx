@@ -34,14 +34,19 @@ import type { IntelDocumentMeta } from "@/lib/intelligence-types";
 
 function exportDocumentsCsv(docs: IntelDocumentMeta[]) {
     const rows = docs.map((d) => [
+        d.id,
         d.name,
+        d.description || "",
         String(d.pages),
         String(d.nodes),
         d.has_intel_run ? "Intelligence ready" : "Not extracted",
+        d.has_actionables ? "Yes" : "No",
         d.ingested_at || "",
-        d.id,
     ]);
-    const csv = buildCsv(["Document", "Pages", "Nodes", "Status", "Ingested At", "ID"], rows);
+    const csv = buildCsv(
+        ["ID", "Document", "Description", "Pages", "Nodes", "Intel Status", "Has Actionables", "Ingested At"],
+        rows,
+    );
     triggerCsvDownload(csv, `workspace_documents_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
@@ -76,12 +81,11 @@ export default function IntelligenceWorkspacePage() {
     }, [refresh]);
 
     const onExtract = async (docId: string, force = false) => {
-        if (force) {
-            const ok = window.confirm(
-                "Re-extracting will run the AI/ML enrichment + assignment pipeline. This may take some time and will overwrite the existing run. Do you want to proceed?",
-            );
-            if (!ok) return;
-        }
+        const message = force
+            ? "Re-extracting will run the AI/ML enrichment + assignment pipeline. This may take some time and will overwrite the existing run. Do you want to proceed?"
+            : "This will run the AI/ML enrichment + assignment pipeline on this document. This may take some time. Do you want to proceed?";
+        const ok = window.confirm(message);
+        if (!ok) return;
         setExtractingId(docId);
         try {
             const run = await extractIntelligence(docId, force);

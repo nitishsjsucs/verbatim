@@ -52,6 +52,12 @@ export interface IntelCategory {
     updated_at?: string;
 }
 
+export interface TeamTaskAssignment {
+    team_id: string;
+    team_name: string;
+    team_specific_task: string;
+}
+
 export interface EnrichedActionable {
     id: string;
     description: string;
@@ -66,7 +72,7 @@ export interface EnrichedActionable {
     timeline_bucket: IntelTimelineBucket;
     assigned_teams: string[]; // team_ids
     assigned_team_names: string[];
-    deadline_reasoning?: string;
+    team_specific_tasks: TeamTaskAssignment[]; // per-team task mapping
     notes?: string;
 }
 
