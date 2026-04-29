@@ -1,6 +1,7 @@
 print("LOADING BACKEND MAIN --------------------------------------------------")
 import sys
 import os
+import io
 import shutil
 import logging
 import uuid
@@ -509,37 +510,44 @@ def get_document_raw(doc_id: str):
 
     grid_out = fs.find_one({"filename": tree.doc_name})
 
-    if not grid_out:
-        # Fallback: try serving from local disk
-        settings = get_settings()
-        local_path = settings.storage.trees_dir.parent / "pdfs" / tree.doc_name
-        if local_path.exists():
-            safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
-            return FileResponse(
-                str(local_path),
+    safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
+    content_disposition = f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"
+
+    if grid_out:
+        try:
+            # Read into BytesIO to avoid Starlette's line-based threadpool iterator
+            # which triggers CorruptGridFile on mismatched chunk lengths.
+            buf = io.BytesIO(grid_out.read())
+            data = buf.getvalue()
+            return StreamingResponse(
+                io.BytesIO(data),
                 media_type="application/pdf",
                 headers={
-                    "Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}",
+                    "Content-Disposition": content_disposition,
+                    "Content-Length": str(len(data)),
                     **cache_headers,
                 },
             )
-        raise HTTPException(
-            status_code=404, detail=f"PDF file not found: {tree.doc_name}"
+        except Exception as gridfs_err:
+            logger.warning(
+                "GridFS read failed for %s (%s), falling back to disk",
+                tree.doc_name, gridfs_err,
+            )
+
+    # Fallback: try serving from local disk
+    settings = get_settings()
+    local_path = settings.storage.trees_dir.parent / "pdfs" / tree.doc_name
+    if local_path.exists():
+        return FileResponse(
+            str(local_path),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": content_disposition,
+                **cache_headers,
+            },
         )
-
-    safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
-    file_length = grid_out.length if hasattr(grid_out, "length") else None
-    resp_headers = {
-        "Content-Disposition": f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}",
-        **cache_headers,
-    }
-    if file_length:
-        resp_headers["Content-Length"] = str(file_length)
-
-    return StreamingResponse(
-        grid_out,
-        media_type="application/pdf",
-        headers=resp_headers,
+    raise HTTPException(
+        status_code=404, detail=f"PDF file not found: {tree.doc_name}"
     )
 
 

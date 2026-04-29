@@ -93,18 +93,19 @@ class IngestionPipeline:
 
         fs = get_fs()
 
-        # Check if file already exists in GridFS to avoid duplicates or use force
-        existing_file = fs.find_one({"filename": pdf_path.name})
-        if existing_file:
+        # Delete ALL existing GridFS entries for this filename to avoid orphaned/corrupt chunks
+        existing_ids = [gf._id for gf in fs.find({"filename": pdf_path.name})]
+        if existing_ids:
             if force:
-                logger.info("  Deleting existing PDF in GridFS: %s", pdf_path.name)
-                fs.delete(existing_file._id)
+                for fid in existing_ids:
+                    fs.delete(fid)
+                logger.info("  Deleted %d existing GridFS entry(s) for: %s", len(existing_ids), pdf_path.name)
             else:
-                logger.info("  PDF already in GridFS: %s", pdf_path.name)
+                logger.info("  PDF already in GridFS: %s (%d entry(s))", pdf_path.name, len(existing_ids))
 
         # We still need the file on disk temporarily for PyMuPDF processing
         # But we ensure it's stored in GridFS for persistence
-        if not existing_file or force:
+        if not existing_ids or force:
             with open(pdf_path, "rb") as f:
                 fs.put(f, filename=pdf_path.name)
             logger.info("  -> Uploaded to GridFS")
