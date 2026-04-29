@@ -31,6 +31,13 @@ import {
 } from "@/components/ui/card";
 import { ImportCsvModal } from "@/components/intelligence/import-csv-modal";
 import {
+    PipelineActionDialog,
+    usePipelineAction,
+} from "@/components/intelligence/pipeline-action-dialog";
+import {
+    API_BASE_URL,
+} from "@/lib/api";
+import {
     buildCsv,
     extractIntelligence,
     getIntelRun,
@@ -130,9 +137,38 @@ export default function IntelligenceDocPage({
 
     const [run, setRun] = useState<IntelRunPayload | null>(null);
     const [loading, setLoading] = useState(true);
+    const [noRun, setNoRun] = useState(false);
     const [busy, setBusy] = useState(false);
     const [importModalOpen, setImportModalOpen] = useState(false);
     const [editTeams, setEditTeams] = useState(false);
+
+    // Pipeline dialogs (custom blocking pop-ups for ALL ML/AI pipeline calls)
+    const extractDialog = usePipelineAction({
+        title: "Run extraction pipeline?",
+        description:
+            "This will run the AI/ML enrichment + assignment pipeline on this document. The dialog will stay open with a progress indicator and cannot be dismissed while the pipeline is running.",
+        confirmLabel: "Run pipeline",
+        stages: [
+            "Loading document tree",
+            "Extracting raw actionables",
+            "Enriching priority · deadline · risk · category",
+            "Assigning teams + generating team-specific tasks",
+            "Persisting intelligence run",
+        ],
+    });
+    const reExtractDialog = usePipelineAction({
+        title: "Re-run extraction pipeline?",
+        description:
+            "This will OVERWRITE the existing intelligence run. The dialog will stay open with a progress indicator and cannot be dismissed while the pipeline is running.",
+        confirmLabel: "Overwrite & re-run",
+        stages: [
+            "Loading document tree",
+            "Extracting raw actionables",
+            "Enriching priority · deadline · risk · category",
+            "Assigning teams + generating team-specific tasks",
+            "Persisting intelligence run",
+        ],
+    });
 
     // filters
     const [search, setSearch] = useState("");
@@ -144,27 +180,15 @@ export default function IntelligenceDocPage({
 
     const load = useCallback(async () => {
         setLoading(true);
+        setNoRun(false);
         try {
             const payload = await getIntelRun(decodedId);
             setRun(payload);
         } catch (e) {
             const msg = e instanceof Error ? e.message : "";
             if (msg.toLowerCase().includes("no intelligence run")) {
-                // First-time view: confirm before triggering AI extraction.
-                const ok = window.confirm(
-                    "No intelligence run exists yet for this document. Running extraction will invoke the AI/ML pipeline and may take some time. Do you want to proceed?",
-                );
-                if (!ok) {
-                    setLoading(false);
-                    return;
-                }
-                try {
-                    const payload = await extractIntelligence(decodedId);
-                    setRun(payload);
-                    toast.success("Intelligence extracted");
-                } catch (err) {
-                    toast.error(err instanceof Error ? err.message : "Extraction failed");
-                }
+                // Page renders normally with an empty-state CTA instead of blocking on a confirm dialog.
+                setNoRun(true);
             } else {
                 toast.error(msg || "Failed to load");
             }
@@ -172,6 +196,18 @@ export default function IntelligenceDocPage({
             setLoading(false);
         }
     }, [decodedId]);
+
+    const triggerInitialExtract = useCallback(async () => {
+        const result = await extractDialog.request(
+            () => extractIntelligence(decodedId),
+            { successMessage: (r) => `Extracted ${r.actionables.length} actionable(s).` },
+        );
+        if (result) {
+            setRun(result);
+            setNoRun(false);
+            toast.success(`Extracted ${result.actionables.length} actionables`);
+        }
+    }, [decodedId, extractDialog]);
 
     useEffect(() => {
         void load();
@@ -186,21 +222,29 @@ export default function IntelligenceDocPage({
     };
 
     const reExtract = async () => {
-        const ok = window.confirm(
-            "Re-extracting will run the AI/ML enrichment + assignment pipeline on this document. This may take some time and will overwrite the current run. Do you want to proceed?",
-        );
-        if (!ok) return;
         setBusy(true);
-        try {
-            const payload = await extractIntelligence(decodedId, true);
-            setRun(payload);
+        const result = await reExtractDialog.request(
+            () => extractIntelligence(decodedId, true),
+            { successMessage: (r) => `Re-extracted ${r.actionables.length} actionable(s).` },
+        );
+        setBusy(false);
+        if (result) {
+            setRun(result);
+            setNoRun(false);
             toast.success("Re-extracted");
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed");
-        } finally {
-            setBusy(false);
         }
     };
+
+    /**
+     * Open the original PDF in a new tab, jumping to the page parsed from the
+     * source location string (e.g. "Section 5.2, pp.12-13" or "p.7").
+     */
+    const openSourcePdf = useCallback((source: string | undefined) => {
+        const m = (source || "").match(/p\.?\s*(\d+)/i);
+        const page = m ? Math.max(1, parseInt(m[1], 10)) : 1;
+        const url = `${API_BASE_URL}/documents/${encodeURIComponent(decodedId)}/raw#page=${page}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+    }, [decodedId]);
 
     const patchItem = async (itemId: string, patch: Partial<EnrichedActionable>) => {
         if (!run) return;
@@ -252,10 +296,52 @@ export default function IntelligenceDocPage({
         return out;
     }, [filtered, groupMode]);
 
-    if (loading || !run) {
+    if (loading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+                <Link
+                    href="/intelligence"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                    <ArrowLeft className="h-3 w-3" /> Workspace
+                </Link>
+                <div className="flex items-center justify-center h-64">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-xs text-muted-foreground">Loading actionables…</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (!run || noRun) {
+        // Empty-state: page renders fully so the user is never stuck on a blank screen.
+        // The extract action triggers our custom blocking dialog.
+        return (
+            <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+                <PipelineActionDialog {...extractDialog} />
+                <Link
+                    href="/intelligence"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                    <ArrowLeft className="h-3 w-3" /> Workspace
+                </Link>
+                <Card>
+                    <CardContent className="p-10 flex flex-col items-center text-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Zap className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-semibold">No actionables yet</h2>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                                This document has been ingested but the AI extraction pipeline has not been run.
+                                Click below to extract actionables, assign teams, and generate team-specific tasks.
+                            </p>
+                        </div>
+                        <Button onClick={triggerInitialExtract}>
+                            <Zap className="h-3.5 w-3.5" /> Run extraction pipeline
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -272,6 +358,9 @@ export default function IntelligenceDocPage({
 
     return (
         <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+            {/* Custom blocking pipeline dialogs */}
+            <PipelineActionDialog {...extractDialog} />
+            <PipelineActionDialog {...reExtractDialog} />
             <ImportCsvModal
                 section="Actionables"
                 open={importModalOpen}
@@ -465,6 +554,7 @@ export default function IntelligenceDocPage({
                                     categoryOptions={categoryOptions}
                                     editTeams={editTeams}
                                     onPatch={(p) => patchItem(a.id, p)}
+                                    onOpenSource={openSourcePdf}
                                 />
                             ))
                         )}
@@ -739,12 +829,14 @@ function ActionableRow({
     categoryOptions,
     editTeams,
     onPatch,
+    onOpenSource,
 }: {
     a: EnrichedActionable;
     teams: IntelRunPayload["team_snapshot"];
     categoryOptions: string[];
     editTeams: boolean;
     onPatch: (patch: Partial<EnrichedActionable>) => void;
+    onOpenSource?: (source: string | undefined) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
 
@@ -774,7 +866,18 @@ function ActionableRow({
                 <div className="min-w-0">
                     <p className="text-foreground break-words">{a.description}</p>
                     {a.source && (
-                        <p className="text-[10px] text-muted-foreground mt-1">{a.source}</p>
+                        onOpenSource ? (
+                            <button
+                                type="button"
+                                onClick={() => onOpenSource(a.source)}
+                                className="text-[10px] text-primary hover:underline mt-1 text-left"
+                                title="Open the original PDF at this page"
+                            >
+                                {a.source}
+                            </button>
+                        ) : (
+                            <p className="text-[10px] text-muted-foreground mt-1">{a.source}</p>
+                        )
                     )}
                 </div>
                 <div className="min-w-0">

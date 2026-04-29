@@ -730,7 +730,22 @@ def delete_run(doc_id: str):
     ok = _runs().delete(doc_id)
     if not ok:
         raise HTTPException(404, "No intelligence run for this document")
-    return {"status": "deleted", "doc_id": doc_id}
+    return {"ok": True}
+
+
+@router.post("/admin/reset-actionables")
+def reset_all_actionables():
+    """Wipe ALL extracted actionables across every document.
+
+    Removes the entire `intel_runs` collection content (actionables, team
+    assignments, team-specific tasks, categories, deadlines, priorities,
+    risks, notes). Documents, document metadata, teams, and categories are
+    NOT touched. Use after a system schema update to provide a clean slate
+    before re-running extraction.
+    """
+    deleted = _runs().delete_all()
+    logger.warning("[intelligence] admin reset wiped %d intelligence runs", deleted)
+    return {"ok": True, "deleted_runs": deleted}
 
 
 # ---------------------------------------------------------------------------

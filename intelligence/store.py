@@ -170,6 +170,15 @@ class IntelRunStore:
         res = self._col.delete_one({"_id": doc_id})
         return res.deleted_count > 0
 
+    def delete_all(self) -> int:
+        """Wipe ALL intelligence runs (actionables + team mappings + tasks).
+
+        Used by the admin reset endpoint to provide a clean slate without
+        touching documents, document metadata, teams, or categories.
+        """
+        res = self._col.delete_many({})
+        return res.deleted_count
+
     def list_summaries(self) -> list[dict]:
         """Compact per-doc summaries for cross-document dashboards."""
         out: list[dict] = []

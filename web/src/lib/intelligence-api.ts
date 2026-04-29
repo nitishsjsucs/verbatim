@@ -108,6 +108,16 @@ export async function deleteIntelRun(docId: string): Promise<void> {
     if (!res.ok) throw new Error("Delete failed");
 }
 
+/**
+ * Wipe ALL extracted actionables across every document. Documents, document
+ * metadata, teams, and categories are NOT touched. Used by the reset button
+ * to provide a clean slate before re-running extraction.
+ */
+export async function resetAllIntelActionables(): Promise<{ ok: boolean; deleted_runs: number }> {
+    const res = await intelFetch("/admin/reset-actionables", { method: "POST" });
+    return parseOrThrow(res, "Reset failed");
+}
+
 // ---------------------------------------------------------------------------
 // Teams
 // ---------------------------------------------------------------------------

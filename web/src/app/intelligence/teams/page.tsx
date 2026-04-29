@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImportCsvModal } from "@/components/intelligence/import-csv-modal";
 import {
+    PipelineActionDialog,
+    usePipelineAction,
+} from "@/components/intelligence/pipeline-action-dialog";
+import {
     buildCsv,
     createIntelTeam,
     deleteIntelTeam,
@@ -129,21 +133,33 @@ export default function IntelligenceTeamsPage() {
         return result;
     };
 
+    const [pendingDelete, setPendingDelete] = useState<IntelTeam | null>(null);
+    const deleteDialog = usePipelineAction({
+        title: pendingDelete
+            ? `Delete team "${pendingDelete.name}"?`
+            : "Delete team?",
+        description:
+            "Actionables assigned only to this team will become unassigned. This cannot be undone.",
+        confirmLabel: "Delete",
+        stages: ["Removing team"],
+    });
+
     const onDelete = async (team: IntelTeam) => {
-        if (!confirm(`Delete team "${team.name}"? Actionables assigned only to this team will become unassigned.`)) {
-            return;
-        }
-        try {
-            await deleteIntelTeam(team.team_id);
+        setPendingDelete(team);
+        const result = await deleteDialog.request(
+            () => deleteIntelTeam(team.team_id),
+            { successMessage: () => "Team deleted." },
+        );
+        setPendingDelete(null);
+        if (result !== null) {
             toast.success("Team deleted");
             await refresh();
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Delete failed");
         }
     };
 
     return (
         <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+            <PipelineActionDialog {...deleteDialog} />
             <ImportCsvModal
                 section="Teams"
                 open={importModalOpen}

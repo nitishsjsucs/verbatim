@@ -12,6 +12,7 @@ import {
     ArrowRight,
     RefreshCw,
     Download,
+    Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,9 +26,14 @@ import {
 } from "@/components/ui/card";
 import { UploadModal } from "@/components/dashboard/upload-modal";
 import {
+    PipelineActionDialog,
+    usePipelineAction,
+} from "@/components/intelligence/pipeline-action-dialog";
+import {
     buildCsv,
     listIntelDocuments,
     extractIntelligence,
+    resetAllIntelActionables,
     triggerCsvDownload,
 } from "@/lib/intelligence-api";
 import type { IntelDocumentMeta } from "@/lib/intelligence-types";
@@ -80,21 +86,68 @@ export default function IntelligenceWorkspacePage() {
         return () => window.removeEventListener("document-uploaded", handler);
     }, [refresh]);
 
+    // Dialog controllers — one for extraction, one for the global reset.
+    const extractDialog = usePipelineAction({
+        title: "Run extraction pipeline?",
+        description:
+            "This will run the AI/ML enrichment + assignment pipeline on this document. The dialog will stay open with a progress indicator and cannot be dismissed while the pipeline is running.",
+        confirmLabel: "Run pipeline",
+        stages: [
+            "Loading document tree",
+            "Extracting raw actionables",
+            "Enriching priority · deadline · risk · category",
+            "Assigning teams + generating team-specific tasks",
+            "Persisting intelligence run",
+        ],
+    });
+
+    const reExtractDialog = usePipelineAction({
+        title: "Re-run extraction pipeline?",
+        description:
+            "This will OVERWRITE the existing intelligence run for this document. The dialog will stay open with a progress indicator and cannot be dismissed while the pipeline is running.",
+        confirmLabel: "Overwrite & re-run",
+        stages: [
+            "Loading document tree",
+            "Extracting raw actionables",
+            "Enriching priority · deadline · risk · category",
+            "Assigning teams + generating team-specific tasks",
+            "Persisting intelligence run",
+        ],
+    });
+
+    const resetDialog = usePipelineAction({
+        title: "Reset ALL extracted actionables?",
+        description:
+            "This wipes every extracted actionable across every document (team assignments, team-specific tasks, deadlines, priorities, risk, notes). Documents, document metadata, teams, and categories are NOT touched. Use this for a clean slate before re-running extraction.",
+        confirmLabel: "Wipe all actionables",
+        stages: ["Wiping intel_runs collection", "Refreshing workspace"],
+    });
+
     const onExtract = async (docId: string, force = false) => {
-        const message = force
-            ? "Re-extracting will run the AI/ML enrichment + assignment pipeline. This may take some time and will overwrite the existing run. Do you want to proceed?"
-            : "This will run the AI/ML enrichment + assignment pipeline on this document. This may take some time. Do you want to proceed?";
-        const ok = window.confirm(message);
-        if (!ok) return;
+        const dlg = force ? reExtractDialog : extractDialog;
         setExtractingId(docId);
-        try {
-            const run = await extractIntelligence(docId, force);
-            toast.success(`Extracted ${run.actionables.length} actionables`);
+        const result = await dlg.request(
+            () => extractIntelligence(docId, force),
+            { successMessage: (run) => `Extracted ${run.actionables.length} actionable(s).` },
+        );
+        setExtractingId(null);
+        if (result) {
+            toast.success(`Extracted ${result.actionables.length} actionables`);
             await refresh();
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Extraction failed");
-        } finally {
-            setExtractingId(null);
+        }
+    };
+
+    const onResetAll = async () => {
+        const result = await resetDialog.request(
+            async () => {
+                const r = await resetAllIntelActionables();
+                await refresh();
+                return r;
+            },
+            { successMessage: (r) => `Wiped ${r.deleted_runs} intelligence run(s).` },
+        );
+        if (result) {
+            toast.success(`Wiped ${result.deleted_runs} intelligence run(s)`);
         }
     };
 
@@ -127,8 +180,21 @@ export default function IntelligenceWorkspacePage() {
                         <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                         Refresh
                     </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onResetAll}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-500/30"
+                    >
+                        <Trash2 className="h-3.5 w-3.5" /> Reset all
+                    </Button>
                 </div>
             </div>
+
+            {/* Custom blocking pipeline dialogs */}
+            <PipelineActionDialog {...extractDialog} />
+            <PipelineActionDialog {...reExtractDialog} />
+            <PipelineActionDialog {...resetDialog} />
 
             <Card>
                 <CardHeader className="pb-3">

@@ -9,6 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImportCsvModal } from "@/components/intelligence/import-csv-modal";
 import {
+    PipelineActionDialog,
+    usePipelineAction,
+} from "@/components/intelligence/pipeline-action-dialog";
+import {
     buildCsv,
     createIntelCategory,
     deleteIntelCategory,
@@ -122,21 +126,33 @@ export default function IntelligenceCategoriesPage() {
         return result;
     };
 
+    const [pendingDelete, setPendingDelete] = useState<IntelCategory | null>(null);
+    const deleteDialog = usePipelineAction({
+        title: pendingDelete
+            ? `Delete category "${pendingDelete.name}"?`
+            : "Delete category?",
+        description:
+            "Existing actionables tagged with this category will keep the label until they are re-extracted.",
+        confirmLabel: "Delete",
+        stages: ["Removing category"],
+    });
+
     const onDelete = async (c: IntelCategory) => {
-        if (!confirm(
-            `Delete category "${c.name}"? Existing actionables tagged with this category will keep the label until they are re-extracted.`,
-        )) return;
-        try {
-            await deleteIntelCategory(c.category_id);
+        setPendingDelete(c);
+        const result = await deleteDialog.request(
+            () => deleteIntelCategory(c.category_id),
+            { successMessage: () => "Category deleted." },
+        );
+        setPendingDelete(null);
+        if (result !== null) {
             toast.success("Category deleted");
             await refresh();
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Delete failed");
         }
     };
 
     return (
         <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
+            <PipelineActionDialog {...deleteDialog} />
             <ImportCsvModal
                 section="Categories"
                 open={importModalOpen}
