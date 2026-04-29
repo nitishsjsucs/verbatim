@@ -974,10 +974,11 @@ function ActionableRow({
                 <select
                     value={a.category}
                     onChange={(e) => onPatch({ category: e.target.value })}
-                    className="h-6 rounded border border-border bg-background px-1 text-[11px]"
+                    title={a.category}
+                    className="h-6 w-full max-w-full rounded border border-border bg-background px-1 text-[11px]"
                 >
                     {categoryOptions.map((c) => (
-                        <option key={c} value={c}>
+                        <option key={c} value={c} title={c}>
                             {c}
                         </option>
                     ))}
