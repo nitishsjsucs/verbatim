@@ -35,6 +35,7 @@ import {
     usePipelineAction,
 } from "@/components/intelligence/pipeline-action-dialog";
 import { PdfViewerPanel } from "@/components/intelligence/pdf-viewer-panel";
+import { TeamAssignmentDialog } from "@/components/intelligence/team-assignment-dialog";
 import {
     API_BASE_URL,
 } from "@/lib/api";
@@ -843,6 +844,7 @@ function ActionableRow({
     onOpenSource?: (source: string | undefined) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const [teamDialogOpen, setTeamDialogOpen] = useState(false);
 
     // Local controlled deadline so the date input stays usable while typing.
     const [deadlineDraft, setDeadlineDraft] = useState<string>(
@@ -858,22 +860,41 @@ function ActionableRow({
         onPatch({ deadline: value });
     };
 
+    // Toggle expansion only when the click did not originate from an interactive
+    // child (input, select, button, textarea) — so editing fields stays usable.
+    const handleRowClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("button, input, select, textarea, a, label, [data-no-expand]")) {
+            return;
+        }
+        setExpanded((v) => !v);
+    };
+
     return (
         <div className="border-b border-border last:border-0">
-            <div className="grid grid-cols-[80px_1fr_200px_90px_150px_140px_90px] gap-2 items-start px-4 py-3 text-xs hover:bg-muted/20">
-                <button
-                    onClick={() => setExpanded((v) => !v)}
-                    className="text-left font-mono text-[11px] text-muted-foreground hover:text-foreground"
-                >
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={handleRowClick}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpanded((v) => !v);
+                    }
+                }}
+                className="grid grid-cols-[80px_1fr_200px_90px_150px_140px_90px] gap-2 items-start px-4 py-3 text-xs hover:bg-muted/20 cursor-pointer select-none"
+                title={expanded ? "Click to collapse" : "Click to expand"}
+            >
+                <span className="text-left font-mono text-[11px] text-muted-foreground">
                     {a.id.replace(/^A-/, "")}
-                </button>
+                </span>
                 <div className="min-w-0">
                     <p className="text-foreground break-words">{a.description}</p>
                     {a.source && (
                         onOpenSource ? (
                             <button
                                 type="button"
-                                onClick={() => onOpenSource(a.source)}
+                                onClick={(e) => { e.stopPropagation(); onOpenSource(a.source); }}
                                 className="text-[10px] text-primary hover:underline mt-1 text-left"
                                 title="Open the original PDF at this page"
                             >
@@ -886,17 +907,25 @@ function ActionableRow({
                 </div>
                 <div className="min-w-0">
                     {editTeams ? (
-                        <TeamMultiSelect
-                            teams={teams}
-                            selected={a.assigned_teams}
-                            teamTasks={a.team_specific_tasks || []}
-                            onChange={(nextTeams, nextTasks) =>
-                                onPatch({
-                                    assigned_teams: nextTeams,
-                                    team_specific_tasks: nextTasks,
-                                })
-                            }
-                        />
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setTeamDialogOpen(true); }}
+                            className="w-full flex flex-wrap items-center gap-1 rounded border border-dashed border-primary/40 bg-primary/5 px-2 py-1 text-[11px] hover:bg-primary/10 text-left min-h-[24px]"
+                            title="Click to edit team assignments"
+                        >
+                            {a.assigned_team_names.length === 0 ? (
+                                <span className="text-amber-600">Unassigned — click to add</span>
+                            ) : (
+                                a.assigned_team_names.map((n) => (
+                                    <span
+                                        key={n}
+                                        className="rounded bg-primary/10 text-primary text-[10px] px-1.5 py-0.5"
+                                    >
+                                        {n}
+                                    </span>
+                                ))
+                            )}
+                        </button>
                     ) : (
                         <div className="flex flex-wrap gap-1">
                             {a.assigned_team_names.length === 0 ? (
@@ -999,6 +1028,20 @@ function ActionableRow({
                     </div>
                 </div>
             )}
+            <TeamAssignmentDialog
+                open={teamDialogOpen}
+                onClose={() => setTeamDialogOpen(false)}
+                teams={teams}
+                initialSelected={a.assigned_teams}
+                initialTasks={a.team_specific_tasks || []}
+                actionableDescription={a.description}
+                onAccept={(teamIds, tasks) => {
+                    onPatch({
+                        assigned_teams: teamIds,
+                        team_specific_tasks: tasks,
+                    });
+                }}
+            />
         </div>
     );
 }
