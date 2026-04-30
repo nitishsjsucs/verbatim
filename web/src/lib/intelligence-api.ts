@@ -63,14 +63,85 @@ export async function ingestIntelDocument(
 // ---------------------------------------------------------------------------
 // Runs (per-doc intelligence)
 // ---------------------------------------------------------------------------
+type ExtractJobResponse =
+    | { status: "idle" }
+    | { status: "running"; stage?: string }
+    | { status: "done"; run?: IntelRunPayload | null; count?: number }
+    | { status: "error"; error: string; trace?: string };
+
+async function parseJobOrThrow(res: Response, fallback: string): Promise<ExtractJobResponse> {
+    if (!res.ok) {
+        let msg = fallback;
+        try {
+            const body = await res.json();
+            msg = body?.detail || msg;
+        } catch {
+            /* noop */
+        }
+        throw new Error(msg);
+    }
+    return res.json() as Promise<ExtractJobResponse>;
+}
+
+/**
+ * Kicks off the full AIS extraction pipeline and waits for it to complete
+ * by polling the status endpoint every few seconds.
+ *
+ * The initial POST returns immediately (well under ngrok's ~5min connection
+ * timeout), then we poll. This is the only way to run a >5min job through
+ * ngrok's free tier without the browser reporting a CORS error when the
+ * tunnel severs the connection.
+ */
 export async function extractIntelligence(
     docId: string,
     force = false,
 ): Promise<IntelRunPayload> {
-    const res = await intelFetch(`/documents/${encodeURIComponent(docId)}/extract?force=${force}`, {
-        method: "POST",
-    });
-    return parseOrThrow(res, "Extraction failed");
+    // 1. Start the job.
+    const startRes = await intelFetch(
+        `/documents/${encodeURIComponent(docId)}/extract?force=${force}`,
+        { method: "POST" },
+    );
+    const started = await parseJobOrThrow(startRes, "Failed to start extraction");
+
+    if (started.status === "done" && started.run) {
+        return started.run;
+    }
+    if (started.status === "error") {
+        throw new Error(started.error || "Extraction failed");
+    }
+
+    // 2. Poll the status endpoint until the job finishes or errors out.
+    // Generous ceiling — 2h @ 5s poll = 1440 polls. Real runs finish in
+    // minutes; the ceiling just prevents an infinite loop on a dead backend.
+    const pollIntervalMs = 5000;
+    const maxPolls = 1440;
+    for (let i = 0; i < maxPolls; i++) {
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
+        let state: ExtractJobResponse;
+        try {
+            const res = await intelFetch(
+                `/documents/${encodeURIComponent(docId)}/extract/status`,
+            );
+            state = await parseJobOrThrow(res, "Failed to poll extraction status");
+        } catch (err) {
+            // Transient network hiccup — log and keep polling. A permanent
+            // backend outage will eventually hit the maxPolls ceiling.
+            console.warn("[intelligence] poll hiccup:", err);
+            continue;
+        }
+        if (state.status === "done") {
+            if (state.run) return state.run;
+            // Defensive fetch in case the worker finished but didn't include
+            // the run payload (e.g. backend restarted mid-job).
+            const runRes = await intelFetch(`/documents/${encodeURIComponent(docId)}`);
+            return parseOrThrow<IntelRunPayload>(runRes, "Failed to fetch run");
+        }
+        if (state.status === "error") {
+            throw new Error(state.error || "Extraction failed");
+        }
+        // status === "running" | "idle" — keep polling.
+    }
+    throw new Error("Extraction timed out after 2 hours");
 }
 
 export async function getIntelRun(docId: string): Promise<IntelRunPayload> {

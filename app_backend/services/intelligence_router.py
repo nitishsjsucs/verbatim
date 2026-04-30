@@ -16,9 +16,11 @@ import csv
 import io
 import logging
 import shutil
+import threading
 import time
+import traceback
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
@@ -619,17 +621,84 @@ def _build_run(
     return run
 
 
+# ---------------------------------------------------------------------------
+# Background extraction jobs
+#
+# The full AIS pipeline (raw extract -> enrich -> assign -> group) can easily
+# take >5 minutes on large documents. ngrok's free tier closes HTTP
+# connections after ~5 minutes, which manifests in the browser as a CORS
+# error (because the connection is severed mid-response, no headers reach the
+# client).
+#
+# To work around that we run the pipeline in a background thread and expose a
+# cheap status endpoint the client can poll. The initial POST returns within
+# milliseconds, well under any proxy/timeout limit.
+# ---------------------------------------------------------------------------
+_extract_jobs: Dict[str, Dict[str, Any]] = {}
+_extract_jobs_lock = threading.Lock()
+
+
+def _run_extract_pipeline(doc_id: str) -> None:
+    """Worker that runs the full AIS pipeline and updates the job registry."""
+    try:
+        tree = _ts().load(doc_id)
+        if tree is None:
+            with _extract_jobs_lock:
+                _extract_jobs[doc_id] = {
+                    "status": "error",
+                    "error": f"Document {doc_id} not found",
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                }
+            return
+
+        with _extract_jobs_lock:
+            _extract_jobs[doc_id]["stage"] = "extract"
+
+        raw_result = _ex().extract(tree)
+
+        with _extract_jobs_lock:
+            _extract_jobs[doc_id]["stage"] = "enrich+assign"
+
+        teams = _teams().list()
+        categories = _cats().list()
+        doc_effective_date = _load_doc_effective_date(doc_id)
+        run = _build_run(
+            tree,
+            raw_result.actionables,
+            teams,
+            categories,
+            doc_effective_date,
+        )
+        _runs().save(run)
+
+        with _extract_jobs_lock:
+            _extract_jobs[doc_id] = {
+                "status": "done",
+                "count": len(run.actionables),
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+            }
+    except Exception as e:  # noqa: BLE001 — surface failure to the poller
+        logger.exception("[intelligence] background extract failed for %s", doc_id)
+        with _extract_jobs_lock:
+            _extract_jobs[doc_id] = {
+                "status": "error",
+                "error": f"{type(e).__name__}: {e}",
+                "trace": traceback.format_exc(limit=3),
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+
 @router.post("/documents/{doc_id}/extract")
 def extract_for_document(doc_id: str, force: bool = Query(False)):
     """
-    Run the full AIS pipeline for a document:
+    Kick off the full AIS pipeline (extract -> enrich -> assign -> group).
 
-      raw extraction (existing) → enrich/classify (new) → team assignment (new)
-      → groupings + stats (new) → persist IntelRun.
+    Returns immediately with a 202-style payload. Poll
+    GET /intelligence/documents/{doc_id}/extract/status until status=="done",
+    then fetch the run with GET /intelligence/documents/{doc_id}.
 
-    Existing `/documents/{doc_id}/actionables` endpoint and its data are
-    untouched — we store the enriched result in a separate `intel_runs`
-    collection keyed by `doc_id`.
+    If `force=false` and a run already exists, the existing run is returned
+    synchronously (fast path).
     """
     tree = _ts().load(doc_id)
     if tree is None:
@@ -637,27 +706,66 @@ def extract_for_document(doc_id: str, force: bool = Query(False)):
 
     existing = _runs().get(doc_id)
     if existing and not force:
-        return _run_payload(existing)
+        return {"status": "done", "run": _run_payload(existing)}
 
-    try:
-        raw_result = _ex().extract(tree)
-    except Exception as e:
-        logger.exception("Raw extraction failed")
-        raise HTTPException(500, f"Raw extraction failed: {e}")
+    with _extract_jobs_lock:
+        current = _extract_jobs.get(doc_id)
+        if current and current.get("status") == "running":
+            return {"status": "running", "stage": current.get("stage", "starting")}
+        _extract_jobs[doc_id] = {
+            "status": "running",
+            "stage": "starting",
+            "force": force,
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        }
 
-    teams = _teams().list()
-    categories = _cats().list()
-    doc_effective_date = _load_doc_effective_date(doc_id)
-    run = _build_run(
-        tree,
-        raw_result.actionables,
-        teams,
-        categories,
-        doc_effective_date,
+    thread = threading.Thread(
+        target=_run_extract_pipeline,
+        args=(doc_id,),
+        daemon=True,
+        name=f"intel-extract-{doc_id}",
     )
-    _runs().save(run)
+    thread.start()
 
-    return _run_payload(run)
+    return {"status": "running", "stage": "starting"}
+
+
+@router.get("/documents/{doc_id}/extract/status")
+def extract_status(doc_id: str):
+    """Cheap poll endpoint for the background extraction job.
+
+    Returns one of:
+      {status: "idle"}                      — no job has ever run
+      {status: "running", stage: "..."}     — background worker in progress
+      {status: "done",    run: {...}}       — worker finished; run payload included
+      {status: "error",   error: "..."}     — worker failed; see `error`
+    """
+    with _extract_jobs_lock:
+        job = _extract_jobs.get(doc_id)
+
+    if not job:
+        existing = _runs().get(doc_id)
+        if existing:
+            return {"status": "done", "run": _run_payload(existing)}
+        return {"status": "idle"}
+
+    status = job.get("status")
+    if status == "running":
+        return {"status": "running", "stage": job.get("stage", "starting")}
+    if status == "error":
+        return {
+            "status": "error",
+            "error": job.get("error", "unknown error"),
+            "trace": job.get("trace"),
+        }
+    # status == "done" — also attach the persisted run so the caller can skip
+    # a second HTTP round-trip.
+    existing = _runs().get(doc_id)
+    return {
+        "status": "done",
+        "run": _run_payload(existing) if existing else None,
+        "count": job.get("count"),
+    }
 
 
 @router.get("/documents/{doc_id}")

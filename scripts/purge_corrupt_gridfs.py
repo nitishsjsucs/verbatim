@@ -25,7 +25,24 @@ def main() -> None:
         "--ingest",
         type=Path,
         default=None,
-        help="After purging, re-ingest this PDF file.",
+        help="After purging, re-run the full ingestion pipeline on this PDF "
+             "(rebuilds tree, wipes existing actionables).",
+    )
+    ap.add_argument(
+        "--replace-pdf",
+        type=Path,
+        default=None,
+        help="After purging, upload this PDF to GridFS under the existing "
+             "doc_id WITHOUT re-running ingestion. Preserves the tree and "
+             "any actionables/extractions you've already produced. Use this "
+             "when the tree is fine and only the PDF bytes got corrupted.",
+    )
+    ap.add_argument(
+        "--url",
+        default=None,
+        help="After purging, download the PDF from this URL and upload it to "
+             "GridFS WITHOUT re-running ingestion. Preserves the tree and "
+             "any actionables/extractions you've already produced.",
     )
     ap.add_argument(
         "--dry-run",
@@ -90,6 +107,77 @@ def main() -> None:
             for _id in to_delete:
                 fs.delete(_id)
                 print(f"  deleted {_id}")
+
+    if args.replace_pdf and not args.dry_run:
+        pdf_path = args.replace_pdf.resolve()
+        if not pdf_path.exists():
+            print(f"\n[replace-pdf] file does not exist: {pdf_path}")
+            sys.exit(2)
+        print(
+            f"\n[replace-pdf] uploading {pdf_path} to GridFS "
+            f"(filename={tree.doc_name!r}, metadata.doc_id={args.doc_id}) ..."
+        )
+        with open(pdf_path, "rb") as f:
+            new_id = fs.put(
+                f,
+                filename=tree.doc_name,
+                metadata={"doc_id": args.doc_id},
+            )
+        # Verify the upload reads cleanly.
+        verify = fs.get(new_id)
+        data = verify.read()
+        print(
+            f"[replace-pdf] done. _id={new_id} "
+            f"length={len(data)} bytes. Tree + actionables untouched."
+        )
+
+    if args.url and not args.dry_run:
+        import io
+        import urllib.request
+
+        print(f"\n[url] downloading {args.url} ...")
+        try:
+            import requests as _requests
+            _session = _requests.Session()
+            _session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "application/pdf,application/octet-stream,*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
+            })
+            _resp = _session.get(args.url, timeout=60, allow_redirects=True)
+            _resp.raise_for_status()
+            pdf_bytes = _resp.content
+        except ImportError:
+            req = urllib.request.Request(
+                args.url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                    "Accept": "application/pdf,application/octet-stream,*/*",
+                    "Referer": "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                pdf_bytes = resp.read()
+        print(f"[url] downloaded {len(pdf_bytes)} bytes")
+        if pdf_bytes[:4] != b"%PDF":
+            print(f"[url] ERROR: response does not look like a PDF (first bytes: {pdf_bytes[:16]!r}). Aborting.")
+            sys.exit(3)
+        print(
+            f"[url] uploading to GridFS "
+            f"(filename={tree.doc_name!r}, metadata.doc_id={args.doc_id}) ..."
+        )
+        new_id = fs.put(
+            io.BytesIO(pdf_bytes),
+            filename=tree.doc_name,
+            metadata={"doc_id": args.doc_id},
+        )
+        verify = fs.get(new_id)
+        data = verify.read()
+        print(
+            f"[url] done. _id={new_id} "
+            f"length={len(data)} bytes. Tree + actionables untouched."
+        )
 
     if args.ingest and not args.dry_run:
         pdf_path = args.ingest.resolve()
