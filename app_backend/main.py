@@ -491,54 +491,99 @@ def get_document(doc_id: str):
     }
 
 
-def _find_pdf_in_gridfs(fs, doc_id: str, doc_name: str):
+def _iter_gridfs_candidates(fs, doc_id: str, doc_name: str):
     """
-    Locate a doc's PDF in GridFS, robust to renames.
+    Yield every GridFS entry that could be this doc's PDF, in priority order.
 
-    Lookup order:
-      1. metadata.doc_id == doc_id  (fast, set at ingestion or backfilled below)
-      2. filename == doc_name        (works for un-renamed or fully-renamed docs)
-      3. Scan all filenames; match by recomputing generate_doc_id(filename).
-         When a hit is found, stamp metadata.doc_id so subsequent calls hit (1).
+    Order:
+      1. metadata.doc_id == doc_id
+      2. filename == doc_name
+      3. Any file whose filename hashes to doc_id
+
+    Duplicates are de-duplicated by _id so the caller can try reading each
+    until one succeeds (works around corrupt/truncated chunks by skipping to
+    the next valid copy).
     """
     from models.document import generate_doc_id
 
-    grid_out = fs.find_one({"metadata.doc_id": doc_id})
-    if grid_out:
-        return grid_out
+    seen_ids: set = set()
 
-    grid_out = fs.find_one({"filename": doc_name})
-    if grid_out:
-        return grid_out
+    for gf in fs.find({"metadata.doc_id": doc_id}):
+        if gf._id in seen_ids:
+            continue
+        seen_ids.add(gf._id)
+        yield "metadata.doc_id", gf
 
-    for candidate in fs.find():
-        cand_name = getattr(candidate, "filename", None)
-        if not cand_name:
+    for gf in fs.find({"filename": doc_name}):
+        if gf._id in seen_ids:
             continue
-        if generate_doc_id(cand_name) != doc_id:
+        seen_ids.add(gf._id)
+        yield "filename=doc_name", gf
+
+    for gf in fs.find():
+        if gf._id in seen_ids:
             continue
+        name = getattr(gf, "filename", None)
+        if not name or generate_doc_id(name) != doc_id:
+            continue
+        seen_ids.add(gf._id)
+        yield "hash-scan", gf
+
+
+def _read_gridfs_bytes(fs, doc_id: str, doc_name: str):
+    """
+    Try each candidate until one reads cleanly. Returns (data, source_name)
+    on success, or (None, None) if every candidate is missing/corrupt.
+    """
+    from utils.mongo import get_db
+
+    best_error: Exception | None = None
+    corrupt_ids: list = []
+    for via, gf in _iter_gridfs_candidates(fs, doc_id, doc_name):
         try:
-            from utils.mongo import get_db
-            db = get_db()
-            db_name = db.name if hasattr(db, "name") else None
-            if db_name:
-                db.client[db_name].fs.files.update_one(
-                    {"_id": candidate._id},
-                    {"$set": {"metadata.doc_id": doc_id}},
-                )
+            data = gf.read()
+        except Exception as read_err:
+            logger.warning(
+                "[raw-pdf] corrupt GridFS entry _id=%s filename=%r (%s): %s",
+                gf._id, getattr(gf, "filename", "?"), via, read_err,
+            )
+            best_error = read_err
+            corrupt_ids.append(gf._id)
+            continue
+        logger.info(
+            "[raw-pdf] served _id=%s filename=%r via=%s (%d bytes)",
+            gf._id, getattr(gf, "filename", "?"), via, len(data),
+        )
+        # Opportunistic backfill so the fast path hits next time.
+        try:
+            if (getattr(gf, "metadata", None) or {}).get("doc_id") != doc_id:
+                db = get_db()
+                db_name = db.name if hasattr(db, "name") else None
+                if db_name:
+                    db.client[db_name].fs.files.update_one(
+                        {"_id": gf._id},
+                        {"$set": {"metadata.doc_id": doc_id}},
+                    )
         except Exception as backfill_err:
             logger.warning(
                 "Failed to backfill metadata.doc_id for %s: %s",
-                cand_name, backfill_err,
+                gf._id, backfill_err,
             )
-        return candidate
+        return data, getattr(gf, "filename", None)
 
-    return None
+    if corrupt_ids:
+        logger.warning(
+            "[raw-pdf] every GridFS candidate for doc_id=%s was corrupt: %s "
+            "(last error: %s). Delete them with `scripts/purge_corrupt_gridfs.py` "
+            "and re-ingest.",
+            doc_id, corrupt_ids, best_error,
+        )
+    return None, None
 
 
 @app.get("/documents/{doc_id}/raw")
 def get_document_raw(doc_id: str):
-    """Serve the raw PDF file from GridFS."""
+    """Serve the raw PDF file from GridFS, with disk fallback."""
     store = get_tree_store()
     tree = store.load(doc_id)
     if not tree:
@@ -553,35 +598,26 @@ def get_document_raw(doc_id: str):
         "ETag": f'"{doc_id}"',
     }
 
-    grid_out = _find_pdf_in_gridfs(fs, doc_id, tree.doc_name)
-
     safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
-    content_disposition = f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"
+    content_disposition = (
+        f'inline; filename="{safe_name}"; '
+        f"filename*=UTF-8''{url_quote(tree.doc_name)}"
+    )
 
-    if grid_out:
-        try:
-            # Read into BytesIO to avoid Starlette's line-based threadpool iterator
-            # which triggers CorruptGridFile on mismatched chunk lengths.
-            buf = io.BytesIO(grid_out.read())
-            data = buf.getvalue()
-            return StreamingResponse(
-                io.BytesIO(data),
-                media_type="application/pdf",
-                headers={
-                    "Content-Disposition": content_disposition,
-                    "Content-Length": str(len(data)),
-                    **cache_headers,
-                },
-            )
-        except Exception as gridfs_err:
-            logger.warning(
-                "GridFS read failed for %s (%s), falling back to disk",
-                tree.doc_name, gridfs_err,
-            )
+    data, _served_name = _read_gridfs_bytes(fs, doc_id, tree.doc_name)
+    if data is not None:
+        return StreamingResponse(
+            io.BytesIO(data),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": content_disposition,
+                "Content-Length": str(len(data)),
+                **cache_headers,
+            },
+        )
 
-    # Fallback: try serving from local disk. Try the current doc_name first
-    # (matches un-renamed docs), then scan the pdfs/ dir for any file whose
-    # name hashes to this doc_id (matches docs renamed after ingestion).
+    # Disk fallback: doc_name as-is, then any pdfs/ file whose name hashes
+    # to this doc_id (handles renamed docs).
     from models.document import generate_doc_id
 
     settings = get_settings()
@@ -593,6 +629,7 @@ def get_document_raw(doc_id: str):
                 candidates.append(p)
     for local_path in candidates:
         if local_path.exists():
+            logger.info("[raw-pdf] served from disk: %s", local_path)
             return FileResponse(
                 str(local_path),
                 media_type="application/pdf",
