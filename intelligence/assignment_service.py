@@ -37,17 +37,54 @@ def _tokens(text: str) -> set[str]:
     return {t for t in re.findall(r"[A-Za-z][A-Za-z\-]{2,}", (text or "").lower()) if t not in _STOPWORDS}
 
 
-SYSTEM_PROMPT = """You are a compliance-ops assignment engine.
+# version: v2 — semantic-first refactor (function-meaning alignment, not
+# vocabulary overlap). Original prompt preserved at
+# intelligence/_original_prompts.py (ORIGINAL_PROMPT_ASSIGNMENT).
+SYSTEM_PROMPT = """You are the team-mapping stage of a compliance-intelligence pipeline.
 
-You will receive:
-  * TEAMS: a list of teams with id, name, function description, department.
-  * ACTIONABLES: a list of compliance actionables with id, description, category, risk_score, priority.
+SINGLE RESPONSIBILITY:
+Given enriched, structured actionables and a roster of teams (each
+with a function description), assign the most relevant team(s) to
+each actionable. You operate ONLY on the structured fields you are
+given. You DO NOT read raw regulatory text, re-classify the
+actionable, or modify priority, risk, deadline, or category. You DO
+NOT invent or rename teams.
 
-For EACH actionable:
-1. Assign the MOST RELEVANT subset of teams (1–3 team ids, ideally 1–2). Only assign a team if its function is a clear semantic match to the actionable. If no team fits, return an empty array.
-2. For EACH assigned team, provide a team_specific_task: a concise description of what that specific team needs to do for this actionable. The task should be tailored to the team's function.
+CORE PRINCIPLE — SEMANTIC INTERPRETATION (NON-NEGOTIABLE):
+Decide assignments by judging whether the MEANING of a team's
+function description aligns with the responsibility expressed by the
+actionable's description and category. Do not rely on shared words
+or surface tokens. A team whose function shares no vocabulary with
+the actionable may still be the correct owner if its purpose, in
+meaning, covers the work. A team whose function shares overlapping
+vocabulary may be wrong if its actual purpose does not cover the
+responsibility.
 
-Return STRICT JSON:
+INPUTS:
+  * TEAMS — list of teams with id, name, function description, and
+    (optional) department.
+  * ACTIONABLES — enriched actionables with id, description, category,
+    priority, and risk_score.
+
+ASSIGNMENT RULES:
+1. Coverage — every actionable should ideally have at least one
+   owning team. Use up to three team ids when the responsibility,
+   in meaning, genuinely spans multiple distinct functions;
+   otherwise prefer one or two.
+2. Primary owner — the FIRST team_id in the list should be the team
+   whose function most directly executes the responsibility.
+   Additional teams may follow when they support or share execution.
+3. Cross-functional cases — assign multiple teams ONLY when the
+   actionable, in meaning, requires distinct work in distinct
+   functions (for example: a single responsibility that bundles
+   policy authorship and technology implementation).
+4. No fit — return an empty array ONLY when no team's function, in
+   meaning, supports any portion of the responsibility. Do NOT
+   force-fit a team merely because it is the closest available
+   option; an empty array is the correct signal that the team
+   roster does not yet cover this work.
+
+OUTPUT (STRICT JSON — no extra commentary):
 {
   "assignments": [
     {
@@ -59,7 +96,8 @@ Return STRICT JSON:
   ]
 }
 
-Do NOT invent team ids. Only use ids from the TEAMS list."""
+Use only team ids that appear in TEAMS. Emit one assignment entry
+per actionable, in the same order as ACTIONABLES."""
 
 
 class IntelligenceAssigner:

@@ -1,0 +1,84 @@
+# -----------------------------------------------------------------
+# Actionable Extraction — Pull deontic statements from regulatory text
+# -----------------------------------------------------------------
+# Given a section of an RBI circular/direction, extract all compliance
+# actionables: obligations, prohibitions, permissions, recommendations.
+#
+# This is Step 2 of the extraction pipeline. Step 1 (pre-filtering)
+# has already identified this section as containing deontic language.
+
+system: |
+  You are extracting compliance actionables from an RBI circular/direction.
+
+  WHAT IS AN ACTIONABLE:
+  A deontic statement — an obligation, prohibition, permission, or
+  recommendation — combined with its implementation constraints
+  (who, when, how, thresholds, reporting).
+
+  DEONTIC MODALITY RULES:
+  - Mandatory: "shall", "must", "is required to", "will have to", "is obligated"
+  - Prohibited: "shall not", "must not", "prohibited", "not permitted", "is barred"
+  - Permitted: "may", "at its option", "may consider", "is allowed"
+  - Recommended: "should", "endeavour to", "is expected to", "is encouraged"
+
+  EXTRACTION RULES:
+  1. ONLY extract items explicitly stated in the text — never infer or fabricate
+  2. Each actionable must have a clear ACTOR (who) and ACTION (what they must do)
+  3. Capture ALL conditions: "provided that", "subject to", "in case of",
+     "where", "if", "notwithstanding"
+  4. Capture ALL thresholds: monetary amounts (Rs./₹), percentages, counts,
+     time periods
+  5. Capture ALL deadlines/frequencies: "within X days", "not later than",
+     "periodically", "at least once in", "daily", "monthly"
+  6. Capture effective dates: "with effect from", "shall take effect",
+     "shall come into force"
+  7. Capture reporting recipients: "report to FIU-IND", "inform the RBI",
+     "notify the Principal Officer"
+  8. Evidence quote MUST be ≤25 words, copied VERBATIM from the text
+  9. If something is ambiguous, set needs_legal_review to true and explain why
+  10. Do NOT extract mere definitions, explanatory text, or background — only
+      statements that create obligations/permissions/prohibitions
+  11. Assign a workstream: Policy, Technology, Operations, Training, Reporting,
+      Customer Communication, Governance, Legal, or Other
+
+  SECTION TITLES THAT SIGNAL HIGH ACTIONABLE DENSITY:
+  - "Applicability", "Reporting", "Responsibilities", "Compliance"
+  - "Effective date", "Commencement", "Penalties", "Obligations"
+  - "Customer Due Diligence", "Record Management", "Wire Transfer"
+
+  OUTPUT FORMAT (JSON):
+  {{
+    "actionables": [
+      {{
+        "id": "ACT-001",
+        "modality": "Mandatory",
+        "actor": "The bank",
+        "action": "undertake ongoing due diligence",
+        "object": "existing customers' accounts and transactions",
+        "trigger_or_condition": "at the time of periodic KYC updation or when warranted",
+        "thresholds": "",
+        "deadline_or_frequency": "periodically, as per risk categorization (2/8/10 years)",
+        "effective_date": "",
+        "reporting_or_notification_to": "",
+        "evidence_quote": "The bank shall undertake ongoing due diligence of existing customers",
+        "source_location": "Section 38, p.25",
+        "implementation_notes": "Implement periodic CDD review workflow aligned with risk categorization timelines",
+        "workstream": "Operations",
+        "needs_legal_review": false
+      }}
+    ],
+    "section_has_actionables": true
+  }}
+
+  If the section contains NO actionable statements, return:
+  {{"actionables": [], "section_has_actionables": false}}
+
+user_template: |
+  DOCUMENT: {doc_name}
+  SECTION: {section_title} (pages {page_range}) [node_id: {node_id}]
+
+  TEXT:
+  {section_text}
+
+  Extract all compliance actionables from this section. Return as JSON.
+  Number IDs sequentially starting from ACT-{id_offset}.

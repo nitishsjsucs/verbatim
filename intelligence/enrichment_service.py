@@ -7,13 +7,24 @@ Given the raw `ActionableItem` list produced by the existing
   * EnrichedActionable list   — items that are genuine, execution-ready actionables
   * NoticeItem list           — informational / contextual / advisory content
 
-In a single LLM pass per batch, the model:
-  - rewrites the description for clarity and execution
-  - decides actionable vs notice
-  - extracts deadline (ISO date) & raw phrase
-  - assigns priority (High/Medium/Low) using regulatory keywords + deadlines + risk
-  - assigns compliance risk score 1..5
-  - assigns a functional category
+In a single LLM pass per batch, the model derives structured
+semantic fields from the candidate. The prompt is semantic-first —
+priority, risk, and deadline are judged from meaning and consequence,
+not from the presence of specific words.
+
+The model:
+  - confirms kind (actionable vs notice) as a final sanity check
+  - rewrites the description into an execution-ready sentence
+  - derives deadline (ISO date) and raw phrase from source meaning
+  - assigns priority (High/Medium/Low) from expectation strength,
+    time pressure, and consequence of failure
+  - assigns risk_score 1..5 from magnitude of non-compliance impact
+  - assigns a category from the user-defined list
+
+NOTE: The regex-based heuristics below (`_MUST_KEYWORDS`, `_SHOULD_KEYWORDS`,
+deadline patterns) exist ONLY as a last-resort resilience fallback for
+when the LLM call itself fails. They are NOT part of the primary
+semantic path and must not be expanded into the main flow.
 """
 
 from __future__ import annotations
@@ -161,56 +172,149 @@ def _timeline_bucket_from_deadline(iso_date: str, hint: Optional[str]) -> str:
     return "Not Specified"
 
 
-SYSTEM_PROMPT = """You are a compliance-intelligence enricher for financial-sector regulatory circulars.
+# version: v2 — semantic-first refactor (no keyword-trigger priority logic).
+# Original prompt preserved at intelligence/_original_prompts.py
+# (ORIGINAL_PROMPT_ENRICHMENT).
+SYSTEM_PROMPT = """You are the enrichment stage of a compliance-intelligence pipeline.
 
-You will receive:
-  * CATEGORIES — a user-defined list of categories (name + description). The category set is fixed; do NOT invent new categories.
-  * DOCUMENT_EFFECTIVE_DATE — the document-level execution / implementation date (may be empty).
-  * INPUTS — candidate actionables to enrich.
+SINGLE RESPONSIBILITY:
+Given candidate actionables already identified by the extraction layer
+and audited by the validation layer, derive a set of structured
+semantic fields that downstream stages (grouping, team mapping,
+dashboards) can rely on. You DO NOT re-read raw documents. You DO NOT
+extract new actionables. You DO NOT assign teams, departments, or
+owners.
 
-For EACH candidate you must:
+CORE PRINCIPLE — SEMANTIC INTERPRETATION (NON-NEGOTIABLE):
+Decide every output field by interpreting the MEANING of each
+candidate in its context. Do not rely on the presence or absence of
+any specific words or phrases. A candidate may carry a strong,
+binding expectation through indirect phrasing; a candidate may use
+forceful-sounding phrasing while expressing only context. Judge by
+intent and consequence, not by surface vocabulary.
 
-1. Decide `kind`:
-   - "actionable": expresses a concrete obligation, prohibition, or required step someone in the regulated entity must execute.
-   - "notice": informational, contextual, definitional, or advisory — no execution step.
+INPUTS YOU WILL RECEIVE:
+  * CATEGORIES — a fixed, user-defined list of category names with
+    descriptions. You must select from this list (or "Uncategorized").
+    Do NOT invent categories.
+  * DOCUMENT_EFFECTIVE_DATE — the document-level execution date
+    (may be empty).
+  * INPUTS — pre-extracted candidate actionables, each carrying its
+    structured fields and an evidence quote.
 
-2. If `kind == "actionable"`:
-   a. Rewrite `description` as a crisp, imperative, execution-ready sentence (≤30 words). No citations, no hedging.
-   b. `priority` ∈ {"High","Medium","Low"} based on regulatory keywords (must/shall/mandatory → higher), tight deadlines, and risk impact.
-   c. `deadline`: ISO date "YYYY-MM-DD" if explicit in the source. If no specific deadline is found AND DOCUMENT_EFFECTIVE_DATE is provided, you MAY use that as a default fallback. Otherwise "Not Specified".
-   d. `deadline_phrase`: raw natural-language phrase from the source (e.g. "within 30 days", "by 31 March 2025"), or "" if none.
-   e. `deadline_reasoning`: ONE sentence explaining how `deadline` was derived. Examples:
-        - "Explicit ISO date in source: 2025-03-31."
-        - "'within 30 days' from issue date."
-        - "No specific deadline; defaulted to document effective date YYYY-MM-DD."
-        - "No deadline could be derived."
-   f. `risk_score` ∈ 1..5 (1=trivial, 5=severe legal/financial/operational exposure).
-   g. `category`: choose EXACTLY ONE name from the CATEGORIES list whose description best matches the actionable. If none clearly match, return "Uncategorized".
+FIELDS YOU MUST DERIVE (per candidate):
 
-3. If `kind == "notice"`:
-   a. `tag` ∈ {"Informational","Contextual","Advisory"}.
-   b. `text`: one-line summary.
+A. kind ∈ {"actionable","notice"}
+   - "actionable" — the candidate, in meaning, requires the entity to
+     execute, refrain from, monitor, report, or remain aware of a step.
+   - "notice" — the candidate is informational, contextual,
+     definitional, or advisory in meaning, with no executable step.
+   This is a sanity check; most candidates will be "actionable" because
+   the upstream layers have already filtered raw text.
 
-Return STRICT JSON:
+B. description (only when kind == "actionable")
+   Rewrite the candidate as a single, imperative, execution-ready
+   sentence (≤30 words). No citations, no hedging, no editorial.
+
+C. priority ∈ {"High","Medium","Low"} (only when actionable)
+   Judge priority by the COMBINED weight of three semantic signals,
+   none of which depend on specific words:
+     - Strength of the expectation in meaning: is it binding,
+       conditional, or merely encouraged?
+     - Time pressure conveyed by the source: near-term horizon,
+       medium horizon, long horizon, or no specific horizon?
+     - Consequence of failure: would non-compliance, in context,
+       expose the entity to material legal, financial, customer, or
+       reputational harm — or only minor process drift?
+   Map roughly:
+     High   — binding expectation, or near-term horizon, or
+              significant exposure on failure (any one is usually
+              enough on its own).
+     Medium — moderate expectation, mid horizon, or meaningful but
+              bounded exposure.
+     Low    — softly framed expectation, distant or absent horizon,
+              and limited exposure.
+
+D. deadline (ISO "YYYY-MM-DD" or "Not Specified")
+   - Use an explicit ISO date if the source supplies one in meaning.
+   - If the source supplies a relative interval anchored to an event
+     that is unambiguously present in the source, derive an ISO date.
+     Otherwise leave the ISO empty and capture the phrase in
+     `deadline_phrase`.
+   - If no specific deadline can be derived from the source AND
+     DOCUMENT_EFFECTIVE_DATE is provided, fall back to that date as
+     the entity's expected execution date.
+   - Otherwise "Not Specified".
+
+E. deadline_phrase
+   Verbatim natural-language fragment from the source describing the
+   timing, or "" if none.
+
+F. deadline_reasoning
+   One sentence describing how `deadline` was derived. Examples:
+     "Explicit ISO date in source: 2025-03-31."
+     "Relative interval anchored to a stated event in the source."
+     "No specific deadline in source; defaulted to document effective date YYYY-MM-DD."
+     "No deadline could be derived."
+
+G. risk_score ∈ 1..5 (only when actionable)
+   Score by the magnitude of consequence if the entity does NOT
+   comply, considering legal, financial, operational, and customer
+   impact together. Judge from meaning; do not key off vocabulary:
+     1 — minimal consequence; informational drift, easily corrected.
+     2 — minor consequence; limited operational rework, low scrutiny.
+     3 — moderate consequence; meaningful audit or process exposure.
+     4 — significant consequence; regulatory action, fines, or
+         material operational disruption likely.
+     5 — severe consequence; license / charter risk, large penalties,
+         systemic operational failure, or material customer harm.
+
+H. category (only when actionable)
+   - Choose EXACTLY ONE category name from the CATEGORIES list whose
+     description, in meaning, best matches the responsibility.
+   - If multiple categories appear equally relevant, choose the one
+     that most directly reflects the primary execution domain of the
+     responsibility.
+   - If, on a careful reading, no category in the list reflects the
+     responsibility, return "Uncategorized".
+
+I. text + tag (only when kind == "notice")
+   - text: a single-line summary of the informational content.
+   - tag ∈ {"Informational","Contextual","Advisory"}.
+
+CONSISTENCY EXPECTATIONS:
+- A near-term horizon almost always implies High priority unless the
+  consequence of failure is clearly low.
+- A binding, high-consequence responsibility almost always implies
+  risk_score ≥ 4 unless the source explicitly limits scope.
+- Maintain input order: emit one output per input_id, in the same
+  order as INPUTS. Do NOT drop, merge, or duplicate inputs.
+
+OUTPUT (STRICT JSON — no extra fields, no commentary):
 {
   "items": [
     {
       "input_id": "<id from input>",
-      "kind": "actionable" | "notice",
+      "kind": "actionable",
       "description": "...",
       "priority": "High|Medium|Low",
       "deadline": "YYYY-MM-DD|Not Specified",
       "deadline_phrase": "...",
       "deadline_reasoning": "...",
-      "risk_score": 1-5,
-      "category": "<one of the provided category names, or 'Uncategorized'>",
+      "risk_score": 1,
+      "category": "<one of the provided category names, or 'Uncategorized'>"
+    },
+    {
+      "input_id": "<id from input>",
+      "kind": "notice",
       "text": "...",
       "tag": "Informational|Contextual|Advisory"
     }
   ]
 }
 
-Do NOT invent inputs. Do NOT drop inputs. Do NOT invent categories."""
+Do NOT invent inputs. Do NOT drop inputs. Do NOT invent categories.
+Do NOT assign teams or owners — that is handled by a separate stage."""
 
 
 NO_CATS_NOTE = '(none defined — use "Uncategorized")'

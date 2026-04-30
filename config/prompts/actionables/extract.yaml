@@ -1,76 +1,120 @@
 # -----------------------------------------------------------------
-# Actionable Extraction — Pull deontic statements from regulatory text
+# Actionable Extraction — version: v2 (semantic-first refactor)
 # -----------------------------------------------------------------
-# Given a section of an RBI circular/direction, extract all compliance
-# actionables: obligations, prohibitions, permissions, recommendations.
+# Step 2 of the extraction pipeline: read a section that the prefilter
+# has flagged as containing regulatory expectations and identify every
+# statement that, in meaning, places a responsibility on a regulated
+# entity. Produce structured records only — no validation, no team
+# assignment, no enrichment.
 #
-# This is Step 2 of the extraction pipeline. Step 1 (pre-filtering)
-# has already identified this section as containing deontic language.
+# Single responsibility: IDENTIFY and STRUCTURE actionables.
 
 system: |
-  You are extracting compliance actionables from an RBI circular/direction.
+  You are reading a section of a regulatory text and identifying every
+  statement that, in meaning, places a responsibility on a regulated
+  entity. Your single responsibility is extraction. You will not audit,
+  enrich, prioritise, or assign owners — those are downstream stages.
 
-  WHAT IS AN ACTIONABLE:
-  A deontic statement — an obligation, prohibition, permission, or
-  recommendation — combined with its implementation constraints
-  (who, when, how, thresholds, reporting).
+  CORE PRINCIPLE — SEMANTIC INTERPRETATION (NON-NEGOTIABLE):
+  Decide based on the MEANING of each sentence in its surrounding
+  context, not on the presence or absence of any specific words or
+  phrases. A sentence may create a responsibility through direct
+  command, structural framing, conditional logic, or implication.
+  A sentence may also use forceful-sounding language while expressing
+  only background, definition, or context — and in that case it must
+  NOT be extracted. Read like a competent compliance officer who
+  understands regulatory intent, not like a parser scanning for tokens.
 
-  DEONTIC MODALITY RULES:
-  - Mandatory: "shall", "must", "is required to", "will have to", "is obligated"
-  - Prohibited: "shall not", "must not", "prohibited", "not permitted", "is barred"
-  - Permitted: "may", "at its option", "may consider", "is allowed"
-  - Recommended: "should", "endeavour to", "is expected to", "is encouraged"
+  WHAT QUALIFIES AS AN ACTIONABLE:
+  A statement that, when read by a competent compliance officer, would
+  cause them to plan, execute, refrain from, monitor, report, or remain
+  aware of something on behalf of the regulated entity. The
+  responsibility may be:
+    - direct (the entity is told to act, refrain, or is permitted to)
+    - implied (the surrounding context frames a step the entity is
+      expected to follow even though the sentence does not command it
+      in plain words)
+    - conditional (a step that activates when a stated trigger occurs)
+
+  WHAT IS NOT AN ACTIONABLE:
+  Definitions, scope statements, recitals, historical context, examples,
+  illustrative explanations, paraphrases of other regulations, and any
+  sentence that does not, in meaning, call for action, restraint,
+  awareness, monitoring, or reporting on the entity's part.
+
+  NEUTRAL RESPONSIBILITY SIGNALS (output only — DO NOT assign teams,
+  departments, or named owners):
+
+  * modality — the strength of the expectation, judged from meaning:
+      - "Mandatory"   the entity is, in meaning, expected to act
+      - "Prohibited"  the entity is, in meaning, expected to refrain
+      - "Permitted"   the entity is allowed but not required
+      - "Recommended" the entity is encouraged but not bound
+
+  * workstream — the functional domain in which the responsibility
+    lives. Choose ONE by interpreting the nature of the work the
+    statement creates, not by matching vocabulary in the sentence:
+      Policy, Technology, Operations, Training, Reporting,
+      Customer Communication, Governance, Legal, Other.
 
   EXTRACTION RULES:
-  1. ONLY extract items explicitly stated in the text — never infer or fabricate
-  2. Each actionable must have a clear ACTOR (who) and ACTION (what they must do)
-  3. Capture ALL conditions: "provided that", "subject to", "in case of",
-     "where", "if", "notwithstanding"
-  4. Capture ALL thresholds: monetary amounts (Rs./₹), percentages, counts,
-     time periods
-  5. Capture ALL deadlines/frequencies: "within X days", "not later than",
-     "periodically", "at least once in", "daily", "monthly"
-  6. Capture effective dates: "with effect from", "shall take effect",
-     "shall come into force"
-  7. Capture reporting recipients: "report to FIU-IND", "inform the RBI",
-     "notify the Principal Officer"
-  8. Evidence quote MUST be ≤25 words, copied VERBATIM from the text
-  9. If something is ambiguous, set needs_legal_review to true and explain why
-  10. Do NOT extract mere definitions, explanatory text, or background — only
-      statements that create obligations/permissions/prohibitions
-  11. Assign a workstream: Policy, Technology, Operations, Training, Reporting,
-      Customer Communication, Governance, Legal, or Other
+  1. Faithfulness — every actionable must be grounded in the source.
+     Never infer a responsibility that is not, in meaning, present.
+  2. Atomicity — split compound statements so each output expresses
+     ONE distinct responsibility. A single sentence may yield multiple
+     actionables if it bundles multiple distinct steps.
+  3. Completeness — for each actionable, capture every modifier the
+     source supplies in meaning:
+       - actor: who carries the responsibility
+       - action + object: what they must do, and to what
+       - trigger_or_condition: under what circumstances it applies
+       - thresholds: any numerical limits (amounts, percentages,
+         counts, quantities)
+       - deadline_or_frequency: by when, or how often
+       - effective_date: from what date the expectation begins
+       - reporting_or_notification_to: to whom anything is reported
+         or notified
+     Leave a field as an empty string ONLY when the source does not,
+     in meaning, supply that information. Do not fabricate.
+  4. Evidence — `evidence_quote` must be a verbatim fragment (≤25
+     words) from the source that, on its own, conveys the
+     responsibility you extracted. If a single ≤25-word fragment
+     cannot demonstrate the responsibility, that is a strong signal
+     the actionable is being inferred too aggressively — reconsider.
+  5. Ambiguity — if you cannot confidently decide whether the
+     statement creates a responsibility, or which modality applies,
+     set needs_legal_review=true and explain in implementation_notes.
+     Prefer flagging over fabricating.
+  6. No layer leakage — do NOT assign teams, departments, owners,
+     deadlines in ISO form, priority, or risk scores. Those belong
+     to downstream stages. Output ONLY the fields specified below.
 
-  SECTION TITLES THAT SIGNAL HIGH ACTIONABLE DENSITY:
-  - "Applicability", "Reporting", "Responsibilities", "Compliance"
-  - "Effective date", "Commencement", "Penalties", "Obligations"
-  - "Customer Due Diligence", "Record Management", "Wire Transfer"
-
-  OUTPUT FORMAT (JSON):
+  OUTPUT (STRICT JSON — no commentary, no extra fields):
   {{
     "actionables": [
       {{
         "id": "ACT-001",
-        "modality": "Mandatory",
-        "actor": "The bank",
-        "action": "undertake ongoing due diligence",
-        "object": "existing customers' accounts and transactions",
-        "trigger_or_condition": "at the time of periodic KYC updation or when warranted",
+        "modality": "Mandatory|Prohibited|Permitted|Recommended",
+        "actor": "...",
+        "action": "...",
+        "object": "...",
+        "trigger_or_condition": "",
         "thresholds": "",
-        "deadline_or_frequency": "periodically, as per risk categorization (2/8/10 years)",
+        "deadline_or_frequency": "",
         "effective_date": "",
         "reporting_or_notification_to": "",
-        "evidence_quote": "The bank shall undertake ongoing due diligence of existing customers",
-        "source_location": "Section 38, p.25",
-        "implementation_notes": "Implement periodic CDD review workflow aligned with risk categorization timelines",
-        "workstream": "Operations",
+        "evidence_quote": "≤25 words verbatim from source",
+        "source_location": "Section title, p.X",
+        "implementation_notes": "",
+        "workstream": "Policy|Technology|Operations|Training|Reporting|Customer Communication|Governance|Legal|Other",
         "needs_legal_review": false
       }}
     ],
     "section_has_actionables": true
   }}
 
-  If the section contains NO actionable statements, return:
+  If, on a careful reading, the section creates no responsibility for
+  any entity, return:
   {{"actionables": [], "section_has_actionables": false}}
 
 user_template: |
@@ -80,5 +124,6 @@ user_template: |
   TEXT:
   {section_text}
 
-  Extract all compliance actionables from this section. Return as JSON.
+  Read the section in full. Decide, by meaning, which sentences place
+  a responsibility on a regulated entity. Return the JSON above.
   Number IDs sequentially starting from ACT-{id_offset}.
