@@ -107,7 +107,11 @@ class IngestionPipeline:
         # But we ensure it's stored in GridFS for persistence
         if not existing_ids or force:
             with open(pdf_path, "rb") as f:
-                fs.put(f, filename=pdf_path.name)
+                fs.put(
+                    f,
+                    filename=pdf_path.name,
+                    metadata={"doc_id": doc_id},
+                )
             logger.info("  -> Uploaded to GridFS")
 
         start_time = time.time()

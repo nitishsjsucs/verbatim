@@ -491,6 +491,51 @@ def get_document(doc_id: str):
     }
 
 
+def _find_pdf_in_gridfs(fs, doc_id: str, doc_name: str):
+    """
+    Locate a doc's PDF in GridFS, robust to renames.
+
+    Lookup order:
+      1. metadata.doc_id == doc_id  (fast, set at ingestion or backfilled below)
+      2. filename == doc_name        (works for un-renamed or fully-renamed docs)
+      3. Scan all filenames; match by recomputing generate_doc_id(filename).
+         When a hit is found, stamp metadata.doc_id so subsequent calls hit (1).
+    """
+    from models.document import generate_doc_id
+
+    grid_out = fs.find_one({"metadata.doc_id": doc_id})
+    if grid_out:
+        return grid_out
+
+    grid_out = fs.find_one({"filename": doc_name})
+    if grid_out:
+        return grid_out
+
+    for candidate in fs.find():
+        cand_name = getattr(candidate, "filename", None)
+        if not cand_name:
+            continue
+        if generate_doc_id(cand_name) != doc_id:
+            continue
+        try:
+            from utils.mongo import get_db
+            db = get_db()
+            db_name = db.name if hasattr(db, "name") else None
+            if db_name:
+                db.client[db_name].fs.files.update_one(
+                    {"_id": candidate._id},
+                    {"$set": {"metadata.doc_id": doc_id}},
+                )
+        except Exception as backfill_err:
+            logger.warning(
+                "Failed to backfill metadata.doc_id for %s: %s",
+                cand_name, backfill_err,
+            )
+        return candidate
+
+    return None
+
+
 @app.get("/documents/{doc_id}/raw")
 def get_document_raw(doc_id: str):
     """Serve the raw PDF file from GridFS."""
@@ -508,7 +553,7 @@ def get_document_raw(doc_id: str):
         "ETag": f'"{doc_id}"',
     }
 
-    grid_out = fs.find_one({"filename": tree.doc_name})
+    grid_out = _find_pdf_in_gridfs(fs, doc_id, tree.doc_name)
 
     safe_name = tree.doc_name.encode("ascii", "replace").decode("ascii")
     content_disposition = f"inline; filename=\"{safe_name}\"; filename*=UTF-8''{url_quote(tree.doc_name)}"
@@ -534,18 +579,28 @@ def get_document_raw(doc_id: str):
                 tree.doc_name, gridfs_err,
             )
 
-    # Fallback: try serving from local disk
+    # Fallback: try serving from local disk. Try the current doc_name first
+    # (matches un-renamed docs), then scan the pdfs/ dir for any file whose
+    # name hashes to this doc_id (matches docs renamed after ingestion).
+    from models.document import generate_doc_id
+
     settings = get_settings()
-    local_path = settings.storage.trees_dir.parent / "pdfs" / tree.doc_name
-    if local_path.exists():
-        return FileResponse(
-            str(local_path),
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": content_disposition,
-                **cache_headers,
-            },
-        )
+    pdfs_dir = settings.storage.trees_dir.parent / "pdfs"
+    candidates = [pdfs_dir / tree.doc_name]
+    if pdfs_dir.exists():
+        for p in pdfs_dir.iterdir():
+            if p.is_file() and generate_doc_id(p.name) == doc_id:
+                candidates.append(p)
+    for local_path in candidates:
+        if local_path.exists():
+            return FileResponse(
+                str(local_path),
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": content_disposition,
+                    **cache_headers,
+                },
+            )
     raise HTTPException(
         status_code=404, detail=f"PDF file not found: {tree.doc_name}"
     )
