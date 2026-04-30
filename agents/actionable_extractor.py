@@ -77,6 +77,12 @@ MIN_DEONTIC_MATCHES = 2
 # Max chars per batch to stay within model context (~8000 tokens of source)
 BATCH_CHAR_LIMIT = 30000
 
+# Validation runs in small batches to keep output tokens bounded — copying
+# ~16 fields verbatim for many items in a single call routinely tripped
+# the model's output limit and triggered retries.
+VALIDATION_BATCH_SIZE = 15
+VALIDATION_MAX_SOURCE_CHARS = 30000
+
 
 class ActionableExtractor:
     """Extract compliance actionables from a document tree."""
@@ -452,71 +458,91 @@ class ActionableExtractor:
         source_nodes: list[TreeNode],
     ) -> list[ActionableItem]:
         """
-        Validate extracted actionables: check grounding, deduplicate, catch misses.
-        Single LLM call using the pro model.
+        Validate extracted actionables in batches: check grounding, modality,
+        deduplicate. Runs one LLM call per batch (default 15 items) to keep
+        output tokens bounded. Per-batch failures are isolated — the remaining
+        batches still run and produce validated output.
         """
         prompt_data = load_prompt("actionables", "validate")
         system_prompt = prompt_data["system"]
         user_template = prompt_data["user_template"]
 
-        # Build compact source text for validation
-        source_parts = []
-        for node in source_nodes:
-            text = (node.text or "")[:2500]  # shorter per node for validation
-            source_parts.append(
-                f"--- {node.title} (pp.{node.start_page}-{node.end_page}) "
-                f"[{node.node_id}] ---\n{text}"
-            )
-        source_text = "\n\n".join(source_parts)
+        nodes_by_id: dict[str, TreeNode] = {n.node_id: n for n in source_nodes}
 
-        # Truncate if too large
-        max_source_chars = 40000
-        if len(source_text) > max_source_chars:
-            source_text = source_text[:max_source_chars] + "\n\n[... truncated ...]"
+        all_validated: list[ActionableItem] = []
+        total_batches = (len(actionables) + VALIDATION_BATCH_SIZE - 1) // VALIDATION_BATCH_SIZE
 
-        actionables_json = json.dumps(
-            [a.to_dict() for a in actionables],
-            indent=2,
-        )
-
-        user_msg = format_prompt(
-            user_template,
-            doc_name=tree.doc_name,
-            source_sections_text=source_text,
-            actionables_json=actionables_json,
-        )
-
-        try:
-            result = self._llm.chat_json(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_msg},
-                ],
-                model=self._settings.llm.model_pro,
-                max_tokens=self._settings.llm.max_tokens_long,
-                reasoning_effort="medium",
+        for batch_idx in range(0, len(actionables), VALIDATION_BATCH_SIZE):
+            batch = actionables[batch_idx : batch_idx + VALIDATION_BATCH_SIZE]
+            batch_num = batch_idx // VALIDATION_BATCH_SIZE + 1
+            logger.info(
+                "  -> Validation batch %d/%d: %d actionables",
+                batch_num,
+                total_batches,
+                len(batch),
             )
 
-            all_validated: list[ActionableItem] = []
+            # Scope source text to only the nodes this batch's actionables came
+            # from. Falls back to all source_nodes if the batch references none.
+            referenced_ids = {a.source_node_id for a in batch if a.source_node_id}
+            scoped_nodes = [
+                nodes_by_id[nid] for nid in referenced_ids if nid in nodes_by_id
+            ] or source_nodes
 
-            for raw in result.get("validated_actionables", []):
-                item = ActionableItem.from_dict(raw)
-                all_validated.append(item)
+            source_parts = []
+            for node in scoped_nodes:
+                text = (node.text or "")[:2500]
+                source_parts.append(
+                    f"--- {node.title} (pp.{node.start_page}-{node.end_page}) "
+                    f"[{node.node_id}] ---\n{text}"
+                )
+            source_text = "\n\n".join(source_parts)
+            if len(source_text) > VALIDATION_MAX_SOURCE_CHARS:
+                source_text = source_text[:VALIDATION_MAX_SOURCE_CHARS] + "\n\n[... truncated ...]"
 
-            for raw in result.get("missed_actionables", []):
-                item = ActionableItem.from_dict(raw)
-                item.validation_status = "added_by_validator"
-                all_validated.append(item)
+            actionables_json = json.dumps([a.to_dict() for a in batch], indent=2)
+            user_msg = format_prompt(
+                user_template,
+                doc_name=tree.doc_name,
+                source_sections_text=source_text,
+                actionables_json=actionables_json,
+            )
 
-            missed_count = len(result.get("missed_actionables", []))
-            if missed_count > 0:
-                logger.info("  Validation added %d missed actionables", missed_count)
+            try:
+                result = self._llm.chat_json(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    model=self._settings.llm.model_pro,
+                    max_tokens=self._settings.llm.max_tokens_long,
+                    reasoning_effort="medium",
+                )
 
-            return all_validated
+                for raw in result.get("validated_actionables", []):
+                    all_validated.append(ActionableItem.from_dict(raw))
 
-        except Exception as e:
-            logger.error("Validation failed: %s", str(e))
-            # On failure, keep the unvalidated originals
-            for item in actionables:
-                item.validation_status = "validation_failed"
-            return actionables
+                # The semantic-first validate.yaml v1 always returns
+                # missed_actionables=[]; preserved here for backward compat
+                # if older prompt versions are swapped back in.
+                for raw in result.get("missed_actionables", []):
+                    item = ActionableItem.from_dict(raw)
+                    item.validation_status = "added_by_validator"
+                    all_validated.append(item)
+
+                missed_count = len(result.get("missed_actionables", []))
+                if missed_count > 0:
+                    logger.info("    -> %d missed actionables added", missed_count)
+
+            except Exception as e:
+                logger.error(
+                    "  Validation batch %d/%d failed: %s — keeping unvalidated",
+                    batch_num,
+                    total_batches,
+                    str(e),
+                )
+                for item in batch:
+                    item.validation_status = "validation_failed"
+                    all_validated.append(item)
+
+        return all_validated

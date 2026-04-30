@@ -63,7 +63,7 @@ class LLMClient:
     """
     Multi-provider LLM client for GOVINDA V2.
 
-    - OpenAI models (gpt-5.2, gpt-5.2-pro, gpt-5-mini, gpt-5-nano):
+    - OpenAI models (gpt-5.5 and variants):
       Use the native OpenAI Responses API.
     - DeepInfra models (GLM-5, DeepSeek-V3, Qwen, etc.):
       Use the OpenAI-compatible Chat Completions API via DeepInfra.
@@ -284,14 +284,13 @@ class LLMClient:
 
         Args:
             messages: List of {"role": ..., "content": ...} dicts.
-            model: Override model (defaults to gpt-5.2).
+            model: Override model (defaults to gpt-5.5).
             temperature: Override temperature. Only effective when
                          reasoning_effort is "none".
             max_tokens: Override max_output_tokens.
             json_mode: If True, request JSON response format.
             reasoning_effort: "none" | "low" | "medium" | "high" | "xhigh".
-                              Defaults to "none" for gpt-5.2,
-                              "medium" for gpt-5.2-pro.
+                              Defaults to "low" when not specified.
 
         Returns:
             The assistant's response text.
@@ -319,17 +318,11 @@ class LLMClient:
             "store": False,
         }
 
-        # Reasoning effort defaults
-        if reasoning_effort:
-            effort = reasoning_effort
-        elif model == self._model_pro:
-            effort = "medium"
-        else:
-            effort = "none"
-        # Guard: only gpt-5.2 base supports effort="none".
-        # Mini / nano / pro require at minimum "low".
-        if effort == "none" and model != self._model:
-            effort = "low"
+        # Reasoning effort defaults.
+        # All callers in the intelligence pipeline pass explicit reasoning_effort,
+        # so this fallback only applies to generic chat() calls. Default "low"
+        # keeps reasoning active without heavy cost.
+        effort = reasoning_effort if reasoning_effort else "low"
 
         kwargs["reasoning"] = {"effort": effort}
 
@@ -399,17 +392,7 @@ class LLMClient:
             "store": False,
         }
 
-        # Reasoning effort defaults
-        if reasoning_effort:
-            effort = reasoning_effort
-        elif model == self._model_pro:
-            effort = "medium"
-        else:
-            effort = "none"
-        # Guard: only gpt-5.2 base supports effort="none".
-        # Mini / nano / pro require at minimum "low".
-        if effort == "none" and model != self._model:
-            effort = "low"
+        effort = reasoning_effort if reasoning_effort else "low"
 
         kwargs["reasoning"] = {"effort": effort}
 
@@ -451,7 +434,7 @@ class LLMClient:
         json_mode: bool = False,
         reasoning_effort: str = "medium",
     ) -> str:
-        """Chat using GPT-5.2 Pro (deeper reasoning for synthesis)."""
+        """Chat with medium reasoning effort (deep synthesis calls)."""
         return self.chat(
             messages=messages,
             model=self._model_pro,

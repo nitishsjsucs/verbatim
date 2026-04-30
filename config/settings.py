@@ -37,11 +37,11 @@ class LLMConfig(BaseSettings):
         alias="DEEPINFRA_BASE_URL",
     )
 
-    # Primary model for tree reasoning, locating, reading
-    model: str = Field(default="gpt-5.2", alias="LLM_MODEL")
+    # Primary model for all pipeline stages
+    model: str = Field(default="gpt-5.5", alias="LLM_MODEL")
 
-    # Pro model for synthesis and verification (deeper reasoning)
-    model_pro: str = Field(default="gpt-5.2-pro", alias="LLM_MODEL_PRO")
+    # Kept for backward compat — defaults to same model as `model`
+    model_pro: str = Field(default="gpt-5.5", alias="LLM_MODEL_PRO")
 
     # Temperature (only effective when reasoning_effort="none")
     temperature: float = 0.1
