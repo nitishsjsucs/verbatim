@@ -171,15 +171,44 @@ def health():
 # ---------------------------------------------------------------------------
 @router.get("/documents")
 def list_documents():
-    """List all documents with an AIS-run indicator."""
+    """List all documents with an AIS-run indicator + document metadata."""
+    from tree.actionable_store import ActionableStore  # local import to avoid cycles
+
     docs = _ts().list_documents_summary()
     summaries = _runs().list_summaries()
     run_ids = {s["doc_id"] for s in summaries}
     actionable_counts = {s["doc_id"]: s.get("actionable_count", 0) for s in summaries}
+
+    # Batch-load document-level metadata from the actionables collection
+    astore = ActionableStore()
     for d in docs:
         doc_id = d.get("id")
         d["has_intel_run"] = doc_id in run_ids
         d["has_actionables"] = actionable_counts.get(doc_id, 0) > 0
+        # Attach document metadata (effective date, issue date, regulator, etc.)
+        try:
+            ar = astore.load(doc_id)
+            if ar is not None:
+                d["circular_effective_date"] = getattr(ar, "circular_effective_date", "") or ""
+                d["regulation_issue_date"] = getattr(ar, "regulation_issue_date", "") or ""
+                d["regulator"] = getattr(ar, "regulator", "") or ""
+                d["circular_id"] = getattr(ar, "circular_id", "") or ""
+                d["circular_title"] = getattr(ar, "circular_title", "") or ""
+                d["created_at"] = getattr(ar, "created_at", "") or ""
+            else:
+                d["circular_effective_date"] = ""
+                d["regulation_issue_date"] = ""
+                d["regulator"] = ""
+                d["circular_id"] = ""
+                d["circular_title"] = ""
+                d["created_at"] = ""
+        except Exception:
+            d["circular_effective_date"] = ""
+            d["regulation_issue_date"] = ""
+            d["regulator"] = ""
+            d["circular_id"] = ""
+            d["circular_title"] = ""
+            d["created_at"] = ""
     return docs
 
 
@@ -917,12 +946,30 @@ def dashboard():
 # Serialization helper
 # ---------------------------------------------------------------------------
 def _run_payload(run: IntelRun) -> dict:
+    from tree.actionable_store import ActionableStore  # local import to avoid cycles
+
     teams = _teams().list()
     categories = _cats().list()
     groupings = build_groupings(run.actionables, teams)
     # always refresh stats on read to reflect latest patches
     stats = compute_stats(run.actionables, teams)
     run.stats = stats
+
+    # Attach parent document metadata so the frontend can display/export it
+    doc_meta: dict = {}
+    try:
+        ar = ActionableStore().load(run.doc_id)
+        if ar is not None:
+            doc_meta = {
+                "circular_effective_date": getattr(ar, "circular_effective_date", "") or "",
+                "regulation_issue_date": getattr(ar, "regulation_issue_date", "") or "",
+                "regulator": getattr(ar, "regulator", "") or "",
+                "circular_id": getattr(ar, "circular_id", "") or "",
+                "circular_title": getattr(ar, "circular_title", "") or "",
+            }
+    except Exception:
+        pass
+
     return {
         "doc_id": run.doc_id,
         "doc_name": run.doc_name,
@@ -934,4 +981,5 @@ def _run_payload(run: IntelRun) -> dict:
         "stats": stats,
         "created_at": run.created_at,
         "updated_at": run.updated_at,
+        "doc_meta": doc_meta,
     }

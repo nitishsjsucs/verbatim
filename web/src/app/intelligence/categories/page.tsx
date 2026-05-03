@@ -3,6 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Tag, Save, X, Download, Upload, FileDown } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+} from "@/components/ui/dialog";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +79,12 @@ export default function IntelligenceCategoriesPage() {
         void refresh();
     }, [refresh]);
 
+    const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+    const broadcastCategoriesChange = () => {
+        window.dispatchEvent(new CustomEvent("intel-categories-changed"));
+    };
+
     const onCreate = async () => {
         if (!form.name.trim()) {
             toast.error("Name is required");
@@ -84,7 +98,9 @@ export default function IntelligenceCategoriesPage() {
             });
             toast.success("Category created");
             setForm(EMPTY);
+            setAddDialogOpen(false);
             await refresh();
+            broadcastCategoriesChange();
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Create failed");
         } finally {
@@ -113,6 +129,7 @@ export default function IntelligenceCategoriesPage() {
             toast.success("Category updated");
             cancelEdit();
             await refresh();
+            broadcastCategoriesChange();
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Update failed");
         } finally {
@@ -147,6 +164,7 @@ export default function IntelligenceCategoriesPage() {
         if (result !== null) {
             toast.success("Category deleted");
             await refresh();
+            broadcastCategoriesChange();
         }
     };
 
@@ -195,10 +213,17 @@ export default function IntelligenceCategoriesPage() {
                 </div>
             </div>
 
-            <Card>
-                <CardContent className="p-4 space-y-3">
-                    <h2 className="text-sm font-semibold">Add a new category</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm">
+                        <Plus className="h-3.5 w-3.5" /> Add New Category
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add a new category</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
                         <div>
                             <label className="text-[11px] text-muted-foreground">Name *</label>
                             <Input
@@ -208,7 +233,7 @@ export default function IntelligenceCategoriesPage() {
                                 className="h-8 text-xs"
                             />
                         </div>
-                        <div className="md:col-span-2">
+                        <div>
                             <label className="text-[11px] text-muted-foreground">Description</label>
                             <Input
                                 value={form.description}
@@ -218,14 +243,14 @@ export default function IntelligenceCategoriesPage() {
                             />
                         </div>
                     </div>
-                    <div className="flex justify-end">
+                    <DialogFooter>
                         <Button size="sm" onClick={onCreate} disabled={saving}>
                             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                             Add Category
                         </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <div className="rounded-md border border-border">
                 <div className="grid grid-cols-[1fr_2fr_120px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/30">

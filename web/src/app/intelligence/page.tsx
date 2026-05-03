@@ -48,9 +48,15 @@ function exportDocumentsCsv(docs: IntelDocumentMeta[]) {
         d.has_intel_run ? "Intelligence ready" : "Not extracted",
         d.has_actionables ? "Yes" : "No",
         d.ingested_at || "",
+        d.circular_effective_date || "",
+        d.regulation_issue_date || "",
+        d.regulator || "",
+        d.circular_id || "",
+        d.circular_title || "",
+        d.created_at || "",
     ]);
     const csv = buildCsv(
-        ["ID", "Document", "Description", "Pages", "Nodes", "Intel Status", "Has Actionables", "Ingested At"],
+        ["ID", "Document", "Description", "Pages", "Nodes", "Intel Status", "Has Actionables", "Ingested At", "Effective Date", "Issue Date", "Regulator", "Circular ID", "Circular Title", "Created At"],
         rows,
     );
     triggerCsvDownload(csv, `workspace_documents_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -158,7 +164,7 @@ export default function IntelligenceWorkspacePage() {
     );
 
     return (
-        <div className="mx-auto max-w-6xl px-6 py-8 space-y-6">
+        <div className="mx-auto max-w-7xl px-6 py-8 space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-semibold">Document Actionable Workspace</h1>
@@ -227,11 +233,13 @@ export default function IntelligenceWorkspacePage() {
                 </CardContent>
             </Card>
 
-            <div className="rounded-md border border-border">
-                <div className="grid grid-cols-[1fr_120px_120px_160px_220px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/30">
+            <div className="rounded-md border border-border overflow-x-auto">
+                <div className="grid grid-cols-[minmax(200px,2fr)_100px_100px_120px_120px_160px_220px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/30">
                     <div>Document</div>
                     <div className="text-right">Pages</div>
                     <div className="text-right">Nodes</div>
+                    <div>Effective Date</div>
+                    <div>Created At</div>
                     <div>Status</div>
                     <div className="text-right">Actions</div>
                 </div>
@@ -250,11 +258,11 @@ export default function IntelligenceWorkspacePage() {
                         return (
                             <div
                                 key={d.id}
-                                className="grid grid-cols-[1fr_120px_120px_160px_220px] gap-2 items-center px-4 py-3 text-xs border-b border-border last:border-0 hover:bg-muted/20"
+                                className="grid grid-cols-[minmax(200px,2fr)_100px_100px_120px_120px_160px_220px] gap-2 items-start px-4 py-3 text-xs border-b border-border last:border-0 hover:bg-muted/20"
                             >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="truncate font-medium" title={d.name}>
+                                <div className="flex items-start gap-2 min-w-0">
+                                    <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                    <span className="font-medium break-words whitespace-normal" title={d.name}>
                                         {d.name}
                                     </span>
                                 </div>
@@ -263,6 +271,12 @@ export default function IntelligenceWorkspacePage() {
                                 </div>
                                 <div className="text-right tabular-nums text-muted-foreground">
                                     {d.nodes}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground">
+                                    {d.circular_effective_date || "—"}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground">
+                                    {d.created_at ? new Date(d.created_at).toLocaleDateString() : (d.ingested_at || "—")}
                                 </div>
                                 <div>
                                     {d.has_intel_run ? (

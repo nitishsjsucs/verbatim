@@ -51,8 +51,10 @@ import type {
     EnrichedActionable,
     ImportMode,
     ImportResult,
+    IntelDocMeta,
     IntelPriority,
     IntelRunPayload,
+    NoticeItem,
 } from "@/lib/intelligence-types";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +75,7 @@ const RISK_STAR_COLOR = (score: number) => {
 };
 
 const CSV_FIELDS: Array<{ key: string; label: string }> = [
+    { key: "item_type", label: "item_type" },
     { key: "id", label: "id" },
     { key: "description", label: "description" },
     { key: "source", label: "source" },
@@ -87,6 +90,16 @@ const CSV_FIELDS: Array<{ key: string; label: string }> = [
     { key: "notes", label: "notes" },
 ];
 
+const DOC_META_FIELDS: Array<{ key: string; label: string }> = [
+    { key: "doc_id", label: "document_id" },
+    { key: "doc_name", label: "document_name" },
+    { key: "circular_effective_date", label: "effective_date" },
+    { key: "regulation_issue_date", label: "issue_date" },
+    { key: "regulator", label: "regulator" },
+    { key: "circular_id", label: "circular_id" },
+    { key: "circular_title", label: "circular_title" },
+];
+
 function csvEscapeLocal(v: unknown): string {
     if (v === null || v === undefined) return "";
     const s = Array.isArray(v) ? v.join("; ") : String(v);
@@ -99,14 +112,55 @@ function serializeCsvField(a: EnrichedActionable, key: string): unknown {
         const tasks = a.team_specific_tasks || [];
         return tasks.map((t) => `${t.team_name}: ${t.team_specific_task}`).join("; ");
     }
+    if (key === "item_type") return "Actionable";
     return (a as unknown as Record<string, unknown>)[key];
 }
 
-function downloadCsv(actionables: EnrichedActionable[], docName: string) {
-    const header = CSV_FIELDS.map((f) => csvEscapeLocal(f.label)).join(",");
-    const rows = actionables.map((a) =>
-        CSV_FIELDS.map((f) => csvEscapeLocal(serializeCsvField(a, f.key))).join(","),
-    );
+function downloadCsv(
+    actionables: EnrichedActionable[],
+    noticeBoard: NoticeItem[],
+    docName: string,
+    docId: string,
+    docMeta?: IntelDocMeta,
+) {
+    const allHeaders = [
+        ...CSV_FIELDS.map((f) => f.label),
+        ...DOC_META_FIELDS.map((f) => f.label),
+    ];
+    const metaValues = [
+        docId,
+        docName,
+        docMeta?.circular_effective_date || "",
+        docMeta?.regulation_issue_date || "",
+        docMeta?.regulator || "",
+        docMeta?.circular_id || "",
+        docMeta?.circular_title || "",
+    ];
+
+    const actionableRows = actionables.map((a) => [
+        ...CSV_FIELDS.map((f) => csvEscapeLocal(serializeCsvField(a, f.key))),
+        ...metaValues.map(csvEscapeLocal),
+    ]);
+
+    const noticeRows = noticeBoard.map((n) => [
+        csvEscapeLocal("Information"),
+        csvEscapeLocal(n.id),
+        csvEscapeLocal(n.text),
+        csvEscapeLocal(n.source || ""),
+        "", // priority
+        "", // category
+        "", // risk_score
+        "", // deadline
+        "", // deadline_phrase
+        "", // timeline_bucket
+        "", // assigned_team_names
+        "", // team_specific_tasks
+        "", // notes
+        ...metaValues.map(csvEscapeLocal),
+    ]);
+
+    const header = allHeaders.map(csvEscapeLocal).join(",");
+    const rows = [...actionableRows, ...noticeRows].map((r) => r.join(","));
     const csv = [header, ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -121,9 +175,9 @@ function downloadCsv(actionables: EnrichedActionable[], docName: string) {
 }
 
 function downloadActionablesTemplate() {
-    const headers = ["id", "description", "priority", "deadline", "risk_score", "category", "team_specific_tasks", "notes"];
+    const headers = ["item_type", "id", "description", "priority", "deadline", "risk_score", "category", "team_specific_tasks", "notes", "document_id", "document_name", "effective_date", "issue_date", "regulator", "circular_id", "circular_title"];
     const example = [
-        ["ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "2025-06-30", "4", "Compliance & Regulatory Implementation", "Compliance: Verify KYC norms; Operations: Update branch processes", ""],
+        ["Actionable", "ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "2025-06-30", "4", "Compliance & Regulatory Implementation", "Compliance: Verify KYC norms; Operations: Update branch processes", "", "DOC-001", "RBI Circular on KYC", "2025-06-01", "2025-05-15", "RBI", "CIRC-001", "KYC Norms Update"],
     ];
     const csv = buildCsv(headers, example);
     triggerCsvDownload(csv, "actionables_import_template.csv");
@@ -214,6 +268,17 @@ export default function IntelligenceDocPage({
 
     useEffect(() => {
         void load();
+    }, [load]);
+
+    // Re-fetch when teams or categories change on other pages
+    useEffect(() => {
+        const handler = () => void load();
+        window.addEventListener("intel-teams-changed", handler);
+        window.addEventListener("intel-categories-changed", handler);
+        return () => {
+            window.removeEventListener("intel-teams-changed", handler);
+            window.removeEventListener("intel-categories-changed", handler);
+        };
     }, [load]);
 
     const handleImport = async (file: File, mode: ImportMode): Promise<ImportResult> => {
@@ -411,9 +476,9 @@ export default function IntelligenceDocPage({
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => downloadCsv(filtered, run.doc_name)}
-                        disabled={filtered.length === 0}
-                        title="Export the current (filtered) actionables as CSV"
+                        onClick={() => downloadCsv(filtered, run.notice_board, run.doc_name, run.doc_id, run.doc_meta)}
+                        disabled={filtered.length === 0 && run.notice_board.length === 0}
+                        title="Export actionables and information board items as CSV"
                     >
                         <Download className="h-3.5 w-3.5" /> Export CSV
                     </Button>
@@ -525,94 +590,81 @@ export default function IntelligenceDocPage({
                 </CardContent>
             </Card>
 
-            {/* Actionables table (grouped) */}
-            <div className="space-y-4">
-                {Array.from(grouped.entries()).map(([groupKey, items]) => (
-                    <div key={groupKey} className="rounded-md border border-border">
-                        {groupMode !== "flat" && (
-                            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
-                                <span className="text-xs font-semibold">{groupKey}</span>
-                                <span className="text-[11px] text-muted-foreground">
-                                    {items.length} item{items.length === 1 ? "" : "s"}
-                                </span>
-                            </div>
-                        )}
-                        <div className="grid grid-cols-[80px_1fr_200px_90px_150px_140px_90px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/10">
-                            <div>ID</div>
-                            <div>Description</div>
-                            <div>Assigned Teams</div>
-                            <div>Priority</div>
-                            <div>Deadline</div>
-                            <div>Category</div>
-                            <div>Risk</div>
-                        </div>
-                        {items.length === 0 ? (
-                            <div className="p-6 text-center text-xs text-muted-foreground">
-                                No actionables match the filters.
-                            </div>
-                        ) : (
-                            items.map((a) => (
-                                <ActionableRow
-                                    key={a.id}
-                                    a={a}
-                                    teams={teamOptions}
-                                    categoryOptions={categoryOptions}
-                                    editTeams={editTeams}
-                                    onPatch={(p) => patchItem(a.id, p)}
-                                    onOpenSource={openSourcePdf}
-                                />
-                            ))
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            {/* Notice Board */}
-            <Card>
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                        <Info className="h-4 w-4" /> Notice Board
-                        <span className="text-[11px] font-normal text-muted-foreground">
-                            ({run.notice_board.length} items)
-                        </span>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {run.notice_board.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">
-                            No informational or contextual items were extracted for this document.
-                        </p>
-                    ) : (
-                        run.notice_board.map((n) => (
-                            <div
-                                key={n.id}
-                                className="flex items-start gap-3 rounded border border-border p-3 text-xs"
-                            >
-                                <span
-                                    className={cn(
-                                        "shrink-0 rounded px-2 py-0.5 text-[10px] font-medium border",
-                                        n.tag === "Advisory"
-                                            ? "bg-blue-500/10 text-blue-600 border-blue-500/30"
-                                            : n.tag === "Contextual"
-                                                ? "bg-purple-500/10 text-purple-600 border-purple-500/30"
-                                                : "bg-slate-500/10 text-slate-600 border-slate-500/30",
-                                    )}
-                                >
-                                    {n.tag}
-                                </span>
-                                <div className="min-w-0">
-                                    <p className="text-foreground">{n.text}</p>
-                                    {n.source && (
-                                        <p className="text-[10px] text-muted-foreground mt-1">
-                                            {n.source}
-                                        </p>
-                                    )}
+            {/* Side-by-side: Actionables table + Information Board */}
+            <div className="flex gap-4 items-start">
+                {/* Actionables table (grouped) — takes majority of space */}
+                <div className="flex-1 min-w-0 space-y-4">
+                    {Array.from(grouped.entries()).map(([groupKey, items]) => (
+                        <div key={groupKey} className="rounded-md border border-border">
+                            {groupMode !== "flat" && (
+                                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+                                    <span className="text-xs font-semibold">{groupKey}</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                        {items.length} item{items.length === 1 ? "" : "s"}
+                                    </span>
                                 </div>
+                            )}
+                            <div className="grid grid-cols-[80px_1fr_200px_90px_150px_140px_90px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/10">
+                                <div>ID</div>
+                                <div>Description</div>
+                                <div>Assigned Teams</div>
+                                <div>Priority</div>
+                                <div>Deadline</div>
+                                <div>Category</div>
+                                <div>Risk</div>
                             </div>
-                        ))
-                    )}
-                </CardContent>
-            </Card>
+                            {items.length === 0 ? (
+                                <div className="p-6 text-center text-xs text-muted-foreground">
+                                    No actionables match the filters.
+                                </div>
+                            ) : (
+                                items.map((a) => (
+                                    <ActionableRow
+                                        key={a.id}
+                                        a={a}
+                                        teams={teamOptions}
+                                        categoryOptions={categoryOptions}
+                                        editTeams={editTeams}
+                                        onPatch={(p) => patchItem(a.id, p)}
+                                        onOpenSource={openSourcePdf}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Information Board — sticky sidebar */}
+                {run.notice_board.length > 0 && (
+                    <div className="w-80 shrink-0 sticky top-4">
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                    <Info className="h-4 w-4" /> Information Board
+                                    <span className="text-[11px] font-normal text-muted-foreground">
+                                        ({run.notice_board.length})
+                                    </span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 max-h-[70vh] overflow-y-auto">
+                                {run.notice_board.map((n) => (
+                                    <div
+                                        key={n.id}
+                                        className="rounded border border-border p-3 text-xs"
+                                    >
+                                        <p className="text-foreground">{n.text}</p>
+                                        {n.source && (
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                {n.source}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -975,7 +1027,8 @@ function ActionableRow({
                     value={a.category}
                     onChange={(e) => onPatch({ category: e.target.value })}
                     title={a.category}
-                    className="h-6 w-full max-w-full rounded border border-border bg-background px-1 text-[11px]"
+                    className="h-auto min-h-[24px] w-full max-w-full rounded border border-border bg-background px-1 py-0.5 text-[11px] whitespace-normal"
+                    style={{ textOverflow: "unset" }}
                 >
                     {categoryOptions.map((c) => (
                         <option key={c} value={c} title={c}>

@@ -104,6 +104,14 @@ export interface IntelGroupings {
     by_timeline: Record<string, string[]>;
 }
 
+export interface IntelDocMeta {
+    circular_effective_date?: string;
+    regulation_issue_date?: string;
+    regulator?: string;
+    circular_id?: string;
+    circular_title?: string;
+}
+
 export interface IntelRunPayload {
     doc_id: string;
     doc_name: string;
@@ -115,6 +123,7 @@ export interface IntelRunPayload {
     stats: IntelStats;
     created_at: string;
     updated_at: string;
+    doc_meta?: IntelDocMeta;
 }
 
 export interface IntelDocumentMeta {
@@ -126,6 +135,12 @@ export interface IntelDocumentMeta {
     ingested_at?: string;
     has_actionables?: boolean;
     has_intel_run?: boolean;
+    circular_effective_date?: string;
+    regulation_issue_date?: string;
+    regulator?: string;
+    circular_id?: string;
+    circular_title?: string;
+    created_at?: string;
 }
 
 export interface IntelDashboardPayload {

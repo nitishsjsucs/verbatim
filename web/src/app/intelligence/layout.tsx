@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Brain, FolderOpen, Users, LayoutDashboard, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const NAV = [
     { href: "/intelligence", label: "Workspace", icon: FolderOpen, match: (p: string) => p === "/intelligence" || p.startsWith("/intelligence/workspace") },
@@ -47,6 +48,7 @@ export default function IntelligenceLayout({ children }: { children: React.React
                     >
                         ← Back to app
                     </Link>
+                    <ThemeToggle />
                 </nav>
             </header>
             <main className="flex-1 overflow-y-auto">{children}</main>
