@@ -34,10 +34,6 @@ function exportDashboardReport(data: IntelDashboardPayload) {
         .sort((a, b) => b[1] - a[1])
         .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
         .join("");
-    const categoryRows = Object.entries(s.category_counts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
-        .join("");
     const riskRows = Object.entries(s.risk_counts)
         .sort((a, b) => Number(a[0]) - Number(b[0]))
         .map(([k, v]) => `<tr><td>Risk ${k}</td><td>${v}</td></tr>`)
@@ -84,9 +80,6 @@ function exportDashboardReport(data: IntelDashboardPayload) {
 
   <h2>Priority Breakdown</h2>
   <table><thead><tr><th>Priority</th><th>Count</th></tr></thead><tbody>${priorityRows}</tbody></table>
-
-  <h2>Category Breakdown</h2>
-  <table><thead><tr><th>Category</th><th>Count</th></tr></thead><tbody>${categoryRows}</tbody></table>
 
   <h2>Risk Distribution</h2>
   <table><thead><tr><th>Level</th><th>Count</th></tr></thead><tbody>${riskRows}</tbody></table>
@@ -248,40 +241,6 @@ export default function IntelligenceDashboardPage() {
                                 );
                             })}
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Category breakdown */}
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">By category</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        {Object.entries(s.category_counts).length === 0 ? (
-                            <p className="text-xs text-muted-foreground">No data yet.</p>
-                        ) : (
-                            Object.entries(s.category_counts)
-                                .sort((a, b) => b[1] - a[1])
-                                .map(([k, v]) => {
-                                    const pct = s.total_actionables ? (v / s.total_actionables) * 100 : 0;
-                                    return (
-                                        <div key={k}>
-                                            <div className="flex items-center justify-between text-[11px]">
-                                                <span>{k}</span>
-                                                <span className="text-muted-foreground">
-                                                    {v} ({pct.toFixed(0)}%)
-                                                </span>
-                                            </div>
-                                            <div className="h-1.5 rounded bg-muted overflow-hidden">
-                                                <div
-                                                    className="h-full bg-primary"
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                        )}
                     </CardContent>
                 </Card>
 

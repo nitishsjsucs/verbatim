@@ -19,7 +19,6 @@ The model:
   - assigns priority (High/Medium/Low) from expectation strength,
     time pressure, and consequence of failure
   - assigns risk_score 1..5 from magnitude of non-compliance impact
-  - assigns a category from the user-defined list
 
 NOTE: The regex-based heuristics below (`_MUST_KEYWORDS`, `_SHOULD_KEYWORDS`,
 deadline patterns) exist ONLY as a last-resort resilience fallback for
@@ -42,9 +41,7 @@ from utils.llm_client import LLMClient
 from config.settings import get_settings
 
 from intelligence.models import (
-    DEFAULT_CATEGORY,
     EnrichedActionable,
-    IntelCategory,
     NoticeItem,
 )
 
@@ -133,25 +130,6 @@ def _norm_priority(p: str, modality: str, deadline_bucket: Optional[str]) -> str
     return base
 
 
-def _norm_category(c: str, allowed_names: list[str]) -> str:
-    """Validate `c` against the user-defined category list. Falls back to
-    `DEFAULT_CATEGORY` when unrecognized or no roster is configured."""
-    c = (c or "").strip()
-    if not c:
-        return DEFAULT_CATEGORY
-    if not allowed_names:
-        # No user-defined roster yet — keep whatever the LLM produced so users
-        # can re-classify after defining categories. Treat empty as default.
-        return c or DEFAULT_CATEGORY
-    # exact match
-    if c in allowed_names:
-        return c
-    # case-insensitive match
-    lc = c.lower()
-    for name in allowed_names:
-        if name.lower() == lc:
-            return name
-    return DEFAULT_CATEGORY
 
 
 def _timeline_bucket_from_deadline(iso_date: str, hint: Optional[str]) -> str:
@@ -194,9 +172,6 @@ forceful-sounding phrasing while expressing only context. Judge by
 intent and consequence, not by surface vocabulary.
 
 INPUTS YOU WILL RECEIVE:
-  * CATEGORIES — a fixed, user-defined list of category names with
-    descriptions. You must select from this list (or "Uncategorized").
-    Do NOT invent categories.
   * DOCUMENT_EFFECTIVE_DATE — the document-level execution date
     (may be empty).
   * INPUTS — pre-extracted candidate actionables, each carrying its
@@ -269,16 +244,7 @@ G. risk_score ∈ 1..5 (only when actionable)
      5 — severe consequence; license / charter risk, large penalties,
          systemic operational failure, or material customer harm.
 
-H. category (only when actionable)
-   - Choose EXACTLY ONE category name from the CATEGORIES list whose
-     description, in meaning, best matches the responsibility.
-   - If multiple categories appear equally relevant, choose the one
-     that most directly reflects the primary execution domain of the
-     responsibility.
-   - If, on a careful reading, no category in the list reflects the
-     responsibility, return "Uncategorized".
-
-I. text + tag (only when kind == "notice")
+H. text + tag (only when kind == "notice")
    - text: a single-line summary of the informational content.
    - tag ∈ {"Informational","Contextual","Advisory"}.
 
@@ -301,8 +267,7 @@ OUTPUT (STRICT JSON — no extra fields, no commentary):
       "deadline": "YYYY-MM-DD|Not Specified",
       "deadline_phrase": "...",
       "deadline_reasoning": "...",
-      "risk_score": 1,
-      "category": "<one of the provided category names, or 'Uncategorized'>"
+      "risk_score": 1
     },
     {
       "input_id": "<id from input>",
@@ -313,11 +278,8 @@ OUTPUT (STRICT JSON — no extra fields, no commentary):
   ]
 }
 
-Do NOT invent inputs. Do NOT drop inputs. Do NOT invent categories.
+Do NOT invent inputs. Do NOT drop inputs.
 Do NOT assign teams or owners — that is handled by a separate stage."""
-
-
-NO_CATS_NOTE = '(none defined — use "Uncategorized")'
 
 
 class IntelligenceEnricher:
@@ -333,13 +295,10 @@ class IntelligenceEnricher:
         self,
         raw_actionables: list[ActionableItem],
         tree: DocumentTree,
-        categories: Optional[list[IntelCategory]] = None,
         doc_effective_date: str = "",
     ) -> tuple[list[EnrichedActionable], list[NoticeItem]]:
         if not raw_actionables:
             return [], []
-
-        categories = list(categories or [])
         enriched: list[EnrichedActionable] = []
         notices: list[NoticeItem] = []
 
@@ -347,7 +306,7 @@ class IntelligenceEnricher:
             batch = raw_actionables[start : start + self.BATCH_SIZE]
             try:
                 batch_enriched, batch_notices = self._enrich_batch(
-                    batch, tree, categories, doc_effective_date,
+                    batch, tree, doc_effective_date,
                 )
             except Exception as e:
                 logger.error("Enrichment batch failed: %s", e)
@@ -405,17 +364,12 @@ class IntelligenceEnricher:
         self,
         items: list[ActionableItem],
         tree: DocumentTree,
-        categories: list[IntelCategory],
         doc_effective_date: str,
     ) -> tuple[list[EnrichedActionable], list[NoticeItem]]:
         payload = self._input_payload(items)
-        category_payload = [
-            {"name": c.name, "description": c.description or ""} for c in categories
-        ]
         user_msg = (
             f"DOCUMENT: {tree.doc_name}\n"
             f"DOCUMENT_EFFECTIVE_DATE: {doc_effective_date or '(not provided)'}\n\n"
-            f"CATEGORIES:\n{(json.dumps(category_payload, indent=2) if category_payload else NO_CATS_NOTE)}\n\n"
             f"Enrich the following {len(payload)} candidate actionables. "
             f"Return one output entry per input_id in the same order.\n\n"
             f"INPUTS:\n{json.dumps(payload, indent=2)}"
@@ -441,7 +395,6 @@ class IntelligenceEnricher:
             if key:
                 by_id[key] = row
 
-        category_names = [c.name for c in categories]
         enriched: list[EnrichedActionable] = []
         notices: list[NoticeItem] = []
         for it in items:
@@ -457,7 +410,7 @@ class IntelligenceEnricher:
                 ))
                 continue
             enriched.append(
-                self._merge_enriched(it, row, category_names, doc_effective_date)
+                self._merge_enriched(it, row, doc_effective_date)
             )
 
         return enriched, notices
@@ -466,7 +419,6 @@ class IntelligenceEnricher:
         self,
         it: ActionableItem,
         row: dict,
-        category_names: list[str],
         doc_effective_date: str,
     ) -> EnrichedActionable:
         stmt = self._action_statement(it)
@@ -496,7 +448,6 @@ class IntelligenceEnricher:
             bucket_hint,
         )
         risk = _clamp_risk(row.get("risk_score", 3))
-        category = _norm_category(row.get("category", ""), category_names)
         description = (row.get("description") or stmt or raw_text or "").strip()
         if len(description) > 600:
             description = description[:600].rstrip() + "…"
@@ -513,7 +464,6 @@ class IntelligenceEnricher:
             deadline=iso or "Not Specified",
             deadline_phrase=phrase,
             risk_score=risk,
-            category=category,
             timeline_bucket=bucket,
             assigned_teams=[],
             assigned_team_names=[],
@@ -556,7 +506,6 @@ class IntelligenceEnricher:
             deadline=iso or "Not Specified",
             deadline_phrase=heur_phrase,
             risk_score=risk,
-            category=DEFAULT_CATEGORY,
             timeline_bucket=bucket,
             team_specific_tasks=[],
             notes="",

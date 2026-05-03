@@ -4,7 +4,6 @@ Auto-grouping & insights service.
 Pure, deterministic post-processing over an `IntelRun.actionables` list.
 No LLM calls. Produces:
 
-  * functional groups (by category)
   * department groups (by assigned-team department)
   * timeline groups (Immediate / Short-term / Long-term / Not Specified)
   * aggregate stats used by the insights panel and the cross-document dashboard
@@ -16,13 +15,6 @@ from collections import defaultdict
 from typing import Iterable
 
 from intelligence.models import EnrichedActionable, IntelTeam
-
-
-def group_by_category(items: list[EnrichedActionable]) -> dict[str, list[str]]:
-    out: dict[str, list[str]] = defaultdict(list)
-    for a in items:
-        out[a.category or "Uncategorized"].append(a.id)
-    return dict(out)
 
 
 def group_by_department(
@@ -67,7 +59,6 @@ def compute_stats(
     team_workload: dict[str, int] = defaultdict(int)
 
     priority_counts = defaultdict(int)
-    category_counts = defaultdict(int)
     risk_counts = defaultdict(int)
     timeline_counts = defaultdict(int)
 
@@ -77,7 +68,6 @@ def compute_stats(
 
     for a in items:
         priority_counts[a.priority] += 1
-        category_counts[a.category] += 1
         risk_counts[str(a.risk_score)] += 1
         timeline_counts[a.timeline_bucket] += 1
         if not a.assigned_teams:
@@ -96,7 +86,6 @@ def compute_stats(
         "unassigned": unassigned,
         "upcoming_deadlines": upcoming_deadlines,
         "priority_counts": dict(priority_counts),
-        "category_counts": dict(category_counts),
         "risk_counts": dict(risk_counts),
         "timeline_counts": dict(timeline_counts),
         "team_workload": dict(team_workload),
@@ -109,7 +98,6 @@ def build_groupings(
 ) -> dict:
     team_list = list(teams or [])
     return {
-        "by_category": group_by_category(items),
         "by_department": group_by_department(items, team_list),
         "by_timeline": group_by_timeline(items),
     }

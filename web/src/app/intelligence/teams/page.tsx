@@ -215,56 +215,55 @@ export default function IntelligenceTeamsPage() {
                     >
                         <Download className="h-3.5 w-3.5" /> Export CSV
                     </Button>
+                    <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm">
+                                <Plus className="h-3.5 w-3.5" /> Add New Team
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Add a new team</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-3 py-2">
+                                <div>
+                                    <label className="text-[11px] text-muted-foreground">Name *</label>
+                                    <Input
+                                        value={form.name}
+                                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                        placeholder="e.g. KYC Operations"
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[11px] text-muted-foreground">Function *</label>
+                                    <Input
+                                        value={form.function}
+                                        onChange={(e) => setForm({ ...form, function: e.target.value })}
+                                        placeholder="What this team owns..."
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[11px] text-muted-foreground">Department</label>
+                                    <Input
+                                        value={form.department}
+                                        onChange={(e) => setForm({ ...form, department: e.target.value })}
+                                        placeholder="Optional"
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button size="sm" onClick={onCreate} disabled={saving}>
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                    Add Team
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
-
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm">
-                        <Plus className="h-3.5 w-3.5" /> Add New Team
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Add a new team</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 py-2">
-                        <div>
-                            <label className="text-[11px] text-muted-foreground">Name *</label>
-                            <Input
-                                value={form.name}
-                                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                placeholder="e.g. KYC Operations"
-                                className="h-8 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[11px] text-muted-foreground">Function *</label>
-                            <Input
-                                value={form.function}
-                                onChange={(e) => setForm({ ...form, function: e.target.value })}
-                                placeholder="What this team owns..."
-                                className="h-8 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[11px] text-muted-foreground">Department</label>
-                            <Input
-                                value={form.department}
-                                onChange={(e) => setForm({ ...form, department: e.target.value })}
-                                placeholder="Optional"
-                                className="h-8 text-xs"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button size="sm" onClick={onCreate} disabled={saving}>
-                            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                            Add Team
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
 
             <div className="rounded-md border border-border">
                 <div className="grid grid-cols-[1fr_2fr_1fr_120px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/30">

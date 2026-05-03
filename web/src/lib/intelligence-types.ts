@@ -20,13 +20,6 @@ export interface ImportResult {
     unmatched_ids?: string[];
 }
 
-/**
- * Categories are now user-defined (see Section 4 of the spec). The string is
- * validated server-side against the IntelCategory roster; falls back to
- * "Uncategorized" when no match is found.
- */
-export type IntelCategoryName = string;
-
 export type IntelTimelineBucket =
     | "Immediate"
     | "Short-term"
@@ -40,14 +33,6 @@ export interface IntelTeam {
     name: string;
     function: string;
     department?: string | null;
-    created_at?: string;
-    updated_at?: string;
-}
-
-export interface IntelCategory {
-    category_id: string;
-    name: string;
-    description: string;
     created_at?: string;
     updated_at?: string;
 }
@@ -68,7 +53,6 @@ export interface EnrichedActionable {
     deadline: string; // "YYYY-MM-DD" | "Not Specified"
     deadline_phrase?: string;
     risk_score: number; // 1..5
-    category: IntelCategoryName;
     timeline_bucket: IntelTimelineBucket;
     assigned_teams: string[]; // team_ids
     assigned_team_names: string[];
@@ -92,14 +76,12 @@ export interface IntelStats {
     unassigned: number;
     upcoming_deadlines: number;
     priority_counts: Record<string, number>;
-    category_counts: Record<string, number>;
     risk_counts: Record<string, number>;
     timeline_counts: Record<string, number>;
     team_workload: Record<string, number>;
 }
 
 export interface IntelGroupings {
-    by_category: Record<string, string[]>;
     by_department: Record<string, string[]>;
     by_timeline: Record<string, string[]>;
 }
@@ -118,7 +100,7 @@ export interface IntelRunPayload {
     actionables: EnrichedActionable[];
     notice_board: NoticeItem[];
     team_snapshot: IntelTeam[];
-    categories: IntelCategory[];
+    categories: never[];
     groupings: IntelGroupings;
     stats: IntelStats;
     created_at: string;
@@ -149,7 +131,6 @@ export interface IntelDashboardPayload {
         total_notices: number;
         documents: number;
         priority_counts: Record<string, number>;
-        category_counts: Record<string, number>;
         risk_counts: Record<string, number>;
         team_workload: Record<string, number>;
         unassigned: number;

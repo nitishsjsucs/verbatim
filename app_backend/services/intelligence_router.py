@@ -31,11 +31,10 @@ from ingestion.pipeline import IngestionPipeline
 from agents.actionable_extractor import ActionableExtractor
 
 from intelligence.models import (
-    IntelCategory,
     IntelRun,
     IntelTeam,
 )
-from intelligence.store import IntelCategoryStore, IntelRunStore, IntelTeamStore
+from intelligence.store import IntelRunStore, IntelTeamStore
 from intelligence.enrichment_service import IntelligenceEnricher
 from intelligence.assignment_service import IntelligenceAssigner
 from intelligence.grouping_service import build_groupings, compute_stats
@@ -56,7 +55,6 @@ _enricher: Optional[IntelligenceEnricher] = None
 _assigner: Optional[IntelligenceAssigner] = None
 _run_store: Optional[IntelRunStore] = None
 _team_store: Optional[IntelTeamStore] = None
-_category_store: Optional["IntelCategoryStore"] = None
 
 
 def _ts() -> TreeStore:
@@ -108,13 +106,6 @@ def _teams() -> IntelTeamStore:
     return _team_store
 
 
-def _cats() -> IntelCategoryStore:
-    global _category_store
-    if _category_store is None:
-        _category_store = IntelCategoryStore()
-        _category_store.seed_defaults()
-    return _category_store
-
 
 # ---------------------------------------------------------------------------
 # Pydantic request bodies
@@ -131,16 +122,6 @@ class TeamPatch(BaseModel):
     department: Optional[str] = None
 
 
-class CategoryIn(BaseModel):
-    name: str = Field(..., min_length=1)
-    description: str = ""
-
-
-class CategoryPatch(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-
-
 class TeamTaskAssignmentIn(BaseModel):
     team_id: str
     team_name: str
@@ -153,7 +134,6 @@ class ActionablePatch(BaseModel):
     priority: Optional[str] = None
     deadline: Optional[str] = None
     risk_score: Optional[int] = None
-    category: Optional[str] = None
     notes: Optional[str] = None
     description: Optional[str] = None
 
@@ -276,38 +256,6 @@ def delete_team(team_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Categories CRUD (Section 4 — user-defined classification roster)
-# ---------------------------------------------------------------------------
-@router.get("/categories")
-def list_categories():
-    return [c.to_dict() for c in _cats().list()]
-
-
-@router.post("/categories", status_code=201)
-def create_category(body: CategoryIn):
-    cat = IntelCategory.new(body.name, body.description)
-    _cats().create(cat)
-    return cat.to_dict()
-
-
-@router.patch("/categories/{category_id}")
-def update_category(category_id: str, body: CategoryPatch):
-    patch = {k: v for k, v in body.model_dump().items() if v is not None}
-    cat = _cats().update(category_id, patch)
-    if not cat:
-        raise HTTPException(404, "Category not found")
-    return cat.to_dict()
-
-
-@router.delete("/categories/{category_id}")
-def delete_category(category_id: str):
-    ok = _cats().delete(category_id)
-    if not ok:
-        raise HTTPException(404, "Category not found")
-    return {"status": "deleted", "category_id": category_id}
-
-
-# ---------------------------------------------------------------------------
 # Bulk import endpoints (CSV → structured data)
 # All imports are atomic: the file is fully validated before any write.
 # ---------------------------------------------------------------------------
@@ -315,11 +263,8 @@ def delete_category(category_id: str):
 _TEAMS_IMPORT_COLUMNS = {"name", "function", "department"}
 _TEAMS_IMPORT_REQUIRED = {"name", "function"}
 
-_CATEGORIES_IMPORT_COLUMNS = {"name", "description"}
-_CATEGORIES_IMPORT_REQUIRED = {"name"}
-
 _ACTIONABLES_IMPORT_REQUIRED = {"id", "description", "priority", "deadline",
-                                 "risk_score", "category"}
+                                 "risk_score"}
 
 
 def _parse_csv_upload(file: UploadFile, required_cols: set[str], all_cols: set[str]) -> list[dict]:
@@ -438,59 +383,6 @@ async def import_teams(
     return _import_result(added, updated, skipped, failed, skip_reasons, fail_reasons)
 
 
-@router.post("/categories/import", status_code=200)
-async def import_categories(
-    file: UploadFile = File(...),
-    mode: str = Query("upsert", regex="^(add|upsert|replace)$"),
-):
-    """Bulk-import categories from a CSV file.
-
-    mode=add    — add new categories only; skip existing names.
-    mode=upsert — update description if name exists, create if not (default).
-    mode=replace — delete all existing categories then import.
-
-    Required columns: name. Optional: description.
-    """
-    if not (file.filename or "").lower().endswith(".csv"):
-        raise HTTPException(422, "Only .csv files are accepted")
-    rows = _parse_csv_upload(file, _CATEGORIES_IMPORT_REQUIRED, _CATEGORIES_IMPORT_COLUMNS)
-
-    store = _cats()
-    added = updated = skipped = failed = 0
-    skip_reasons: list[str] = []
-    fail_reasons: list[str] = []
-
-    if mode == "replace":
-        existing = store.list()
-        for c in existing:
-            store.delete(c.category_id)
-
-    existing_by_name = {c.name.strip().lower(): c for c in store.list()}
-
-    for i, row in enumerate(rows, start=2):
-        name_key = row["name"].strip().lower()
-        try:
-            if name_key in existing_by_name:
-                if mode == "add":
-                    skipped += 1
-                    skip_reasons.append(f"Row {i}: '{row['name']}' already exists (skipped in Add Only mode)")
-                    continue
-                existing_cat = existing_by_name[name_key]
-                store.update(existing_cat.category_id, {
-                    "description": row.get("description") or "",
-                })
-                updated += 1
-            else:
-                cat = IntelCategory.new(row["name"], row.get("description") or "")
-                store.create(cat)
-                added += 1
-        except Exception as exc:
-            failed += 1
-            fail_reasons.append(f"Row {i}: '{row['name']}' — {exc}")
-
-    return _import_result(added, updated, skipped, failed, skip_reasons, fail_reasons)
-
-
 @router.post("/documents/{doc_id}/actionables/import", status_code=200)
 async def import_actionables(
     doc_id: str,
@@ -504,7 +396,7 @@ async def import_actionables(
 
     Add-Only mode is not supported for actionables (IDs are system-generated; use extract).
 
-    Required columns: id, description, priority, deadline, risk_score, category.
+    Required columns: id, description, priority, deadline, risk_score.
     Optional: team_specific_tasks, notes.
     Full validation before any write.
     """
@@ -552,7 +444,7 @@ async def import_actionables(
             continue
 
         patch: dict = {}
-        for fld in ("description", "priority", "deadline", "category", "notes"):
+        for fld in ("description", "priority", "deadline", "notes"):
             if row.get(fld):
                 patch[fld] = row[fld]
         if row.get("risk_score"):
@@ -626,14 +518,12 @@ def _build_run(
     tree,
     raw_actionables,
     teams: list[IntelTeam],
-    categories: list[IntelCategory],
     doc_effective_date: str,
 ) -> IntelRun:
     enricher = _en()
     enriched, notices = enricher.enrich(
         raw_actionables,
         tree,
-        categories=categories,
         doc_effective_date=doc_effective_date,
     )
     _asg().assign(enriched, teams)
@@ -689,13 +579,11 @@ def _run_extract_pipeline(doc_id: str) -> None:
             _extract_jobs[doc_id]["stage"] = "enrich+assign"
 
         teams = _teams().list()
-        categories = _cats().list()
         doc_effective_date = _load_doc_effective_date(doc_id)
         run = _build_run(
             tree,
             raw_result.actionables,
             teams,
-            categories,
             doc_effective_date,
         )
         _runs().save(run)
@@ -879,8 +767,8 @@ def reset_all_actionables():
     """Wipe ALL extracted actionables across every document.
 
     Removes the entire `intel_runs` collection content (actionables, team
-    assignments, team-specific tasks, categories, deadlines, priorities,
-    risks, notes). Documents, document metadata, teams, and categories are
+    assignments, team-specific tasks, deadlines, priorities,
+    risks, notes). Documents, document metadata, and teams are
     NOT touched. Use after a system schema update to provide a clean slate
     before re-running extraction.
     """
@@ -902,7 +790,6 @@ def dashboard():
         "total_notices": 0,
         "documents": len(summaries),
         "priority_counts": {"High": 0, "Medium": 0, "Low": 0},
-        "category_counts": {},
         "risk_counts": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
         "team_workload": {},
         "unassigned": 0,
@@ -921,8 +808,6 @@ def dashboard():
         agg["unassigned"] += stats.get("unassigned", 0)
         for k, v in stats.get("priority_counts", {}).items():
             agg["priority_counts"][k] = agg["priority_counts"].get(k, 0) + v
-        for k, v in stats.get("category_counts", {}).items():
-            agg["category_counts"][k] = agg["category_counts"].get(k, 0) + v
         for k, v in stats.get("risk_counts", {}).items():
             agg["risk_counts"][k] = agg["risk_counts"].get(k, 0) + v
         for k, v in stats.get("team_workload", {}).items():
@@ -949,7 +834,6 @@ def _run_payload(run: IntelRun) -> dict:
     from tree.actionable_store import ActionableStore  # local import to avoid cycles
 
     teams = _teams().list()
-    categories = _cats().list()
     groupings = build_groupings(run.actionables, teams)
     # always refresh stats on read to reflect latest patches
     stats = compute_stats(run.actionables, teams)
@@ -976,7 +860,7 @@ def _run_payload(run: IntelRun) -> dict:
         "actionables": [a.to_dict() for a in run.actionables],
         "notice_board": [n.to_dict() for n in run.notice_board],
         "team_snapshot": run.team_snapshot,
-        "categories": [c.to_dict() for c in categories],
+        "categories": [],
         "groupings": groupings,
         "stats": stats,
         "created_at": run.created_at,

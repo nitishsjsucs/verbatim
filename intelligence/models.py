@@ -9,51 +9,8 @@ import uuid
 
 
 Priority = Literal["High", "Medium", "Low"]
-# Category is now user-defined via IntelCategory store. Keep as free-form str.
-Category = str
 TimelineBucket = Literal["Immediate", "Short-term", "Long-term", "Not Specified"]
 NoticeTag = Literal["Informational", "Contextual", "Advisory"]
-
-DEFAULT_CATEGORY = "Uncategorized"
-
-
-@dataclass
-class IntelCategory:
-    """A category defined in the AIS Categories Configuration page.
-
-    Used by the enricher to classify actionables. Categories are user-defined
-    (see Section 4 of the spec) — there is no fixed taxonomy.
-    """
-
-    category_id: str
-    name: str
-    description: str = ""
-    created_at: str = ""
-    updated_at: str = ""
-
-    @staticmethod
-    def new(name: str, description: str = "") -> "IntelCategory":
-        now = datetime.now(timezone.utc).isoformat()
-        return IntelCategory(
-            category_id=f"CAT-{uuid.uuid4().hex[:10].upper()}",
-            name=name.strip(),
-            description=(description or "").strip(),
-            created_at=now,
-            updated_at=now,
-        )
-
-    def to_dict(self) -> dict:
-        return asdict(self)
-
-    @staticmethod
-    def from_dict(d: dict) -> "IntelCategory":
-        return IntelCategory(
-            category_id=d.get("category_id") or d.get("_id") or f"CAT-{uuid.uuid4().hex[:10].upper()}",
-            name=d.get("name", ""),
-            description=d.get("description", "") or "",
-            created_at=d.get("created_at", ""),
-            updated_at=d.get("updated_at", ""),
-        )
 
 
 @dataclass
@@ -127,7 +84,6 @@ class EnrichedActionable:
     deadline: str = "Not Specified"  # ISO date (YYYY-MM-DD) or "Not Specified"
     deadline_phrase: str = ""  # raw phrase captured from doc, e.g. "within 30 days"
     risk_score: int = 3  # 1..5
-    category: Category = DEFAULT_CATEGORY
     timeline_bucket: TimelineBucket = "Not Specified"
     assigned_teams: list[str] = field(default_factory=list)  # team_ids
     assigned_team_names: list[str] = field(default_factory=list)  # denormalized
@@ -156,7 +112,6 @@ class EnrichedActionable:
             deadline=d.get("deadline", "Not Specified"),
             deadline_phrase=d.get("deadline_phrase", ""),
             risk_score=int(d.get("risk_score", 3) or 3),
-            category=d.get("category") or DEFAULT_CATEGORY,
             timeline_bucket=d.get("timeline_bucket", "Not Specified"),
             assigned_teams=list(d.get("assigned_teams", []) or []),
             assigned_team_names=list(d.get("assigned_team_names", []) or []),

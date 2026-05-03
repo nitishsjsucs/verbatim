@@ -58,7 +58,7 @@ import type {
 } from "@/lib/intelligence-types";
 import { cn } from "@/lib/utils";
 
-type GroupMode = "flat" | "category" | "department" | "timeline";
+type GroupMode = "flat" | "department" | "timeline";
 
 const PRIORITIES: IntelPriority[] = ["High", "Medium", "Low"];
 
@@ -74,32 +74,6 @@ const RISK_STAR_COLOR = (score: number) => {
     return "text-green-500";
 };
 
-const CSV_FIELDS: Array<{ key: string; label: string }> = [
-    { key: "item_type", label: "item_type" },
-    { key: "id", label: "id" },
-    { key: "description", label: "description" },
-    { key: "source", label: "source" },
-    { key: "priority", label: "priority" },
-    { key: "category", label: "category" },
-    { key: "risk_score", label: "risk_score" },
-    { key: "deadline", label: "deadline" },
-    { key: "deadline_phrase", label: "deadline_phrase" },
-    { key: "timeline_bucket", label: "timeline_bucket" },
-    { key: "assigned_team_names", label: "assigned_team_names" },
-    { key: "team_specific_tasks", label: "team_specific_tasks" },
-    { key: "notes", label: "notes" },
-];
-
-const DOC_META_FIELDS: Array<{ key: string; label: string }> = [
-    { key: "doc_id", label: "document_id" },
-    { key: "doc_name", label: "document_name" },
-    { key: "circular_effective_date", label: "effective_date" },
-    { key: "regulation_issue_date", label: "issue_date" },
-    { key: "regulator", label: "regulator" },
-    { key: "circular_id", label: "circular_id" },
-    { key: "circular_title", label: "circular_title" },
-];
-
 function csvEscapeLocal(v: unknown): string {
     if (v === null || v === undefined) return "";
     const s = Array.isArray(v) ? v.join("; ") : String(v);
@@ -107,14 +81,28 @@ function csvEscapeLocal(v: unknown): string {
     return s;
 }
 
-function serializeCsvField(a: EnrichedActionable, key: string): unknown {
-    if (key === "team_specific_tasks") {
-        const tasks = a.team_specific_tasks || [];
-        return tasks.map((t) => `${t.team_name}: ${t.team_specific_task}`).join("; ");
-    }
-    if (key === "item_type") return "Actionable";
-    return (a as unknown as Record<string, unknown>)[key];
-}
+// CSV Headers: ID first, core fields, team (one row per team), then doc metadata last
+const CSV_HEADERS = [
+    "item_type",
+    "id",
+    "description",
+    "priority",
+    "risk_score",
+    "deadline",
+    "deadline_phrase",
+    "timeline_bucket",
+    "assigned_team",
+    "team_implementation",
+    "source",
+    "notes",
+    "document_id",
+    "document_name",
+    "regulator",
+    "effective_date",
+    "issue_date",
+    "circular_id",
+    "circular_title",
+];
 
 function downloadCsv(
     actionables: EnrichedActionable[],
@@ -123,45 +111,68 @@ function downloadCsv(
     docId: string,
     docMeta?: IntelDocMeta,
 ) {
-    const allHeaders = [
-        ...CSV_FIELDS.map((f) => f.label),
-        ...DOC_META_FIELDS.map((f) => f.label),
-    ];
     const metaValues = [
         docId,
         docName,
+        docMeta?.regulator || "",
         docMeta?.circular_effective_date || "",
         docMeta?.regulation_issue_date || "",
-        docMeta?.regulator || "",
         docMeta?.circular_id || "",
         docMeta?.circular_title || "",
     ];
 
-    const actionableRows = actionables.map((a) => [
-        ...CSV_FIELDS.map((f) => csvEscapeLocal(serializeCsvField(a, f.key))),
-        ...metaValues.map(csvEscapeLocal),
-    ]);
+    const allRows: string[][] = [];
 
-    const noticeRows = noticeBoard.map((n) => [
-        csvEscapeLocal("Information"),
-        csvEscapeLocal(n.id),
-        csvEscapeLocal(n.text),
-        csvEscapeLocal(n.source || ""),
-        "", // priority
-        "", // category
-        "", // risk_score
-        "", // deadline
-        "", // deadline_phrase
-        "", // timeline_bucket
-        "", // assigned_team_names
-        "", // team_specific_tasks
-        "", // notes
-        ...metaValues.map(csvEscapeLocal),
-    ]);
+    // Actionable rows — one row per team assignment (or one row if no teams)
+    for (const a of actionables) {
+        const tasks = a.team_specific_tasks || [];
+        const teams = a.assigned_team_names || [];
+        const baseFields = [
+            "Actionable",
+            a.id,
+            a.description || "",
+            a.priority || "",
+            String(a.risk_score || ""),
+            a.deadline || "",
+            a.deadline_phrase || "",
+            a.timeline_bucket || "",
+        ];
+        const tailFields = [
+            a.source || "",
+            a.notes || "",
+            ...metaValues,
+        ];
 
-    const header = allHeaders.map(csvEscapeLocal).join(",");
-    const rows = [...actionableRows, ...noticeRows].map((r) => r.join(","));
-    const csv = [header, ...rows].join("\n");
+        if (teams.length === 0) {
+            allRows.push([...baseFields, "", "", ...tailFields].map(csvEscapeLocal));
+        } else {
+            for (const teamName of teams) {
+                const task = tasks.find((t) => t.team_name === teamName);
+                allRows.push([
+                    ...baseFields,
+                    teamName,
+                    task?.team_specific_task || "",
+                    ...tailFields,
+                ].map(csvEscapeLocal));
+            }
+        }
+    }
+
+    // Information board rows
+    for (const n of noticeBoard) {
+        allRows.push([
+            csvEscapeLocal("Information"),
+            csvEscapeLocal(n.id),
+            csvEscapeLocal(n.text),
+            "", "", "", "", "", "", "",
+            csvEscapeLocal(n.source || ""),
+            "",
+            ...metaValues.map(csvEscapeLocal),
+        ]);
+    }
+
+    const header = CSV_HEADERS.map(csvEscapeLocal).join(",");
+    const csv = [header, ...allRows.map((r) => r.join(","))].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const safeName = (docName || "document").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
@@ -175,9 +186,9 @@ function downloadCsv(
 }
 
 function downloadActionablesTemplate() {
-    const headers = ["item_type", "id", "description", "priority", "deadline", "risk_score", "category", "team_specific_tasks", "notes", "document_id", "document_name", "effective_date", "issue_date", "regulator", "circular_id", "circular_title"];
+    const headers = [...CSV_HEADERS];
     const example = [
-        ["Actionable", "ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "2025-06-30", "4", "Compliance & Regulatory Implementation", "Compliance: Verify KYC norms; Operations: Update branch processes", "", "DOC-001", "RBI Circular on KYC", "2025-06-01", "2025-05-15", "RBI", "CIRC-001", "KYC Norms Update"],
+        ["Actionable", "ACT-XXXXXXXXXX", "Implement revised KYC checks for all new accounts", "High", "4", "2025-06-30", "Must comply within 90 days", "0-30 days", "Compliance Team", "Verify KYC norms and update SOPs", "Section 4.2", "", "DOC-001", "RBI Circular on KYC", "RBI", "2025-06-01", "2025-05-15", "CIRC-001", "KYC Norms Update"],
     ];
     const csv = buildCsv(headers, example);
     triggerCsvDownload(csv, "actionables_import_template.csv");
@@ -208,7 +219,7 @@ export default function IntelligenceDocPage({
         stages: [
             "Loading document tree",
             "Extracting raw actionables",
-            "Enriching priority · deadline · risk · category",
+            "Enriching priority · deadline · risk",
             "Assigning teams + generating team-specific tasks",
             "Persisting intelligence run",
         ],
@@ -221,7 +232,7 @@ export default function IntelligenceDocPage({
         stages: [
             "Loading document tree",
             "Extracting raw actionables",
-            "Enriching priority · deadline · risk · category",
+            "Enriching priority · deadline · risk",
             "Assigning teams + generating team-specific tasks",
             "Persisting intelligence run",
         ],
@@ -230,7 +241,6 @@ export default function IntelligenceDocPage({
     // filters
     const [search, setSearch] = useState("");
     const [priorityFilter, setPriorityFilter] = useState<string>("");
-    const [categoryFilter, setCategoryFilter] = useState<string>("");
     const [teamFilter, setTeamFilter] = useState<string>("");
     const [deadlineFilter, setDeadlineFilter] = useState<string>("");
     const [groupMode, setGroupMode] = useState<GroupMode>("flat");
@@ -270,14 +280,12 @@ export default function IntelligenceDocPage({
         void load();
     }, [load]);
 
-    // Re-fetch when teams or categories change on other pages
+    // Re-fetch when teams change on other pages
     useEffect(() => {
         const handler = () => void load();
         window.addEventListener("intel-teams-changed", handler);
-        window.addEventListener("intel-categories-changed", handler);
         return () => {
             window.removeEventListener("intel-teams-changed", handler);
-            window.removeEventListener("intel-categories-changed", handler);
         };
     }, [load]);
 
@@ -331,7 +339,6 @@ export default function IntelligenceDocPage({
         if (!run) return [];
         return run.actionables.filter((a) => {
             if (priorityFilter && a.priority !== priorityFilter) return false;
-            if (categoryFilter && a.category !== categoryFilter) return false;
             if (teamFilter) {
                 if (teamFilter === "__unassigned__") {
                     if (a.assigned_teams.length > 0) return false;
@@ -341,7 +348,7 @@ export default function IntelligenceDocPage({
             if (search && !a.description.toLowerCase().includes(search.toLowerCase())) return false;
             return true;
         });
-    }, [run, search, priorityFilter, categoryFilter, teamFilter, deadlineFilter]);
+    }, [run, search, priorityFilter, teamFilter, deadlineFilter]);
 
     const grouped = useMemo(() => {
         const out = new Map<string, EnrichedActionable[]>();
@@ -350,7 +357,6 @@ export default function IntelligenceDocPage({
             return out;
         }
         const key = (a: EnrichedActionable) => {
-            if (groupMode === "category") return a.category || "Uncategorized";
             if (groupMode === "timeline") return a.timeline_bucket;
             // department
             if (a.assigned_team_names.length === 0) return "Unassigned";
@@ -415,14 +421,6 @@ export default function IntelligenceDocPage({
         );
     }
 
-    // Category options come from the user-defined roster; "Uncategorized" is
-    // always available as a fallback even when no categories are configured.
-    const categoryOptions = (() => {
-        const names = new Set<string>(run.categories.map((c) => c.name));
-        for (const a of run.actionables) if (a.category) names.add(a.category);
-        names.add("Uncategorized");
-        return Array.from(names).sort();
-    })();
     const teamOptions = run.team_snapshot;
 
     return (
@@ -541,7 +539,6 @@ export default function IntelligenceDocPage({
                         className="h-8 max-w-xs text-xs"
                     />
                     <Select value={priorityFilter} onChange={setPriorityFilter} placeholder="All priorities" options={PRIORITIES.map((p) => ({ value: p, label: p }))} />
-                    <Select value={categoryFilter} onChange={setCategoryFilter} placeholder="All categories" options={categoryOptions.map((c) => ({ value: c, label: c }))} />
                     <Select
                         value={teamFilter}
                         onChange={setTeamFilter}
@@ -559,7 +556,7 @@ export default function IntelligenceDocPage({
                     />
                     <div className="ml-auto flex items-center gap-1">
                         <span className="text-[11px] text-muted-foreground mr-1">Group:</span>
-                        {(["flat", "category", "department", "timeline"] as GroupMode[]).map((m) => (
+                        {(["flat", "department", "timeline"] as GroupMode[]).map((m) => (
                             <button
                                 key={m}
                                 onClick={() => setGroupMode(m)}
@@ -579,7 +576,6 @@ export default function IntelligenceDocPage({
                             onClick={() => {
                                 setSearch("");
                                 setPriorityFilter("");
-                                setCategoryFilter("");
                                 setTeamFilter("");
                                 setDeadlineFilter("");
                             }}
@@ -590,80 +586,73 @@ export default function IntelligenceDocPage({
                 </CardContent>
             </Card>
 
-            {/* Side-by-side: Actionables table + Information Board */}
-            <div className="flex gap-4 items-start">
-                {/* Actionables table (grouped) — takes majority of space */}
-                <div className="flex-1 min-w-0 space-y-4">
-                    {Array.from(grouped.entries()).map(([groupKey, items]) => (
-                        <div key={groupKey} className="rounded-md border border-border">
-                            {groupMode !== "flat" && (
-                                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
-                                    <span className="text-xs font-semibold">{groupKey}</span>
-                                    <span className="text-[11px] text-muted-foreground">
-                                        {items.length} item{items.length === 1 ? "" : "s"}
-                                    </span>
-                                </div>
-                            )}
-                            <div className="grid grid-cols-[80px_1fr_200px_90px_150px_140px_90px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/10">
-                                <div>ID</div>
-                                <div>Description</div>
-                                <div>Assigned Teams</div>
-                                <div>Priority</div>
-                                <div>Deadline</div>
-                                <div>Category</div>
-                                <div>Risk</div>
+            {/* Information Board — at top, collapsible */}
+            {run.notice_board.length > 0 && (
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                            <Info className="h-4 w-4" /> Information Board
+                            <span className="text-[11px] font-normal text-muted-foreground">
+                                ({run.notice_board.length} items)
+                            </span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+                        {run.notice_board.map((n) => (
+                            <div
+                                key={n.id}
+                                className="rounded border border-border p-3 text-xs"
+                            >
+                                <p className="text-foreground">{n.text}</p>
+                                {n.source && (
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        {n.source}
+                                    </p>
+                                )}
                             </div>
-                            {items.length === 0 ? (
-                                <div className="p-6 text-center text-xs text-muted-foreground">
-                                    No actionables match the filters.
-                                </div>
-                            ) : (
-                                items.map((a) => (
-                                    <ActionableRow
-                                        key={a.id}
-                                        a={a}
-                                        teams={teamOptions}
-                                        categoryOptions={categoryOptions}
-                                        editTeams={editTeams}
-                                        onPatch={(p) => patchItem(a.id, p)}
-                                        onOpenSource={openSourcePdf}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
 
-                {/* Information Board — sticky sidebar */}
-                {run.notice_board.length > 0 && (
-                    <div className="w-80 shrink-0 sticky top-4">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm flex items-center gap-2">
-                                    <Info className="h-4 w-4" /> Information Board
-                                    <span className="text-[11px] font-normal text-muted-foreground">
-                                        ({run.notice_board.length})
-                                    </span>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2 max-h-[70vh] overflow-y-auto">
-                                {run.notice_board.map((n) => (
-                                    <div
-                                        key={n.id}
-                                        className="rounded border border-border p-3 text-xs"
-                                    >
-                                        <p className="text-foreground">{n.text}</p>
-                                        {n.source && (
-                                            <p className="text-[10px] text-muted-foreground mt-1">
-                                                {n.source}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
+            {/* Actionables table (grouped) — full width */}
+            <div className="space-y-4">
+                {Array.from(grouped.entries()).map(([groupKey, items]) => (
+                    <div key={groupKey} className="rounded-md border border-border">
+                        {groupMode !== "flat" && (
+                            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+                                <span className="text-xs font-semibold">{groupKey}</span>
+                                <span className="text-[11px] text-muted-foreground">
+                                    {items.length} item{items.length === 1 ? "" : "s"}
+                                </span>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-[80px_1fr_200px_90px_150px_90px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/10">
+                            <div>ID</div>
+                            <div>Description</div>
+                            <div>Assigned Teams</div>
+                            <div>Priority</div>
+                            <div>Deadline</div>
+                            <div>Risk</div>
+                        </div>
+                        {items.length === 0 ? (
+                            <div className="p-6 text-center text-xs text-muted-foreground">
+                                No actionables match the filters.
+                            </div>
+                        ) : (
+                            items.map((a) => (
+                                <ActionableRow
+                                    key={a.id}
+                                    a={a}
+                                    teams={teamOptions}
+                                    editTeams={editTeams}
+                                    onPatch={(p) => patchItem(a.id, p)}
+                                    onOpenSource={openSourcePdf}
+                                />
+                            ))
+                        )}
                     </div>
-                )}
+                ))}
             </div>
         </div>
     );
@@ -883,14 +872,12 @@ function RiskStars({
 function ActionableRow({
     a,
     teams,
-    categoryOptions,
     editTeams,
     onPatch,
     onOpenSource,
 }: {
     a: EnrichedActionable;
     teams: IntelRunPayload["team_snapshot"];
-    categoryOptions: string[];
     editTeams: boolean;
     onPatch: (patch: Partial<EnrichedActionable>) => void;
     onOpenSource?: (source: string | undefined) => void;
@@ -934,7 +921,7 @@ function ActionableRow({
                         setExpanded((v) => !v);
                     }
                 }}
-                className="grid grid-cols-[80px_1fr_200px_90px_150px_140px_90px] gap-2 items-start px-4 py-3 text-xs hover:bg-muted/20 cursor-pointer select-none"
+                className="grid grid-cols-[80px_1fr_200px_90px_150px_90px] gap-2 items-start px-4 py-3 text-xs hover:bg-muted/20 cursor-pointer select-none"
                 title={expanded ? "Click to collapse" : "Click to expand"}
             >
                 <span className="text-left font-mono text-[11px] text-muted-foreground">
@@ -1023,19 +1010,6 @@ function ActionableRow({
                         </div>
                     )}
                 </div>
-                <select
-                    value={a.category}
-                    onChange={(e) => onPatch({ category: e.target.value })}
-                    title={a.category}
-                    className="h-auto min-h-[24px] w-full max-w-full rounded border border-border bg-background px-1 py-0.5 text-[11px] whitespace-normal"
-                    style={{ textOverflow: "unset" }}
-                >
-                    {categoryOptions.map((c) => (
-                        <option key={c} value={c} title={c}>
-                            {c}
-                        </option>
-                    ))}
-                </select>
                 <RiskStars
                     score={a.risk_score}
                     onRate={(s) => onPatch({ risk_score: s })}

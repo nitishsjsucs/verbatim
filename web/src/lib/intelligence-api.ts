@@ -11,7 +11,6 @@ import type {
     EnrichedActionable,
     ImportMode,
     ImportResult,
-    IntelCategory,
     IntelDashboardPayload,
     IntelDocumentMeta,
     IntelRunPayload,
@@ -228,45 +227,6 @@ export async function deleteIntelTeam(teamId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Categories (user-defined classification roster)
-// ---------------------------------------------------------------------------
-export async function listIntelCategories(): Promise<IntelCategory[]> {
-    const res = await intelFetch("/categories");
-    return parseOrThrow(res, "Failed to list categories");
-}
-
-export async function createIntelCategory(input: {
-    name: string;
-    description?: string;
-}): Promise<IntelCategory> {
-    const res = await intelFetch("/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: input.name, description: input.description || "" }),
-    });
-    return parseOrThrow(res, "Create category failed");
-}
-
-export async function updateIntelCategory(
-    categoryId: string,
-    patch: Partial<Pick<IntelCategory, "name" | "description">>,
-): Promise<IntelCategory> {
-    const res = await intelFetch(`/categories/${encodeURIComponent(categoryId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-    });
-    return parseOrThrow(res, "Update category failed");
-}
-
-export async function deleteIntelCategory(categoryId: string): Promise<void> {
-    const res = await intelFetch(`/categories/${encodeURIComponent(categoryId)}`, {
-        method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Delete category failed");
-}
-
-// ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
 export async function getIntelDashboard(): Promise<IntelDashboardPayload> {
@@ -287,15 +247,6 @@ export async function importIntelTeams(
     return parseOrThrow(res, "Teams import failed");
 }
 
-export async function importIntelCategories(
-    file: File,
-    mode: ImportMode = "upsert",
-): Promise<ImportResult> {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await intelFetch(`/categories/import?mode=${mode}`, { method: "POST", body: fd });
-    return parseOrThrow(res, "Categories import failed");
-}
 
 export async function importIntelActionables(
     docId: string,

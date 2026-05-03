@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Brain, FolderOpen, Users, LayoutDashboard, Tag } from "lucide-react";
+import { Brain, FolderOpen, Users, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const NAV = [
     { href: "/intelligence", label: "Workspace", icon: FolderOpen, match: (p: string) => p === "/intelligence" || p.startsWith("/intelligence/workspace") },
     { href: "/intelligence/teams", label: "Teams", icon: Users, match: (p: string) => p.startsWith("/intelligence/teams") },
-    { href: "/intelligence/categories", label: "Categories", icon: Tag, match: (p: string) => p.startsWith("/intelligence/categories") },
     { href: "/intelligence/dashboard", label: "Dashboard", icon: LayoutDashboard, match: (p: string) => p.startsWith("/intelligence/dashboard") },
 ];
 
@@ -42,12 +41,6 @@ export default function IntelligenceLayout({ children }: { children: React.React
                             </Link>
                         );
                     })}
-                    <Link
-                        href="/"
-                        className="ml-2 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent"
-                    >
-                        ← Back to app
-                    </Link>
                     <ThemeToggle />
                 </nav>
             </header>
