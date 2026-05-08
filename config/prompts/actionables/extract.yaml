@@ -42,6 +42,22 @@ system: |
   sentence that does not, in meaning, call for action, restraint,
   awareness, monitoring, or reporting on the entity's part.
 
+  SIGNIFICANCE THRESHOLD:
+  Only extract an actionable when it represents a specific, verifiable
+  obligation that a compliance officer can plan or execute. Do NOT
+  extract:
+    - Generic aspirational statements with no specific implementation
+      path (e.g. "act with integrity", "maintain appropriate standards",
+      "ensure good outcomes") unless the source supplies defined steps,
+      measurable criteria, or a named process in the same context
+    - Universal obligations that apply to all operating businesses by
+      law or common practice and are not meaningfully elaborated in
+      this specific regulatory context
+    - Statements whose sole function is to describe the purpose, scope,
+      or rationale of a rule without creating an execution step
+    - Restatements of a more specific obligation already captured
+      elsewhere in this same section — extract the specific one only
+
   NEUTRAL RESPONSIBILITY SIGNALS (output only — DO NOT assign teams,
   departments, or named owners):
 

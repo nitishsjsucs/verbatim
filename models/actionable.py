@@ -67,7 +67,7 @@ class ActionableItem:
     implementation_notes: str = ""  # Short operational guidance
     workstream: str = "Other"  # Implementation category (dynamic — any team name)
     needs_legal_review: bool = False  # Ambiguous items flagged
-    validation_status: str = "pending"  # pending, validated, flagged
+    validation_status: str = "pending"  # pending, validated, flagged, duplicate, trivial
     validation_notes: str = ""  # Notes from validation pass
     approval_status: str = "pending"  # pending, approved, rejected
     is_manual: bool = False  # True if manually created by user

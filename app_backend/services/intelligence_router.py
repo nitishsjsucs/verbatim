@@ -19,6 +19,7 @@ import shutil
 import threading
 import time
 import traceback
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -33,6 +34,7 @@ from agents.actionable_extractor import ActionableExtractor
 from intelligence.models import (
     IntelRun,
     IntelTeam,
+    NoticeItem,
 )
 from intelligence.store import IntelRunStore, IntelTeamStore
 from intelligence.enrichment_service import IntelligenceEnricher
@@ -514,19 +516,62 @@ def _load_doc_effective_date(doc_id: str) -> str:
         return ""
 
 
+_EXCLUDED_VALIDATION_STATUSES = {"duplicate", "trivial"}
+
+
+def _excluded_to_notices(excluded: list) -> list[NoticeItem]:
+    """Convert duplicate/trivial actionables into notice board entries."""
+    notices: list[NoticeItem] = []
+    for a in excluded:
+        status = a.validation_status
+        if status == "duplicate":
+            tag = "Informational"
+            prefix = "[Duplicate] "
+        else:  # trivial
+            tag = "Contextual"
+            prefix = "[Trivial] "
+        text = prefix + (
+            (getattr(a, "action", "") and f"{a.actor or 'Entity'} — {a.action} {getattr(a, 'object', '') or ''}".strip())
+            or (a.evidence_quote or "")[:200]
+        )
+        notices.append(NoticeItem(
+            id=f"N-{uuid.uuid4().hex[:8].upper()}",
+            text=text.strip()[:500],
+            source=a.source_location or "",
+            source_node_id=a.source_node_id or "",
+            tag=tag,
+        ))
+    return notices
+
+
 def _build_run(
     tree,
     raw_actionables,
     teams: list[IntelTeam],
     doc_effective_date: str,
 ) -> IntelRun:
+    filtered = [
+        a for a in raw_actionables
+        if a.validation_status not in _EXCLUDED_VALIDATION_STATUSES
+    ]
+    excluded = [
+        a for a in raw_actionables
+        if a.validation_status in _EXCLUDED_VALIDATION_STATUSES
+    ]
+    if excluded:
+        logger.info(
+            "[intelligence] Excluded %d duplicate/trivial actionable(s) before enrichment",
+            len(excluded),
+        )
     enricher = _en()
     enriched, notices = enricher.enrich(
-        raw_actionables,
+        filtered,
         tree,
         doc_effective_date=doc_effective_date,
     )
     _asg().assign(enriched, teams)
+
+    notices.extend(_excluded_to_notices(excluded))
 
     run = IntelRun(
         doc_id=tree.doc_id,

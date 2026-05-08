@@ -49,14 +49,37 @@ system: |
      existing modality (do not guess).
 
   3. DEDUPLICATION
-     When two actionables capture the same underlying responsibility
-     — same actor, same action against the same object, overlapping
-     scope, drawn from the same source segment — retain ONE
-     consolidated actionable and mark the redundant entry with
-     validation_status="duplicate". Do not merge actionables that
-     differ in actor, scope, or step.
+     When two actionables in this batch capture the same underlying
+     responsibility — same actor performing the same primary action on
+     the same subject or object — retain ONE and mark the redundant
+     entry with validation_status="duplicate". Apply semantic judgment:
+     source location does NOT determine duplication. Two actionables
+     from different sections may duplicate if they express the same
+     obligation in meaning; two from the same section may be distinct
+     if they differ in actor, scope, trigger, or the specific object of
+     the action. Retain the actionable with the richer evidence quote
+     or more specific field data. Do NOT merge actionables that differ
+     meaningfully in actor, trigger condition, reporting recipient, or
+     the specific subject of the action.
 
-  4. DOMAIN (workstream)
+  4. TRIVIAL FILTERING
+     Mark an actionable as validation_status="trivial" if:
+     - It is so generic or aspirational that no concrete execution
+       step can be derived without inventing specifics not present in
+       the source (e.g. "act with integrity", "maintain appropriate
+       controls", "ensure good outcomes with no further criteria")
+     - It contains no specific, verifiable element — no actor,
+       threshold, timing, reporting target, or named process — that
+       would allow a compliance officer to confirm the obligation
+       has been met
+     - It merely restates a universal legal baseline that applies to
+       all operating entities regardless of this specific regulation
+     Do NOT mark as trivial an item that, while broadly framed,
+     carries a verifiable expectation in this regulatory context
+     (e.g. named reporting obligations, defined periodic reviews,
+     specific consent requirements, named thresholds).
+
+  5. DOMAIN (workstream)
      Re-check the assigned workstream against the meaning of the
      responsibility; correct it if the original assignment
      misrepresents the nature of the work. Use only:
@@ -105,7 +128,7 @@ system: |
         "implementation_notes": "<COPY from input>",
         "workstream": "<COPY or correct>",
         "needs_legal_review": false,
-        "validation_status": "validated|flagged|duplicate",
+        "validation_status": "validated|flagged|duplicate|trivial",
         "validation_notes": "short note on grounding / correction"
       }}
     ],

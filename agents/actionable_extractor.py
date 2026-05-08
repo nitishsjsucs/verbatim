@@ -83,6 +83,32 @@ BATCH_CHAR_LIMIT = 30000
 VALIDATION_BATCH_SIZE = 15
 VALIDATION_MAX_SOURCE_CHARS = 30000
 
+# Minimum number of validated actionables required to trigger the cross-batch
+# deduplication pass (only worth running when more than one validation batch
+# was needed, i.e. when in-batch dedup could not have caught cross-section
+# duplicates).
+CROSS_DEDUP_THRESHOLD = VALIDATION_BATCH_SIZE + 1
+
+_CROSS_DEDUP_SYSTEM = """You are performing a final cross-section deduplication pass over compliance actionables that have already been extracted and validated from a regulatory document. Each item was validated in a separate batch, so cross-batch duplicates may exist.
+
+TASK: Identify actionables that express the same underlying obligation and return the ids of the redundant copies to remove.
+
+Two actionables are duplicates if they require the same actor to perform the same primary action on the same subject or object — even if phrased differently, from different source sections, or using different vocabulary. Judge by semantic equivalence of the obligation, not by shared words.
+
+Two actionables are NOT duplicates if they differ in:
+- Actor (different parties bear the obligation)
+- Trigger or condition (different circumstances activate the obligation)
+- Subject/object (different things acted upon, different processes or systems)
+- Scope (materially different thresholds, reporting targets, or timelines)
+
+For each duplicate group, retain the actionable with the richest evidence quote and most complete fields. Mark only the redundant copies for removal.
+
+OUTPUT (strict JSON — no commentary):
+{"duplicates": ["<id_to_remove>", ...]}
+
+Return only ids to REMOVE. If there are no cross-batch duplicates, return {"duplicates": []}.
+Err strongly on the side of KEEPING items when uncertain — only remove when the duplication is clear."""
+
 
 class ActionableExtractor:
     """Extract compliance actionables from a document tree."""
@@ -545,4 +571,68 @@ class ActionableExtractor:
                     item.validation_status = "validation_failed"
                     all_validated.append(item)
 
+        if len(all_validated) >= CROSS_DEDUP_THRESHOLD:
+            all_validated = self._dedup_cross_batch(all_validated)
+
         return all_validated
+
+    def _dedup_cross_batch(
+        self, items: list[ActionableItem]
+    ) -> list[ActionableItem]:
+        """
+        Final cross-batch deduplication pass. Sends lean summaries of all
+        validated/flagged actionables to the LLM and marks true cross-section
+        duplicates. Only runs when items span more than one validation batch.
+        """
+        eligible = [
+            a for a in items
+            if a.validation_status not in ("duplicate", "trivial", "validation_failed")
+        ]
+        if len(eligible) < 2:
+            return items
+
+        payload = [
+            {
+                "id": a.id,
+                "actor": a.actor or "",
+                "action": (getattr(a, "action", "") or ""),
+                "object": (getattr(a, "object", "") or ""),
+                "description": (a.evidence_quote or "")[:150],
+                "source_location": a.source_location or "",
+            }
+            for a in eligible
+        ]
+
+        try:
+            result = self._llm.chat_json(
+                messages=[
+                    {"role": "system", "content": _CROSS_DEDUP_SYSTEM},
+                    {
+                        "role": "user",
+                        "content": (
+                            f"DOCUMENT: {eligible[0].source_location.split(',')[0] if eligible else ''}\n\n"
+                            f"ACTIONABLES ({len(payload)} items):\n"
+                            + json.dumps(payload, indent=2)
+                        ),
+                    },
+                ],
+                model=self._settings.llm.model,
+                max_tokens=1024,
+                reasoning_effort="low",
+            )
+            to_remove: set[str] = set(result.get("duplicates") or [])
+        except Exception as e:
+            logger.warning("Cross-batch dedup pass failed: %s — skipping", e)
+            return items
+
+        if not to_remove:
+            return items
+
+        logger.info(
+            "  -> Cross-batch dedup: marking %d additional duplicate(s)", len(to_remove)
+        )
+        for item in items:
+            if item.id in to_remove:
+                item.validation_status = "duplicate"
+                item.validation_notes = (item.validation_notes or "") + " [cross-batch duplicate]"
+        return items
