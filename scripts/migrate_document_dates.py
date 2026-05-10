@@ -35,45 +35,69 @@ def migrate_document_dates():
             
         # Load the actionable root for this document
         ar = astore.load(doc_id)
-        if ar is None:
-            print(f"  Skipping {doc_id} (no actionable root found)")
-            continue
-        
         needs_update = False
         
-        # Check if circular_effective_date is missing
-        if not getattr(ar, "circular_effective_date", ""):
-            # Generate a mock effective date (spread over 2024-2025)
-            days_offset = idx * 7 + random.randint(0, 30)  # Spread documents over time
+        if ar is None:
+            # Store dates directly in tree store for documents without actionable roots
+            print(f"  Adding dates to tree store for {doc.get('name', doc_id)}")
+            
+            # Generate mock dates
+            days_offset = idx * 7 + random.randint(0, 30)
             mock_effective_date = (base_date + timedelta(days=days_offset)).strftime("%Y-%m-%d")
-            ar.circular_effective_date = mock_effective_date
-            needs_update = True
-            print(f"  Setting effective date for {doc.get('name', doc_id)}: {mock_effective_date}")
-        
-        # Check if created_at is missing
-        if not getattr(ar, "created_at", ""):
-            # Use ingested_at if available, otherwise generate mock date
+            
             ingested_at = doc.get("ingested_at", "")
             if ingested_at:
-                ar.created_at = ingested_at
+                created_at = ingested_at
             else:
-                # Generate mock created_at slightly before effective date
-                if hasattr(ar, "circular_effective_date") and ar.circular_effective_date:
-                    try:
-                        eff_date = datetime.fromisoformat(ar.circular_effective_date.replace("Z", "+00:00"))
-                        created_date = (eff_date - timedelta(days=random.randint(30, 90))).isoformat()
-                    except (ValueError, AttributeError):
-                        created_date = (base_date + timedelta(days=idx * 7)).isoformat()
-                else:
-                    created_date = (base_date + timedelta(days=idx * 7)).isoformat()
-                ar.created_at = created_date
-            needs_update = True
-            print(f"  Setting created_at for {doc.get('name', doc_id)}: {ar.created_at}")
-        
-        # Save if any updates were made
-        if needs_update:
-            astore.save(ar)
+                created_at = (base_date + timedelta(days=idx * 7)).isoformat()
+            
+            # Update tree store with dates
+            ts._collection.update_one(
+                {"_id": doc_id},
+                {
+                    "$set": {
+                        "circular_effective_date": mock_effective_date,
+                        "created_at": created_at,
+                    }
+                }
+            )
             updated_count += 1
+            print(f"  Set effective date: {mock_effective_date}, created_at: {created_at}")
+        else:
+            needs_update = False
+            # Check if circular_effective_date is missing
+            if not getattr(ar, "circular_effective_date", ""):
+                # Generate a mock effective date (spread over 2024-2025)
+                days_offset = idx * 7 + random.randint(0, 30)  # Spread documents over time
+                mock_effective_date = (base_date + timedelta(days=days_offset)).strftime("%Y-%m-%d")
+                ar.circular_effective_date = mock_effective_date
+                needs_update = True
+                print(f"  Setting effective date for {doc.get('name', doc_id)}: {mock_effective_date}")
+            
+            # Check if created_at is missing
+            if not getattr(ar, "created_at", ""):
+                # Use ingested_at if available, otherwise generate mock date
+                ingested_at = doc.get("ingested_at", "")
+                if ingested_at:
+                    ar.created_at = ingested_at
+                else:
+                    # Generate mock created_at slightly before effective date
+                    if hasattr(ar, "circular_effective_date") and ar.circular_effective_date:
+                        try:
+                            eff_date = datetime.fromisoformat(ar.circular_effective_date.replace("Z", "+00:00"))
+                            created_date = (eff_date - timedelta(days=random.randint(30, 90))).isoformat()
+                        except (ValueError, AttributeError):
+                            created_date = (base_date + timedelta(days=idx * 7)).isoformat()
+                    else:
+                        created_date = (base_date + timedelta(days=idx * 7)).isoformat()
+                    ar.created_at = created_date
+                needs_update = True
+                print(f"  Setting created_at for {doc.get('name', doc_id)}: {ar.created_at}")
+            
+            # Save if any updates were made
+            if needs_update:
+                astore.save(ar)
+                updated_count += 1
     
     print(f"\nMigration complete! Updated {updated_count} documents.")
 

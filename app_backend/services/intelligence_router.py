@@ -178,12 +178,14 @@ def list_documents():
                 d["circular_title"] = getattr(ar, "circular_title", "") or ""
                 d["created_at"] = getattr(ar, "created_at", "") or ""
             else:
-                d["circular_effective_date"] = ""
-                d["regulation_issue_date"] = ""
-                d["regulator"] = ""
-                d["circular_id"] = ""
-                d["circular_title"] = ""
-                d["created_at"] = ""
+                # Fallback: check tree store for dates (for documents without actionable roots)
+                tree_doc = _ts()._collection.find_one({"_id": doc_id})
+                d["circular_effective_date"] = tree_doc.get("circular_effective_date", "") if tree_doc else ""
+                d["regulation_issue_date"] = tree_doc.get("regulation_issue_date", "") if tree_doc else ""
+                d["regulator"] = tree_doc.get("regulator", "") if tree_doc else ""
+                d["circular_id"] = tree_doc.get("circular_id", "") if tree_doc else ""
+                d["circular_title"] = tree_doc.get("circular_title", "") if tree_doc else ""
+                d["created_at"] = tree_doc.get("created_at", "") if tree_doc else ""
         except Exception:
             d["circular_effective_date"] = ""
             d["regulation_issue_date"] = ""
