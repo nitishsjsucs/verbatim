@@ -3,7 +3,7 @@ Actionable Intelligence System (AIS) — parallel feature layer.
 
 Extends the existing actionable extraction pipeline with:
   * classification (actionable vs notice board)
-  * enrichment (priority, compliance risk 1-5, deadline, category, rewritten description)
+  * enrichment (priority, compliance risk 1-5, deadline, rewritten description)
   * semantic team assignment
   * functional / departmental / timeline grouping
 

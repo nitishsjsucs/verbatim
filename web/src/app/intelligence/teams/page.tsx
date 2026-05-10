@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Users as UsersIcon, Save, X, Download, Upload, FileDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Users as UsersIcon, Save, X, Download, Upload, FileDown, ChevronDown } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -64,6 +64,7 @@ export default function IntelligenceTeamsPage() {
     const [form, setForm] = useState<FormState>(EMPTY);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<FormState>(EMPTY);
+    const [collapsedDepts, setCollapsedDepts] = useState<Set<string>>(new Set());
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -265,83 +266,132 @@ export default function IntelligenceTeamsPage() {
                 </div>
             </div>
 
-            <div className="rounded-md border border-border">
-                <div className="grid grid-cols-[1fr_2fr_1fr_120px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/30">
-                    <div>Name</div>
-                    <div>Function</div>
-                    <div>Department</div>
-                    <div className="text-right">Actions</div>
+            {loading ? (
+                <div className="p-8 text-center text-xs text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading...
                 </div>
-                {loading ? (
-                    <div className="p-8 text-center text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading...
-                    </div>
-                ) : teams.length === 0 ? (
-                    <div className="p-10 text-center text-xs text-muted-foreground">
-                        No teams defined yet. Actionables will be marked “Unassigned” until at
-                        least one team is added.
-                    </div>
-                ) : (
-                    teams.map((t) => {
-                        const editing = editingId === t.team_id;
-                        return (
-                            <div
-                                key={t.team_id}
-                                className="grid grid-cols-[1fr_2fr_1fr_120px] gap-2 items-start px-4 py-3 text-xs border-b border-border last:border-0 hover:bg-muted/10"
-                            >
-                                {editing ? (
-                                    <>
-                                        <Input
-                                            value={editForm.name}
-                                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                            className="h-7 text-xs"
-                                        />
-                                        <Input
-                                            value={editForm.function}
-                                            onChange={(e) => setEditForm({ ...editForm, function: e.target.value })}
-                                            className="h-7 text-xs"
-                                        />
-                                        <Input
-                                            value={editForm.department}
-                                            onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                                            className="h-7 text-xs"
-                                        />
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button size="xs" onClick={saveEdit} disabled={saving}>
-                                                <Save className="h-3 w-3" /> Save
-                                            </Button>
-                                            <Button size="xs" variant="ghost" onClick={cancelEdit}>
-                                                <X className="h-3 w-3" />
-                                            </Button>
+            ) : teams.length === 0 ? (
+                <div className="p-10 text-center text-xs text-muted-foreground rounded-md border border-border">
+                    No teams defined yet. Actionables will be marked "Unassigned" until at
+                    least one team is added.
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {(() => {
+                        // Group teams by department
+                        const grouped = teams.reduce((acc, team) => {
+                            const dept = team.department || "Unassigned Department";
+                            if (!acc[dept]) acc[dept] = [];
+                            acc[dept].push(team);
+                            return acc;
+                        }, {} as Record<string, IntelTeam[]>);
+
+                        // Sort departments: named ones alphabetically, then "Unassigned Department" last
+                        const sortedDepts = Object.keys(grouped).sort((a, b) => {
+                            if (a === "Unassigned Department") return 1;
+                            if (b === "Unassigned Department") return -1;
+                            return a.localeCompare(b);
+                        });
+
+                        const toggleDept = (dept: string) => {
+                            setCollapsedDepts((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(dept)) {
+                                    next.delete(dept);
+                                } else {
+                                    next.add(dept);
+                                }
+                                return next;
+                            });
+                        };
+
+                        return sortedDepts.map((dept) => {
+                            const deptTeams = grouped[dept];
+                            const isCollapsed = collapsedDepts.has(dept);
+                            return (
+                                <div key={dept} className="rounded-md border border-border overflow-hidden">
+                                    {/* Department Header */}
+                                    <button
+                                        onClick={() => toggleDept(dept)}
+                                        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/40 hover:bg-muted/60 transition-colors text-left"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown
+                                                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                                    isCollapsed ? "-rotate-90" : ""
+                                                }`}
+                                            />
+                                            <span className="text-sm font-semibold">{dept}</span>
+                                            <span className="text-xs text-muted-foreground">({deptTeams.length})</span>
                                         </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="font-medium">{t.name}</div>
-                                        <div className="text-muted-foreground">{t.function}</div>
-                                        <div className="text-muted-foreground">
-                                            {t.department || <span className="italic">—</span>}
+                                    </button>
+
+                                    {/* Department Teams */}
+                                    {!isCollapsed && (
+                                        <div>
+                                            <div className="grid grid-cols-[1fr_2fr_120px] gap-2 px-4 py-2 text-[11px] font-medium text-muted-foreground border-b border-border bg-muted/20">
+                                                <div>Name</div>
+                                                <div>Function</div>
+                                                <div className="text-right">Actions</div>
+                                            </div>
+                                            {deptTeams.map((t) => {
+                                                const editing = editingId === t.team_id;
+                                                return (
+                                                    <div
+                                                        key={t.team_id}
+                                                        className="grid grid-cols-[1fr_2fr_120px] gap-2 items-start px-4 py-3 text-xs border-b border-border last:border-0 hover:bg-muted/10"
+                                                    >
+                                                        {editing ? (
+                                                            <>
+                                                                <Input
+                                                                    value={editForm.name}
+                                                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                                                    className="h-7 text-xs"
+                                                                />
+                                                                <Input
+                                                                    value={editForm.function}
+                                                                    onChange={(e) => setEditForm({ ...editForm, function: e.target.value })}
+                                                                    className="h-7 text-xs"
+                                                                />
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <Button size="xs" onClick={saveEdit} disabled={saving}>
+                                                                        <Save className="h-3 w-3" /> Save
+                                                                    </Button>
+                                                                    <Button size="xs" variant="ghost" onClick={cancelEdit}>
+                                                                        <X className="h-3 w-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <div className="font-medium">{t.name}</div>
+                                                                <div className="text-muted-foreground">{t.function}</div>
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <Button size="xs" variant="outline" onClick={() => startEdit(t)}>
+                                                                        <Pencil className="h-3 w-3" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="xs"
+                                                                        variant="outline"
+                                                                        onClick={() => onDelete(t)}
+                                                                        className="text-red-600 hover:text-red-700"
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button size="xs" variant="outline" onClick={() => startEdit(t)}>
-                                                <Pencil className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                                size="xs"
-                                                variant="outline"
-                                                onClick={() => onDelete(t)}
-                                                className="text-red-600 hover:text-red-700"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
-            </div>
+                                    )}
+                                </div>
+                            );
+                        });
+                    })()}
+                </div>
+            )}
         </div>
     );
 }

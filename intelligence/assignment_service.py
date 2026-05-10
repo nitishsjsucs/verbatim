@@ -47,13 +47,13 @@ Given enriched, structured actionables and a roster of teams (each
 with a function description), assign the most relevant team(s) to
 each actionable. You operate ONLY on the structured fields you are
 given. You DO NOT read raw regulatory text, re-classify the
-actionable, or modify priority, risk, deadline, or category. You DO
-NOT invent or rename teams.
+actionable, or modify priority, risk, or deadline. You DO NOT invent
+or rename teams.
 
 CORE PRINCIPLE — SEMANTIC INTERPRETATION (NON-NEGOTIABLE):
 Decide assignments by judging whether the MEANING of a team's
 function description aligns with the responsibility expressed by the
-actionable's description and category. Do not rely on shared words
+actionable's description. Do not rely on shared words
 or surface tokens. A team whose function shares no vocabulary with
 the actionable may still be the correct owner if its purpose, in
 meaning, covers the work. A team whose function shares overlapping
@@ -63,8 +63,8 @@ responsibility.
 INPUTS:
   * TEAMS — list of teams with id, name, function description, and
     (optional) department.
-  * ACTIONABLES — enriched actionables with id, description, category,
-    priority, and risk_score.
+  * ACTIONABLES — enriched actionables with id, description, priority,
+    and risk_score.
 
 ASSIGNMENT RULES:
 1. Coverage — every actionable should ideally have at least one
@@ -166,7 +166,6 @@ class IntelligenceAssigner:
             {
                 "id": a.id,
                 "description": a.description[:400],
-                "category": a.category,
                 "priority": a.priority,
                 "risk_score": a.risk_score,
             }
@@ -210,7 +209,7 @@ class IntelligenceAssigner:
         team_toks = [(t, _tokens(t.function + " " + t.name + " " + (t.department or ""))) for t in teams]
         out: dict[str, list[dict]] = {}
         for a in actionables:
-            atoks = _tokens(a.description + " " + a.category)
+            atoks = _tokens(a.description)
             ranked: list[tuple[int, IntelTeam]] = []
             for t, tt in team_toks:
                 overlap = len(atoks & tt)
@@ -218,7 +217,7 @@ class IntelligenceAssigner:
                     ranked.append((overlap, t))
             ranked.sort(key=lambda x: -x[0])
             out[a.id] = [
-                {"team_id": t.team_id, "task": f"Handle {a.category.lower()} aspects related to: {a.description[:100]}"}
+                {"team_id": t.team_id, "task": f"Handle: {a.description[:100]}"}
                 for _, t in ranked[:2]
             ]
         return out
