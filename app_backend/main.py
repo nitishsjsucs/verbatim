@@ -1563,11 +1563,12 @@ async def extract_actionables(doc_id: str, force: bool = Query(False)):
         asyncio.get_event_loop().run_in_executor(None, _run_extraction)
 
         while True:
-            # Wait for next event (with a short timeout so we stay responsive)
+            # Send keepalive every 30s to prevent reverse-proxy idle timeouts
+            # (ngrok/Vercel/Railway/Cloudflare typically close idle connections
+            # after 60-100s). The extraction itself has no time limit.
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=300)
+                event = await asyncio.wait_for(queue.get(), timeout=30)
             except asyncio.TimeoutError:
-                # Safety: if nothing happens in 5 min, send a keepalive
                 yield f"data: {_json.dumps({'event': 'keepalive'})}\n\n"
                 continue
 

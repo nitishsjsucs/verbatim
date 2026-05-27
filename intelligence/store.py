@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 TEAMS_COLLECTION = "intel_teams"
 RUNS_COLLECTION = "intel_runs"
+EXTRACT_JOBS_COLLECTION = "intel_extract_jobs"
 
 
 class IntelTeamStore:
@@ -144,3 +145,140 @@ class IntelRunStore:
             if a.id == item_id:
                 return a.to_dict()
         return None
+
+
+class IntelExtractJobStore:
+    """Persistent store for long-running extraction jobs.
+
+    Why this exists: long extractions (hours) must survive backend restarts
+    and remain visible to clients. An in-memory dict loses everything on
+    restart and offers no introspection from other processes.
+
+    Schema (per doc_id):
+        {
+            "_id": "<doc_id>",
+            "doc_id": "<doc_id>",
+            "status": "running" | "done" | "error",
+            "stage": "starting" | "extract" | "enrich" | "assign" | "save",
+            "stage_progress": {"current": int, "total": int},
+            "actionables_so_far": int,
+            "started_at": ISO,
+            "heartbeat_at": ISO,
+            "finished_at": ISO,
+            "error": str,
+            "trace": str,
+            "force": bool,
+            "count": int,        # final actionables count when done
+        }
+    """
+
+    def __init__(self) -> None:
+        self._col = get_db()[EXTRACT_JOBS_COLLECTION]
+        try:
+            self._col.create_index("doc_id", unique=True)
+            self._col.create_index("status")
+            self._col.create_index("heartbeat_at")
+        except Exception as e:
+            logger.warning("intel_extract_jobs index init failed: %s", e)
+
+    def get(self, doc_id: str) -> Optional[dict]:
+        d = self._col.find_one({"_id": doc_id})
+        if d:
+            d.pop("_id", None)
+        return d
+
+    def upsert(self, doc_id: str, fields: dict) -> dict:
+        """Atomically upsert job fields for `doc_id`, stamping heartbeat."""
+        fields = dict(fields)
+        fields["doc_id"] = doc_id
+        fields["heartbeat_at"] = datetime.now(timezone.utc).isoformat()
+        self._col.update_one(
+            {"_id": doc_id},
+            {"$set": fields},
+            upsert=True,
+        )
+        return self.get(doc_id) or {}
+
+    def heartbeat(self, doc_id: str, stage: Optional[str] = None,
+                  stage_progress: Optional[dict] = None,
+                  actionables_so_far: Optional[int] = None) -> None:
+        """Update heartbeat (and optional progress) without overwriting status."""
+        fields: dict = {"heartbeat_at": datetime.now(timezone.utc).isoformat()}
+        if stage is not None:
+            fields["stage"] = stage
+        if stage_progress is not None:
+            fields["stage_progress"] = stage_progress
+        if actionables_so_far is not None:
+            fields["actionables_so_far"] = actionables_so_far
+        self._col.update_one({"_id": doc_id}, {"$set": fields}, upsert=True)
+
+    def mark_done(self, doc_id: str, count: int) -> None:
+        self.upsert(doc_id, {
+            "status": "done",
+            "count": count,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    def mark_error(self, doc_id: str, error: str, trace: str = "") -> None:
+        self.upsert(doc_id, {
+            "status": "error",
+            "error": error,
+            "trace": trace,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    def claim(self, doc_id: str, force: bool) -> tuple[bool, Optional[dict]]:
+        """Atomic compare-and-set: only start a new job if no job is running.
+
+        Returns (claimed, current_job_or_None).
+        - claimed=True   → caller now owns the job slot; existing entry replaced.
+        - claimed=False  → another worker already running; current_job is the live one.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        running = self._col.find_one({"_id": doc_id, "status": "running"})
+        if running:
+            running.pop("_id", None)
+            return False, running
+
+        self._col.update_one(
+            {"_id": doc_id},
+            {"$set": {
+                "doc_id": doc_id,
+                "status": "running",
+                "stage": "starting",
+                "stage_progress": {"current": 0, "total": 0},
+                "actionables_so_far": 0,
+                "force": force,
+                "started_at": now,
+                "heartbeat_at": now,
+                "error": "",
+                "trace": "",
+                "finished_at": "",
+                "count": 0,
+            }},
+            upsert=True,
+        )
+        return True, None
+
+    def release_stale(self, max_silence_seconds: int = 1800) -> int:
+        """Mark jobs as errored if they have not heartbeated in > max_silence_seconds.
+
+        Called on backend startup and periodically to clean up jobs whose
+        worker thread died (e.g. backend restart, OOM kill). The job itself
+        cannot resume from the in-memory state, but the registry is corrected
+        so the user sees an error rather than a permanently "running" badge.
+        """
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=max_silence_seconds)).isoformat()
+        res = self._col.update_many(
+            {"status": "running", "heartbeat_at": {"$lt": cutoff}},
+            {"$set": {
+                "status": "error",
+                "error": (
+                    "Worker stopped reporting (likely a backend restart). "
+                    "Re-run the extraction to continue."
+                ),
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        return res.modified_count

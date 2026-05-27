@@ -296,20 +296,33 @@ class IntelligenceEnricher:
         raw_actionables: list[ActionableItem],
         tree: DocumentTree,
         doc_effective_date: str = "",
+        progress_callback: Optional[callable] = None,  # type: ignore[valid-type]
     ) -> tuple[list[EnrichedActionable], list[NoticeItem]]:
+        """Enrich raw actionables in batches.
+
+        progress_callback (optional): called as
+            progress_callback(stage="enrich", current=int, total=int, items_so_far=int)
+        after each batch completes — enables heartbeat updates for long runs.
+        """
         if not raw_actionables:
             return [], []
         enriched: list[EnrichedActionable] = []
         notices: list[NoticeItem] = []
 
-        for start in range(0, len(raw_actionables), self.BATCH_SIZE):
+        total = len(raw_actionables)
+        total_batches = (total + self.BATCH_SIZE - 1) // self.BATCH_SIZE
+        batch_num = 0
+
+        for start in range(0, total, self.BATCH_SIZE):
             batch = raw_actionables[start : start + self.BATCH_SIZE]
+            batch_num += 1
             try:
                 batch_enriched, batch_notices = self._enrich_batch(
                     batch, tree, doc_effective_date,
                 )
             except Exception as e:
-                logger.error("Enrichment batch failed: %s", e)
+                logger.error("Enrichment batch %d/%d failed: %s — falling back to heuristics",
+                             batch_num, total_batches, e)
                 # graceful fallback: treat all as actionables with heuristics only
                 batch_enriched = [
                     self._heuristic_enrich(item, doc_effective_date) for item in batch
@@ -317,6 +330,16 @@ class IntelligenceEnricher:
                 batch_notices = []
             enriched.extend(batch_enriched)
             notices.extend(batch_notices)
+            if progress_callback is not None:
+                try:
+                    progress_callback(
+                        stage="enrich",
+                        current=batch_num,
+                        total=total_batches,
+                        items_so_far=len(enriched),
+                    )
+                except Exception as cb_err:  # noqa: BLE001 — never let callback failures abort enrichment
+                    logger.debug("Enrichment progress callback failed: %s", cb_err)
 
         return enriched, notices
 

@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 import re
 import threading
 import time
 from typing import Any, Optional
 
-from openai import APITimeoutError, OpenAI, RateLimitError
+from openai import APIConnectionError, APITimeoutError, OpenAI, RateLimitError
 
 from config.settings import get_settings
 
@@ -453,7 +454,7 @@ class LLMClient:
         model: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        retries: int = 3,
+        retries: int = 5,
         reasoning_effort: Optional[str] = None,
     ) -> dict | list:
         """
@@ -464,6 +465,11 @@ class LLMClient:
         2. Code block extraction (```json ... ```)
         3. Balanced brace/bracket extraction
         4. Retry without json_mode as final fallback
+
+        Resilience:
+        - Up to `retries` attempts (default 5) for transient API failures.
+        - Exponential backoff with jitter on RateLimit / Timeout / Connection errors.
+        - Backoff capped at 60s per attempt to avoid blocking the pipeline.
         """
         last_error: Exception | None = None
         content = ""
@@ -489,20 +495,36 @@ class LLMClient:
                     "JSON parse attempt %d/%d failed: %s",
                     attempt + 1,
                     retries,
-                    str(e)[:120],
+                    str(e)[:160],
                 )
-            except (APITimeoutError, RateLimitError) as e:
+                # JSON failures don't usually need backoff — retry quickly
+            except (APITimeoutError, RateLimitError, APIConnectionError) as e:
                 last_error = e
+                # Exponential backoff with jitter, capped at 60s.
+                # 2^attempt seconds (1, 2, 4, 8, 16) + 0-1s jitter.
+                backoff = min(60.0, (2 ** attempt) + random.random())
                 logger.warning(
-                    "API error on attempt %d/%d: %s",
+                    "Transient API error on attempt %d/%d (%s): %s — retrying in %.1fs",
                     attempt + 1,
                     retries,
-                    str(e)[:120],
+                    type(e).__name__,
+                    str(e)[:160],
+                    backoff,
                 )
-                if isinstance(e, RateLimitError):
-                    time.sleep(2**attempt)
+                time.sleep(backoff)
+            except Exception as e:  # noqa: BLE001 — surface unexpected upstream failures
+                last_error = e
+                logger.error(
+                    "Unexpected LLM error on attempt %d/%d (%s): %s",
+                    attempt + 1,
+                    retries,
+                    type(e).__name__,
+                    str(e)[:200],
+                )
+                # Brief sleep to allow transient infra issues to clear
+                time.sleep(min(30.0, 2 ** attempt))
 
-        # Final fallback: try without json_mode
+        # Final fallback: try without json_mode (one more chance)
         try:
             content = self.chat(
                 messages=messages,
@@ -514,10 +536,10 @@ class LLMClient:
             )
             if len(content.strip()) >= 3:
                 return self._ensure_dict_or_list(self._extract_json(content))
-        except (json.JSONDecodeError, ValueError, APITimeoutError, RateLimitError):
+        except (json.JSONDecodeError, ValueError, APITimeoutError, RateLimitError, APIConnectionError):
             pass
 
-        logger.error("All JSON parse attempts failed")
+        logger.error("All JSON parse attempts failed after %d retries", retries)
         raise last_error or ValueError("Failed to extract JSON after all retries")
 
     def chat_json_with_status(

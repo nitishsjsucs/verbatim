@@ -64,9 +64,28 @@ export async function ingestIntelDocument(
 // ---------------------------------------------------------------------------
 type ExtractJobResponse =
     | { status: "idle" }
-    | { status: "running"; stage?: string }
-    | { status: "done"; run?: IntelRunPayload | null; count?: number }
-    | { status: "error"; error: string; trace?: string };
+    | {
+          status: "running";
+          stage?: string;
+          stage_progress?: { current: number; total: number };
+          actionables_so_far?: number;
+          started_at?: string;
+          heartbeat_at?: string;
+      }
+    | {
+          status: "done";
+          run?: IntelRunPayload | null;
+          count?: number;
+          started_at?: string;
+          finished_at?: string;
+      }
+    | {
+          status: "error";
+          error: string;
+          trace?: string;
+          started_at?: string;
+          finished_at?: string;
+      };
 
 async function parseJobOrThrow(res: Response, fallback: string): Promise<ExtractJobResponse> {
     if (!res.ok) {
@@ -110,11 +129,14 @@ export async function extractIntelligence(
     }
 
     // 2. Poll the status endpoint until the job finishes or errors out.
-    // Generous ceiling — 2h @ 5s poll = 1440 polls. Real runs finish in
-    // minutes; the ceiling just prevents an infinite loop on a dead backend.
+    // No client-side timeout — extraction can take many hours on very large
+    // PDFs with massive batch counts. The backend remains the source of truth;
+    // the user can navigate away and the job continues in the background.
+    // Tolerates transient network/proxy hiccups via consecutive-failure tracking.
     const pollIntervalMs = 5000;
-    const maxPolls = 1440;
-    for (let i = 0; i < maxPolls; i++) {
+    const MAX_CONSECUTIVE_FAILURES = 60; // ~5 minutes of continuous failures
+    let consecutiveFailures = 0;
+    while (true) {
         await new Promise((r) => setTimeout(r, pollIntervalMs));
         let state: ExtractJobResponse;
         try {
@@ -122,10 +144,20 @@ export async function extractIntelligence(
                 `/documents/${encodeURIComponent(docId)}/extract/status`,
             );
             state = await parseJobOrThrow(res, "Failed to poll extraction status");
+            consecutiveFailures = 0; // reset on success
         } catch (err) {
-            // Transient network hiccup — log and keep polling. A permanent
-            // backend outage will eventually hit the maxPolls ceiling.
-            console.warn("[intelligence] poll hiccup:", err);
+            // Transient network hiccup — log and keep polling. Only abort if
+            // we've had many consecutive failures (sustained backend outage).
+            consecutiveFailures += 1;
+            console.warn(
+                `[intelligence] poll hiccup (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}):`,
+                err,
+            );
+            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                throw new Error(
+                    "Lost connection to extraction backend. The job may still be running on the server — refresh to check status.",
+                );
+            }
             continue;
         }
         if (state.status === "done") {
@@ -140,7 +172,6 @@ export async function extractIntelligence(
         }
         // status === "running" | "idle" — keep polling.
     }
-    throw new Error("Extraction timed out after 2 hours");
 }
 
 export async function getIntelRun(docId: string): Promise<IntelRunPayload> {

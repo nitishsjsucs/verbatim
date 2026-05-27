@@ -21,7 +21,7 @@ import time
 import traceback
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
@@ -36,7 +36,7 @@ from intelligence.models import (
     IntelTeam,
     NoticeItem,
 )
-from intelligence.store import IntelRunStore, IntelTeamStore
+from intelligence.store import IntelExtractJobStore, IntelRunStore, IntelTeamStore
 from intelligence.enrichment_service import IntelligenceEnricher
 from intelligence.assignment_service import IntelligenceAssigner
 from intelligence.grouping_service import build_groupings, compute_stats
@@ -57,6 +57,7 @@ _enricher: Optional[IntelligenceEnricher] = None
 _assigner: Optional[IntelligenceAssigner] = None
 _run_store: Optional[IntelRunStore] = None
 _team_store: Optional[IntelTeamStore] = None
+_jobs_store: Optional[IntelExtractJobStore] = None
 
 
 def _ts() -> TreeStore:
@@ -106,6 +107,29 @@ def _teams() -> IntelTeamStore:
     if _team_store is None:
         _team_store = IntelTeamStore()
     return _team_store
+
+
+def _jobs() -> IntelExtractJobStore:
+    """Persistent extraction-job registry (MongoDB-backed).
+
+    Survives backend restarts and lets multiple workers/processes coordinate
+    on whether a doc is already being extracted.
+    """
+    global _jobs_store
+    if _jobs_store is None:
+        _jobs_store = IntelExtractJobStore()
+        # Best-effort: clean up any "running" jobs whose worker died.
+        # Threshold = 30 min of silence → mark as errored.
+        try:
+            stale = _jobs_store.release_stale(max_silence_seconds=1800)
+            if stale:
+                logger.warning(
+                    "[intelligence] released %d stale extraction job(s) on init",
+                    stale,
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Stale-job sweep failed (non-fatal): %s", e)
+    return _jobs_store
 
 
 
@@ -551,7 +575,12 @@ def _build_run(
     raw_actionables,
     teams: list[IntelTeam],
     doc_effective_date: str,
+    progress_callback=None,
 ) -> IntelRun:
+    """Run enrichment + assignment + grouping. Optionally reports per-batch
+    progress via `progress_callback(stage, current, total, items_so_far)`
+    for heartbeat updates on long jobs.
+    """
     filtered = [
         a for a in raw_actionables
         if a.validation_status not in _EXCLUDED_VALIDATION_STATUSES
@@ -570,8 +599,9 @@ def _build_run(
         filtered,
         tree,
         doc_effective_date=doc_effective_date,
+        progress_callback=progress_callback,
     )
-    _asg().assign(enriched, teams)
+    _asg().assign(enriched, teams, progress_callback=progress_callback)
 
     notices.extend(_excluded_to_notices(excluded))
 
@@ -590,72 +620,152 @@ def _build_run(
 # ---------------------------------------------------------------------------
 # Background extraction jobs
 #
-# The full AIS pipeline (raw extract -> enrich -> assign -> group) can easily
-# take >5 minutes on large documents. ngrok's free tier closes HTTP
-# connections after ~5 minutes, which manifests in the browser as a CORS
-# error (because the connection is severed mid-response, no headers reach the
-# client).
-#
-# To work around that we run the pipeline in a background thread and expose a
-# cheap status endpoint the client can poll. The initial POST returns within
-# milliseconds, well under any proxy/timeout limit.
+# The full AIS pipeline (raw extract -> enrich -> assign -> group) can run
+# for hours on very large documents with massive batch counts. To survive
+# proxy idle timeouts AND backend restarts we:
+#   1. Persist job state in MongoDB (IntelExtractJobStore).
+#   2. Heartbeat from each pipeline stage so dead workers can be detected.
+#   3. Use a streaming extractor variant so per-stage progress is visible.
+#   4. Catch and persist exceptions so partial work isn't silently lost.
+# The initial POST always returns within milliseconds; clients poll the
+# status endpoint indefinitely (no client-side timeout).
 # ---------------------------------------------------------------------------
-_extract_jobs: Dict[str, Dict[str, Any]] = {}
-_extract_jobs_lock = threading.Lock()
+# Heartbeat thread tracking — keeps job alive in DB during long LLM calls
+_extract_threads: Dict[str, threading.Thread] = {}
+_extract_threads_lock = threading.Lock()
+
+
+def _spawn_heartbeat(doc_id: str, stop_event: threading.Event,
+                     interval_seconds: int = 30) -> threading.Thread:
+    """Background thread that pings the job's heartbeat every `interval_seconds`.
+
+    This guarantees that even during a multi-minute LLM call the persistent
+    job is still considered alive, so the stale-job sweeper doesn't mark it
+    as failed prematurely.
+    """
+    def _loop():
+        while not stop_event.wait(interval_seconds):
+            try:
+                _jobs().heartbeat(doc_id)
+            except Exception as e:  # noqa: BLE001 — heartbeat is best-effort
+                logger.debug("Heartbeat write failed for %s: %s", doc_id, e)
+
+    t = threading.Thread(
+        target=_loop,
+        daemon=True,
+        name=f"intel-heartbeat-{doc_id}",
+    )
+    t.start()
+    return t
 
 
 def _run_extract_pipeline(doc_id: str) -> None:
-    """Worker that runs the full AIS pipeline and updates the job registry."""
+    """Worker that runs the full AIS pipeline and persists progress.
+
+    Resilience:
+      * Heartbeat thread keeps the job marked "alive" during long LLM calls.
+      * Each stage transition is committed to MongoDB before the next stage starts.
+      * Exceptions inside any stage propagate up and are persisted with a
+        traceback so the user can see exactly where extraction stopped.
+      * The IntelRunStore.save() at the end is the atomic "commit point"
+        for the document. Anything before that point is recoverable by
+        re-running extraction; anything after is durable.
+    """
+    pipeline_start = time.time()
+    stop_heartbeat = threading.Event()
+    heartbeat_thread = _spawn_heartbeat(doc_id, stop_heartbeat, interval_seconds=30)
+
     try:
         tree = _ts().load(doc_id)
         if tree is None:
-            with _extract_jobs_lock:
-                _extract_jobs[doc_id] = {
-                    "status": "error",
-                    "error": f"Document {doc_id} not found",
-                    "finished_at": datetime.now(timezone.utc).isoformat(),
-                }
+            _jobs().mark_error(doc_id, f"Document {doc_id} not found")
             return
 
-        with _extract_jobs_lock:
-            _extract_jobs[doc_id]["stage"] = "extract"
+        # ── Stage 1: Raw actionable extraction (LLM-heavy, batched) ────────
+        _jobs().heartbeat(doc_id, stage="extract", stage_progress={"current": 0, "total": 0})
+        logger.info("[intelligence] %s | stage=extract begin", doc_id)
+        stage_start = time.time()
 
         raw_result = _ex().extract(tree)
+        raw_count = len(raw_result.actionables) if raw_result and raw_result.actionables else 0
+        logger.info(
+            "[intelligence] %s | stage=extract done | %d raw actionables in %.1fs",
+            doc_id, raw_count, time.time() - stage_start,
+        )
+        _jobs().heartbeat(doc_id, actionables_so_far=raw_count)
 
-        with _extract_jobs_lock:
-            _extract_jobs[doc_id]["stage"] = "enrich+assign"
+        # ── Stage 2: Enrich + assign (LLM-heavy, batched) ──────────────────
+        _jobs().heartbeat(doc_id, stage="enrich+assign")
+        logger.info("[intelligence] %s | stage=enrich+assign begin", doc_id)
+        stage_start = time.time()
 
         teams = _teams().list()
         doc_effective_date = _load_doc_effective_date(doc_id)
+
+        def _stage_progress(stage: str, current: int, total: int, items_so_far: int) -> None:
+            """Per-batch heartbeat reporter for enrich/assign stages."""
+            try:
+                _jobs().heartbeat(
+                    doc_id,
+                    stage=stage,
+                    stage_progress={"current": current, "total": total},
+                    actionables_so_far=items_so_far,
+                )
+                logger.info(
+                    "[intelligence] %s | %s batch %d/%d | items=%d",
+                    doc_id, stage, current, total, items_so_far,
+                )
+            except Exception as cb_err:  # noqa: BLE001
+                logger.debug("Stage progress heartbeat failed: %s", cb_err)
+
         run = _build_run(
             tree,
             raw_result.actionables,
             teams,
             doc_effective_date,
+            progress_callback=_stage_progress,
         )
+        logger.info(
+            "[intelligence] %s | stage=enrich+assign done | %d enriched in %.1fs",
+            doc_id, len(run.actionables), time.time() - stage_start,
+        )
+
+        # ── Stage 3: Persist (atomic commit point) ─────────────────────────
+        _jobs().heartbeat(doc_id, stage="save")
         _runs().save(run)
 
-        with _extract_jobs_lock:
-            _extract_jobs[doc_id] = {
-                "status": "done",
-                "count": len(run.actionables),
-                "finished_at": datetime.now(timezone.utc).isoformat(),
-            }
+        elapsed = time.time() - pipeline_start
+        logger.info(
+            "[intelligence] %s | extraction COMPLETE | %d actionables | total %.1fs",
+            doc_id, len(run.actionables), elapsed,
+        )
+        _jobs().mark_done(doc_id, count=len(run.actionables))
+
     except Exception as e:  # noqa: BLE001 — surface failure to the poller
-        logger.exception("[intelligence] background extract failed for %s", doc_id)
-        with _extract_jobs_lock:
-            _extract_jobs[doc_id] = {
-                "status": "error",
-                "error": f"{type(e).__name__}: {e}",
-                "trace": traceback.format_exc(limit=3),
-                "finished_at": datetime.now(timezone.utc).isoformat(),
-            }
+        elapsed = time.time() - pipeline_start
+        logger.exception(
+            "[intelligence] %s | extraction FAILED after %.1fs",
+            doc_id, elapsed,
+        )
+        _jobs().mark_error(
+            doc_id,
+            error=f"{type(e).__name__}: {e}",
+            trace=traceback.format_exc(limit=5),
+        )
+    finally:
+        stop_heartbeat.set()
+        # Best-effort: nudge the heartbeat thread to exit promptly
+        try:
+            heartbeat_thread.join(timeout=1.0)
+        except Exception:  # noqa: BLE001
+            pass
+        with _extract_threads_lock:
+            _extract_threads.pop(doc_id, None)
 
 
 @router.post("/documents/{doc_id}/extract")
 def extract_for_document(doc_id: str, force: bool = Query(False)):
-    """
-    Kick off the full AIS pipeline (extract -> enrich -> assign -> group).
+    """Kick off the full AIS pipeline (extract -> enrich -> assign -> group).
 
     Returns immediately with a 202-style payload. Poll
     GET /intelligence/documents/{doc_id}/extract/status until status=="done",
@@ -663,6 +773,10 @@ def extract_for_document(doc_id: str, force: bool = Query(False)):
 
     If `force=false` and a run already exists, the existing run is returned
     synchronously (fast path).
+
+    Concurrency: jobs are claimed atomically in MongoDB. If another worker
+    (same or different process) already owns this doc_id, the call returns
+    the live job state rather than spawning a duplicate worker.
     """
     tree = _ts().load(doc_id)
     if tree is None:
@@ -672,15 +786,14 @@ def extract_for_document(doc_id: str, force: bool = Query(False)):
     if existing and not force:
         return {"status": "done", "run": _run_payload(existing)}
 
-    with _extract_jobs_lock:
-        current = _extract_jobs.get(doc_id)
-        if current and current.get("status") == "running":
-            return {"status": "running", "stage": current.get("stage", "starting")}
-        _extract_jobs[doc_id] = {
+    # Atomic claim: only one worker may own a doc at a time.
+    claimed, current = _jobs().claim(doc_id, force=force)
+    if not claimed:
+        return {
             "status": "running",
-            "stage": "starting",
-            "force": force,
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "stage": (current or {}).get("stage", "starting"),
+            "started_at": (current or {}).get("started_at", ""),
+            "actionables_so_far": (current or {}).get("actionables_so_far", 0),
         }
 
     thread = threading.Thread(
@@ -689,6 +802,8 @@ def extract_for_document(doc_id: str, force: bool = Query(False)):
         daemon=True,
         name=f"intel-extract-{doc_id}",
     )
+    with _extract_threads_lock:
+        _extract_threads[doc_id] = thread
     thread.start()
 
     return {"status": "running", "stage": "starting"}
@@ -700,12 +815,15 @@ def extract_status(doc_id: str):
 
     Returns one of:
       {status: "idle"}                      — no job has ever run
-      {status: "running", stage: "..."}     — background worker in progress
+      {status: "running", stage, ...}       — background worker in progress
       {status: "done",    run: {...}}       — worker finished; run payload included
       {status: "error",   error: "..."}     — worker failed; see `error`
+
+    The "running" payload also includes:
+      stage_progress, actionables_so_far, started_at, heartbeat_at
+    so the UI can render progress and detect stalls.
     """
-    with _extract_jobs_lock:
-        job = _extract_jobs.get(doc_id)
+    job = _jobs().get(doc_id)
 
     if not job:
         existing = _runs().get(doc_id)
@@ -715,20 +833,30 @@ def extract_status(doc_id: str):
 
     status = job.get("status")
     if status == "running":
-        return {"status": "running", "stage": job.get("stage", "starting")}
+        return {
+            "status": "running",
+            "stage": job.get("stage", "starting"),
+            "stage_progress": job.get("stage_progress") or {"current": 0, "total": 0},
+            "actionables_so_far": job.get("actionables_so_far", 0),
+            "started_at": job.get("started_at", ""),
+            "heartbeat_at": job.get("heartbeat_at", ""),
+        }
     if status == "error":
         return {
             "status": "error",
             "error": job.get("error", "unknown error"),
             "trace": job.get("trace"),
+            "started_at": job.get("started_at", ""),
+            "finished_at": job.get("finished_at", ""),
         }
-    # status == "done" — also attach the persisted run so the caller can skip
-    # a second HTTP round-trip.
+    # status == "done" — attach persisted run so the client can skip a hop.
     existing = _runs().get(doc_id)
     return {
         "status": "done",
         "run": _run_payload(existing) if existing else None,
         "count": job.get("count"),
+        "started_at": job.get("started_at", ""),
+        "finished_at": job.get("finished_at", ""),
     }
 
 

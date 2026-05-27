@@ -111,7 +111,14 @@ class IntelligenceAssigner:
         self,
         actionables: list[EnrichedActionable],
         teams: list[IntelTeam],
+        progress_callback: Optional[callable] = None,  # type: ignore[valid-type]
     ) -> list[EnrichedActionable]:
+        """Assign teams to enriched actionables in batches.
+
+        progress_callback (optional): called as
+            progress_callback(stage="assign", current=int, total=int, items_so_far=int)
+        after each batch — enables heartbeat updates for long runs.
+        """
         if not actionables:
             return actionables
         if not teams:
@@ -121,12 +128,21 @@ class IntelligenceAssigner:
                 a.team_specific_tasks = []
             return actionables
 
-        for start in range(0, len(actionables), self.BATCH_SIZE):
+        total = len(actionables)
+        total_batches = (total + self.BATCH_SIZE - 1) // self.BATCH_SIZE
+        batch_num = 0
+        items_done = 0
+
+        for start in range(0, total, self.BATCH_SIZE):
             batch = actionables[start : start + self.BATCH_SIZE]
+            batch_num += 1
             try:
                 mapping = self._assign_batch(batch, teams)
             except Exception as e:
-                logger.error("Assignment batch failed: %s — falling back", e)
+                logger.error(
+                    "Assignment batch %d/%d failed: %s — falling back to heuristics",
+                    batch_num, total_batches, e,
+                )
                 mapping = self._heuristic_assign(batch, teams)
 
             team_by_id = {t.team_id: t for t in teams}
@@ -144,6 +160,18 @@ class IntelligenceAssigner:
                     )
                     for t in valid_tasks
                 ]
+                items_done += 1
+
+            if progress_callback is not None:
+                try:
+                    progress_callback(
+                        stage="assign",
+                        current=batch_num,
+                        total=total_batches,
+                        items_so_far=items_done,
+                    )
+                except Exception as cb_err:  # noqa: BLE001 — never let callback failures abort assignment
+                    logger.debug("Assignment progress callback failed: %s", cb_err)
 
         return actionables
 
