@@ -69,6 +69,22 @@ try:
 except Exception as _ais_err:  # non-fatal — existing endpoints remain intact
     logger.warning("Failed to mount intelligence router: %s", _ais_err)
 
+# --- Intelligence Auth (multi-tenant, separate pocket system) ---
+try:
+    from intelligence.auth.router import router as _intel_auth_router
+    app.include_router(_intel_auth_router)
+    logger.info("Mounted Intelligence Auth router at /intel-auth/*")
+except Exception as _iauth_err:
+    logger.warning("Failed to mount intel-auth router: %s", _iauth_err)
+
+# --- Intelligence Tenant (tag-filtered docs, additionals, requests) ---
+try:
+    from intelligence.tenant_router import router as _intel_tenant_router
+    app.include_router(_intel_tenant_router)
+    logger.info("Mounted Intelligence Tenant router at /intel/*")
+except Exception as _itenant_err:
+    logger.warning("Failed to mount intel-tenant router: %s", _itenant_err)
+
 # --- Qwerty Mode (parallel RAG pipeline, additive, isolated) ---
 try:
     from qwerty_mode.api import router as _qwerty_router
