@@ -16,12 +16,7 @@ export default function IntelLoginPage() {
     // If already authenticated, redirect
     React.useEffect(() => {
         if (isIntelAuthenticated()) {
-            const user = getIntelUser();
-            if (user?.role === "admin") {
-                router.replace("/intelligence");
-            } else {
-                router.replace("/intelligence/client");
-            }
+            router.replace("/intelligence");
         }
     }, [router]);
 
@@ -35,11 +30,8 @@ export default function IntelLoginPage() {
                 setError(result.error || "Login failed");
                 return;
             }
-            if (result.user?.role === "admin") {
-                window.location.href = "/intelligence";
-            } else {
-                window.location.href = "/intelligence/client";
-            }
+            // Both admin and client go to same workspace
+            window.location.href = "/intelligence";
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong");
         } finally {

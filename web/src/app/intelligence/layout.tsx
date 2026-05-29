@@ -7,35 +7,26 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { isIntelAuthenticated, isIntelAdmin, getIntelUser, intelLogout } from "@/lib/intel-auth";
 
-const ADMIN_NAV = [
-    { href: "/intelligence", label: "Workspace", icon: FolderOpen, match: (p: string) => p === "/intelligence" || p.startsWith("/intelligence/workspace") },
-    { href: "/intelligence/teams", label: "Teams", icon: Users, match: (p: string) => p.startsWith("/intelligence/teams") },
-    { href: "/intelligence/clients", label: "Clients", icon: UserCog, match: (p: string) => p.startsWith("/intelligence/clients") },
-    { href: "/intelligence/requests", label: "Requests", icon: Inbox, match: (p: string) => p.startsWith("/intelligence/requests") },
+const NAV_ITEMS = [
+    { href: "/intelligence", label: "Workspace", icon: FolderOpen, match: (p: string) => p === "/intelligence" || p.startsWith("/intelligence/workspace"), adminOnly: false },
+    { href: "/intelligence/teams", label: "Teams", icon: Users, match: (p: string) => p.startsWith("/intelligence/teams"), adminOnly: false },
+    { href: "/intelligence/clients", label: "Clients", icon: UserCog, match: (p: string) => p.startsWith("/intelligence/clients"), adminOnly: true },
+    { href: "/intelligence/requests", label: "Requests", icon: Inbox, match: (p: string) => p.startsWith("/intelligence/requests"), adminOnly: true },
 ];
 
 export default function IntelligenceLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname() || "/intelligence";
     const router = useRouter();
 
-    // Client and login pages render without the admin nav
-    const isClientRoute = pathname.startsWith("/intelligence/client");
+    // Login page renders without nav
     const isLoginRoute = pathname.startsWith("/intelligence/login");
-    if (isClientRoute || isLoginRoute) {
+    if (isLoginRoute) {
         return <>{children}</>;
     }
 
     const authenticated = isIntelAuthenticated();
     const admin = isIntelAdmin();
     const user = getIntelUser();
-
-    // Non-admin trying to access admin routes → redirect
-    if (authenticated && !admin && !isClientRoute && !isLoginRoute) {
-        if (typeof window !== "undefined") {
-            window.location.href = "/intelligence/client";
-        }
-        return null;
-    }
 
     const handleLogout = () => {
         intelLogout();
@@ -50,7 +41,7 @@ export default function IntelligenceLayout({ children }: { children: React.React
                     Actionable Intelligence
                 </Link>
                 <nav className="flex items-center gap-1">
-                    {authenticated && admin && ADMIN_NAV.map((item) => {
+                    {authenticated && NAV_ITEMS.filter(item => !item.adminOnly || admin).map((item) => {
                         const Icon = item.icon;
                         const active = item.match(pathname);
                         return (

@@ -43,6 +43,7 @@ import {
     type InstitutionTag,
 } from "@/lib/intel-tenant-api";
 import type { IntelDocumentMeta } from "@/lib/intelligence-types";
+import { isIntelAdmin } from "@/lib/intel-auth";
 
 function formatDate(raw: string | undefined): string {
     if (!raw) return "";
@@ -66,6 +67,7 @@ interface DocumentRowProps {
     isEditing: boolean;
     isTagging: boolean;
     editName: string;
+    isAdmin: boolean;
     onStartEdit: () => void;
     onCancelEdit: () => void;
     onSaveEdit: () => void;
@@ -85,6 +87,7 @@ function DocumentRow({
     isEditing,
     isTagging,
     editName,
+    isAdmin,
     onStartEdit,
     onCancelEdit,
     onSaveEdit,
@@ -136,9 +139,11 @@ function DocumentRow({
                         <span className="font-medium break-words text-[12px] leading-snug flex-1" title={doc.name}>
                             {doc.name}
                         </span>
-                        <Button size="xs" variant="ghost" onClick={onStartEdit} className="shrink-0">
-                            <Edit2 className="h-3 w-3" />
-                        </Button>
+                        {isAdmin && (
+                            <Button size="xs" variant="ghost" onClick={onStartEdit} className="shrink-0">
+                                <Edit2 className="h-3 w-3" />
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
@@ -178,9 +183,11 @@ function DocumentRow({
                                 {t}
                             </span>
                         ))}
-                        <Button size="xs" variant="ghost" onClick={onStartTagging}>
-                            <TagIcon className="h-3 w-3" />
-                        </Button>
+                        {isAdmin && (
+                            <Button size="xs" variant="ghost" onClick={onStartTagging}>
+                                <TagIcon className="h-3 w-3" />
+                            </Button>
+                        )}
                     </>
                 )}
             </div>
@@ -201,19 +208,21 @@ function DocumentRow({
 
             {/* Actions */}
             <div className="flex items-center justify-center gap-1.5">
-                <Button
-                    size="xs"
-                    variant="outline"
-                    disabled={extracting}
-                    onClick={(e) => { e.stopPropagation(); onExtract(); }}
-                >
-                    {extracting ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                        <Zap className="h-3 w-3" />
-                    )}
-                    {doc.has_intel_run ? "Re-extract" : "Extract"}
-                </Button>
+                {isAdmin && (
+                    <Button
+                        size="xs"
+                        variant="outline"
+                        disabled={extracting}
+                        onClick={(e) => { e.stopPropagation(); onExtract(); }}
+                    >
+                        {extracting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                            <Zap className="h-3 w-3" />
+                        )}
+                        {doc.has_intel_run ? "Re-extract" : "Extract"}
+                    </Button>
+                )}
                 {doc.has_intel_run && (
                     <Link href={docUrl} onClick={(e) => e.stopPropagation()}>
                         <Button size="xs" variant="default" title="Open document">
@@ -261,6 +270,7 @@ export default function IntelligenceWorkspacePage() {
     const [docTags, setDocTagsState] = useState<Record<string, string[]>>({});
     const [availableTags, setAvailableTags] = useState<InstitutionTag[]>([]);
     const [taggingId, setTaggingId] = useState<string | null>(null);
+    const isAdmin = isIntelAdmin();
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -391,12 +401,14 @@ export default function IntelligenceWorkspacePage() {
                             className="h-8 w-48 pl-7 text-xs"
                         />
                     </div>
-                    <UploadModal>
-                        <Button size="sm">
-                            <Upload className="h-3.5 w-3.5" />
-                            Upload PDF
-                        </Button>
-                    </UploadModal>
+                    {isAdmin && (
+                        <UploadModal>
+                            <Button size="sm">
+                                <Upload className="h-3.5 w-3.5" />
+                                Upload PDF
+                            </Button>
+                        </UploadModal>
+                    )}
                     <Button
                         variant="outline"
                         size="sm"
@@ -409,14 +421,16 @@ export default function IntelligenceWorkspacePage() {
                         <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                         Refresh
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onResetAll}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-500/30"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" /> Reset
-                    </Button>
+                    {isAdmin && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onResetAll}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-500/30"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" /> Reset
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -463,6 +477,7 @@ export default function IntelligenceWorkspacePage() {
                                 isEditing={isEditing}
                                 isTagging={isTagging}
                                 editName={editName}
+                                isAdmin={isAdmin}
                                 onStartEdit={() => { setEditingId(d.id); setEditName(d.name); }}
                                 onCancelEdit={() => { setEditingId(null); setEditName(""); }}
                                 onSaveEdit={async () => {
