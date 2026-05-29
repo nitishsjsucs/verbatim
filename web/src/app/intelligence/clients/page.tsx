@@ -22,6 +22,8 @@ import {
     deleteClient,
     setClientPassword,
     listInstitutionTags,
+    createInstitutionTag,
+    deleteInstitutionTag,
     type ClientAccountInfo,
     type InstitutionTag,
 } from "@/lib/intel-tenant-api";
@@ -87,6 +89,9 @@ export default function ClientsManagementPage() {
                 />
             )}
 
+            {/* Tag Management Section */}
+            <TagManagementSection tags={tags} onRefresh={refresh} />
+
             <div className="border border-border rounded-lg overflow-hidden">
                 <table className="w-full text-xs">
                     <thead className="bg-muted/50 border-b border-border">
@@ -116,6 +121,97 @@ export default function ClientsManagementPage() {
                         )}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Tag Management Section
+// ---------------------------------------------------------------------------
+
+function TagManagementSection({ tags, onRefresh }: { tags: InstitutionTag[]; onRefresh: () => void }) {
+    const [newTagName, setNewTagName] = React.useState("");
+    const [newTagDesc, setNewTagDesc] = React.useState("");
+    const [creating, setCreating] = React.useState(false);
+
+    const handleCreate = async () => {
+        if (!newTagName.trim()) {
+            toast.error("Tag name is required");
+            return;
+        }
+        setCreating(true);
+        try {
+            await createInstitutionTag(newTagName.trim(), newTagDesc.trim());
+            toast.success(`Tag "${newTagName}" created`);
+            setNewTagName("");
+            setNewTagDesc("");
+            onRefresh();
+        } catch {
+            toast.error("Failed to create tag");
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDelete = async (tagName: string) => {
+        if (!confirm(`Delete tag "${tagName}"? This will not affect existing assignments.`)) return;
+        try {
+            await deleteInstitutionTag(tagName);
+            toast.success(`Tag "${tagName}" deleted`);
+            onRefresh();
+        } catch {
+            toast.error("Failed to delete tag");
+        }
+    };
+
+    return (
+        <div className="border border-border rounded-lg p-4 bg-muted/10 space-y-3">
+            <h2 className="text-xs font-semibold flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5" />
+                Institution Tags ({tags.length})
+            </h2>
+            <div className="flex gap-2">
+                <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="Tag name (e.g., banking)"
+                    className="flex-1 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none"
+                />
+                <input
+                    type="text"
+                    value={newTagDesc}
+                    onChange={(e) => setNewTagDesc(e.target.value)}
+                    placeholder="Description (optional)"
+                    className="flex-1 bg-background text-xs rounded-md px-2.5 py-1.5 border border-border focus:border-primary focus:outline-none"
+                />
+                <button
+                    onClick={handleCreate}
+                    disabled={creating}
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+                >
+                    {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                    Add
+                </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                    <div key={t.name} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/30">
+                        <Tag className="h-2.5 w-2.5" />
+                        <span>{t.name}</span>
+                        {t.description && <span className="text-[10px] text-muted-foreground">({t.description})</span>}
+                        <button
+                            onClick={() => handleDelete(t.name)}
+                            className="ml-1 hover:text-red-500"
+                        >
+                            <Trash2 className="h-2.5 w-2.5" />
+                        </button>
+                    </div>
+                ))}
+                {tags.length === 0 && (
+                    <span className="text-xs text-muted-foreground">No tags yet. Create one to get started.</span>
+                )}
             </div>
         </div>
     );

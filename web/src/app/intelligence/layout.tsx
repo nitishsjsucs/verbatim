@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Brain, FolderOpen, Users, LayoutDashboard, UserCog, Inbox, LogOut } from "lucide-react";
+import { Brain, FolderOpen, Users, UserCog, Inbox, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { isIntelAuthenticated, isIntelAdmin, getIntelUser, intelLogout } from "@/lib/intel-auth";
@@ -10,7 +10,6 @@ import { isIntelAuthenticated, isIntelAdmin, getIntelUser, intelLogout } from "@
 const ADMIN_NAV = [
     { href: "/intelligence", label: "Workspace", icon: FolderOpen, match: (p: string) => p === "/intelligence" || p.startsWith("/intelligence/workspace") },
     { href: "/intelligence/teams", label: "Teams", icon: Users, match: (p: string) => p.startsWith("/intelligence/teams") },
-    { href: "/intelligence/dashboard", label: "Dashboard", icon: LayoutDashboard, match: (p: string) => p.startsWith("/intelligence/dashboard") },
     { href: "/intelligence/clients", label: "Clients", icon: UserCog, match: (p: string) => p.startsWith("/intelligence/clients") },
     { href: "/intelligence/requests", label: "Requests", icon: Inbox, match: (p: string) => p.startsWith("/intelligence/requests") },
 ];
