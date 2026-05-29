@@ -23,13 +23,22 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from config.settings import get_settings
 from tree.tree_store import TreeStore
 from ingestion.pipeline import IngestionPipeline
 from agents.actionable_extractor import ActionableExtractor
+
+# Import admin auth protection
+try:
+    from intelligence.auth.dependencies import require_admin
+    MULTI_TENANT_AUTH_AVAILABLE = True
+except ImportError:
+    MULTI_TENANT_AUTH_AVAILABLE = False
+    def require_admin():
+        return {}
 
 from intelligence.models import (
     IntelRun,
@@ -415,6 +424,7 @@ async def import_teams(
 async def import_actionables(
     doc_id: str,
     file: UploadFile = File(...),
+    _admin: dict = Depends(require_admin) if MULTI_TENANT_AUTH_AVAILABLE else None,
     mode: str = Query("upsert", regex="^(upsert|replace)$"),
 ):
     """Bulk-import / update actionables for a document from a CSV file.
@@ -764,7 +774,11 @@ def _run_extract_pipeline(doc_id: str) -> None:
 
 
 @router.post("/documents/{doc_id}/extract")
-def extract_for_document(doc_id: str, force: bool = Query(False)):
+def extract_for_document(
+    doc_id: str, 
+    force: bool = Query(False),
+    _admin: dict = Depends(require_admin) if MULTI_TENANT_AUTH_AVAILABLE else None
+):
     """Kick off the full AIS pipeline (extract -> enrich -> assign -> group).
 
     Returns immediately with a 202-style payload. Poll
@@ -883,7 +897,12 @@ def reassign_teams(doc_id: str):
 
 
 @router.patch("/documents/{doc_id}/actionables/{item_id}")
-def patch_actionable(doc_id: str, item_id: str, body: ActionablePatch):
+def patch_actionable(
+    doc_id: str, 
+    item_id: str, 
+    body: ActionablePatch,
+    _admin: dict = Depends(require_admin) if MULTI_TENANT_AUTH_AVAILABLE else None
+):
     patch = {k: v for k, v in body.model_dump().items() if v is not None}
     run = _runs().get(doc_id)
     if not run:
@@ -938,7 +957,7 @@ def delete_run(doc_id: str):
 
 
 @router.post("/admin/reset-actionables")
-def reset_all_actionables():
+def reset_all_actionables(_admin: dict = Depends(require_admin) if MULTI_TENANT_AUTH_AVAILABLE else None):
     """Wipe ALL extracted actionables across every document.
 
     Removes the entire `intel_runs` collection content (actionables, team

@@ -31,7 +31,6 @@ import {
 } from "@/components/intelligence/pipeline-action-dialog";
 import {
     buildCsv,
-    listIntelDocuments,
     extractIntelligence,
     resetAllIntelActionables,
     triggerCsvDownload,
@@ -40,7 +39,9 @@ import {
     listInstitutionTags,
     getDocTags,
     setDocTags,
+    listTenantDocuments,
     type InstitutionTag,
+    type TenantDocument,
 } from "@/lib/intel-tenant-api";
 import type { IntelDocumentMeta } from "@/lib/intelligence-types";
 import { isIntelAdmin } from "@/lib/intel-auth";
@@ -275,24 +276,29 @@ export default function IntelligenceWorkspacePage() {
     const refresh = useCallback(async () => {
         setLoading(true);
         try {
-            const [list, tags] = await Promise.all([
-                listIntelDocuments(),
+            const [tenantDocs, tags] = await Promise.all([
+                listTenantDocuments(),
                 listInstitutionTags().catch(() => [] as InstitutionTag[]),
             ]);
-            setDocs(list);
+            
+            // Map TenantDocument to IntelDocumentMeta format
+            const mappedDocs: IntelDocumentMeta[] = tenantDocs.map((d: TenantDocument) => ({
+                id: d.doc_id,
+                name: d.doc_name,
+                pages: d.pages,
+                nodes: d.nodes,
+                has_intel_run: d.has_run,
+                has_actionables: d.has_run,
+            }));
+            
+            setDocs(mappedDocs);
             setAvailableTags(tags);
-            // Load tags for each document
+            
+            // Build tag map from tenant response
             const tagMap: Record<string, string[]> = {};
-            await Promise.all(
-                list.map(async (d) => {
-                    try {
-                        const t = await getDocTags(d.id);
-                        tagMap[d.id] = t;
-                    } catch {
-                        tagMap[d.id] = [];
-                    }
-                }),
-            );
+            tenantDocs.forEach((d: TenantDocument) => {
+                tagMap[d.doc_id] = d.tags || [];
+            });
             setDocTagsState(tagMap);
         } catch (e) {
             toast.error(e instanceof Error ? e.message : "Failed to load documents");

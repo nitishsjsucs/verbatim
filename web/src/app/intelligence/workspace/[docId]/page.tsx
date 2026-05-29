@@ -47,6 +47,14 @@ import {
     patchIntelActionable,
     triggerCsvDownload,
 } from "@/lib/intelligence-api";
+import {
+    saveClientEdit,
+    applyClientEdits,
+    clearClientSandbox,
+    hasClientEdits,
+    getEditCount,
+} from "@/lib/client-sandbox";
+import { isIntelAdmin } from "@/lib/intel-auth";
 import type {
     EnrichedActionable,
     ImportMode,
@@ -209,6 +217,9 @@ export default function IntelligenceDocPage({
     const [importModalOpen, setImportModalOpen] = useState(false);
     const [editTeams, setEditTeams] = useState(false);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const isAdmin = isIntelAdmin();
+    const hasLocalEdits = hasClientEdits(decodedId);
+    const editCount = getEditCount(decodedId);
 
     // Pipeline dialogs (custom blocking pop-ups for ALL ML/AI pipeline calls)
     const extractDialog = usePipelineAction({
@@ -250,6 +261,10 @@ export default function IntelligenceDocPage({
         setNoRun(false);
         try {
             const payload = await getIntelRun(decodedId);
+            // Apply client sandbox edits for non-admin users
+            if (!isAdmin && payload.actionables) {
+                payload.actionables = applyClientEdits(payload.actionables, decodedId);
+            }
             setRun(payload);
         } catch (e) {
             const msg = e instanceof Error ? e.message : "";
@@ -324,14 +339,26 @@ export default function IntelligenceDocPage({
 
     const patchItem = async (itemId: string, patch: Partial<EnrichedActionable>) => {
         if (!run) return;
-        try {
-            const updated = await patchIntelActionable(decodedId, itemId, patch);
+        
+        if (isAdmin) {
+            // Admin: modify master data via API
+            try {
+                const updated = await patchIntelActionable(decodedId, itemId, patch);
+                setRun({
+                    ...run,
+                    actionables: run.actionables.map((a) => (a.id === itemId ? { ...a, ...updated } : a)),
+                });
+            } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Update failed");
+            }
+        } else {
+            // Client: save to local sandbox only
+            saveClientEdit(decodedId, itemId, patch);
             setRun({
                 ...run,
-                actionables: run.actionables.map((a) => (a.id === itemId ? { ...a, ...updated } : a)),
+                actionables: run.actionables.map((a) => (a.id === itemId ? { ...a, ...patch } : a)),
             });
-        } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Update failed");
+            toast.info("Changes saved locally (not synced to server)", { duration: 2000 });
         }
     };
 
@@ -454,23 +481,27 @@ export default function IntelligenceDocPage({
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={downloadActionablesTemplate}
-                        title="Download the CSV template for bulk import"
-                    >
-                        <FileDown className="h-3.5 w-3.5" /> Template
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setImportModalOpen(true)}
-                        title="Import a CSV to bulk-update actionables"
-                    >
-                        <Upload className="h-3.5 w-3.5" />
-                        Import CSV
-                    </Button>
+                    {isAdmin && (
+                        <>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={downloadActionablesTemplate}
+                                title="Download the CSV template for bulk import"
+                            >
+                                <FileDown className="h-3.5 w-3.5" /> Template
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setImportModalOpen(true)}
+                                title="Import a CSV to bulk-update actionables"
+                            >
+                                <Upload className="h-3.5 w-3.5" />
+                                Import CSV
+                            </Button>
+                        </>
+                    )}
                     <Button
                         size="sm"
                         variant="outline"
@@ -480,23 +511,44 @@ export default function IntelligenceDocPage({
                     >
                         <Download className="h-3.5 w-3.5" /> Export CSV
                     </Button>
-                    <Button
-                        size="sm"
-                        variant={editTeams ? "default" : "outline"}
-                        onClick={() => setEditTeams((v) => !v)}
-                        title="Manually edit team assignments per actionable. This does NOT trigger AI."
-                    >
-                        <UsersIcon className="h-3.5 w-3.5" />
-                        {editTeams ? "Done editing teams" : "Reassign teams"}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={reExtract} disabled={busy}>
-                        {busy ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                            <Zap className="h-3.5 w-3.5" />
-                        )}
-                        Re-extract
-                    </Button>
+                    {isAdmin && (
+                        <>
+                            <Button
+                                size="sm"
+                                variant={editTeams ? "default" : "outline"}
+                                onClick={() => setEditTeams((v) => !v)}
+                                title="Manually edit team assignments per actionable. This does NOT trigger AI."
+                            >
+                                <UsersIcon className="h-3.5 w-3.5" />
+                                {editTeams ? "Done editing teams" : "Reassign teams"}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={reExtract} disabled={busy}>
+                                {busy ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <Zap className="h-3.5 w-3.5" />
+                                )}
+                                Re-extract
+                            </Button>
+                        </>
+                    )}
+                    {!isAdmin && hasLocalEdits && (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                if (confirm(`Reset ${editCount} local edit(s)? This cannot be undone.`)) {
+                                    clearClientSandbox(decodedId);
+                                    window.location.reload();
+                                }
+                            }}
+                            title="Clear all local edits and reload from server"
+                            className="text-orange-600 hover:text-orange-700 border-orange-500/30"
+                        >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Reset Local Changes ({editCount})
+                        </Button>
+                    )}
                 </div>
             </div>
 
