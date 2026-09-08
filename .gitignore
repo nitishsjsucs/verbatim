@@ -26,3 +26,11 @@ stderr.txt
 # System
 .DS_Store
 Thumbs.db
+
+# never commit again
+.env
+.env.*
+!.env*.example
+*credential*
+*password*
+accounts*.xlsx
