@@ -310,8 +310,8 @@ report = {
         "best_quality": best_q,
     },
 }
-merged["report"] = report
-with open("experiment_results.json", "w", encoding="utf-8") as f:
+merged = {"results": merged_phase1_results, "report": report}
+with open(RESULTS_FILE, "w", encoding="utf-8") as f:
     json.dump(merged, f, indent=2, default=str)
 
 print("\n" + "=" * 70)

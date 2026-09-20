@@ -1,0 +1,24 @@
+# Tool configuration only. This project is run from a checkout
+# (pip install -r requirements.txt), not installed as a package, so there is
+# deliberately no [project] or [build-system] table here.
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [
+    "backups",
+    "backup_2026-03-17T11-22-06",
+    "web",
+    "convex_qwerty",
+    # Targets a MemoryHealthChecker constructor signature that no longer
+    # exists; 12 of its 14 tests fail on import of the current API.
+    # Excluded rather than silently skipped — see .github/workflows/ci.yml.
+    "tests/diagnostics",
+]
+
+[tool.ruff.lint]
+# The pyflakes error subset: syntax errors, undefined names, broken
+# comparisons and `f`-string mistakes. These are bugs, not style opinions,
+# so CI can enforce them on a codebase that has never been formatted.
+# Widening this to ruff's default rule set currently reports ~1000 findings,
+# almost all cosmetic; that cleanup is a separate job.
+select = ["E9", "F63", "F7", "F82"]

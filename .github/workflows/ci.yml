@@ -1,0 +1,86 @@
+name: CI
+
+# Everything below runs offline against mocked MongoDB and LLM clients.
+# No OPENAI_API_KEY, no MongoDB service, no network: the suites that need a
+# live backend (tests/accuracy, tests/memory_learning) are run by hand and
+# their output is committed under test_results/ instead.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Lint and test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r tests/requirements.txt
+          pip install ruff
+
+      # Rules configured in pyproject.toml: the pyflakes error subset
+      # (syntax errors, undefined names, broken comparisons). Style is not
+      # enforced — this codebase has never been formatted and gating on that
+      # would mean a red build with nothing actionable in it.
+      - name: Lint
+        run: ruff check .
+
+      - name: Import check
+        run: |
+          python -c "import agents.qa_engine, retrieval.router, ingestion.pipeline, app_backend.main"
+
+      # tests/diagnostics is deliberately not in this list. It targets a
+      # MemoryHealthChecker constructor that no longer exists and 12 of its
+      # 14 tests fail; leaving it out is honest, and re-enabling it is
+      # tracked work rather than a silent skip.
+      - name: Test
+        run: pytest tests/unit tests/integration tests/e2e tests/performance -q
+
+  # Typecheck only. `npm run lint` currently reports 51 eslint errors and
+  # 1553 warnings, so it is not wired up here — a step that cannot pass is
+  # worse than no step. Clearing eslint is separate, tracked work.
+  web:
+    name: Typecheck (web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # --ignore-scripts skips the postinstall hook, which installs into
+      # ../convex_qwerty and needs Convex codegen that CI has no credentials
+      # for. tsc and eslint do not need it.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npx tsc --noEmit

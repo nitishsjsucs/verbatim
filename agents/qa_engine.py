@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from config.settings import get_settings
 from models.document import DocumentTree

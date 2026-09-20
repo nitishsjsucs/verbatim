@@ -10,7 +10,12 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    # Imported for annotations only. The runtime import stays inside
+    # to_corpus_entry() to avoid a circular import with models.corpus.
+    from models.corpus import CorpusDocument
 
 
 class NodeType(str, Enum):
