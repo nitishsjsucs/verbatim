@@ -25,38 +25,98 @@ from memory.memory_diagnostics import MemoryContribution, MemoryHealthChecker
 
 @pytest.fixture
 def temp_db():
-    """Create a temporary MongoDB-like database mock."""
+    """
+    An in-memory stand-in for a MongoDB database.
+
+    Documents written with replace_one/update_one/insert_one are readable
+    again through find_one, so save() -> load() round-trips can be asserted
+    without a live MongoDB. Every subsystem in memory/ persists the same way
+    — replace_one({"_id": key}, doc, upsert=True) paired with
+    find_one({"_id": key}) — so keying the store on _id is enough.
+    """
     db = MagicMock()
 
-    # Mock collections with proper MongoDB method support
     collections = {}
 
     def mock_collection(name):
-        if name not in collections:
-            collection = MagicMock()
-            # Mock MongoDB collection methods
-            collection.find_one = MagicMock(return_value=None)
-            collection.find = MagicMock(
-                return_value=MagicMock(
-                    sort=MagicMock(
-                        return_value=MagicMock(limit=MagicMock(return_value=[]))
-                    )
-                )
-            )
-            collection.count_documents = MagicMock(return_value=0)
+        if name in collections:
+            return collections[name]
 
-            # Mock the replace_one method to handle arguments properly
-            def mock_replace_one(filter, replacement, upsert=False):
-                return Mock(acknowledged=True)
+        store = {}
+        collection = MagicMock()
+        collection.store = store  # exposed so tests can inspect writes
 
-            collection.replace_one = mock_replace_one
-            collection.update_one = MagicMock()
-            collection.insert_one = MagicMock()
-            collection.delete_one = MagicMock()
-            collections[name] = collection
-        return collections[name]
+        def _key(spec):
+            return (spec or {}).get("_id")
 
-    db.__getitem__ = mock_collection
+        def _matches(doc, spec):
+            return all(doc.get(field) == value for field, value in (spec or {}).items())
+
+        def find_one(spec=None, *args, **kwargs):
+            key = _key(spec)
+            if key is not None:
+                return store.get(key)
+            return next((d for d in store.values() if _matches(d, spec)), None)
+
+        def replace_one(spec, replacement, upsert=False, **kwargs):
+            key = _key(spec)
+            if key is None and not upsert:
+                return Mock(acknowledged=True, matched_count=0)
+            doc = dict(replacement)
+            doc.setdefault("_id", key)
+            store[doc["_id"]] = doc
+            return Mock(acknowledged=True, matched_count=1)
+
+        def update_one(spec, update, upsert=False, **kwargs):
+            key = _key(spec)
+            doc = store.get(key)
+            if doc is None:
+                if not upsert:
+                    return Mock(acknowledged=True, matched_count=0)
+                doc = {"_id": key}
+                store[key] = doc
+            doc.update(update.get("$set", {}))
+            for field, amount in update.get("$inc", {}).items():
+                doc[field] = doc.get(field, 0) + amount
+            return Mock(acknowledged=True, matched_count=1)
+
+        def insert_one(document, **kwargs):
+            doc = dict(document)
+            doc.setdefault("_id", len(store))
+            store[doc["_id"]] = doc
+            return Mock(acknowledged=True, inserted_id=doc["_id"])
+
+        def delete_one(spec, **kwargs):
+            key = _key(spec)
+            existed = store.pop(key, None) is not None
+            return Mock(acknowledged=True, deleted_count=int(existed))
+
+        def find(spec=None, *args, **kwargs):
+            matches = [d for d in store.values() if _matches(d, spec)]
+            cursor = MagicMock()
+            cursor.__iter__ = lambda _self: iter(matches)
+            cursor.sort = MagicMock(return_value=cursor)
+            cursor.limit = MagicMock(return_value=matches)
+            return cursor
+
+        collection.find_one = find_one
+        collection.replace_one = replace_one
+        collection.update_one = update_one
+        collection.insert_one = insert_one
+        collection.delete_one = delete_one
+        collection.find = find
+        collection.count_documents = lambda spec=None, **kwargs: len(
+            [d for d in store.values() if _matches(d, spec)]
+        )
+
+        collections[name] = collection
+        return collection
+
+    # Assigning a function to a MagicMock's magic method binds it as an
+    # unbound method, so it arrives as __getitem__(db, name). The leading
+    # argument has to be absorbed or every db["collection"] lookup raises
+    # TypeError.
+    db.__getitem__ = lambda _self, name: mock_collection(name)
     return db
 
 

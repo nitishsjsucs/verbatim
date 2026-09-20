@@ -175,8 +175,12 @@ class TestRaptorIndex:
         """Test saving and loading RAPTOR index."""
         index = RaptorIndex("doc_123")
 
-        # Mock the internal state instead of calling build
-        index._heat_map = {"node_0": Mock()}
+        # Populate the heat map directly rather than calling build(), which
+        # would need a real tree and LLM. NodeHeat (not Mock) because save()
+        # serializes this state and load() has to reconstruct it.
+        heat = NodeHeat("node_0")
+        heat.record_citation("compliance")
+        index._heat_map = {"node_0": heat}
         index._is_built = True
 
         # Save to database
@@ -185,9 +189,10 @@ class TestRaptorIndex:
         # Load from database
         loaded_index = RaptorIndex.load("doc_123", temp_db)
 
-        # Should handle gracefully even if loading fails
         assert loaded_index is not None
         assert loaded_index.doc_id == "doc_123"
+        assert "node_0" in loaded_index._heat_map
+        assert loaded_index._heat_map["node_0"].citations == 1
 
     def test_raptor_stats(
         self, mock_document_tree, mock_embedding_client, mock_llm_client

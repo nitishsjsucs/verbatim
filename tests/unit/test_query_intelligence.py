@@ -194,8 +194,25 @@ class TestQueryIntelligence:
         """Test saving and loading query intelligence."""
         qi = QueryIntelligence("doc_123")
 
-        # Mock the internal state
-        with patch.object(qi, "_facts", [Mock()]):
+        # A real RetrievalFact, not a Mock: save() serializes the fact list
+        # and load() reconstructs it, so the state has to round-trip.
+        fact = RetrievalFact(
+            fact_id="fact_123",
+            query_type="compliance",
+            query_text_summary="What are KYC requirements",
+            doc_id="doc_123",
+            timestamp="2024-01-01T12:00:00Z",
+            cited_nodes=["node_0"],
+            located_nodes=["node_0"],
+            wasted_nodes=[],
+            precision=1.0,
+            reflect_helped=True,
+            verification_status="verified",
+            user_rating=4,
+            total_time_s=45.2,
+            key_terms=["kyc", "compliance"],
+        )
+        with patch.object(qi, "_facts", [fact]):
             with patch.object(qi, "_node_citation_freq", {"node_0": 1}):
                 # Save to database
                 qi.save(temp_db)
@@ -203,9 +220,10 @@ class TestQueryIntelligence:
                 # Load from database
                 loaded_qi = QueryIntelligence.load("doc_123", temp_db)
 
-                # Should handle gracefully even if loading fails
                 assert loaded_qi is not None
                 assert loaded_qi.doc_id == "doc_123"
+                assert len(loaded_qi._facts) == 1
+                assert loaded_qi._facts[0].fact_id == "fact_123"
 
     def test_statistics_retrieval(self, sample_query_record, mock_embedding_client):
         """Test retrieving query intelligence statistics."""

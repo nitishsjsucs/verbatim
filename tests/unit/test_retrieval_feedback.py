@@ -316,10 +316,25 @@ class TestRetrievalFeedback:
         """Test saving and loading retrieval feedback."""
         fb = RetrievalFeedback("doc_123")
 
-        # Mock the internal state instead of calling grade_retrieval
-        with patch.object(fb, "_nodes", {"node_0": Mock()}):
-            with patch.object(fb, "_grades", [Mock()]):
-                # Use a real dict instead of Mock for type_stats
+        # Populate state directly rather than calling grade_retrieval().
+        # These are real NodeReliability/PipelineGrade objects, not Mocks,
+        # because save() serializes them and load() reconstructs them.
+        node = NodeReliability("node_0")
+        node.reinforce()
+        grade = PipelineGrade(
+            timestamp="2024-01-01T12:00:00Z",
+            query_type="compliance",
+            precision=0.75,
+            nodes_located=8,
+            nodes_cited=6,
+            nodes_wasted=2,
+            reflect_added_value=True,
+            verification_passed=True,
+            total_time_s=45.2,
+            user_rating=4,
+        )
+        with patch.object(fb, "_nodes", {"node_0": node}):
+            with patch.object(fb, "_grades", [grade]):
                 fb._type_stats = {
                     "compliance": {"total": 5, "successful": 4, "precision": 0.8}
                 }
@@ -330,9 +345,10 @@ class TestRetrievalFeedback:
                 # Load from database
                 loaded_fb = RetrievalFeedback.load("doc_123", temp_db)
 
-                # Should handle gracefully even if loading fails
                 assert loaded_fb is not None
                 assert loaded_fb.doc_id == "doc_123"
+                assert "node_0" in loaded_fb._nodes
+                assert loaded_fb._nodes["node_0"].times_cited == 1
 
     def test_statistics_retrieval(self, sample_query_record):
         """Test retrieving retrieval feedback statistics."""

@@ -497,10 +497,10 @@ class TestLearningProgression:
                 successful_operations += 1
 
             except Exception as e:
-                # System should handle errors gracefully
-                assert (
-                    "should not reach here" is None
-                )  # Should not throw unhandled exceptions
+                # The memory layer is meant to degrade gracefully, so an
+                # unhandled exception escaping pre_query is a failure. Report
+                # the exception rather than asserting on a constant.
+                pytest.fail(f"pre_query raised an unhandled exception: {e!r}")
 
         # Should complete most operations successfully
         assert successful_operations >= len(queries) - 2  # Allow for some failures
