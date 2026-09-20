@@ -170,7 +170,7 @@ number into the candidate set.
 
 `data/comparison/v1_vs_v2_comparison.json` · 2026-02-14 · 5 queries · LLM judge
 
-| Judge criterion (/10) | V1 (flat) | V2 (tree) |
+| Judge criterion (/10) | V1 | V2 (this system) |
 |---|---|---|
 | Accuracy | 8.0 | 8.2 |
 | Completeness | 6.6 | 7.6 |
@@ -179,11 +179,14 @@ number into the candidate set.
 | Regulatory precision | 7.4 | 8.2 |
 | **Overall** | **6.52** | **7.88** |
 
-The judge picked V2 on all 5 queries. Almost the entire margin is citation quality: V1
-returned opaque hash-like identifiers that pointed nowhere a human could check, V2 returns
-section names with page pointers. In this domain that is the difference between an answer a
-compliance officer can file and one they cannot. The judge's remaining criticism of V2 is
-recorded rather than removed — citations still do not resolve to an exact clause number.
+The judge picked V2 on all 5 queries. The overall score is the mean of the five criteria,
+and citation quality alone supplies 3.6 of the 6.8 points of criterion-level improvement —
+53% of the margin, more than the other four combined. The judge's own reasoning says why:
+V1 returned opaque hash-like identifiers that pointed nowhere a reader could check, V2
+returns section names with page pointers. In this domain that is the difference between an
+answer a compliance officer can file and one they cannot. The judge's remaining criticism
+of V2 is recorded rather than removed — citations still do not resolve to an exact clause
+number.
 
 **This quality came at a real cost**, which the same file records:
 
@@ -235,8 +238,8 @@ index. Time-decay and topic-gating are proposed there; neither has been run.
 
 **Verified — measured, with the output committed:**
 
-- Tree retrieval beats the previous flat approach on judged answer quality, decisively on
-  citation traceability (5 queries, LLM judge).
+- Tree retrieval beats the previous version on judged answer quality, decisively on
+  citation traceability (5 queries, LLM judge, 5-0).
 - Verification status predicts coverage: 73.5% when `verified`, 39.5% when
   `partially_verified`.
 - The quality is bought with ~1.5× latency and ~3.4× tokens.
