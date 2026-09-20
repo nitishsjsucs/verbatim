@@ -75,8 +75,9 @@ Three evaluations were run against a live backend, over two public RBI direction
 Commercial Banks KYC Directions, 2025 (answer quality) and the Commercial Banks Asset
 Liability Management Directions, 2025 (the memory-learning runs). All are committed in
 full — reports, per-question detail and raw responses — under `test_results/` and
-`data/comparison/`. Nothing below is a number this README computed; each figure is in a
-committed artifact, and the file is named above each table.
+`data/comparison/`. Every figure below either appears verbatim in a committed artifact or
+is aggregated from the per-question `scores` array in one; the source file is named above
+each table, so any of it can be recomputed.
 
 ### Methodology
 
@@ -124,19 +125,30 @@ in any committed run carries a detector message. The count is fully consistent w
 "nothing was checked". Establishing a real hallucination rate would mean judging every
 answer regardless of coverage, and that has not been done.
 
-By question category, and by the pipeline's own decisions:
+The three breakdowns below are computed over the 28 completed questions in
+`accuracy_report.json`. By question category:
 
-| Category | Coverage | | Classified as | Count | Coverage |
-|---|---|---|---|---|---|
-| regulatory_update | 75.0% (n=1) | | multi_hop | 12 | ~67% |
-| conceptual | 65.3% | | single_hop | 14 | ~52% |
-| clause_interpretation | 59.4% | | definitional | 1 | 33% |
-| scenario | 57.1% | | | | |
+| Category | Questions | Mean coverage |
+|---|---|---|
+| regulatory_update | 1 | 75.0% |
+| conceptual | 10 | 65.3% |
+| clause_interpretation | 9 | 59.4% |
+| scenario | 8 | 57.1% |
+
+By how the classifier routed the query — the clearest actionable split in the run:
+
+| Classified as | Questions | Mean coverage | Mean sections read |
+|---|---|---|---|
+| multi_hop | 12 | **72.8%** | 17.9 |
+| single_hop | 15 | **54.1%** | 7.6 |
+| definitional | 1 | 33.3% | 19 |
+
+By the system's own verification verdict:
 
 | Verification status | Questions | Mean coverage |
 |---|---|---|
-| `verified` | 17 | 70% |
-| `partially_verified` | 11 | 48% |
+| `verified` | 18 | **73.5%** |
+| `partially_verified` | 10 | **39.5%** |
 
 That last table is the most useful operational finding: the system's own verification
 signal predicts its accuracy. When it says it is unsure, it is also less complete — so the
@@ -147,8 +159,9 @@ Paragraph 23 and retrieved Enhanced and Simplified Due Diligence instead of the 
 Procedure section that actually contains Paragraph 23. The embedding pre-filter and the
 memory candidates had already excluded the right section, leaving just two in the
 compressed index, so the locator had nothing correct to choose. `single_hop` queries
-under-retrieve generally: 14 of them averaged 8.2 sections and 52% coverage against
-multi_hop's 18.5 sections and 67%. `test_results/accuracy_30q/analysis.md` carries the full
+under-retrieve generally: the 15 of them read 7.6 sections on average and scored 54.1%,
+against multi_hop's 17.9 sections and 72.8%. They skip query expansion entirely and make a
+single locate pass. `test_results/accuracy_30q/analysis.md` carries the full
 root-cause breakdown and the fixes that followed, including the `PARA_BOOST` rule now in
 `retrieval/router.py`, which forces sections containing an explicitly referenced paragraph
 number into the candidate set.
@@ -224,7 +237,8 @@ index. Time-decay and topic-gating are proposed there; neither has been run.
 
 - Tree retrieval beats the previous flat approach on judged answer quality, decisively on
   citation traceability (5 queries, LLM judge).
-- Verification status predicts coverage (70% vs 48%).
+- Verification status predicts coverage: 73.5% when `verified`, 39.5% when
+  `partially_verified`.
 - The quality is bought with ~1.5× latency and ~3.4× tokens.
 - Memory cuts token volume ~75% within a theme and raises retrieval precision.
 
